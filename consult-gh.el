@@ -207,3 +207,5 @@
         )
   (consult-gh--clone-repo repo targetdir name)
     ))
+
+(provide 'consult-gh)
