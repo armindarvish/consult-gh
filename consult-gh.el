@@ -1,6 +1,4 @@
 (require 'consult)
-(require 'consult--slow-operation)
-(require 'consult--multi)
 
 (defgroup consult-gh nil
   "Consulting GitHub CLI"
@@ -162,7 +160,7 @@
          (candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
    (list (delete-dups (completing-read-multiple "GitHub Org: " candidates nil nil nil 'consult-gh--org-history nil t)))))
 
-  (let ((candidates (consult--slow-operation "Collecting Repos..."(mapcar #'consult-gh--make-source-from-org orgs))))
+  (let ((candidates (consult--slow-operation "Collecting Repos..." (mapcar #'consult-gh--make-source-from-org orgs))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-orgs-list (append consult-gh--known-orgs-list orgs))
