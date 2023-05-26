@@ -17,7 +17,7 @@
 (require 'embark)
 
 ;;; Add embark menus if embark is available
-(with-eval-after-load '(embark consult-gh)
+(with-eval-after-load 'consult-gh
 
 (defun consult-gh-embark-get-ssh-link (repo)
   "Get the ssh based link of the repo"
