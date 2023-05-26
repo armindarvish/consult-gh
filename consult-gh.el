@@ -160,7 +160,7 @@
          (candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
    (list (delete-dups (completing-read-multiple "GitHub Org: " candidates nil nil nil 'consult-gh--org-history nil t)))))
 
-  (let ((candidates (funcall 'consult--slow-operation "Collecting Repos..." (mapcar #'consult-gh--make-source-from-org orgs))))
+  (let ((candidates (mapcar #'consult-gh--make-source-from-org orgs)))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-orgs-list (append consult-gh--known-orgs-list orgs))
@@ -184,7 +184,7 @@
    (let ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
    (list (delete-dups (completing-read-multiple "Repos: " candidates nil nil nil nil nil t)))))
-  (let ((candidates (funcall 'consult--slow-operation "Collecting Repos..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
+  (let ((candidates (mapcar #'consult-gh--make-source-from-search-repo repos)))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
