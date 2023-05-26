@@ -16,9 +16,11 @@
 
 ;;;###autoload
 
-(require 'embark)
+(eval-when-compile
+(require 'embark))
+
 ;;; Add embark menus if embark is available
-(with-eval-after-load 'embark
+(with-eval-after-load '(embark consult-gh)
 
 (defun consult-gh-embark-get-ssh-link (repo)
   "Get the ssh based link of the repo"
@@ -43,13 +45,14 @@
     (consult-gh-clone-repo reponame consult-gh-default-clone-directory package)))
 
 
-(defvar-keymap consult-gh-embark-map
+(defvar-keymap consult-gh-embark-actions
   :doc "Keymap for consult-gh-embark"
+  :parent embark-general-map
   "s" #'consult-gh-embark-get-ssh-link
   "h" #'consult-gh-embark-get-https-link
   "e" #consult-gh-embark-get-straight-usepackage
   "c" #'consult-gh-embark-clone-repo)
 
-(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-map)))
+(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions)))
 
 (provide 'consult-gh-embark)
