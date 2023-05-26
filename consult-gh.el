@@ -1,3 +1,19 @@
+;;; consult-gh.el --- Consulting GitHub Client -*- lexical-binding: t -*-
+
+;; Copyright (C) 2021-2023 Free Software Foundation, Inc.
+
+;; Author: Armin Darvish
+;; Maintainer: Armin Darvish
+;; Created: 2023
+;; Version: 0.1
+;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
+;; Homepage: https://github.com/armindarvish/consult-gh
+;; Keywords: matching, git, repositories, forges, completion
+
+;;; Commentary:
+
+;;; Code:
+
 (require 'consult)
 
 (defgroup consult-gh nil
