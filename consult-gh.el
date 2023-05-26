@@ -68,7 +68,7 @@
   `((t :foreground "#00A8B0" :inherit default)) "teal used for default list items")
 (defface consult-gh-visibility-face
   `((t :foreground "#DC80BA" :inherit default)) "pink used for repo visibility")
-(defface consult-gh-userface
+(defface consult-gh-user-face
   `((t :foreground "#FDD78B" :inherit default)) "light yellow used for users")
 
 (defun consult-gh--call-process (&rest args)
@@ -139,7 +139,7 @@
          (date (format "%s" (get-text-property 1 :version cand))))
 
       (progn
-        (setq user (propertize user 'face 'consult-gh-userface)
+        (setq user (propertize user 'face 'consult-gh-user-face)
           visibillity (propertize visibility 'face 'consult-gh-visibility-face)
           date (propertize date 'face 'consult-gh-date-face))
         (format "%s\t%s\t%s" user visibility date)
