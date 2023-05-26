@@ -18,8 +18,6 @@
 (require 'consult)
 )
 
-(require 'cl-lib)
-
 (defgroup consult-gh nil
   "Consulting GitHub CLI"
   :group 'convenience
