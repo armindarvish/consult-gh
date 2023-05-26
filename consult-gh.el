@@ -1,4 +1,6 @@
 (require 'consult)
+(require 'consult--slow-operation)
+(require 'consult--multi)
 
 (defgroup consult-gh nil
   "Consulting GitHub CLI"
