@@ -14,7 +14,6 @@
 
 ;;; Code:
 
-;;; Add embark menus if embark is available
 (with-eval-after-load 'embark
 
 (defun consult-gh-embark-get-ssh-link (repo)
