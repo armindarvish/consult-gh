@@ -15,7 +15,8 @@
 ;;; Code:
 
 (eval-when-compile
-(require 'consult))
+(require 'consult)
+(require 'cl-lib))
 
 (defgroup consult-gh nil
   "Consulting GitHub CLI"
