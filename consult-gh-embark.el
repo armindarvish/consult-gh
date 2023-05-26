@@ -14,10 +14,7 @@
 
 ;;; Code:
 
-;;;###autoload
-
-(eval-when-compile
-(require 'embark))
+(require 'embark)
 
 ;;; Add embark menus if embark is available
 (with-eval-after-load '(embark consult-gh)
@@ -50,7 +47,7 @@
   :parent embark-general-map
   "s" #'consult-gh-embark-get-ssh-link
   "h" #'consult-gh-embark-get-https-link
-  "e" #consult-gh-embark-get-straight-usepackage
+  "e" #'consult-gh-embark-get-straight-usepackage
   "c" #'consult-gh-embark-clone-repo)
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions)))
