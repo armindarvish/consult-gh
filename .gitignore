@@ -9,3 +9,7 @@
 
 # Undo-tree save-files
 *.~undo-tree
+
+
+#org literate file
+consult-gh.org
