@@ -32,3 +32,5 @@
   "c" #'consult-gh-embark-clone-repo)
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-map)))
+
+(provide 'consult-gh-embark)
