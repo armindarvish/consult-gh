@@ -6,7 +6,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 0.1
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (consult-gh "0.1"))
+;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -14,6 +14,7 @@
 
 ;;; Code:
 
+;;; Add embark menus if embark is available
 (with-eval-after-load 'embark
 
 (defun consult-gh-embark-get-ssh-link (repo)
