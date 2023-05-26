@@ -14,6 +14,9 @@
 
 ;;; Code:
 
+;;;###autoload
+
+(require 'embark)
 ;;; Add embark menus if embark is available
 (with-eval-after-load 'embark
 
