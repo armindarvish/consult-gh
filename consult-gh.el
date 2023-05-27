@@ -145,14 +145,14 @@
 (lambda (cand)
   ;; (format "%s" cand)
   (if-let ((user (format "%s" (get-text-property 0 :user cand)))
-         (visibility (format "%s" (get-text-property 0 :visibility cand)))
+         (visible (format "%s" (get-text-property 0 :visibility cand)))
          (date (format "%s" (get-text-property 0 :version cand))))
 
       (progn
         (setq user (propertize user 'face 'consult-gh-user-face)
-          visibillity (propertize visibility 'face 'consult-gh-visibility-face)
-          date (propertize date 'face 'consult-gh-date-face))
-        (format "%s\t%s\t%s" user visibility date)
+              visible (propertize visible 'face 'consult-gh-visibility-face)
+              date (propertize date 'face 'consult-gh-date-face))
+        (format "%s\t%s\t%s" user visible date)
      )
     nil)
 ))
