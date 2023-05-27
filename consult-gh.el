@@ -85,6 +85,12 @@
 (defface consult-gh-date-face
   `((t :inherit 'font-lock-keyword-face)) "inherit from font-lock-keyword-face for the date")
 
+(defun consult-gh--output-cleanup (string)
+"REmove non UTF-8 characters if any in the string. This is used in "
+  (string-join
+   (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
+                     string))))
+
 (defun consult-gh--call-process (&rest args)
   "Run \"gh\" with args and return output if no errors. If there are erros pass them to *Messages*."
   (if (executable-find "gh")
@@ -92,21 +98,15 @@
         (let ((out (list (apply 'call-process "gh" nil (current-buffer) nil args)
                          (buffer-string))))
           (if (= (car out) 0)
-              (cadr out)
+              (consult-gh--output-cleanup (cadr out))
             (progn
-              (message (cadr out))
+              (message (consult-gh--output-cleanup (cadr out)))
               nil)
             )))
     (progn
       (message (propertize "\"gh\" is not found on this system" 'face 'warning))
       nil)
     ))
-
-(defun consult-gh--output-cleanup (string)
-"REmove non UTF-8 characters if any in the string. This is used in "
-  (string-join
-   (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
-                     string))))
 
 (defun consult-gh--get-repos-of-org (org)
 "Get a list of repos of \"organization\" and format each as a text with properties to pass to consult."
