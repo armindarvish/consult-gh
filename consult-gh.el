@@ -86,7 +86,7 @@
   `((t :inherit 'font-lock-keyword-face)) "inherit from font-lock-keyword-face for the date")
 
 (defun consult-gh--output-cleanup (string)
-"REmove non UTF-8 characters if any in the string. This is used in "
+"Remove non UTF-8 characters if any in the string. This is used in "
   (string-join
    (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
                      string))))
@@ -96,11 +96,11 @@
   (if (executable-find "gh")
       (with-temp-buffer
         (let ((out (list (apply 'call-process "gh" nil (current-buffer) nil args)
-                         (consult-gh--output-cleanup (buffer-string)))))
+                         (buffer-string))))
           (if (= (car out) 0)
-              (consult-gh--output-cleanup (cadr out))
+              (cadr out)
             (progn
-              (message (consult-gh--output-cleanup (cadr out)))
+              (message (cadr out))
               nil)
             )))
     (progn
@@ -111,17 +111,17 @@
 (defun consult-gh--get-repos-of-org (org)
 "Get a list of repos of \"organization\" and format each as a text with properties to pass to consult."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
-         (repolist  (or (consult-gh--call-process "repo" "list" org "--limit" maxnum) ""))
+         (repolist  (or (consult-gh--output-cleanup (consult-gh--call-process "repo" "list" org "--limit" maxnum)) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (consult-gh--output-cleanup (car src)) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
 (defun consult-gh--get-search-repos (repo)
 "Search for repos with \"gh search repos\" and return a list of items each formatted with properties to pass to consult."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
-         (repolist  (or (consult-gh--call-process "search" "repos" repo "--limit" maxnum) ""))
+         (repolist  (or (consult-gh--output-cleanup (consult-gh--call-process "search" "repos" repo "--limit" maxnum)) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (consult-gh--output-cleanup (car src)) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
 (defun consult-gh--browse-url-action ()
