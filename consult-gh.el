@@ -77,13 +77,13 @@
   "List of previously visited orgs for `consult-gh'.")
 
 (defface consult-gh-default-face
-  `((t :inherit 'default)) "teal used for default list items")
+  `((t :inherit 'default)) "default face used items in the list")
 (defface consult-gh-visibility-face
-  `((t :inherit 'font-lock-doc-face)) "pink used for repo visibility")
+  `((t :inherit 'font-lock-doc-face)) "inherit from font-lock-doc-face for repos visibility")
 (defface consult-gh-user-face
-  `((t :inherit 'font-lock-warning-face)) "light yellow used for users")
+  `((t :inherit 'font-lock-warning-face)) "inherit from font-lock-warning-face for the user")
 (defface consult-gh-date-face
-  `((t :inherit 'font-lock-keyword-face)) "light yellow used for users")
+  `((t :inherit 'font-lock-keyword-face)) "inherit from font-lock-keyword-face for the date")
 
 (defun consult-gh--call-process (&rest args)
   "Run \"gh\" with args and return output if no errors. If there are erros pass them to *Messages*."
