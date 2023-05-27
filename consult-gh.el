@@ -51,6 +51,11 @@
   :group 'consult-gh
   :type 'string)
 
+(defcustom consult-gh-confirm-before-clone t
+  "This variable defines whether `consult-gh' queries the user for directory and name before cloning a repo or uses the default directory and package name. It's useful to set this to nil if you want to clone multiple repos without all at once."
+  :group 'consult-gh
+  :type 'boolean)
+
 (defvar consult-gh--repos-history nil
   "History variable for repos used in `consult-gh-search-repos'.")
 

@@ -39,7 +39,9 @@
   (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
          (package (car (last (split-string reponame "\/"))))
          )
-    (consult-gh-clone-repo reponame consult-gh-default-clone-directory package)))
+    (if consult-gh-confirm-before-clone
+        (consult-gh-clone-repo reponame consult-gh-default-clone-directory package)
+      (consult-gh--clone-repo reponame consult-gh-default-clone-directory package))))
 
 
 (defvar-keymap consult-gh-embark-actions
