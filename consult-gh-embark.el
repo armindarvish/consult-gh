@@ -41,7 +41,7 @@
          )
     (if consult-gh-confirm-before-clone
         (consult-gh-clone-repo reponame consult-gh-default-clone-directory package)
-      (consult-gh--clone-repo reponame consult-gh-default-clone-directory package))))
+      (consult-gh--clone-repo reponame consult-gh-default-clone-directory package))))
 
 
 (defvar-keymap consult-gh-embark-actions
