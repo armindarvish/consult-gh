@@ -158,7 +158,7 @@
 (defun consult-gh--clone-repo (repo targetdir name)
 "Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
   (consult-gh--call-process "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
-  (message (format "repo %s was cloned to %s" repo (propertize (expand-file-name name targetdir) 'face 'font-lock-constant-face))))
+  (message (format "repo %s was cloned to %s" repo (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face))))
 
 (defun consult-gh-clone-repo (&optional repo targetdir name)
   (interactive)
