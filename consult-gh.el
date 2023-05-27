@@ -144,15 +144,15 @@
 "Annotate each repo in `consult-gh' by user, visibility and date."
 (lambda (cand)
   ;; (format "%s" cand)
-  (if-let ((user (format "%s" (get-text-property 1 :user cand)))
-         (visibility (format "%s" (get-text-property 1 :visibility cand)))
-         (date (format "%s" (get-text-property 1 :version cand))))
+  (if-let ((user (format "%s" (get-text-property 0 :user cand)))
+         (visibility (format "%s" (get-text-property 0 :visibility cand)))
+         (date (format "%s" (get-text-property 0 :version cand))))
 
       (progn
         (setq user (propertize user 'face 'consult-gh-user-face)
           visibillity (propertize visibility 'face 'consult-gh-visibility-face)
           date (propertize date 'face 'consult-gh-date-face))
-        (format "%s\s\s%s\s\s%s" user visibility date)
+        (format "%s\t%s\t%s" user visibility date)
      )
     nil)
 ))
