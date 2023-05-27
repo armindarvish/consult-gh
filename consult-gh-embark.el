@@ -41,7 +41,9 @@
          )
     (if consult-gh-confirm-before-clone
         (consult-gh-clone-repo reponame consult-gh-default-clone-directory package)
-      (consult-gh--clone-repo reponame consult-gh-default-clone-directory package))))
+            (let ((targetdir (read-directory-name "target directory: " consult-gh-default-clone-directory)))
+      (consult-gh--clone-repo reponame targetdir package)))
+))
 
 
 (defvar-keymap consult-gh-embark-actions

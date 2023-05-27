@@ -150,10 +150,35 @@
         (setq user (propertize user 'face 'consult-gh-user-face)
           visibillity (propertize visibility 'face 'consult-gh-visibility-face)
           date (propertize date 'face 'consult-gh-date-face))
-        (format "%s\t%s\t%s" user visibility date)
+        (format "%s\s\s%s\s\s%s" user visibility date)
      )
     nil)
 ))
+
+(defun consult-gh--clone-repo (repo targetdir name)
+"Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
+  (consult-gh--call-process "repo" "clone" (format "%s" repo) (expand-file-name name targetdir)))
+
+(defun consult-gh-clone-repo (&optional repo targetdir name)
+  (interactive)
+  (let ((repo (read-string "repo: " repo))
+        (targetdir (read-directory-name "target directory: " targetdir))
+        (name (read-string "name: " name))
+        )
+  (consult-gh--clone-repo repo targetdir name)
+    ))
+
+(defun consult-gh-clone-repo-action ()
+  (lambda (cand)
+    (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand))))
+         (package (car (last (split-string reponame "\/"))))
+         )
+    (if consult-gh-confirm-before-clone
+        (consult-gh-clone-repo reponame consult-gh-default-clone-directory package)
+      (let ((targetdir (read-directory-name "target directory: " consult-gh-default-clone-directory)))
+      (consult-gh--clone-repo reponame targetdir package)))
+
+)))
 
 (defun consult-gh--make-source-from-org  (org)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'."
@@ -222,18 +247,5 @@
                     :category 'consult-gh
                     ))
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
-
-(defun consult-gh--clone-repo (repo targetdir name)
-"Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
-  (consult-gh--call-process "repo" "clone" (format "%s" repo) (expand-file-name name targetdir)))
-
-(defun consult-gh-clone-repo (&optional repo targetdir name)
-  (interactive)
-  (let ((repo (read-string "repo: " repo))
-        (targetdir (read-directory-name "target directory: " targetdir))
-        (name (read-string "name: " name))
-        )
-  (consult-gh--clone-repo repo targetdir name)
-    ))
 
 (provide 'consult-gh)
