@@ -25,7 +25,7 @@
 
 (defun consult-gh-embark-get-https-link (repo)
   "Get the ssh based link of the repo"
-  (kill-new (concat "https://github.com/" (string-trim (consult-gh--output-cleanup `(substring-no-properties repo))) ".git")))
+  (kill-new (concat "https://github.com/" (string-trim (consult-gh--output-cleanup (substring-no-properties repo))) ".git")))
 
 (defun consult-gh-embark-get-straight-usepackage (repo)
   "Close tab."
