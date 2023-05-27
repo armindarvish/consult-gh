@@ -79,7 +79,7 @@
 (defface consult-gh-default-face
   `((t :inherit 'default)) "default face used items in the list")
 (defface consult-gh-visibility-face
-  `((t :inherit 'font-lock-constant-face)) "inherit from font-lock-constant-face for repos visibility")
+  `((t :inherit 'font-lock-variable-face)) "inherit from font-lock-variable-face for repos visibility")
 (defface consult-gh-user-face
   `((t :inherit 'font-lock-warning-face)) "inherit from font-lock-warning-face for the user")
 (defface consult-gh-date-face
