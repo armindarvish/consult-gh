@@ -14,6 +14,8 @@
 
 ;;; Code:
 
+;;;###autoload
+
 (eval-when-compile
 (require 'consult)
 )
@@ -44,7 +46,7 @@
 (defcustom consult-gh-default-orgs-list (list)
   "List of default github orgs for `consult-gh' package."
   :group 'consult-gh
-  :type 'listp)
+  :type 'list)
 
 (defcustom consult-gh-default-clone-directory nil
   "Default directory to clone github repos in for `consult-gh' package."
@@ -55,6 +57,11 @@
   "This variable defines whether `consult-gh' queries the user for directory and name before cloning a repo or uses the default directory and package name. It's useful to set this to nil if you want to clone multiple repos without all at once."
   :group 'consult-gh
   :type 'boolean)
+
+(defcustom consult-gh--action #'consult-gh-browse-url
+  "This variable defines the function that is used when selecting an item. By default it is set to `consult-gh-browse-url', but you can cahnge it to other actions such as `consult-gh-clone-repo'."
+  :group 'consult-gh
+  :type 'function)
 
 (defvar consult-gh--repos-history nil
   "History variable for repos used in `consult-gh-search-repos'.")
@@ -93,12 +100,18 @@
       nil)
     ))
 
+(defun consult-gh--output-cleanup (string)
+"REmove non UTF-8 characters if any in the string. This is used in "
+  (string-join
+   (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
+                     string))))
+
 (defun consult-gh--get-repos-of-org (org)
 "Get a list of repos of \"organization\" and format each as a text with properties to pass to consult."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--call-process "repo" "list" org "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (consult-gh--output-cleanup (car src)) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
 (defun consult-gh--get-search-repos (repo)
@@ -106,16 +119,10 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--call-process "search" "repos" repo "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (consult-gh--output-cleanup (car src)) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
-(defun consult-gh--output-cleanup (string)
-"REmove non UTF-8 characters if any in the string. This is used in "
-  (string-join
-   (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
-                     string))))
-
-(defun consult-gh--repos-action ()
+(defun consult-gh--browse-url ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
   (browse-url (concat "https://github.com/" (substring cand)))
@@ -126,16 +133,12 @@
   (let ((name (car (string-split (substring cand) "\/"))))
            (if transform (substring cand) name)))
 
-(defun consult-gh--org-narrow (org)
+(defun consult-gh--narrow (item)
 "Create narrowing function for items in `consult-gh' by the first letter of the name of the user/organization."
-  (if (stringp org)
-    (cons (string-to-char (substring-no-properties org)) (substring-no-properties org))))
+  (if (stringp item)
+    (cons (string-to-char (substring-no-properties item)) (substring-no-properties item))))
 
-(defun consult-gh--search-repo-narrow (repo)
-"Create narrowing function for items in `consult-gh' by the first letter of the name of the user/organization."
-    (cons (string-to-char (substring-no-properties repo)) (substring-no-properties repo)))
-
-(defun consult-gh--repos-annotate ()
+(defun consult-gh--annotate ()
 "Annotate each repo in `consult-gh' by user, visibility and date."
 (lambda (cand)
   ;; (format "%s" cand)
@@ -154,24 +157,24 @@
 
 (defun consult-gh--make-source-from-org  (org)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'."
-                  `(:narrow ,(consult-gh--org-narrow org)
+                  `(:narrow ,(consult-gh--narrow org)
                     :category 'consult-gh
                     :items  ,(consult-gh--get-repos-of-org org)
                     :face 'consult-gh-default-face
-                    :action ,(consult-gh--repos-action)
-                    :annotate ,(consult-gh--repos-annotate)
+                    :action ,consult-gh--action
+                    :annotate ,(consult-gh--annotate)
                     :defualt t
                     :history t
                     ))
 
 (defun consult-gh--make-source-from-search-repo  (repo)
 "Create a source for consult from the search results for repo to use in `consult-gh-search-repos'."
-                  `(:narrow ,(consult-gh--search-repo-narrow repo)
+                  `(:narrow ,(consult-gh--narrow repo)
                     :category 'consult-gh
                     :items  ,(consult-gh--get-search-repos repo)
                     :face 'consult-gh-default-face
-                    :action ,(consult-gh--repos-action)
-                    :annotate ,(consult-gh--repos-annotate)
+                    :action ,consult-gh--action
+                    :annotate ,(consult-gh--annotate)
                     :default t
                     :history t
                     ))
