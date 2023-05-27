@@ -58,7 +58,7 @@
   :group 'consult-gh
   :type 'boolean)
 
-(defcustom consult-gh--action #'consult-gh--browse-url
+(defcustom consult-gh-action #'consult-gh--browse-url
   "This variable defines the function that is used when selecting an item. By default it is set to `consult-gh-browse-url', but you can cahnge it to other actions such as `consult-gh-clone-repo'."
   :group 'consult-gh
   :type 'function)
@@ -161,7 +161,7 @@
                     :category 'consult-gh
                     :items  ,(consult-gh--get-repos-of-org org)
                     :face 'consult-gh-default-face
-                    :action ,consult-gh--action
+                    :action ,(funcall consult-gh-action)
                     :annotate ,(consult-gh--annotate)
                     :defualt t
                     :history t
@@ -173,7 +173,7 @@
                     :category 'consult-gh
                     :items  ,(consult-gh--get-search-repos repo)
                     :face 'consult-gh-default-face
-                    :action ,consult-gh--action
+                    :action ,(funcall consult-gh-action)
                     :annotate ,(consult-gh--annotate)
                     :default t
                     :history t
