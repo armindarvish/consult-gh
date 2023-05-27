@@ -96,7 +96,7 @@
   (if (executable-find "gh")
       (with-temp-buffer
         (let ((out (list (apply 'call-process "gh" nil (current-buffer) nil args)
-                         (buffer-string))))
+                         (consult-gh--output-cleanup (buffer-string)))))
           (if (= (car out) 0)
               (consult-gh--output-cleanup (cadr out))
             (progn
