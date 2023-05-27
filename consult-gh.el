@@ -111,17 +111,17 @@
 (defun consult-gh--get-repos-of-org (org)
 "Get a list of repos of \"organization\" and format each as a text with properties to pass to consult."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
-         (repolist  (or (consult-gh--output-cleanup (consult-gh--call-process "repo" "list" org "--limit" maxnum)) ""))
+         (repolist  (or (consult-gh--call-process "repo" "list" org "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
 (defun consult-gh--get-search-repos (repo)
 "Search for repos with \"gh search repos\" and return a list of items each formatted with properties to pass to consult."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
-         (repolist  (or (consult-gh--output-cleanup (consult-gh--call-process "search" "repos" repo "--limit" maxnum)) ""))
+         (repolist  (or (consult-gh--call-process "search" "repos" repo "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
 (defun consult-gh--browse-url-action ()
@@ -145,7 +145,7 @@
 (lambda (cand)
   ;; (format "%s" cand)
   (if-let ((user (format "%s" (get-text-property 0 :user cand)))
-         (visible (format "%s" (get-text-property 0 :visibility cand)))
+         (visible (format "%s" (get-text-property 0 :visible cand)))
          (date (format "%s" (get-text-property 0 :version cand))))
 
       (progn
