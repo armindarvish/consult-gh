@@ -36,14 +36,7 @@
 
 (defun consult-gh-embark-clone-repo (repo)
   "Clone the repo at point"
-  (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
-         (package (car (last (split-string reponame "\/"))))
-         )
-    (if consult-gh-confirm-before-clone
-        (consult-gh-clone-repo reponame consult-gh-default-clone-directory package)
-            (let ((targetdir (read-directory-name "target directory: " consult-gh-default-clone-directory)))
-      (consult-gh--clone-repo reponame targetdir package)))
-))
+  (funcall (consult-gh--clone-repo-action) repo))
 
 
 (defvar-keymap consult-gh-embark-actions

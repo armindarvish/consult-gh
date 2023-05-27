@@ -58,8 +58,8 @@
   :group 'consult-gh
   :type 'boolean)
 
-(defcustom consult-gh-action #'consult-gh--browse-url
-  "This variable defines the function that is used when selecting an item. By default it is set to `consult-gh-browse-url', but you can cahnge it to other actions such as `consult-gh-clone-repo'."
+(defcustom consult-gh-action #'consult-gh--browse-url-action
+  "This variable defines the function that is used when selecting an item. By default it is set to `consult-gh--browse-url-action', but you can cahnge it to other actions such as `consult-gh--clone-repo-action'."
   :group 'consult-gh
   :type 'function)
 
@@ -122,7 +122,7 @@
     (remove "" (mapcar (lambda (src) (propertize (consult-gh--output-cleanup (car src)) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visibility (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
-(defun consult-gh--browse-url ()
+(defun consult-gh--browse-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
   (browse-url (concat "https://github.com/" (substring cand)))
@@ -157,7 +157,8 @@
 
 (defun consult-gh--clone-repo (repo targetdir name)
 "Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
-  (consult-gh--call-process "repo" "clone" (format "%s" repo) (expand-file-name name targetdir)))
+  (consult-gh--call-process "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
+  (message (format "repo %s was cloned to %s" repo (propertize (expand-file-name name targetdir) 'face 'font-lock-constant-face))))
 
 (defun consult-gh-clone-repo (&optional repo targetdir name)
   (interactive)
@@ -168,17 +169,15 @@
   (consult-gh--clone-repo repo targetdir name)
     ))
 
-(defun consult-gh-clone-repo-action ()
+(defun consult-gh--clone-repo-action ()
   (lambda (cand)
     (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand))))
          (package (car (last (split-string reponame "\/"))))
          )
     (if consult-gh-confirm-before-clone
         (consult-gh-clone-repo reponame consult-gh-default-clone-directory package)
-      (let ((targetdir (read-directory-name "target directory: " consult-gh-default-clone-directory)))
-      (consult-gh--clone-repo reponame targetdir package)))
-
-)))
+      (consult-gh--clone-repo reponame consult-gh-default-clone-directory package))
+    )))
 
 (defun consult-gh--make-source-from-org  (org)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'."
