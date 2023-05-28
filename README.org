@@ -1,6 +1,10 @@
-#+include: ~/OrgFiles/armin/org-macros.setp
+#+include: ~/OrgFiles/armin/org-macros.setup
 
-{{{GPLv3}}}
+#+TITLE: consult-gh
+#+AUTHOR: Armin Darvish
+#+LANGUAGE: en
+
+{{{gnu-emacs}}}
 
 * A minimal package for using [[https://cli.github.com/][GitHub CLI]] inside Emacs.
 
