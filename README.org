@@ -5,6 +5,9 @@
 #+LANGUAGE: en
 
 #+html: <a href="https://github.com/armindarvish"><img alt="Armin Darvish" src="https://img.shields.io/static/v1?label=Armin%20Darvish&message=consult-gh&color=purple&logo=github"/></a>
+#+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://img.shields.io/static/v1?label=Made%20For&message=Gnu%20Emacs&color=lightpurple&logo=emacs"/></a>
+
+
 #+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://github.com/minad/corfu/blob/screenshots/emacs.svg?raw=true"/></a>
 
 
