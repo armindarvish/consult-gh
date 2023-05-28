@@ -1,0 +1,8 @@
+#+include: ~/OrgFiles/armin/org-maros.setp
+
+
+{{{GPLv3}}}
+
+* A minimal package for using [[https://cli.github.com/][GitHub CLI]] inside Emacs.
+
+It uses the awesome package [[https://github.com/minad/consult][consult]] by [[https://github.com/minad][Daniel Mendler]] and [[https://cli.github.com/][GitHub CLI]] and allows you to quickly find repos and clone, fork ,etc. within emacs.
