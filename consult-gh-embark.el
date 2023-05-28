@@ -38,6 +38,10 @@
   "Clone the repo at point"
   (funcall (consult-gh--clone-repo-action) repo))
 
+(defun consult-gh-embark-fork-repo (repo)
+  "Clone the repo at point"
+  (funcall (consult-gh--fork-repo-action) repo))
+
 
 (defvar-keymap consult-gh-embark-actions
   :doc "Keymap for consult-gh-embark"
@@ -45,7 +49,8 @@
   "s" #'consult-gh-embark-get-ssh-link
   "h" #'consult-gh-embark-get-https-link
   "e" #'consult-gh-embark-get-straight-usepackage
-  "c" #'consult-gh-embark-clone-repo)
+  "c" #'consult-gh-embark-clone-repo
+  "f" #'consult-gh-embark-fork-repo)
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions)))
 

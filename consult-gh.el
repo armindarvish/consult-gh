@@ -182,6 +182,25 @@
       (consult-gh--clone-repo reponame consult-gh-default-clone-directory package))
     )))
 
+(defun consult-gh--fork-repo (repo &rest args)
+"Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
+  (consult-gh--call-process "repo" "fork" (format "%s" repo) )
+  (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face) )))
+
+(defun consult-gh-fork-repo (&optional repo name &rest args)
+  (interactive)
+  (let* ((repo (read-string "repo: " repo))
+        (package (car (last (split-string repo "\/"))))
+        (name (read-string "name: " package)))
+  (consult-gh--fork-repo repo  "--fork-name" name args)
+    ))
+
+(defun consult-gh--fork-repo-action ()
+  (lambda (cand)
+     (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand)))))
+      (consult-gh--fork-repo reponame)
+    )))
+
 (defun consult-gh--make-source-from-org  (org)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'."
                   `(:narrow ,(consult-gh--narrow org)
