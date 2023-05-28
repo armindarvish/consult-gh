@@ -1,6 +1,6 @@
 ;;; consult-gh.el --- Consulting GitHub Client -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021-2023 Free Software Foundation, Inc.
+;; Copyright (C) 2023 Armin Darvish
 
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
@@ -8,13 +8,11 @@
 ;; Version: 0.1
 ;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
-;; Keywords: matching, git, repositories, forges, completion
+;; Keywords: convenience, matching, tools, vc
 
 ;;; Commentary:
 
 ;;; Code:
-
-;;;###autoload
 
 (eval-when-compile
 (require 'consult)
@@ -270,3 +268,5 @@
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
 (provide 'consult-gh)
+
+;;; filename ends here
