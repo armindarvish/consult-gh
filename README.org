@@ -1,5 +1,4 @@
-#+include: ~/OrgFiles/armin/org-maros.setp
-
+#+include: ~/OrgFiles/armin/org-macros.setp
 
 {{{GPLv3}}}
 
