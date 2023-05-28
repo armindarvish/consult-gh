@@ -4,7 +4,9 @@
 #+AUTHOR: Armin Darvish
 #+LANGUAGE: en
 
-{{{gnu-emacs}}}
+#+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://github.com/minad/corfu/blob/screenshots/emacs.svg?raw=true"/></a>
+
+
 
 * A minimal package for using [[https://cli.github.com/][GitHub CLI]] inside Emacs.
 
