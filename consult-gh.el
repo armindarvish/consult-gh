@@ -75,7 +75,7 @@
   "History variable for repos used in `consult-gh-search-repos'.")
 
 (defvar consult-gh--org-history nil
-  "History variable for orgs used in  `consult-gh-repo-list' .")
+  "History variable for orgs used in  `consult-gh-orgs' .")
 
 (defvar consult-gh--known-orgs-list nil
   "List of previously visited orgs for `consult-gh'.")
@@ -331,7 +331,7 @@
 ))
 
 (defun consult-gh--make-source-from-org  (org)
-"Create a source for consult from the repos of the organization to use in `consult-gh-repo-list'."
+"Create a source for consult from the repos of the organization to use in `consult-gh-orgs'."
                   `(:narrow ,(consult-gh--repo-narrow org)
                     :category 'consult-gh
                     :items  ,(consult-gh--repo-list org)
@@ -355,7 +355,7 @@
                     ))
 
 (defun consult-gh--make-source-from-issues (repo)
-"Create a source for consult from the repos of the organization to use in `consult-gh-repo-list'."
+"Create a source for consult from the repos of the organization to use in `consult-gh-orgs'."
                   `(;;:narrow ,(consult-gh--repo-narrow org)
                     :category 'consult-gh
                     :items  ,(consult-gh--issue-list repo)
@@ -367,7 +367,7 @@
                     :history t
                     ))
 
-(defun consult-gh-repo-list (repo)
+(defun consult-gh-orgs (repo)
 "Get a list of organizations from the user and provide their repos."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
@@ -390,7 +390,7 @@
 (defun consult-gh-default-repos ()
 "Show the repos from default organizaitons."
   (interactive)
-(consult-gh-repo-list consult-gh-default-orgs-list))
+(consult-gh-orgs consult-gh-default-orgs-list))
 
 (defun consult-gh-search-repos (repos)
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
