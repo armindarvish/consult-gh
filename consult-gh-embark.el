@@ -36,11 +36,11 @@
 
 (defun consult-gh-embark-clone-repo (repo)
   "Clone the repo at point"
-  (funcall (consult-gh--clone-repo-action) repo))
+  (funcall (consult-gh--repo-clone-action) repo))
 
 (defun consult-gh-embark-fork-repo (repo)
   "Clone the repo at point"
-  (funcall (consult-gh--fork-repo-action) repo))
+  (funcall (consult-gh--repo-fork-action) repo))
 
 
 (defvar-keymap consult-gh-embark-actions
