@@ -367,7 +367,7 @@
                     :history t
                     ))
 
-(defun consult-gh-orgs (repo)
+(defun consult-gh-orgs (orgs)
 "Get a list of organizations from the user and provide their repos."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
