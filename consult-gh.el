@@ -258,15 +258,17 @@
       (insert text)
       (goto-char (point-min-marker))
       (pcase consult-gh-preview-buffer-mode
-        ('markdown-mode (markdown-mode)
-                        )
+        ('markdown-mode
+         (if (featurep 'markdown-mode)
+             (markdown-mode)
+             (message "markdown-mode not available"))
         ('org-mode
          (consult-gh--markdown-to-org buffer)
          (org-mode)
          (org-fold-show-all))
         (_ ()))
       )
-    ))
+    )))
 
 (defun consult-gh--issue-preview-action ()
   "Default action to run on selected item in `consult-gh'."
