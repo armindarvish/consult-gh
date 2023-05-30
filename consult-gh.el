@@ -117,6 +117,7 @@
         (with-current-buffer buffer
           (progn
             (goto-char (point-max))
+            (insert "\n")
             (while (re-search-backward "^\\[\\([^fn].*\\)\\]:" nil t)
               (replace-match "[fn:\\1] ")
               )
