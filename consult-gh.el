@@ -51,6 +51,11 @@
   :group 'consult-gh
   :type 'list)
 
+(defcustom consult-gh-preview-buffer-name "*consult-gh-preview*"
+  "Default directory to clone github repos in for `consult-gh' package."
+  :group 'consult-gh
+  :type 'string)
+
 (defcustom consult-gh-default-clone-directory nil
   "Default directory to clone github repos in for `consult-gh' package."
   :group 'consult-gh
@@ -102,7 +107,7 @@
                      string))))
 
 (defun consult-gh--markdown-to-org (&optional buffer)
-  (let ((buffer (if buffer buffer (get-buffer-create "*consult-gh-preview*"))))
+  (let ((buffer (if buffer buffer (get-buffer-create consult-gh-preview-buffer-name))))
     (with-current-buffer buffer
       (goto-char (point-min))
       (while (re-search-forward "^[[:blank:]]*\\(?1:```\\)\\(?2:\\s *?\\)\\(\s\\|\t\\)*$" nil t)
@@ -118,7 +123,7 @@
       ))
   )
 (defun consult-gh--markdown-to-org (&optional buffer)
-  (let ((buffer (if buffer buffer (get-buffer-create "*consult-gh-preview*"))))
+  (let ((buffer (if buffer buffer (get-buffer-create consult-gh-preview-buffer-name))))
     (save-mark-and-excursion
       (save-restriction
     (with-current-buffer buffer
@@ -301,12 +306,11 @@
 (defun consult-gh--browse-issue-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
-  (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (substring (get-text-property 0 :number cand))
-)))
+  (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (substring (get-text-property 0 :number cand))))))
 
 (defun consult-gh--issue-view (repo issue &optional buffer)
   "Default action to run on selected item in `consult-gh'."
-  (let ((buffer (or buffer (get-buffer-create "*consult-gh-preview*")))
+  (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
         (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue))))
     (with-current-buffer buffer
       (erase-buffer)
@@ -315,48 +319,60 @@
       (pcase consult-gh-preview-buffer-mode
         ('markdown-mode
          (if (featurep 'markdown-mode)
+             (progn
              (markdown-mode)
+             (markdown-display-inline-images))
              (message "markdown-mode not available")))
         ('org-mode
+         (let ((org-display-remote-inline-images 'download))
          (consult-gh--markdown-to-org buffer)
          (org-mode)
-         (org-fold-show-all))
+         (org-fold-show-all)))
         (_ ()))
       )
     ))
 
-(defun consult-gh--issue-preview-action ()
+(defun consult-gh--issue-view-action ()
   "Default action to run on selected item in `consult-gh'."
   (lambda (cand)
-    (let ((repo (substring (get-text-property 0 :repo cand)))
-          (issue (substring (get-text-property 0 :number cand))))
-      (consult-gh--issue-view repo issue)
-      )))
+    ;; (let ((buffer (get-buffer-create consult-gh-preview-buffer-name))
+    ;;       ;(repo (substring (get-text-property 0 :repo cand)))
+    ;;       ;(issue (substring (get-text-property 0 :number cand)))
+    ;;       )
+    ;;   ;(consult-gh--issue-view repo issue)
+    ;;   (switch-to-buffer-other-window buffer)
+    ;;   )
+    (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
+    ))
 
 ;; (setq my:test1 (consult-gh--issue-list "cli/cli"))
-;; (funcall (funcall #'consult-gh--issue-preview-action) (car my:test1))
+;; (funcall (funcall #'consult-gh--issue-view-action) (car my:test1))
+
+(setq consult-gh-issue-action #'consult-gh--issue-view-action)
 
 (defun consult-gh--issue-preview ()
   (lambda (action cand)
+    ;;(print (format "actions is %s" action))
     (let ((preview (consult--buffer-preview)))
       (if cand
-          ;;(print cand)
-          (let ((repo (substring (get-text-property 0 :repo cand)))
-                (issue (substring (get-text-property 0 :number cand)))
-                (buffer (get-buffer-create "*consult-gh-preview*")))
-            (consult-gh--issue-view repo issue buffer)
-            (funcall preview action
-                     (and
-                      cand
-                      (eq action 'preview)
-                      buffer
-                      )
-                     ))
-        ))
-    ))
+          (pcase action
+            ('preview
+             (let ((repo (substring (get-text-property 0 :repo cand)))
+                   (issue (substring (get-text-property 0 :number cand)))
+                   (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (consult-gh--issue-view repo issue buffer)
+               (funcall preview action
+                        (and
+                         cand
+                         buffer
+                         )
+                        ))
+             )
+            )
+        ))))
 
 
-(setq consult-gh-preview-buffer-mode 'markdown-mode)
+;;(setq consult-gh-preview-buffer-mode 'markdown-mode)
 
 (defun consult-gh--issue-group (cand transform)
 "Group the list of issues in a repo by the status of the issues"
@@ -485,7 +501,8 @@
                     )
           )
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))
-    (kill-buffer (get-buffer "*consult-gh-preview*"))))
+    ;;(kill-buffer (get-buffer consult-gh-preview-buffer-name))
+))
 
 (provide 'consult-gh)
 
