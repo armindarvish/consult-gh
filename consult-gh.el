@@ -104,19 +104,67 @@
 (defun consult-gh--markdown-to-org (&optional buffer)
   (let ((buffer (if buffer buffer (get-buffer-create "*consult-gh-preview*"))))
     (with-current-buffer buffer
-        (goto-char (point-min))
-        (while (re-search-forward "^[[:blank:]]*\\(?1:```\\)\\(?2:\\s *?\\)\\(\s\\|\t\\)*$" nil t)
-          (replace-match "#+end_src"))
-        (while (re-search-backward "^[[:blank:]]*\\(?1:```\\)" nil t)
-          (replace-match "#+begin_src\s"))
-        (goto-char (point-min))
-        (while (re-search-forward  "`\\|`[[:blank:]]\\|`\\.\\|^`[^`\n]" nil t)
-          (replace-match "="))
-        (goto-char (point-min))
-        (while (re-search-forward "#*[[:blank:]]" nil t)
-          (replace-match "*"))
-        ))
-    )
+      (goto-char (point-min))
+      (while (re-search-forward "^[[:blank:]]*\\(?1:```\\)\\(?2:\\s *?\\)\\(\s\\|\t\\)*$" nil t)
+        (replace-match "#+end_src"))
+      (while (re-search-backward "^[[:blank:]]*\\(?1:```\\)" nil t)
+        (replace-match "#+begin_src\s"))
+      (goto-char (point-min))
+      (while (re-search-forward  "`\\|`[[:blank:]]\\|`\\.\\|^`[^`\n]" nil t)
+        (replace-match "="))
+      (goto-char (point-min))
+      (while (re-search-forward "#*[[:blank:]]" nil t)
+        (replace-match "*"))
+      ))
+  )
+(defun consult-gh--markdown-to-org (&optional buffer)
+  (let ((buffer (if buffer buffer (get-buffer-create "*consult-gh-preview*"))))
+    (save-mark-and-excursion
+      (save-restriction
+    (with-current-buffer buffer
+      (goto-char (point-min-marker))
+      (while (re-search-forward "--\\|#\\|`\\|\\*\\{1,2\\}\\|_" nil t)
+        (pcase (match-string 0)
+          ;;;my code;;
+          ("--"  (when (looking-at "\n")
+                   (delete-char -2)
+                   (insert "=================================\n")
+                   (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)))
+          ("#" (if (looking-at "#\\|[[:blank:]]")
+                   (progn
+                     (delete-char -1)
+                     (insert "*"))))
+          ("`" (if (looking-at "``")
+                   (progn (backward-char)
+                          (delete-char 3)
+                          (insert "#+begin_src ")
+                          (when (re-search-forward "^```" nil t)
+                            (replace-match "#+end_src")))
+                 (replace-match "=")))
+          ("**" (cond
+                 ((looking-at "\\*\\(?:[[:word:]]\\|\s\\)")
+                  (delete-char 1))
+                 ((looking-back "\\(?:[[:word:]]\\|\s\\)\\*\\{2\\}"
+                                (max (- (point) 3) (point-min)))
+                  (backward-delete-char 1))))
+          ((or "_" "*")
+           (if (save-match-data
+                 (and (looking-back "\\(?:[[:space:]]\\|\s\\)\\(?:_\\|\\*\\)"
+                                    (max (- (point) 2) (point-min)))
+                      (not (looking-at "[[:space:]]\\|\s"))))
+               ;; Possible beginning of italics
+               (and
+                (save-excursion
+                  (when (and (re-search-forward (regexp-quote (match-string 0)) nil t)
+                             (looking-at "[[:space]]\\|\s")
+                             (not (looking-back "\\(?:[[:space]]\\|\s\\)\\(?:_\\|\\*\\)"
+                                                (max (- (point) 2) (point-min)))))
+                    (backward-delete-char 1)
+                    (insert "/") t))
+                (progn (backward-delete-char 1)
+                       (insert "/")))))))))
+  (goto-char (point-min-marker))
+  )))
 
 (defun consult-gh--call-process (&rest args)
 (if (executable-find "gh")
@@ -238,14 +286,22 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum) ""))
          (issues (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
-   )
+    (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':number (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
+   ))
     )
+
+;; (setq my:test (string-split (consult-gh--command-to-string "issue" "--repo" "cli/cli" "list" "--limit" "10") "\n"))
+;; (let* ((item (car my:test))
+;;        (src (string-split item "\t")))
+;;   (setq my:test1
+;; (propertize (concat (car src) ":" (cadr (cdr src))) ':number (string-trim (car src) "#") ':repo "cli/cli" ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))))
+
+(setq my:test (mapcar #'consult-gh--make-source-from-issues '("cli/cli")))
 
 (defun consult-gh--browse-issue-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
-  (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (string-trim (consult-gh--output-cleanup (substring cand)) "#"))
+  (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (substring (get-text-property 0 :number cand))
 )))
 
 (defun consult-gh--issue-view (repo issue &optional buffer)
@@ -254,7 +310,6 @@
         (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue))))
     (with-current-buffer buffer
       (erase-buffer)
-      (goto-char (point-max-marker))
       (insert text)
       (goto-char (point-min-marker))
       (pcase consult-gh-preview-buffer-mode
@@ -274,7 +329,7 @@
   "Default action to run on selected item in `consult-gh'."
   (lambda (cand)
     (let ((repo (substring (get-text-property 0 :repo cand)))
-          (issue (string-trim (consult-gh--output-cleanup (substring cand)) "#")))
+          (issue (substring (get-text-property 0 :number cand))))
       (consult-gh--issue-view repo issue)
       )))
 
@@ -287,7 +342,7 @@
       (if cand
           ;;(print cand)
           (let ((repo (substring (get-text-property 0 :repo cand)))
-                (issue (string-trim (consult-gh--output-cleanup (substring cand)) "#"))
+                (issue (substring (get-text-property 0 :number cand)))
                 (buffer (get-buffer-create "*consult-gh-preview*")))
             (consult-gh--issue-view repo issue buffer)
             (funcall preview action
@@ -317,17 +372,14 @@
 (lambda (cand)
   ;; (format "%s" cand)
   (if-let ((repo (format "%s" (get-text-property 0 :repo cand)))
-         (description (format "%s" (get-text-property 0 :description cand)))
          (status (format "%s" (get-text-property 0 :status cand)))
          (tags (format "%s" (get-text-property 0 :tags cand)))
          (date (format "%s" (get-text-property 0 :date cand))))
-
       (progn
         (setq status (propertize status 'face 'consult-gh-user-face)
-              description (propertize description 'face 'consult-gh-visibility-face)
-              tags (propertize tags 'face 'consult-gh-tags-face)
+              tags (propertize tags 'face 'consult-gh-visibility-face)
               date (propertize date 'face 'consult-gh-date-face))
-        (format "%s\t%s\t%s\t%s" description status tags date)
+        (format "%s\t%s\t%s" status tags date)
      )
     nil)
 ))
