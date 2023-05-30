@@ -112,57 +112,72 @@
     (save-mark-and-excursion
       (save-restriction
         (with-current-buffer buffer
-          (goto-char (point-min-marker))
-          (while (re-search-forward "--\\|#\\|`\\|\\*\\{1,2\\}\\|_\\|\\[\\(.*\\)\\]\(\\(.*\\)\)" nil t)
-            (pcase (match-string 0)
-          ;;;my code;;
-              ("--"  (when (looking-at "\n")
-                       (delete-char -2)
-                       (insert "=================================\n")
-                       (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)))
-              ("#" (if (looking-at "#\\|[[:blank:]]")
-                       (progn
-                         (delete-char -1)
-                         (insert "*"))))
-              ("`" (if (looking-at "``")
-                       (progn (backward-char)
-                              (delete-char 3)
-                              (insert "#+begin_src ")
-                              (when (re-search-forward "^```" nil t)
-                                (replace-match "#+end_src")))
-                     (replace-match "=")))
-              ("**" (cond
-                     ((looking-at "\\*\\(?:[[:word:]]\\|\s\\)")
-                      (delete-char 1))
-                     ((looking-back "\\(?:[[:word:]]\\|\s\\)\\*\\{2\\}"
-                                    (max (- (point) 3) (point-min)))
-                      (backward-delete-char 1))))
-              ((or "_" "*")
-               (if (save-match-data
-                     (and (looking-back "\\(?:[[:space:]]\\|\s\\)\\(?:_\\|\\*\\)"
-                                        (max (- (point) 2) (point-min)))
-                          (not (looking-at "[[:space:]]\\|\s"))))
-                   ;; Possible beginning of italics
-                   (and
-                    (save-excursion
-                      (when (and (re-search-forward (regexp-quote (match-string 0)) nil t)
-                                 (looking-at "[[:space]]\\|\s")
-                                 (not (looking-back "\\(?:[[:space]]\\|\s\\)\\(?:_\\|\\*\\)"
-                                                    (max (- (point) 2) (point-min)))))
-                        (backward-delete-char 1)
-                        (insert "/") t))
-                    (progn (backward-delete-char 1)
-                           (insert "/")))))
-              ((pred (lambda (el) (string-match-p "\\[\\(.*\\)\\]\(\\(.*\\)\)" (substring-no-properties el))))
-               (progn
-                 (replace-match "[[\\2][\\1]]")
-                 (goto-char (match-beginning 0))
-                 (if (looking-back "!")
-                     (delete-char -1))
-                 )
-               )
+          (progn
+            (goto-char (point-max))
+            (while (re-search-backward "^\\[\\([^fn].*\\)\\]:" nil t)
+              (replace-match "[fn:\\1] ")
+              )
 
-              ))))
+            (move-beginning-of-line 0)
+            (insert "\n* Footnotes\n")
+            (goto-char (point-min-marker)))
+          (progn
+            (goto-char (point-min))
+            (while (re-search-forward "--\\|#\\|`\\|\\*\\{1,2\\}\\|_\\|\\[\\(.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}\\|\\[\\(.+?\\)\\]\(\\(.+?\\)\)\\{1\\}" nil t)
+              (pcase (match-string 0)
+          ;;;my code;;
+                ("--"  (when (looking-at "\n")
+                         (delete-char -2)
+                         (insert "=================================\n")
+                         (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)))
+                ("#" (if (looking-at "#\\|[[:blank:]]")
+                         (progn
+                           (delete-char -1)
+                           (insert "*"))))
+                ("`" (if (looking-at "``")
+                         (progn (backward-char)
+                                (delete-char 3)
+                                (insert "#+begin_src ")
+                                (when (re-search-forward "^```" nil t)
+                                  (replace-match "#+end_src")))
+                       (replace-match "=")))
+                ("**" (cond
+                       ((looking-at "\\*\\(?:[[:word:]]\\|\s\\)")
+                        (delete-char 1))
+                       ((looking-back "\\(?:[[:word:]]\\|\s\\)\\*\\{2\\}"
+                                      (max (- (point) 3) (point-min)))
+                        (backward-delete-char 1))))
+                ((or "_" "*")
+                 (if (save-match-data
+                       (and (looking-back "\\(?:[[:space:]]\\|\s\\)\\(?:_\\|\\*\\)"
+                                          (max (- (point) 2) (point-min)))
+                            (not (looking-at "[[:space:]]\\|\s"))))
+                     ;; Possible beginning of italics
+                     (and
+                      (save-excursion
+                        (when (and (re-search-forward (regexp-quote (match-string 0)) nil t)
+                                   (looking-at "[[:space]]\\|\s")
+                                   (not (looking-back "\\(?:[[:space]]\\|\s\\)\\(?:_\\|\\*\\)"
+                                                      (max (- (point) 2) (point-min)))))
+                          (backward-delete-char 1)
+                          (insert "/") t))
+                      (progn (backward-delete-char 1)
+                             (insert "/")))))
+                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\\[\\]\\{1\\}" (substring-no-properties el))))
+                 (replace-match "[fn:\\1]"))
+                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}" (substring-no-properties el))))
+                 (replace-match "[[*\\3][\\2]]"))
+
+                ((pred (lambda (el) (string-match-p "\\[\\(.*\\)\\]\(\\(.*\\)\)" (substring-no-properties el))))
+                 (progn
+                   (replace-match "[[\\5][\\4]]")
+                   (goto-char (match-beginning 0))
+                   (if (looking-back "!")
+                       (delete-char -1))
+                   )
+                 )
+                ))
+            )))
       (goto-char (point-min-marker))
       )))
 
@@ -202,6 +217,40 @@
 (lambda (cand)
   (browse-url (concat "https://github.com/" (substring cand)))
 ))
+
+(defun consult-gh--repo-view (repo &optional buffer)
+  "Default action to run on selected item in `consult-gh'."
+  (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
+        (text (cadr (consult-gh--call-process "repo" "view" repo))))
+    (with-current-buffer buffer
+      (erase-buffer)
+      (insert text)
+      (goto-char (point-min-marker))
+      (pcase consult-gh-preview-buffer-mode
+        ('markdown-mode
+         (if (featurep 'markdown-mode)
+             (progn
+             (markdown-mode)
+             (markdown-display-inline-images))
+             (message "markdown-mode not available")))
+        ('org-mode
+         (let ((org-display-remote-inline-images 'download))
+         (consult-gh--markdown-to-org buffer)
+         (org-mode)
+         (org-fold-show-all)))
+        (_ ()))
+      )
+    ))
+
+
+(defun consult-gh--repo-view-action ()
+  "Default action to run on selected item in `consult-gh'."
+  (lambda (cand)
+    (let* ((repo (substring-no-properties cand))
+          (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "*")))
+      (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
+      (rename-buffer buffername t)
+      )))
 
 (defun consult-gh--repo-clone (repo targetdir name)
 "Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
@@ -251,6 +300,25 @@
 "Group the list of item in `consult-gh' by the name of the user"
   (let ((name (car (string-split (substring cand) "\/"))))
            (if transform (substring cand) name)))
+
+(defun consult-gh--repo-preview ()
+  (lambda (action cand)
+    (let ((preview (consult--buffer-preview)))
+      (if cand
+          (pcase action
+            ('preview
+             (let ((repo (substring-no-properties cand))
+                   (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (consult-gh--repo-view repo buffer)
+               (funcall preview action
+                        (and
+                         cand
+                         buffer
+                         )
+                        ))
+             )
+            )
+        ))))
 
 (defun consult-gh--repo-narrow (item)
 "Create narrowing function for items in `consult-gh' by the first letter of the name of the user/organization."
@@ -324,7 +392,7 @@
   (lambda (cand)
     (let* ((repo (substring (get-text-property 0 :repo cand)))
           (issue (substring (get-text-property 0 :number cand)))
-          (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") "-" repo ":" issue "*")))
+          (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/issues/" issue "*")))
       (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
       (rename-buffer buffername t)
       )))
@@ -395,6 +463,7 @@
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
                     :annotate ,(consult-gh--repo-annotate)
+                    :state ,#'consult-gh--repo-preview
                     :default t
                     :history t
                     ))
