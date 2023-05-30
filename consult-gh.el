@@ -82,6 +82,9 @@
 (defvar consult-gh--org-history nil
   "History variable for orgs used in  `consult-gh-orgs' .")
 
+(defvar consult-gh--issues-history nil
+  "History variable for isseus used in  `consult-gh-search-issues' .")
+
 (defvar consult-gh--known-orgs-list nil
   "List of previously visited orgs for `consult-gh'.")
 
@@ -117,14 +120,14 @@
             (while (re-search-backward "^\\[\\([^fn].*\\)\\]:" nil t)
               (replace-match "[fn:\\1] ")
               )
-
+            (when (match-string-no-properties 0)
             (move-beginning-of-line 0)
-            (insert "\n* Footnotes\n")
+            (insert "\n* Footnotes\n"))
             (goto-char (point-min-marker)))
           (progn
             (goto-char (point-min))
             (while (re-search-forward "--\\|#\\|`\\|\\*\\{1,2\\}\\|_\\|\\[\\(.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}\\|\\[\\(.+?\\)\\]\(\\(.+?\\)\)\\{1\\}" nil t)
-              (pcase (match-string 0)
+              (pcase (match-string-no-properties 0)
           ;;;my code;;
                 ("--"  (when (looking-at "\n")
                          (delete-char -2)
@@ -163,12 +166,14 @@
                           (insert "/") t))
                       (progn (backward-delete-char 1)
                              (insert "/")))))
-                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\\[\\]\\{1\\}" (substring-no-properties el))))
+
+                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\\[\\]\\{1\\}" el)))
                  (replace-match "[fn:\\1]"))
-                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}" (substring-no-properties el))))
+
+                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}" el)))
                  (replace-match "[[*\\3][\\2]]"))
 
-                ((pred (lambda (el) (string-match-p "\\[\\(.*\\)\\]\(\\(.*\\)\)" (substring-no-properties el))))
+                ((pred (lambda (el) (string-match-p "\\[\\(.*\\)\\]\(\\(.*\\)\)" el)))
                  (progn
                    (replace-match "[[\\5][\\4]]")
                    (goto-char (match-beginning 0))
@@ -453,6 +458,7 @@
                     :annotate ,(consult-gh--repo-annotate)
                     :defualt t
                     :history t
+                    :sort t
                     ))
 
 (defun consult-gh--make-source-from-search-repo  (repo)
@@ -466,6 +472,7 @@
                     :state ,#'consult-gh--repo-preview
                     :default t
                     :history t
+                    :sort t
                     ))
 
 (defun consult-gh--make-source-from-issues (repo)
@@ -479,6 +486,7 @@
                     :state ,#'consult-gh--issue-preview
                     :default t
                     :history t
+                    :sort t
                     ))
 
 (defun consult-gh-orgs (orgs)
@@ -498,6 +506,7 @@
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
                     :category 'consult-gh
+                    :sort t
                     ))
       )))
 
@@ -522,6 +531,7 @@
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
                     :category 'consult-gh
+                    :sort t
                     ))
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
@@ -540,8 +550,9 @@
                     :sort t
                     :group #'consult-gh--issue-group
                     :preview-key 'any
-                    ;;:history 'consult-gh--repos-history
+                    :history 'consult-gh--issues-history
                     :category 'consult-gh
+                    :sort t
                     )
           )
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))
