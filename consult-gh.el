@@ -107,54 +107,64 @@
                      string))))
 
 (defun consult-gh--markdown-to-org (&optional buffer)
-"Convert from markdown format to org-mode format"
+  "Convert from markdown format to org-mode format"
   (let ((buffer (if buffer buffer (get-buffer-create consult-gh-preview-buffer-name))))
     (save-mark-and-excursion
       (save-restriction
-    (with-current-buffer buffer
-      (goto-char (point-min-marker))
-      (while (re-search-forward "--\\|#\\|`\\|\\*\\{1,2\\}\\|_" nil t)
-        (pcase (match-string 0)
+        (with-current-buffer buffer
+          (goto-char (point-min-marker))
+          (while (re-search-forward "--\\|#\\|`\\|\\*\\{1,2\\}\\|_\\|\\[\\(.*\\)\\]\(\\(.*\\)\)" nil t)
+            (pcase (match-string 0)
           ;;;my code;;
-          ("--"  (when (looking-at "\n")
-                   (delete-char -2)
-                   (insert "=================================\n")
-                   (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)))
-          ("#" (if (looking-at "#\\|[[:blank:]]")
-                   (progn
-                     (delete-char -1)
-                     (insert "*"))))
-          ("`" (if (looking-at "``")
-                   (progn (backward-char)
-                          (delete-char 3)
-                          (insert "#+begin_src ")
-                          (when (re-search-forward "^```" nil t)
-                            (replace-match "#+end_src")))
-                 (replace-match "=")))
-          ("**" (cond
-                 ((looking-at "\\*\\(?:[[:word:]]\\|\s\\)")
-                  (delete-char 1))
-                 ((looking-back "\\(?:[[:word:]]\\|\s\\)\\*\\{2\\}"
-                                (max (- (point) 3) (point-min)))
-                  (backward-delete-char 1))))
-          ((or "_" "*")
-           (if (save-match-data
-                 (and (looking-back "\\(?:[[:space:]]\\|\s\\)\\(?:_\\|\\*\\)"
-                                    (max (- (point) 2) (point-min)))
-                      (not (looking-at "[[:space:]]\\|\s"))))
-               ;; Possible beginning of italics
-               (and
-                (save-excursion
-                  (when (and (re-search-forward (regexp-quote (match-string 0)) nil t)
-                             (looking-at "[[:space]]\\|\s")
-                             (not (looking-back "\\(?:[[:space]]\\|\s\\)\\(?:_\\|\\*\\)"
-                                                (max (- (point) 2) (point-min)))))
-                    (backward-delete-char 1)
-                    (insert "/") t))
-                (progn (backward-delete-char 1)
-                       (insert "/")))))))))
-  (goto-char (point-min-marker))
-  )))
+              ("--"  (when (looking-at "\n")
+                       (delete-char -2)
+                       (insert "=================================\n")
+                       (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)))
+              ("#" (if (looking-at "#\\|[[:blank:]]")
+                       (progn
+                         (delete-char -1)
+                         (insert "*"))))
+              ("`" (if (looking-at "``")
+                       (progn (backward-char)
+                              (delete-char 3)
+                              (insert "#+begin_src ")
+                              (when (re-search-forward "^```" nil t)
+                                (replace-match "#+end_src")))
+                     (replace-match "=")))
+              ("**" (cond
+                     ((looking-at "\\*\\(?:[[:word:]]\\|\s\\)")
+                      (delete-char 1))
+                     ((looking-back "\\(?:[[:word:]]\\|\s\\)\\*\\{2\\}"
+                                    (max (- (point) 3) (point-min)))
+                      (backward-delete-char 1))))
+              ((or "_" "*")
+               (if (save-match-data
+                     (and (looking-back "\\(?:[[:space:]]\\|\s\\)\\(?:_\\|\\*\\)"
+                                        (max (- (point) 2) (point-min)))
+                          (not (looking-at "[[:space:]]\\|\s"))))
+                   ;; Possible beginning of italics
+                   (and
+                    (save-excursion
+                      (when (and (re-search-forward (regexp-quote (match-string 0)) nil t)
+                                 (looking-at "[[:space]]\\|\s")
+                                 (not (looking-back "\\(?:[[:space]]\\|\s\\)\\(?:_\\|\\*\\)"
+                                                    (max (- (point) 2) (point-min)))))
+                        (backward-delete-char 1)
+                        (insert "/") t))
+                    (progn (backward-delete-char 1)
+                           (insert "/")))))
+              ((pred (lambda (el) (string-match-p "\\[\\(.*\\)\\]\(\\(.*\\)\)" (substring-no-properties el))))
+               (progn
+                 (replace-match "[[\\2][\\1]]")
+                 (goto-char (match-beginning 0))
+                 (if (looking-back "!")
+                     (delete-char -1))
+                 )
+               )
+
+              ))))
+      (goto-char (point-min-marker))
+      )))
 
 (defun consult-gh--call-process (&rest args)
  "Run \"gh\" with args and return outputs"
@@ -312,8 +322,12 @@
 (defun consult-gh--issue-view-action ()
   "Default action to run on selected item in `consult-gh'."
   (lambda (cand)
-    (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
-    ))
+    (let* ((repo (substring (get-text-property 0 :repo cand)))
+          (issue (substring (get-text-property 0 :number cand)))
+          (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") "-" repo ":" issue "*")))
+      (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
+      (rename-buffer buffername t)
+      )))
 
 (defun consult-gh--issue-preview ()
   (lambda (action cand)
