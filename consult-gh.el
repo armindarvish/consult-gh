@@ -106,25 +106,8 @@
    (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
                      string))))
 
-;; (defun consult-gh--markdown-to-org (&optional buffer)
-;;   (let ((buffer (if buffer buffer (get-buffer-create consult-gh-preview-buffer-name))))
-;;     (with-current-buffer buffer
-;;       (goto-char (point-min))
-;;       (while (re-search-forward "^[[:blank:]]*\\(?1:```\\)\\(?2:\\s *?\\)\\(\s\\|\t\\)*$" nil t)
-;;         (replace-match "#+end_src"))
-;;       (while (re-search-backward "^[[:blank:]]*\\(?1:```\\)" nil t)
-;;         (replace-match "#+begin_src\s"))
-;;       (goto-char (point-min))
-;;       (while (re-search-forward  "`\\|`[[:blank:]]\\|`\\.\\|^`[^`\n]" nil t)
-;;         (replace-match "="))
-;;       (goto-char (point-min))
-;;       (while (re-search-forward "#*[[:blank:]]" nil t)
-;;         (replace-match "*"))
-;;       ))
-;;   )
-
-
 (defun consult-gh--markdown-to-org (&optional buffer)
+"Convert from markdown format to org-mode format"
   (let ((buffer (if buffer buffer (get-buffer-create consult-gh-preview-buffer-name))))
     (save-mark-and-excursion
       (save-restriction
@@ -174,6 +157,7 @@
   )))
 
 (defun consult-gh--call-process (&rest args)
+ "Run \"gh\" with args and return outputs"
 (if (executable-find "gh")
       (with-temp-buffer
         (set-buffer-file-coding-system 'cp1047)
@@ -186,7 +170,7 @@
 ))
 
 (defun consult-gh--command-to-string (&rest args)
-  "Run \"gh\" with args and return output if no errors. If there are erros pass them to *Messages*."
+  "Run \"gh\" with args and return output as a string if there is no error. If there are erros pass them to *Messages*."
   (let ((out (apply #'consult-gh--call-process args)))
           (if (= (car out) 0)
               (cadr out)
@@ -266,7 +250,6 @@
 (defun consult-gh--repo-annotate ()
 "Annotate each repo in `consult-gh' by user, visibility and date."
 (lambda (cand)
-  ;; (format "%s" cand)
   (if-let ((user (format "%s" (get-text-property 0 :user cand)))
          (visible (format "%s" (get-text-property 0 :visible cand)))
          (date (format "%s" (get-text-property 0 :version cand))))
@@ -296,14 +279,6 @@
     (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':number (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
    ))
     )
-
-;; (setq my:test (string-split (consult-gh--command-to-string "issue" "--repo" "cli/cli" "list" "--limit" "10") "\n"))
-;; (let* ((item (car my:test))
-;;        (src (string-split item "\t")))
-;;   (setq my:test1
-;; (propertize (concat (car src) ":" (cadr (cdr src))) ':number (string-trim (car src) "#") ':repo "cli/cli" ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))))
-
-(setq my:test (mapcar #'consult-gh--make-source-from-issues '("cli/cli")))
 
 (defun consult-gh--browse-issue-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
@@ -337,24 +312,11 @@
 (defun consult-gh--issue-view-action ()
   "Default action to run on selected item in `consult-gh'."
   (lambda (cand)
-    ;; (let ((buffer (get-buffer-create consult-gh-preview-buffer-name))
-    ;;       ;(repo (substring (get-text-property 0 :repo cand)))
-    ;;       ;(issue (substring (get-text-property 0 :number cand)))
-    ;;       )
-    ;;   ;(consult-gh--issue-view repo issue)
-    ;;   (switch-to-buffer-other-window buffer)
-    ;;   )
     (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
     ))
 
-;; (setq my:test1 (consult-gh--issue-list "cli/cli"))
-;; (funcall (funcall #'consult-gh--issue-view-action) (car my:test1))
-
-(setq consult-gh-issue-action #'consult-gh--issue-view-action)
-
 (defun consult-gh--issue-preview ()
   (lambda (action cand)
-    ;;(print (format "actions is %s" action))
     (let ((preview (consult--buffer-preview)))
       (if cand
           (pcase action
@@ -372,9 +334,6 @@
              )
             )
         ))))
-
-
-;;(setq consult-gh-preview-buffer-mode 'markdown-mode)
 
 (defun consult-gh--issue-group (cand transform)
 "Group the list of issues in a repo by the status of the issues"
@@ -503,7 +462,6 @@
                     )
           )
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))
-    ;;(kill-buffer (get-buffer consult-gh-preview-buffer-name))
 ))
 
 (provide 'consult-gh)
