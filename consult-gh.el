@@ -56,6 +56,11 @@
   :group 'consult-gh
   :type 'string)
 
+(defcustom consult-gh-show-preview nil
+  "Default directory to clone github repos in for `consult-gh' package."
+  :group 'consult-gh
+  :type 'boolean)
+
 (defcustom consult-gh-default-clone-directory nil
   "Default directory to clone github repos in for `consult-gh' package."
   :group 'consult-gh
@@ -474,7 +479,7 @@
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
                     :annotate ,(consult-gh--repo-annotate)
-                    :state ,#'consult-gh--repo-preview
+                    :state ,(and consult-gh-show-preview #'consult-gh--repo-preview)
                     :defualt t
                     :history t
                     :sort t
@@ -488,7 +493,7 @@
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
                     :annotate ,(consult-gh--repo-annotate)
-                    :state ,#'consult-gh--repo-preview
+                    :state ,(and consult-gh-show-preview #'consult-gh--repo-preview)
                     :default t
                     :history t
                     :sort t
@@ -502,7 +507,7 @@
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-issue-action)
                     :annotate ,(consult-gh--issue-annotate)
-                    :state ,#'consult-gh--issue-preview
+                    :state ,(and consult-gh-show-preview #'consult-gh--issue-preview)
                     :default t
                     :history t
                     :sort t
