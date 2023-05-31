@@ -279,7 +279,7 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--command-to-string "repo" "list" org "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 #+end_src
 **** actions
@@ -339,6 +339,7 @@
 
 
 (defun consult-gh-repo-clone (&optional repo targetdir name)
+"Interactively clone the repo to targetdir/name directory after confirming names and dir. It uses \"gh clone repo ...\"."
   (interactive)
   (let ((repo (read-string "repo: " repo))
         (targetdir (read-directory-name "target directory: " targetdir))
@@ -348,6 +349,7 @@
     ))
 
 (defun consult-gh--repo-clone-action ()
+"action function for cloning the repo that can be used in conslt-gh source."
   (lambda (cand)
     (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand))))
          (package (car (last (split-string reponame "\/"))))
@@ -361,11 +363,12 @@
 ***** fork
 #+begin_src emacs-lisp
 (defun consult-gh--repo-fork (repo &rest args)
-"Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
+"Fork the repo to user's account (login on gh). It uses \"gh fork repo ...\"."
   (consult-gh--command-to-string "repo" "fork" (format "%s" repo) )
-  (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face) )))
+  (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face))))
 
 (defun consult-gh-repo-fork (&optional repo name &rest args)
+"Interactively Fork the repo to user's account (login on gh) after confirming name. It uses \"gh fork repo ...\"."
   (interactive)
   (let* ((repo (read-string "repo: " repo))
         (package (car (last (split-string repo "\/"))))
@@ -374,6 +377,7 @@
     ))
 
 (defun consult-gh--repo-fork-action ()
+"action function for forking the repo that can be used in conslt-gh source."
   (lambda (cand)
      (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand)))))
       (consult-gh--repo-fork reponame)
@@ -445,7 +449,7 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--command-to-string "search" "repos" repo "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 #+end_src
 *** issue
@@ -721,40 +725,40 @@
 (require 'embark)
 (require 'consult-gh)
 
-(defun consult-gh-embark-get-ssh-link (repo)
+(defun consult-gh-embark-get-ssh-link (cand)
   "Copy the ssh based link of the repo to `kill-ring'."
-  (kill-new (concat "git@github.com:" (string-trim  (consult-gh--output-cleanup (substring-no-properties repo))) ".git")))
+  (kill-new (concat "git@github.com:" (string-trim  (get-text-property 0 :repo cand))) ".git"))
 
-(defun consult-gh-embark-get-https-link (repo)
+(defun consult-gh-embark-get-https-link (cand)
   "Copy the http based link of the repo to `kill-ring'."
-  (kill-new (concat "https://github.com/" (string-trim (consult-gh--output-cleanup (substring-no-properties repo))) ".git")))
+  (kill-new (concat "https://github.com/" (string-trim (get-text-property 0 :repo cand))) ".git"))
 
-(defun consult-gh-embark-get-straight-usepackage (repo)
+(defun consult-gh-embark-get-straight-usepackage (cand)
   "Copy a drop-in straight use package setup of this repo to `kill-ring'."
-  (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
-         (package (car (last (split-string reponame "\/"))))
+  (let* ((repo (get-text-property 0 :repo cand))
+         (package (car (last (split-string repo "\/"))))
          )
-    (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" reponame  "\")\n)"))))
+    (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo  "\")\n)"))))
 
-(defun consult-gh-embark-get-other-repos-by-same-user (repo)
+(defun consult-gh-embark-get-other-repos-by-same-user (cand)
   "List other repos by the same user/organization as the repo at point."
-  (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
-         (user (car (split-string reponame "\/"))))
+  (let* ((repo  (get-text-property 0 :repo cand))
+         (user (car (split-string repo "\/"))))
   (consult-gh-orgs `(,user))))
 
-(defun consult-gh-embark-view-issues-of-repo (repo)
+(defun consult-gh-embark-view-issues-of-repo (cand)
   "View issues of the repo at point."
-  (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
+  (let* ((repo (get-text-property 0 :repo cand))
          )
-  (consult-gh-issue-list `(,reponame))))
+  (consult-gh-issue-list `(,repo))))
 
-(defun consult-gh-embark-clone-repo (repo)
+(defun consult-gh-embark-clone-repo (cand)
   "Clone the repo at point."
-  (funcall (consult-gh--repo-clone-action) repo))
+  (funcall (consult-gh--repo-clone-action) (get-text-property 0 :repo cand)))
 
-(defun consult-gh-embark-fork-repo (repo)
+(defun consult-gh-embark-fork-repo (cand)
   "Fork the repo at point."
-  (funcall (consult-gh--repo-fork-action) repo))
+  (funcall (consult-gh--repo-fork-action) (get-text-property 0 :repo cand)))
 
 (defvar-keymap consult-gh-embark-actions
   :doc "Keymap for consult-gh-embark"

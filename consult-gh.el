@@ -239,7 +239,7 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--command-to-string "repo" "list" org "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
 (defun consult-gh--repo-browse-url-action ()
@@ -289,6 +289,7 @@
 
 
 (defun consult-gh-repo-clone (&optional repo targetdir name)
+"Interactively clone the repo to targetdir/name directory after confirming names and dir. It uses \"gh clone repo ...\"."
   (interactive)
   (let ((repo (read-string "repo: " repo))
         (targetdir (read-directory-name "target directory: " targetdir))
@@ -298,6 +299,7 @@
     ))
 
 (defun consult-gh--repo-clone-action ()
+"action function for cloning the repo that can be used in conslt-gh source."
   (lambda (cand)
     (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand))))
          (package (car (last (split-string reponame "\/"))))
@@ -308,11 +310,12 @@
     )))
 
 (defun consult-gh--repo-fork (repo &rest args)
-"Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
+"Fork the repo to user's account (login on gh). It uses \"gh fork repo ...\"."
   (consult-gh--command-to-string "repo" "fork" (format "%s" repo) )
-  (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face) )))
+  (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face))))
 
 (defun consult-gh-repo-fork (&optional repo name &rest args)
+"Interactively Fork the repo to user's account (login on gh) after confirming name. It uses \"gh fork repo ...\"."
   (interactive)
   (let* ((repo (read-string "repo: " repo))
         (package (car (last (split-string repo "\/"))))
@@ -321,6 +324,7 @@
     ))
 
 (defun consult-gh--repo-fork-action ()
+"action function for forking the repo that can be used in conslt-gh source."
   (lambda (cand)
      (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand)))))
       (consult-gh--repo-fork reponame)
@@ -376,7 +380,7 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--command-to-string "search" "repos" repo "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
 (defun consult-gh--issue-list (repo)

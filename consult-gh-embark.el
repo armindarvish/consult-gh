@@ -17,40 +17,40 @@
 (require 'embark)
 (require 'consult-gh)
 
-(defun consult-gh-embark-get-ssh-link (repo)
+(defun consult-gh-embark-get-ssh-link (cand)
   "Copy the ssh based link of the repo to `kill-ring'."
-  (kill-new (concat "git@github.com:" (string-trim  (consult-gh--output-cleanup (substring-no-properties repo))) ".git")))
+  (kill-new (concat "git@github.com:" (string-trim  (get-text-property 0 :repo cand))) ".git"))
 
-(defun consult-gh-embark-get-https-link (repo)
+(defun consult-gh-embark-get-https-link (cand)
   "Copy the http based link of the repo to `kill-ring'."
-  (kill-new (concat "https://github.com/" (string-trim (consult-gh--output-cleanup (substring-no-properties repo))) ".git")))
+  (kill-new (concat "https://github.com/" (string-trim (get-text-property 0 :repo cand))) ".git"))
 
-(defun consult-gh-embark-get-straight-usepackage (repo)
+(defun consult-gh-embark-get-straight-usepackage (cand)
   "Copy a drop-in straight use package setup of this repo to `kill-ring'."
-  (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
-         (package (car (last (split-string reponame "\/"))))
+  (let* ((repo (get-text-property 0 :repo cand))
+         (package (car (last (split-string repo "\/"))))
          )
-    (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" reponame  "\")\n)"))))
+    (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo  "\")\n)"))))
 
-(defun consult-gh-embark-get-other-repos-by-same-user (repo)
+(defun consult-gh-embark-get-other-repos-by-same-user (cand)
   "List other repos by the same user/organization as the repo at point."
-  (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
-         (user (car (split-string reponame "\/"))))
+  (let* ((repo  (get-text-property 0 :repo cand))
+         (user (car (split-string repo "\/"))))
   (consult-gh-orgs `(,user))))
 
-(defun consult-gh-embark-view-issues-of-repo (repo)
+(defun consult-gh-embark-view-issues-of-repo (cand)
   "View issues of the repo at point."
-  (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
+  (let* ((repo (get-text-property 0 :repo cand))
          )
-  (consult-gh-issue-list `(,reponame))))
+  (consult-gh-issue-list `(,repo))))
 
-(defun consult-gh-embark-clone-repo (repo)
+(defun consult-gh-embark-clone-repo (cand)
   "Clone the repo at point."
-  (funcall (consult-gh--repo-clone-action) repo))
+  (funcall (consult-gh--repo-clone-action) (get-text-property 0 :repo cand)))
 
-(defun consult-gh-embark-fork-repo (repo)
+(defun consult-gh-embark-fork-repo (cand)
   "Fork the repo at point."
-  (funcall (consult-gh--repo-fork-action) repo))
+  (funcall (consult-gh--repo-fork-action) (get-text-property 0 :repo cand)))
 
 (defvar-keymap consult-gh-embark-actions
   :doc "Keymap for consult-gh-embark"
