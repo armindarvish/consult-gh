@@ -69,6 +69,7 @@
   :group 'consult-gh
   :type 'string)
 
+
 (defcustom consult-gh-show-preview nil
   "Default directory to clone github repos in for `consult-gh' package."
   :group 'consult-gh
@@ -124,6 +125,7 @@
 (defface consult-gh-tags-face
   `((t :inherit 'font-lock-comment-face)) "inherit from font-lock-comment-face for the tags")
 #+end_src
+
 ** backend gh related functions
 *** string clean up and conversion
 **** output string clean up
@@ -279,6 +281,7 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--command-to-string "repo" "list" org "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
+
     (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 #+end_src
@@ -570,6 +573,7 @@
 #+begin_src emacs-lisp
 #+end_src
 ** define consult source function
+
 *** repos from users or org
 #+begin_src emacs-lisp
 (defun consult-gh--make-source-from-org  (org)
@@ -648,9 +652,11 @@
   (interactive)
 (consult-gh-orgs consult-gh-default-orgs-list))
 #+end_src
+
 *** define consult gh search repos
 #+begin_src emacs-lisp
 (defun consult-gh-search-repos (&optional repos)
+
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
@@ -671,6 +677,7 @@
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
 #+end_src
+
 *** define consult gh issue list
 #+begin_src emacs-lisp
 (defun consult-gh-issue-list (&optional repos)

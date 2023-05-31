@@ -56,6 +56,7 @@
   :group 'consult-gh
   :type 'string)
 
+
 (defcustom consult-gh-show-preview nil
   "Default directory to clone github repos in for `consult-gh' package."
   :group 'consult-gh
@@ -239,6 +240,7 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--command-to-string "repo" "list" org "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
+
     (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
@@ -547,6 +549,7 @@
 (consult-gh-orgs consult-gh-default-orgs-list))
 
 (defun consult-gh-search-repos (&optional repos)
+
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
