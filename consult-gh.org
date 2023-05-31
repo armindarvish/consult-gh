@@ -1,3 +1,9 @@
+#+PROPERTY: header-args:emacs-lisp :results none :mkdirp yes :link yes :tangle ./consult-gh.el
+
+* main
+
+** header
+#+begin_src emacs-lisp
 ;;; consult-gh.el --- Consulting GitHub Client -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Armin Darvish
@@ -14,10 +20,17 @@
 
 ;;; Code:
 
+#+end_src
+** requirement
+#+begin_src emacs-lisp
+
 (eval-when-compile
 (require 'consult)
 )
 
+#+end_src
+** define customs and vars
+#+begin_src emacs-lisp
 (defgroup consult-gh nil
   "Consulting GitHub CLI"
   :group 'convenience
@@ -91,7 +104,10 @@
 
 (defvar consult-gh--known-repos-list nil
   "List of previously visited orgs for `consult-gh'.")
+#+end_src
 
+** define faces
+#+begin_src emacs-lisp
 (defface consult-gh-default-face
   `((t :inherit 'default)) "default face used items in the list")
 (defface consult-gh-visibility-face
@@ -102,13 +118,19 @@
   `((t :inherit 'font-lock-keyword-face)) "inherit from font-lock-keyword-face for the date")
 (defface consult-gh-tags-face
   `((t :inherit 'font-lock-comment-face)) "inherit from font-lock-comment-face for the tags")
-
+#+end_src
+** backend gh related functions
+*** string clean up and conversion
+**** output string clean up
+#+begin_src emacs-lisp
 (defun consult-gh--output-cleanup (string)
 "Remove non UTF-8 characters if any in the string. This is used in "
   (string-join
    (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
                      string))))
-
+#+end_src
+**** markdown to org-mode
+#+begin_src emacs-lisp
 (defun consult-gh--markdown-to-org (&optional buffer)
   "Convert from markdown format to org-mode format"
   (let ((buffer (if buffer buffer (get-buffer-create consult-gh-preview-buffer-name))))
@@ -137,7 +159,7 @@
                          (progn
                            (delete-char -1)
                            (insert "*"))))
-                
+
                 ("**" (cond
                        ((looking-at "\\*\\(?:[[:word:]]\\|\s\\)")
                         (delete-char 1))
@@ -213,6 +235,10 @@
       (goto-char (point-min))
       )))
 
+#+end_src
+*** process and shell
+**** call process
+#+begin_src emacs-lisp
 (defun consult-gh--call-process (&rest args)
  "Run \"gh\" with args and return outputs"
 (if (executable-find "gh")
@@ -226,6 +252,9 @@
       '(0 ""))
 ))
 
+#+end_src
+**** command to string
+#+begin_src emacs-lisp
 (defun consult-gh--command-to-string (&rest args)
   "Run \"gh\" with args and return output as a string if there is no error. If there are erros pass them to *Messages*."
   (let ((out (apply #'consult-gh--call-process args)))
@@ -235,7 +264,10 @@
               (message (cadr out))
               nil)
             )))
-
+#+end_src
+*** repo
+**** repo list (of a user or org)
+#+begin_src emacs-lisp
 (defun consult-gh--repo-list (org)
 "Get a list of repos of \"organization\" and format each as a text with properties to pass to consult."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
@@ -243,13 +275,18 @@
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
     (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
-
+#+end_src
+**** actions
+***** browse repo url
+#+begin_src emacs-lisp
 (defun consult-gh--repo-browse-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
   (browse-url (concat "https://github.com/" (substring cand)))
 ))
-
+#+end_src
+***** view repo
+#+begin_src emacs-lisp
 (defun consult-gh--repo-view (repo &optional buffer)
   "Default action to run on selected item in `consult-gh'."
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
@@ -283,6 +320,11 @@
       (rename-buffer buffername t)
       )))
 
+#+end_src
+
+
+***** clone
+#+begin_src emacs-lisp
 (defun consult-gh--repo-clone (repo targetdir name)
 "Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
   (consult-gh--command-to-string "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
@@ -307,7 +349,10 @@
         (consult-gh-repo-clone reponame consult-gh-default-clone-directory package)
       (consult-gh--repo-clone reponame consult-gh-default-clone-directory package))
     )))
+#+end_src
 
+***** fork
+#+begin_src emacs-lisp
 (defun consult-gh--repo-fork (repo &rest args)
 "Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
   (consult-gh--command-to-string "repo" "fork" (format "%s" repo) )
@@ -326,12 +371,19 @@
      (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand)))))
       (consult-gh--repo-fork reponame)
     )))
+#+end_src
 
+**** group
+#+begin_src emacs-lisp
 (defun consult-gh--repo-group (cand transform)
 "Group the list of item in `consult-gh' by the name of the user"
   (let ((name (car (string-split (substring cand) "\/"))))
            (if transform (substring cand) name)))
+#+end_src
 
+**** preview / state
+***** state
+#+begin_src emacs-lisp
 (defun consult-gh--repo-preview ()
   (lambda (action cand)
     (let ((preview (consult--buffer-preview)))
@@ -351,11 +403,16 @@
             )
         ))))
 
+#+end_src
+**** narrow
+#+begin_src emacs-lisp
 (defun consult-gh--repo-narrow (item)
 "Create narrowing function for items in `consult-gh' by the first letter of the name of the user/organization."
   (if (stringp item)
     (cons (string-to-char (substring-no-properties item)) (substring-no-properties item))))
-
+#+end_src
+**** annotate
+#+begin_src emacs-lisp
 (defun consult-gh--repo-annotate ()
 "Annotate each repo in `consult-gh' by user, visibility and date."
 (lambda (cand)
@@ -371,7 +428,11 @@
      )
     nil)
 ))
+#+end_src
 
+*** search
+**** search repos
+#+begin_src emacs-lisp
 (defun consult-gh--search-repos (repo)
 "Search for repos with \"gh search repos\" and return a list of items each formatted with properties to pass to consult."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
@@ -379,7 +440,11 @@
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
     (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
+#+end_src
+*** issue
 
+**** issue list
+#+begin_src emacs-lisp
 (defun consult-gh--issue-list (repo)
 "search issues of a repo with \"gh issue list\" and return a list of items for viewing."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
@@ -388,12 +453,18 @@
     (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':number (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
    ))
     )
+#+end_src
 
+**** actions
+***** browse issue url
+#+begin_src emacs-lisp
 (defun consult-gh--browse-issue-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
   (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (substring (get-text-property 0 :number cand))))))
-
+#+end_src
+***** view issue
+#+begin_src emacs-lisp
 (defun consult-gh--issue-view (repo issue &optional buffer)
   "Default action to run on selected item in `consult-gh'."
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
@@ -426,7 +497,11 @@
       (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
       (rename-buffer buffername t)
       )))
+#+end_src
 
+**** preview / state
+***** state
+#+begin_src emacs-lisp
 (defun consult-gh--issue-preview ()
   (lambda (action cand)
     (let ((preview (consult--buffer-preview)))
@@ -446,16 +521,22 @@
              )
             )
         ))))
-
+#+end_src
+**** group
+#+begin_src emacs-lisp
 (defun consult-gh--issue-group (cand transform)
 "Group the list of issues in a repo by the status of the issues"
 (let ((name (substring (get-text-property 0 :status cand))))
            (if transform (substring cand) name)))
-
+#+end_src
+**** narrow
+#+begin_src emacs-lisp
 (defun consult-gh--issue-narrow (item)
 "Create narrowing function for issues in a repo by the status of the issue"
     (cons (string-to-char (substring-no-properties item)) (substring-no-properties item)))
-
+#+end_src
+**** annotate
+#+begin_src emacs-lisp
 (defun consult-gh--issue-annotate ()
 "Annotate each issue by description, status, repo and date."
 (lambda (cand)
@@ -472,7 +553,11 @@
      )
     nil)
 ))
+#+end_src
 
+** define consult source function
+*** repos from users or org
+#+begin_src emacs-lisp
 (defun consult-gh--make-source-from-org  (org)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'."
                   `(:narrow ,(consult-gh--repo-narrow org)
@@ -486,7 +571,9 @@
                     :history t
                     :sort t
                     ))
-
+#+end_src
+*** search repos by user input
+#+begin_src emacs-lisp
 (defun consult-gh--make-source-from-search-repo  (repo)
 "Create a source for consult from the search results for repo to use in `consult-gh-search-repos'."
                   `(:narrow ,(consult-gh--repo-narrow repo)
@@ -500,7 +587,9 @@
                     :history t
                     :sort t
                     ))
-
+#+end_src
+*** source for list of issues
+#+begin_src emacs-lisp
 (defun consult-gh--make-source-from-issues (repo)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'."
                   `(;;:narrow ,(consult-gh--repo-narrow org)
@@ -514,7 +603,10 @@
                     :history t
                     :sort t
                     ))
-
+#+end_src
+** define consult-gh functions
+*** define consult gh repo list
+#+begin_src emacs-lisp
 (defun consult-gh-orgs (orgs)
 "Get a list of organizations from the user and provide their repos."
   (interactive
@@ -535,12 +627,16 @@
                     :sort t
                     ))
       )))
-
+#+end_src
+*** define consult gh default repos
+#+begin_src emacs-lisp
 (defun consult-gh-default-repos ()
 "Show the repos from default organizaitons."
   (interactive)
 (consult-gh-orgs consult-gh-default-orgs-list))
-
+#+end_src
+*** define consult gh search repos
+#+begin_src emacs-lisp
 (defun consult-gh-search-repos (repos)
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
@@ -561,6 +657,9 @@
                     ))
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
+#+end_src
+*** define consult gh issue list
+#+begin_src emacs-lisp
 (defun consult-gh-issue-list (repos)
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
@@ -584,6 +683,76 @@
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))
 ))
 
+#+end_src
+** provide
+#+begin_src emacs-lisp
 (provide 'consult-gh)
-
+#+end_src
+** footer
+#+begin_src emacs-lisp
 ;;; filename ends here
+#+end_src
+* embark
+** header
+#+begin_src  emacs-lisp :tangle ./consult-gh-embark.el
+;;; consult-gh-embark.el --- Emabrk Actions for consult-gh -*- lexical-binding: t -*-
+
+;; Copyright (C) 2021-2023 Free Software Foundation, Inc.
+
+;; Author: Armin Darvish
+;; Maintainer: Armin Darvish
+;; Created: 2023
+;; Version: 0.1
+;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
+;; Homepage: https://github.com/armindarvish/consult-gh
+;; Keywords: matching, git, repositories, forges, completion
+
+;;; Commentary:
+
+;;; Code:
+#+end_src
+** main
+#+begin_src emacs-lisp :tangle ./consult-gh-embark.el
+
+(require 'embark)
+
+;;; Add embark menus if embark is available
+(with-eval-after-load 'consult-gh
+
+(defun consult-gh-embark-get-ssh-link (repo)
+  "Get the ssh based link of the repo"
+  (kill-new (concat "git@github.com:" (string-trim  (consult-gh--output-cleanup (substring-no-properties repo))) ".git")))
+
+(defun consult-gh-embark-get-https-link (repo)
+  "Get the ssh based link of the repo"
+  (kill-new (concat "https://github.com/" (string-trim (consult-gh--output-cleanup (substring-no-properties repo))) ".git")))
+
+(defun consult-gh-embark-get-straight-usepackage (repo)
+  "Close tab."
+  (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
+         (package (car (last (split-string reponame "\/"))))
+         )
+    (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" reponame  "\")\n)"))))
+
+(defun consult-gh-embark-clone-repo (repo)
+  "Clone the repo at point"
+  (funcall (consult-gh--repo-clone-action) repo))
+
+(defun consult-gh-embark-fork-repo (repo)
+  "Clone the repo at point"
+  (funcall (consult-gh--repo-fork-action) repo))
+
+
+(defvar-keymap consult-gh-embark-actions
+  :doc "Keymap for consult-gh-embark"
+  :parent embark-general-map
+  "s" #'consult-gh-embark-get-ssh-link
+  "h" #'consult-gh-embark-get-https-link
+  "e" #'consult-gh-embark-get-straight-usepackage
+  "c" #'consult-gh-embark-clone-repo
+  "f" #'consult-gh-embark-fork-repo)
+
+(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions)))
+
+(provide 'consult-gh-embark)
+#+end_src
