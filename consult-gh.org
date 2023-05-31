@@ -304,6 +304,7 @@
       (pcase consult-gh-preview-buffer-mode
         ('markdown-mode
          (if (featurep 'markdown-mode)
+             (require 'markdown-mode
              (progn
              (markdown-mode)
              (markdown-display-inline-images))
