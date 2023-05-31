@@ -17,6 +17,14 @@
 (require 'embark)
 (require 'consult-gh)
 
+(defun consult-gh-embark-open-in-browser (cand)
+  "Open the link in browser"
+(let* ((repo (get-text-property 0 :repo cand))
+      (issue (or (get-text-property 0 :issue cand) nil)))
+      (if issue
+          (browse-url (concat "https://github.com/" (substring-no-properties repo) "\/issues\/" (substring-no-properties issue)))
+        (browse-url (concat "https://github.com/" (substring-no-properties repo))))))
+
 (defun consult-gh-embark-get-ssh-link (cand)
   "Copy the ssh based link of the repo to `kill-ring'."
   (kill-new (concat "git@github.com:" (string-trim  (get-text-property 0 :repo cand))) ".git"))
@@ -61,7 +69,8 @@
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
-  "z" #'consult-gh-embark-view-issues-of-repo)
+  "z" #'consult-gh-embark-view-issues-of-repo
+  "o" #'consult-gh-embark-open-in-browser)
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions))
 

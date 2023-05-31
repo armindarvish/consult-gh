@@ -464,7 +464,7 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum) ""))
          (issues (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n"))))
-    (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':number (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
+    (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':issue (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
    ))
     )
 #+end_src
@@ -475,7 +475,7 @@
 (defun consult-gh--browse-issue-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
-  (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (substring (get-text-property 0 :number cand))))))
+  (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (substring (get-text-property 0 :issue cand))))))
 #+end_src
 ***** view issue
 #+begin_src emacs-lisp
@@ -506,7 +506,7 @@
   "Default action to run on selected item in `consult-gh'."
   (lambda (cand)
     (let* ((repo (substring (get-text-property 0 :repo cand)))
-          (issue (substring (get-text-property 0 :number cand)))
+          (issue (substring (get-text-property 0 :issue cand)))
           (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/issues/" issue "*")))
       (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
       (rename-buffer buffername t)
@@ -523,7 +523,7 @@
           (pcase action
             ('preview
              (let ((repo (substring (get-text-property 0 :repo cand)))
-                   (issue (substring (get-text-property 0 :number cand)))
+                   (issue (substring (get-text-property 0 :issue cand)))
                    (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (consult-gh--issue-view repo issue buffer)
                (funcall preview action
@@ -732,6 +732,14 @@
 (require 'embark)
 (require 'consult-gh)
 
+(defun consult-gh-embark-open-in-browser (cand)
+  "Open the link in browser"
+(let* ((repo (get-text-property 0 :repo cand))
+      (issue (or (get-text-property 0 :issue cand) nil)))
+      (if issue
+          (browse-url (concat "https://github.com/" (substring-no-properties repo) "\/issues\/" (substring-no-properties issue)))
+        (browse-url (concat "https://github.com/" (substring-no-properties repo))))))
+
 (defun consult-gh-embark-get-ssh-link (cand)
   "Copy the ssh based link of the repo to `kill-ring'."
   (kill-new (concat "git@github.com:" (string-trim  (get-text-property 0 :repo cand))) ".git"))
@@ -776,7 +784,8 @@
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
-  "z" #'consult-gh-embark-view-issues-of-repo)
+  "z" #'consult-gh-embark-view-issues-of-repo
+  "o" #'consult-gh-embark-open-in-browser)
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions))
 
