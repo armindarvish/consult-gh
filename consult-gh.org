@@ -566,7 +566,9 @@
     nil)
 ))
 #+end_src
-
+*** pr
+#+begin_src emacs-lisp
+#+end_src
 ** define consult source function
 *** repos from users or org
 #+begin_src emacs-lisp

@@ -477,6 +477,8 @@
     nil)
 ))
 
+
+
 (defun consult-gh--make-source-from-org  (org)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'."
                   `(:narrow ,(consult-gh--repo-narrow org)
