@@ -388,14 +388,14 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum) ""))
          (issues (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n"))))
-    (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':number (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
+    (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':issue (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
    ))
     )
 
 (defun consult-gh--browse-issue-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
-  (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (substring (get-text-property 0 :number cand))))))
+  (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (substring (get-text-property 0 :issue cand))))))
 
 (defun consult-gh--issue-view (repo issue &optional buffer)
   "Default action to run on selected item in `consult-gh'."
@@ -424,7 +424,7 @@
   "Default action to run on selected item in `consult-gh'."
   (lambda (cand)
     (let* ((repo (substring (get-text-property 0 :repo cand)))
-          (issue (substring (get-text-property 0 :number cand)))
+          (issue (substring (get-text-property 0 :issue cand)))
           (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/issues/" issue "*")))
       (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
       (rename-buffer buffername t)
@@ -437,7 +437,7 @@
           (pcase action
             ('preview
              (let ((repo (substring (get-text-property 0 :repo cand)))
-                   (issue (substring (get-text-property 0 :number cand)))
+                   (issue (substring (get-text-property 0 :issue cand)))
                    (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (consult-gh--issue-view repo issue buffer)
                (funcall preview action
