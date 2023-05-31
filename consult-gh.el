@@ -514,7 +514,7 @@
                     :sort t
                     ))
 
-(defun consult-gh-orgs (orgs)
+(defun consult-gh-orgs (&optional orgs)
 "Get a list of organizations from the user and provide their repos."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
@@ -539,7 +539,7 @@
   (interactive)
 (consult-gh-orgs consult-gh-default-orgs-list))
 
-(defun consult-gh-search-repos (repos)
+(defun consult-gh-search-repos (&optional repos)
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
@@ -559,7 +559,7 @@
                     ))
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
-(defun consult-gh-issue-list (repos)
+(defun consult-gh-issue-list (&optional repos)
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
