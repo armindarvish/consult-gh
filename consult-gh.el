@@ -472,6 +472,7 @@
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
                     :annotate ,(consult-gh--repo-annotate)
+                    :state ,#'consult-gh--repo-preview
                     :defualt t
                     :history t
                     :sort t
