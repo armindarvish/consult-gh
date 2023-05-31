@@ -109,109 +109,102 @@
    (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
                      string))))
 
-(defun consult-gh--markdown-to-org (&optional buffer)
-  "Convert from markdown format to org-mode format"
-  (let ((buffer (if buffer buffer (get-buffer-create consult-gh-preview-buffer-name))))
+(defun consult-gh--markdown-to-org-footnotes (&optional buffer)
+"Convert markdown style footnotes to org-mode style footnotes"
+  (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
       (save-mark-and-excursion
         (save-restriction
-          (progn
-            (goto-char (point-max))
-            (insert "\n")
-            (while (re-search-backward "^\\[\\([^fn].*\\)\\]:" nil t)
-              (replace-match "[fn:\\1] ")
-              )
-            ;; (move-beginning-of-line 0)
-            ;; (insert "\n* Footnotes\n"))
-            (goto-char (point-min-marker)))
-          (progn
-            (goto-char (point-min))
-            (while (re-search-forward "-\\{2\\}\\|#\\|`\\(?1:[^`].+?\\)`\\|```\\(?2:.*\n\\)\\(?3:[^`]*\\)```\\|\\*\\{1,2\\}\\|_\\|\\[\\(?4:.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(?5:.[^\\[]+?\\)\\]\\[\\(?6:.[^\\[]+?\\)\\]\\{1\\}\\|\\[\\(?7:.+?\\)\\]\(#\\(?8:.+?\\)\)\\{1\\}\\|.\\[\\(?9:.+?\\)\\]\(\\(?10:[^#].+?\\)\)\\{1\\}" nil t)
-              (pcase (match-string-no-properties 0)
-                ("--"  (when (looking-at "\n")
-                         (delete-char -2)
-                         (insert "=================================\n")
-                         (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)
-                         ))
-                ("#" (if (looking-at "#\\|[[:blank:]]")
-                         (progn
-                           (delete-char -1)
-                           (insert "*"))))
-                
-                ("**" (cond
-                       ((looking-at "\\*\\(?:[[:word:]]\\|\s\\)")
-                        (delete-char 1))
-                       ((looking-back "\\(?:[[:word:]]\\|\s\\)\\*\\{2\\}"
-                                      (max (- (point) 3) (point-min)))
-                        (backward-delete-char 1))))
+          (goto-char (point-max))
+          (insert "\n")
+          (while (re-search-backward "^\\[\\([^fn].*\\)\\]:" nil t)
+            (replace-match "[fn:\\1] ")))))
+    nil))
 
-                ((or "_" "*")
-                 (if (save-match-data
-                       (and (looking-back "\\(?:[[:space:]]\\|\s\\)\\(?:_\\|\\*\\)"
-                                          (max (- (point) 2) (point-min)))
-                            (not (looking-at "[[:space:]]\\|\s"))))
-                     ;; Possible beginning of italics
-                     (and
-                      (save-excursion
-                        (when (and (re-search-forward (regexp-quote (match-string 0)) nil t)
-                                   (looking-at "[[:space]]\\|\s")
-                                   (not (looking-back "\\(?:[[:space]]\\|\s\\)\\(?:_\\|\\*\\)"
-                                                      (max (- (point) 2) (point-min)))))
-                          (backward-delete-char 1)
-                          (insert "/") t))
-                      (progn (backward-delete-char 1)
-                             (insert "/")))))
+(defun consult-gh--markdown-to-org-emphasis (&optional buffer)
+"Convert markdown style emphasis to org-mode style emphasis"
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (save-mark-and-excursion
+        (save-restriction
+          (goto-char (point-min))
+          (while (re-search-forward "-\\{2\\}\\|#\\|\\*\\{1,2\\}\\(?1:.+?\\)\\*\\{1,2\\}|_\\{1,2\\}\\(?2:.+?\\)_\\{1,2\\}\\|`\\(?3:[^`].+?\\)`\\|```\\(?4:.*\n\\)\\(?5:[^`]*\\)```" nil t)
+            (pcase (match-string-no-properties 0)
+              ("--"  (when (looking-at "\n")
+                       (delete-char -2)
+                       (insert "=================================\n")
+                       (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)
+                       ))
+              ("#" (if (looking-at "#\\|[[:blank:]]")
+                       (progn
+                         (delete-char -1)
+                         (insert "*"))))
 
-                ;; ("`" (if (looking-at "``")
-                ;;          (progn (backward-char)
-                ;;                 (delete-char 3)
-                ;;                 (insert "#+begin_src ")
-                ;;                 (when (re-search-forward "^```" nil t)
-                ;;                   (replace-match "#+end_src")))
-                ;;       (replace-match "=")))
+              ((pred (lambda (el) (string-match-p "\\*\\{1\\}[^\\*]*?\\*\\{1\\}" el)))
+               (replace-match "/\\1/"))
 
-                ((pred (lambda (el) (string-match-p "`[^`].+?`" el)))
-                 (replace-match "=\\1="))
+              ((pred (lambda (el) (string-match-p "\\*\\{2\\}.+?\\*\\{2\\}" el)))
+               (replace-match "*\\1*"))
 
-                ((pred (lambda (el) (string-match-p "```.*\n[^`]*```" el)))
-                 (replace-match "#+begin_src \\2\n\\3\n#+end_src\n"))
+              ((pred (lambda (el) (string-match-p "_\\{1\\}[^_]*?_\\{1\\}" el)))
+               (replace-match "/\\2/"))
 
-                ((pred (lambda (el) (string-match-p "\\[.+?\\]\\[\\]\\{1\\}" el)))
-                 (replace-match "[fn:\\4]"))
+              ((pred (lambda (el) (string-match-p "_\\{2\\}.+?_\\{2\\}" el)))
+               (replace-match "*\\2*"))
 
-                ((pred (lambda (el) (string-match-p "\\[.[^\\[]+?\\]\\[.[^\\[]+?\\]\\{1\\}" el)))
-                 (replace-match "\\5 [fn:\\6]"))
+              ((pred (lambda (el) (string-match-p "`[^`].+?`" el)))
+               (replace-match "=\\3="))
 
-                ((pred (lambda (el) (string-match-p "\\[.+?\\]\(#.+?\)\\{1\\}" el)))
-                 (replace-match "[[*\\8][\\7]]"))
+              ((pred (lambda (el) (string-match-p "```.*\n[^`]*```" el)))
+               (replace-match "#+begin_src \\4\n\\5\n#+end_src\n")))))))
+    nil))
 
-                ((pred (lambda (el) (string-match-p "!\\[.*\\]\([^#].*\)" el)))
-                 (progn
-                   (replace-match "[[\\10][\\9]]")
-                   )
-                 )
-                ((pred (lambda (el) (string-match-p "[[:blank:]]\\[.*\\]\([^#].*\)" el)))
-                 (progn
-                   (replace-match " [[\\10][\\9]]")
-                   )
-                 )
-                ))
-            )))
-      (goto-char (point-min))
-      (while
-          (re-search-forward
-           "\\[fn:\\(.+?\\)\\]\\{1\\}" nil t)
-        (pcase (match-string 0)
-          ((pred (lambda (el) (string-match-p "\\[fn:.+?[[:blank:]].+?\\]\\{1\\}" (substring-no-properties el))))
-           (progn
-             (replace-regexp-in-region "[[:blank:]]" "_" (match-beginning 1) (match-end 1))
-             ))
-          ))
+(defun consult-gh--markdown-to-org-links (&optional buffer)
+"Convert markdown links to org-mode links"
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (save-mark-and-excursion
+        (save-restriction
+          (goto-char (point-min))
+          (while (re-search-forward "\\[\\(?1:.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(?2:.[^\\[]+?\\)\\]\\[\\(?3:.[^\\[]+?\\)\\]\\{1\\}\\|\\[\\(?4:.+?\\)\\]\(#\\(?5:.+?\\)\)\\{1\\}\\|.\\[\\(?6:.+?\\)\\]\(\\(?7:[^#].+?\\)\)\\{1\\}" nil t)
+            (pcase (match-string-no-properties 0)
+              ((pred (lambda (el) (string-match-p "\\[.+?\\]\\[\\]\\{1\\}" el)))
+               (replace-match "[fn:\\1]"))
+
+              ((pred (lambda (el) (string-match-p "\\[.[^\\[]+?\\]\\[.[^\\[]+?\\]\\{1\\}" el)))
+               (replace-match "\\2 [fn:\\3]"))
+
+              ((pred (lambda (el) (string-match-p "\\[.+?\\]\(#.+?\)\\{1\\}" el)))
+               (replace-match "[[*\\5][\\4]]"))
+
+              ((pred (lambda (el) (string-match-p "!\\[.*\\]\([^#].*\)" el)))
+               (replace-match "[[\\7][\\6]]"))
+
+              ((pred (lambda (el) (string-match-p "[[:blank:]]\\[.*\\]\([^#].*\)" el)))
+               (replace-match " [[\\7][\\6]]"))))
+
+          (goto-char (point-min))
+          (while
+              (re-search-forward
+               "\\[fn:\\(.+?\\)\\]\\{1\\}" nil t)
+            (pcase (match-string 0)
+              ((pred (lambda (el) (string-match-p "\\[fn:.+?[[:blank:]].+?\\]\\{1\\}" (substring-no-properties el))))
+               (progn
+                 (replace-regexp-in-region "[[:blank:]]" "_" (match-beginning 1) (match-end 1)))))))))
+    nil))
+
+(defun consult-gh--markdown-to-org (&optional buffer)
+  "Convert from markdown format to org-mode format"
+  (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name))))
+    (with-current-buffer buffer
+      (consult-gh--markdown-to-org-footnotes buffer)
+      (consult-gh--markdown-to-org-emphasis buffer)
+      (consult-gh--markdown-to-org-links buffer)
       (org-mode)
-      (org-table-map-tables 'org-table-align)
+      (org-table-map-tables 'org-table-align t)
       (org-fold-show-all)
-      (goto-char (point-min))
-      )))
+      (goto-char (point-min))))
+  nil)
 
 (defun consult-gh--call-process (&rest args)
  "Run \"gh\" with args and return outputs"
