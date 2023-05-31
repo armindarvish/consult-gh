@@ -259,8 +259,8 @@
       (pcase consult-gh-preview-buffer-mode
         ('markdown-mode
          (if (featurep 'markdown-mode)
-             (require 'markdown-mode
              (progn
+             (require 'markdown-mode)
              (markdown-mode)
              (markdown-display-inline-images))
              (message "markdown-mode not available")))
@@ -532,8 +532,7 @@
                     :history 'consult-gh--repos-history
                     :category 'consult-gh
                     :sort t
-                    ))
-      )))
+                    )))))
 
 (defun consult-gh-default-repos ()
 "Show the repos from default organizaitons."
@@ -580,8 +579,7 @@
                     :sort t
                     )
           )
-      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))
-))
+      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
 (provide 'consult-gh)
 

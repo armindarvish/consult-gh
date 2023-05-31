@@ -15,9 +15,7 @@
 ;;; Code:
 
 (require 'embark)
-
-;;; Add embark menus if embark is available
-(with-eval-after-load 'consult-gh
+(require 'consult-gh)
 
 (defun consult-gh-embark-get-ssh-link (repo)
   "Get the ssh based link of the repo"
@@ -33,6 +31,12 @@
          (package (car (last (split-string reponame "\/"))))
          )
     (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" reponame  "\")\n)"))))
+
+(defun consult-gh-embark-get-other-repos-by-same-user (repo)
+  "Close tab."
+  (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties repo))))
+         (user (car (split-string reponame "\/"))))
+  (consult-gh-orgs `(,user))))
 
 (defun consult-gh-embark-clone-repo (repo)
   "Clone the repo at point"
@@ -50,8 +54,9 @@
   "h" #'consult-gh-embark-get-https-link
   "e" #'consult-gh-embark-get-straight-usepackage
   "c" #'consult-gh-embark-clone-repo
-  "f" #'consult-gh-embark-fork-repo)
+  "f" #'consult-gh-embark-fork-repo
+  "x" #'consult-gh-embark-get-other-repos-by-same-user)
 
-(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions)))
+(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions))
 
 (provide 'consult-gh-embark)
