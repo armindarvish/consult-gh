@@ -247,7 +247,7 @@
 (defun consult-gh--repo-browse-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
-  (browse-url (concat "https://github.com/" (substring cand)))
+  (consult-gh--call-process "repo" "view" "--web" (substring-no-properties cand))
 ))
 
 (defun consult-gh--repo-view (repo &optional buffer)
@@ -397,7 +397,8 @@
 (defun consult-gh--browse-issue-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
-  (browse-url (concat "https://github.com/" (substring (get-text-property 0 :repo cand)) "\/issues\/" (substring (get-text-property 0 :issue cand))))))
+  (consult-gh--call-process "issue" "view" "--repo" (substring-no-properties (get-text-property 0 :repo cand))  "--web" (substring-no-properties (get-text-property 0 :issue cand)))
+  ))
 
 (defun consult-gh--issue-view (repo issue &optional buffer)
   "Default action to run on selected item in `consult-gh'."

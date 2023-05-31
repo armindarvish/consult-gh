@@ -19,11 +19,11 @@
 
 (defun consult-gh-embark-open-in-browser (cand)
   "Open the link in browser"
-(let* ((repo (get-text-property 0 :repo cand))
-      (issue (or (get-text-property 0 :issue cand) nil)))
-      (if issue
-          (browse-url (concat "https://github.com/" (substring-no-properties repo) "\/issues\/" (substring-no-properties issue)))
-        (browse-url (concat "https://github.com/" (substring-no-properties repo))))))
+  (let* ((repo (get-text-property 0 :repo cand))
+         (issue (or (get-text-property 0 :issue cand) nil)))
+    (if issue
+        (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties issue))
+      (consult-gh--call-process "repo" "view" "--web" (substring repo)))))
 
 (defun consult-gh-embark-get-ssh-link (cand)
   "Copy the ssh based link of the repo to `kill-ring'."
@@ -44,13 +44,13 @@
   "List other repos by the same user/organization as the repo at point."
   (let* ((repo  (get-text-property 0 :repo cand))
          (user (car (split-string repo "\/"))))
-  (consult-gh-orgs `(,user))))
+    (consult-gh-orgs `(,user))))
 
 (defun consult-gh-embark-view-issues-of-repo (cand)
   "View issues of the repo at point."
   (let* ((repo (get-text-property 0 :repo cand))
          )
-  (consult-gh-issue-list `(,repo))))
+    (consult-gh-issue-list `(,repo))))
 
 (defun consult-gh-embark-clone-repo (cand)
   "Clone the repo at point."
