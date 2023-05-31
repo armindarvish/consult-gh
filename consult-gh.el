@@ -56,6 +56,12 @@
   :group 'consult-gh
   :type 'string)
 
+
+(defcustom consult-gh-show-preview nil
+  "Default directory to clone github repos in for `consult-gh' package."
+  :group 'consult-gh
+  :type 'boolean)
+
 (defcustom consult-gh-default-clone-directory nil
   "Default directory to clone github repos in for `consult-gh' package."
   :group 'consult-gh
@@ -109,100 +115,102 @@
    (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
                      string))))
 
-(defun consult-gh--markdown-to-org (&optional buffer)
-  "Convert from markdown format to org-mode format"
-  (let ((buffer (if buffer buffer (get-buffer-create consult-gh-preview-buffer-name))))
+(defun consult-gh--markdown-to-org-footnotes (&optional buffer)
+"Convert markdown style footnotes to org-mode style footnotes"
+  (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
       (save-mark-and-excursion
         (save-restriction
-          (progn
-            (goto-char (point-max))
-            (insert "\n")
-            (while (re-search-backward "^\\[\\([^fn].*\\)\\]:" nil t)
-              (replace-match "[fn:\\1] ")
-              )
-            ;; (move-beginning-of-line 0)
-            ;; (insert "\n* Footnotes\n"))
-            (goto-char (point-min-marker)))
-          (progn
-            (goto-char (point-min))
-            (while (re-search-forward "--\\|#\\|`\\|\\*\\{1,2\\}\\|_\\|\\[\\(.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(.[^\\[]+?\\)\\]\\[\\(.[^\\[]+?\\)\\]\\{1\\}\\|\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}\\|.\\[\\(.+?\\)\\]\(\\([^#].+?\\)\)\\{1\\}" nil t)
-              (pcase (match-string-no-properties 0)
-          ;;;my code;;
-                ("--"  (when (looking-at "\n")
-                         (delete-char -2)
-                         (insert "=================================\n")
-                         (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)))
-                ("#" (if (looking-at "#\\|[[:blank:]]")
-                         (progn
-                           (delete-char -1)
-                           (insert "*"))))
-                ("`" (if (looking-at "``")
-                         (progn (backward-char)
-                                (delete-char 3)
-                                (insert "#+begin_src ")
-                                (when (re-search-forward "^```" nil t)
-                                  (replace-match "#+end_src")))
-                       (replace-match "=")))
-                ("**" (cond
-                       ((looking-at "\\*\\(?:[[:word:]]\\|\s\\)")
-                        (delete-char 1))
-                       ((looking-back "\\(?:[[:word:]]\\|\s\\)\\*\\{2\\}"
-                                      (max (- (point) 3) (point-min)))
-                        (backward-delete-char 1))))
-                ((or "_" "*")
-                 (if (save-match-data
-                       (and (looking-back "\\(?:[[:space:]]\\|\s\\)\\(?:_\\|\\*\\)"
-                                          (max (- (point) 2) (point-min)))
-                            (not (looking-at "[[:space:]]\\|\s"))))
-                     ;; Possible beginning of italics
-                     (and
-                      (save-excursion
-                        (when (and (re-search-forward (regexp-quote (match-string 0)) nil t)
-                                   (looking-at "[[:space]]\\|\s")
-                                   (not (looking-back "\\(?:[[:space]]\\|\s\\)\\(?:_\\|\\*\\)"
-                                                      (max (- (point) 2) (point-min)))))
-                          (backward-delete-char 1)
-                          (insert "/") t))
-                      (progn (backward-delete-char 1)
-                             (insert "/")))))
+          (goto-char (point-max))
+          (insert "\n")
+          (while (re-search-backward "^\\[\\([^fn].*\\)\\]:" nil t)
+            (replace-match "[fn:\\1] ")))))
+    nil))
 
-                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\\[\\]\\{1\\}" el)))
-                 (replace-match "[fn:\\1]"))
+(defun consult-gh--markdown-to-org-emphasis (&optional buffer)
+"Convert markdown style emphasis to org-mode style emphasis"
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (save-mark-and-excursion
+        (save-restriction
+          (goto-char (point-min))
+          (while (re-search-forward "-\\{2\\}\\|#\\|\\*\\{1,2\\}\\(?1:.+?\\)\\*\\{1,2\\}|_\\{1,2\\}\\(?2:.+?\\)_\\{1,2\\}\\|`\\(?3:[^`].+?\\)`\\|```\\(?4:.*\n\\)\\(?5:[^`]*\\)```" nil t)
+            (pcase (match-string-no-properties 0)
+              ("--"  (when (looking-at "\n")
+                       (delete-char -2)
+                       (insert "=================================\n")
+                       (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)
+                       ))
+              ("#" (if (looking-at "#\\|[[:blank:]]")
+                       (progn
+                         (delete-char -1)
+                         (insert "*"))))
 
-                ((pred (lambda (el) (string-match-p "\\[\\(.[^\\[]+?\\)\\]\\[\\(.[^\\[]+?\\)\\]\\{1\\}" el)))
-                 (replace-match "\\2 [fn:\\3]"))
+              ((pred (lambda (el) (string-match-p "\\*\\{1\\}[^\\*]*?\\*\\{1\\}" el)))
+               (replace-match "/\\1/"))
 
-                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}" el)))
-                 (replace-match "[[*\\5][\\4]]"))
+              ((pred (lambda (el) (string-match-p "\\*\\{2\\}.+?\\*\\{2\\}" el)))
+               (replace-match "*\\1*"))
 
-                ((pred (lambda (el) (string-match-p "!\\[\\(.*\\)\\]\(\\([^#].*\\)\)" el)))
-                 (progn
-                   (replace-match "[[\\7][\\6]]")
-                   )
-                 )
-                ((pred (lambda (el) (string-match-p "[[:blank:]]\\[\\(.*\\)\\]\(\\([^#].*\\)\)" el)))
-                 (progn
-                   (replace-match " [[\\7][\\6]]")
-                   )
-                 )
-                ))
-            )))
-      (goto-char (point-min))
-      (while
-          (re-search-forward
-           "\\[fn:\\(.+?\\)\\]\\{1\\}" nil t)
-        (pcase (match-string 0)
-          ((pred (lambda (el) (string-match-p "\\[fn:.+?[[:blank:]].+?\\]\\{1\\}" (substring-no-properties el))))
-           (progn
-             (replace-regexp-in-region "[[:blank:]]" "_" (match-beginning 1) (match-end 1))
-             ))
-          ))
+              ((pred (lambda (el) (string-match-p "_\\{1\\}[^_]*?_\\{1\\}" el)))
+               (replace-match "/\\2/"))
+
+              ((pred (lambda (el) (string-match-p "_\\{2\\}.+?_\\{2\\}" el)))
+               (replace-match "*\\2*"))
+
+              ((pred (lambda (el) (string-match-p "`[^`].+?`" el)))
+               (replace-match "=\\3="))
+
+              ((pred (lambda (el) (string-match-p "```.*\n[^`]*```" el)))
+               (replace-match "#+begin_src \\4\n\\5\n#+end_src\n")))))))
+    nil))
+
+(defun consult-gh--markdown-to-org-links (&optional buffer)
+"Convert markdown links to org-mode links"
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (save-mark-and-excursion
+        (save-restriction
+          (goto-char (point-min))
+          (while (re-search-forward "\\[\\(?1:.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(?2:.[^\\[]+?\\)\\]\\[\\(?3:.[^\\[]+?\\)\\]\\{1\\}\\|\\[\\(?4:.+?\\)\\]\(#\\(?5:.+?\\)\)\\{1\\}\\|.\\[\\(?6:.+?\\)\\]\(\\(?7:[^#].+?\\)\)\\{1\\}" nil t)
+            (pcase (match-string-no-properties 0)
+              ((pred (lambda (el) (string-match-p "\\[.+?\\]\\[\\]\\{1\\}" el)))
+               (replace-match "[fn:\\1]"))
+
+              ((pred (lambda (el) (string-match-p "\\[.[^\\[]+?\\]\\[.[^\\[]+?\\]\\{1\\}" el)))
+               (replace-match "\\2 [fn:\\3]"))
+
+              ((pred (lambda (el) (string-match-p "\\[.+?\\]\(#.+?\)\\{1\\}" el)))
+               (replace-match "[[*\\5][\\4]]"))
+
+              ((pred (lambda (el) (string-match-p "!\\[.*\\]\([^#].*\)" el)))
+               (replace-match "[[\\7][\\6]]"))
+
+              ((pred (lambda (el) (string-match-p "[[:blank:]]\\[.*\\]\([^#].*\)" el)))
+               (replace-match " [[\\7][\\6]]"))))
+
+          (goto-char (point-min))
+          (while
+              (re-search-forward
+               "\\[fn:\\(.+?\\)\\]\\{1\\}" nil t)
+            (pcase (match-string 0)
+              ((pred (lambda (el) (string-match-p "\\[fn:.+?[[:blank:]].+?\\]\\{1\\}" (substring-no-properties el))))
+               (progn
+                 (replace-regexp-in-region "[[:blank:]]" "_" (match-beginning 1) (match-end 1)))))))))
+    nil))
+
+(defun consult-gh--markdown-to-org (&optional buffer)
+  "Convert from markdown format to org-mode format"
+  (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name))))
+    (with-current-buffer buffer
+      (consult-gh--markdown-to-org-footnotes buffer)
+      (consult-gh--markdown-to-org-emphasis buffer)
+      (consult-gh--markdown-to-org-links buffer)
       (org-mode)
-      (org-table-map-tables 'org-table-align)
+      (org-table-map-tables 'org-table-align t)
       (org-fold-show-all)
-      (goto-char (point-min))
-      )))
+      (goto-char (point-min))))
+  nil)
 
 (defun consult-gh--call-process (&rest args)
  "Run \"gh\" with args and return outputs"
@@ -232,7 +240,8 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--command-to-string "repo" "list" org "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
 (defun consult-gh--repo-browse-url-action ()
@@ -253,6 +262,7 @@
         ('markdown-mode
          (if (featurep 'markdown-mode)
              (progn
+             (require 'markdown-mode)
              (markdown-mode)
              (markdown-display-inline-images))
              (message "markdown-mode not available")))
@@ -281,6 +291,7 @@
 
 
 (defun consult-gh-repo-clone (&optional repo targetdir name)
+"Interactively clone the repo to targetdir/name directory after confirming names and dir. It uses \"gh clone repo ...\"."
   (interactive)
   (let ((repo (read-string "repo: " repo))
         (targetdir (read-directory-name "target directory: " targetdir))
@@ -290,6 +301,7 @@
     ))
 
 (defun consult-gh--repo-clone-action ()
+"action function for cloning the repo that can be used in conslt-gh source."
   (lambda (cand)
     (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand))))
          (package (car (last (split-string reponame "\/"))))
@@ -300,11 +312,12 @@
     )))
 
 (defun consult-gh--repo-fork (repo &rest args)
-"Clone the repo to targetdir/name directory. It uses \"gh clone repo ...\"."
+"Fork the repo to user's account (login on gh). It uses \"gh fork repo ...\"."
   (consult-gh--command-to-string "repo" "fork" (format "%s" repo) )
-  (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face) )))
+  (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face))))
 
 (defun consult-gh-repo-fork (&optional repo name &rest args)
+"Interactively Fork the repo to user's account (login on gh) after confirming name. It uses \"gh fork repo ...\"."
   (interactive)
   (let* ((repo (read-string "repo: " repo))
         (package (car (last (split-string repo "\/"))))
@@ -313,6 +326,7 @@
     ))
 
 (defun consult-gh--repo-fork-action ()
+"action function for forking the repo that can be used in conslt-gh source."
   (lambda (cand)
      (let* ((reponame  (consult-gh--output-cleanup (string-trim (substring-no-properties cand)))))
       (consult-gh--repo-fork reponame)
@@ -368,7 +382,7 @@
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
          (repolist  (or (consult-gh--command-to-string "search" "repos" repo "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
-    (remove "" (mapcar (lambda (src) (propertize (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
+    (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
 (defun consult-gh--issue-list (repo)
@@ -472,7 +486,7 @@
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
                     :annotate ,(consult-gh--repo-annotate)
-                    :state ,#'consult-gh--repo-preview
+                    :state ,(and consult-gh-show-preview #'consult-gh--repo-preview)
                     :defualt t
                     :history t
                     :sort t
@@ -486,7 +500,7 @@
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
                     :annotate ,(consult-gh--repo-annotate)
-                    :state ,#'consult-gh--repo-preview
+                    :state ,(and consult-gh-show-preview #'consult-gh--repo-preview)
                     :default t
                     :history t
                     :sort t
@@ -500,13 +514,13 @@
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-issue-action)
                     :annotate ,(consult-gh--issue-annotate)
-                    :state ,#'consult-gh--issue-preview
+                    :state ,(and consult-gh-show-preview #'consult-gh--issue-preview)
                     :default t
                     :history t
                     :sort t
                     ))
 
-(defun consult-gh-orgs (orgs)
+(defun consult-gh-orgs (&optional orgs)
 "Get a list of organizations from the user and provide their repos."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
@@ -524,15 +538,15 @@
                     :history 'consult-gh--repos-history
                     :category 'consult-gh
                     :sort t
-                    ))
-      )))
+                    )))))
 
 (defun consult-gh-default-repos ()
 "Show the repos from default organizaitons."
   (interactive)
 (consult-gh-orgs consult-gh-default-orgs-list))
 
-(defun consult-gh-search-repos (repos)
+(defun consult-gh-search-repos (&optional repos)
+
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
@@ -552,7 +566,7 @@
                     ))
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
-(defun consult-gh-issue-list (repos)
+(defun consult-gh-issue-list (&optional repos)
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
@@ -572,8 +586,7 @@
                     :sort t
                     )
           )
-      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))
-))
+      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
 (provide 'consult-gh)
 
