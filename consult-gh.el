@@ -112,22 +112,21 @@
 (defun consult-gh--markdown-to-org (&optional buffer)
   "Convert from markdown format to org-mode format"
   (let ((buffer (if buffer buffer (get-buffer-create consult-gh-preview-buffer-name))))
-    (save-mark-and-excursion
-      (save-restriction
-        (with-current-buffer buffer
+    (with-current-buffer buffer
+      (save-mark-and-excursion
+        (save-restriction
           (progn
             (goto-char (point-max))
             (insert "\n")
             (while (re-search-backward "^\\[\\([^fn].*\\)\\]:" nil t)
               (replace-match "[fn:\\1] ")
               )
-            (when (match-string-no-properties 0)
-            (move-beginning-of-line 0)
-            (insert "\n* Footnotes\n"))
+            ;; (move-beginning-of-line 0)
+            ;; (insert "\n* Footnotes\n"))
             (goto-char (point-min-marker)))
           (progn
             (goto-char (point-min))
-            (while (re-search-forward "--\\|#\\|`\\|\\*\\{1,2\\}\\|_\\|\\[\\(.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}\\|\\[\\(.+?\\)\\]\(\\(.+?\\)\)\\{1\\}" nil t)
+            (while (re-search-forward "--\\|#\\|`\\|\\*\\{1,2\\}\\|_\\|\\[\\(.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(.[^\\[]+?\\)\\]\\[\\(.[^\\[]+?\\)\\]\\{1\\}\\|\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}\\|.\\[\\(.+?\\)\\]\(\\([^#].+?\\)\)\\{1\\}" nil t)
               (pcase (match-string-no-properties 0)
           ;;;my code;;
                 ("--"  (when (looking-at "\n")
@@ -171,20 +170,38 @@
                 ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\\[\\]\\{1\\}" el)))
                  (replace-match "[fn:\\1]"))
 
-                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}" el)))
-                 (replace-match "[[*\\3][\\2]]"))
+                ((pred (lambda (el) (string-match-p "\\[\\(.[^\\[]+?\\)\\]\\[\\(.[^\\[]+?\\)\\]\\{1\\}" el)))
+                 (replace-match "\\2 [fn:\\3]"))
 
-                ((pred (lambda (el) (string-match-p "\\[\\(.*\\)\\]\(\\(.*\\)\)" el)))
+                ((pred (lambda (el) (string-match-p "\\[\\(.+?\\)\\]\(#\\(.+?\\)\)\\{1\\}" el)))
+                 (replace-match "[[*\\5][\\4]]"))
+
+                ((pred (lambda (el) (string-match-p "!\\[\\(.*\\)\\]\(\\([^#].*\\)\)" el)))
                  (progn
-                   (replace-match "[[\\5][\\4]]")
-                   (goto-char (match-beginning 0))
-                   (if (looking-back "!")
-                       (delete-char -1))
+                   (replace-match "[[\\7][\\6]]")
+                   )
+                 )
+                ((pred (lambda (el) (string-match-p "[[:blank:]]\\[\\(.*\\)\\]\(\\([^#].*\\)\)" el)))
+                 (progn
+                   (replace-match " [[\\7][\\6]]")
                    )
                  )
                 ))
             )))
-      (goto-char (point-min-marker))
+      (goto-char (point-min))
+      (while
+          (re-search-forward
+           "\\[fn:\\(.+?\\)\\]\\{1\\}" nil t)
+        (pcase (match-string 0)
+          ((pred (lambda (el) (string-match-p "\\[fn:.+?[[:blank:]].+?\\]\\{1\\}" (substring-no-properties el))))
+           (progn
+             (replace-regexp-in-region "[[:blank:]]" "_" (match-beginning 1) (match-end 1))
+             ))
+          ))
+      (org-mode)
+      (org-table-map-tables 'org-table-align)
+      (org-fold-show-all)
+      (goto-char (point-min))
       )))
 
 (defun consult-gh--call-process (&rest args)
@@ -242,8 +259,7 @@
         ('org-mode
          (let ((org-display-remote-inline-images 'download))
          (consult-gh--markdown-to-org buffer)
-         (org-mode)
-         (org-fold-show-all)))
+         ))
         (_ ()))
       )
     ))
@@ -387,8 +403,7 @@
         ('org-mode
          (let ((org-display-remote-inline-images 'download))
          (consult-gh--markdown-to-org buffer)
-         (org-mode)
-         (org-fold-show-all)))
+         ))
         (_ ()))
       )
     ))
