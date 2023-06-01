@@ -134,13 +134,12 @@
       (save-mark-and-excursion
         (save-restriction
           (goto-char (point-min))
-          (while (re-search-forward "-\\{2\\}\\|#\\|\\*\\{1,2\\}\\(?1:.+?\\)\\*\\{1,2\\}|_\\{1,2\\}\\(?2:.+?\\)_\\{1,2\\}\\|`\\(?3:[^`].+?\\)`\\|```\\(?4:.*\n\\)\\(?5:[^`]*\\)```" nil t)
+          (when (re-search-forward "^-\\{2\\}$" nil t)
+          (delete-char -2)
+          (insert "=================================\n")
+          (replace-regexp "\\(^[a-zA-Z]+:[[:blank:]]\\)" "#+\\1" nil 0 (point-marker) nil nil))
+          (while (re-search-forward "#\\|\\*\\{1,2\\}\\(?1:.+?\\)\\*\\{1,2\\}|_\\{1,2\\}\\(?2:.+?\\)_\\{1,2\\}\\|`\\(?3:[^`].+?\\)`\\|```\\(?4:.*\n\\)\\(?5:[^`]*\\)```" nil t)
             (pcase (match-string-no-properties 0)
-              ("--"  (when (looking-at "\n")
-                       (delete-char -2)
-                       (insert "=================================\n")
-                       (replace-regexp "\\([a-zA-Z]+:\\)" "#+\\1" nil 0 (point-marker) nil nil)
-                       ))
               ("#" (if (looking-at "#\\|[[:blank:]]")
                        (progn
                          (delete-char -1)
