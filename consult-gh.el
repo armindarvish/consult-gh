@@ -31,6 +31,14 @@
   :group 'consult-gh
   :type 'symbol)
 
+(defcustom consult-gh-tempdir nil
+"Temporary file directory for the `consult-gh' package."
+  :group 'consult-gh
+  :type 'string
+)
+
+(setq consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory))
+
 (defcustom consult-gh--default-maxnum 30
   "Maximum number of output for gh list operations normally passed top \"--limit\" in the command line."
   :group 'consult-gh
@@ -45,6 +53,11 @@
   "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'."
   :group 'consult-gh
   :type 'symbol)
+
+(defcustom consult-gh--preview-buffers-list (list)
+  "List of currently open preview buffers"
+  :group 'consult-gh
+  :type 'list)
 
 (defcustom consult-gh-default-orgs-list (list)
   "List of default github orgs for `consult-gh' package."
@@ -77,10 +90,16 @@
   :group 'consult-gh
   :type 'function)
 
-(defcustom consult-gh-issue-action #'consult-gh--browse-issue-url-action
-  "This variable defines the function that is used when selecting an issue. By default it is set to `consult-gh--browse-issue-url-action', but you can change it to other actions."
+(defcustom consult-gh-issue-action #'consult-gh--issue-browse-url-action
+  "This variable defines the function that is used when selecting an issue. By default it is set to `consult-gh--issue-browse-url-action', but you can change it to other actions."
   :group 'consult-gh
   :type 'function)
+
+(defcustom consult-gh-file-action #'consult-gh--files-browse-url-action
+  "This variable defines the function that is used when selecting a file. By default it is set to `consult-gh--browse-files-url-action', but you can change it to other actions."
+  :group 'consult-gh
+  :type 'function)
+
 
 (defvar consult-gh--repos-history nil
   "History variable for repos used in `consult-gh-search-repos'.")
@@ -93,7 +112,6 @@
 
 (defvar consult-gh--known-orgs-list nil
   "List of previously visited orgs for `consult-gh'.")
-
 
 (defvar consult-gh--known-repos-list nil
   "List of previously visited orgs for `consult-gh'.")
@@ -234,6 +252,125 @@
               nil)
             )))
 
+(defun consult-gh--api-get-json (url)
+  (consult-gh--call-process "api" "-H" "Accept: application/vnd.github+json" url))
+
+(defun consult-gh--api-json-to-table (json key)
+  (let ((json-object-type 'hash-table)
+        (json-array-type 'list)
+        (json-key-type 'string)
+        (json-false :false))
+        (gethash key (json-read-from-string json))))
+
+(defun consult-gh--files-get-trees (repo)
+  (consult-gh--api-get-json (concat "repos/" repo "/git/trees/HEAD:?recursive=1")))
+
+(defun consult-gh--files-table-to-list (table repo)
+    (mapcar (lambda (el) (propertize (gethash "path" el) ':repo repo ':url (gethash "url" el) ':path (gethash "path" el) ':size (gethash "size" el))) table))
+
+(defun consult-gh--files-list-items (repo)
+(let ((response (consult-gh--files-get-trees repo)))
+  (if (eq (car response) 0)
+      (consult-gh--files-table-to-list (consult-gh--api-json-to-table (cadr response) "tree") repo)
+    (message (cadr response)))))
+
+(defun consult-gh--files-get-content (url)
+  (let* ((response (consult-gh--api-get-json url))
+        (content (if (eq (car response) 0) (consult-gh--api-json-to-table (cadr response) "content")
+                   nil)))
+    (if content
+        (base64-decode-string content)
+      "")))
+
+(defun consult-gh--files-browse-url-action ()
+"Default action to run on selected itesm in `consult-gh'."
+(lambda (cand)
+  (let* ((path (substring-no-properties (get-text-property 0 ':path cand)))
+        (repo (substring-no-properties (get-text-property 0 ':repo cand)))
+        (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
+        (browse-url url))))
+
+(defun consult-gh--files-view (repo path url &optional tempdir buffer)
+  "Default action to run on selected item in `consult-gh'."
+  (let* ((tempdir (or tempdir consult-gh-tempdir))
+         (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
+         (suffix (concat "." (file-name-extension path)))
+         (temp-file (expand-file-name path tempdir))
+         (text (consult-gh--files-get-content url)))
+
+         (make-directory (file-name-directory temp-file) t)
+         (with-temp-file temp-file
+           (insert text)
+           (set-buffer-file-coding-system 'raw-text)
+           )
+         (find-file temp-file)))
+
+(defun consult-gh--files-view-action ()
+  "Default action to run on selected item in `consult-gh'."
+  (lambda (cand)
+    (let* ((repo (get-text-property 0 ':repo cand))
+           (path (get-text-property 0 ':path cand))
+           (url (get-text-property 0 ':url cand))
+           (file-p (or (file-name-extension path) (get-text-property 0 ':size cand))))
+      (if file-p
+          (consult-gh--files-view repo path url)
+      ))))
+
+(defun consult-gh--files-group (cand transform)
+"Group the list of item in `consult-gh' by the name of the user"
+  (let ((name (get-text-property 0 ':repo cand)))
+           (if transform (substring cand) name)))
+
+(defun consult-gh--files-preview ()
+  (lambda (action cand)
+    (let* ((open (consult--temporary-files))
+           (preview (consult--buffer-preview))
+           (tempdir consult-gh-tempdir)
+           )
+      (pcase action
+        ('preview
+         (if cand
+             (let* ((repo (get-text-property 0 ':repo cand))
+                    (path (get-text-property 0 ':path cand))
+                    (url (get-text-property 0 ':url cand))
+                    (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
+                    (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
+                    (suffix (concat "." (file-name-extension path)))
+                    (temp-file (expand-file-name path tempdir))
+                    (_ (and file-p (make-directory (file-name-directory temp-file) t)))
+                    (text (and file-p (consult-gh--files-get-content url)))
+                    (_ (and file-p (with-temp-file temp-file (insert text) (set-buffer-file-coding-system 'raw-text)
+                                                   )))
+                    (buffer (or (and file-p (with-temp-buffer (find-file-noselect temp-file t t))) nil)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
+               (funcall preview action
+                        (and
+                         cand
+                         buffer
+                         ))) ()))
+        ('return
+         (when consult-gh--preview-buffers-list
+           (mapcar (lambda (buff) (if (buffer-live-p buff) (kill-buffer-if-not-modified buff))) consult-gh--preview-buffers-list))
+         )
+        ))))
+
+(defun consult-gh--files-narrow (item)
+"Create narrowing function for items in `consult-gh' by the first letter of the name of the user/organization."
+  (if (stringp item)
+    (cons (string-to-char (substring-no-properties item)) (substring-no-properties item))))
+
+(defun consult-gh--files-annotate ()
+"Annotate each repo in `consult-gh' by user, visibility and date."
+(lambda (cand)
+  (if-let ((size (format "%s Bytes" (get-text-property 0 :size cand))))
+
+      (progn
+        (setq size (propertize size 'face 'consult-gh-visibility-face))
+        (format "\t%s" size)
+     )
+    nil)
+  ))
+
 (defun consult-gh--repo-list (org)
 "Get a list of repos of \"organization\" and format each as a text with properties to pass to consult."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
@@ -246,8 +383,12 @@
 (defun consult-gh--repo-browse-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
-  (consult-gh--call-process "repo" "view" "--web" (substring-no-properties cand))
-))
+  (let* ((response (consult-gh--call-process "browse" "--repo" (substring-no-properties cand) "--no-browser"))
+        (url (string-trim (cadr response))))
+    (if (eq (car response) 0)
+        (browse-url url)
+      (message url))
+)))
 
 (defun consult-gh--repo-view (repo &optional buffer)
   "Default action to run on selected item in `consult-gh'."
@@ -282,6 +423,13 @@
       (consult-gh--repo-view repo)
       (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
       (rename-buffer buffername t)
+      )))
+
+(defun consult-gh--repo-browse-files-action ()
+  "Default action to run on selected item in `consult-gh'."
+  (lambda (cand)
+    (let* ((repo (get-text-property 0 ':repo cand)))
+      (consult-gh-browse-repo-files (list repo))
       )))
 
 (defun consult-gh--repo-clone (repo targetdir name)
@@ -345,6 +493,7 @@
             ('preview
              (let ((repo (substring-no-properties cand))
                    (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
                (consult-gh--repo-view repo buffer)
                (funcall preview action
                         (and
@@ -353,6 +502,9 @@
                          )
                         ))
              )
+            ('return
+             (when consult-gh--preview-buffers-list
+             (mapcar (lambda (buff) (if (buffer-live-p buff) (kill-buffer-if-not-modified buff))) consult-gh--preview-buffers-list)))
             )
         ))))
 
@@ -394,7 +546,7 @@
    ))
     )
 
-(defun consult-gh--browse-issue-url-action ()
+(defun consult-gh--issue-browse-url-action ()
 "Default action to run on selected itesm in `consult-gh'."
 (lambda (cand)
   (consult-gh--call-process "issue" "view" "--repo" (substring-no-properties (get-text-property 0 :repo cand))  "--web" (substring-no-properties (get-text-property 0 :issue cand)))
@@ -443,6 +595,7 @@
              (let ((repo (substring (get-text-property 0 :repo cand)))
                    (issue (substring (get-text-property 0 :issue cand)))
                    (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
                (consult-gh--issue-view repo issue buffer)
                (funcall preview action
                         (and
@@ -451,6 +604,9 @@
                          )
                         ))
              )
+            ('return
+             (when consult-gh--preview-buffers-list
+             (mapcar #'kill-buffer-if-not-modified consult-gh--preview-buffers-list)))
             )
         ))))
 
@@ -524,6 +680,20 @@
                     :sort t
                     ))
 
+(defun consult-gh--make-source-from-files  (repo)
+"Create a source for consult from contents of a repo to use in `consult-gh-browse-repo'."
+                  `(:narrow ,(consult-gh--files-narrow repo)
+                    :category 'consult-gh
+                    :items  ,(consult-gh--api-trees-list-items repo)
+                    :face 'consult-gh-default-face
+                    :action ,(funcall 'consult-gh--files-browse-url-action)
+                    :annotate ,(consult-gh--files-annotate)
+                    :state ,(and consult-gh-show-preview #'consult-gh--files-preview)
+                    :default t
+                    :history t
+                    :sort t
+                    ))
+
 (defun consult-gh-orgs (&optional orgs)
 "Get a list of organizations from the user and provide their repos."
   (interactive
@@ -591,6 +761,28 @@
                     )
           )
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
+
+(defun consult-gh-browse-repo-files (&optional repos)
+
+"Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
+  (interactive
+   (let ((crm-separator consult-gh-crm-separator)
+         (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
+   (list (delete-dups (completing-read-multiple "Repos: " candidates nil nil nil nil nil t)))))
+  (let ((consult-gh-tempdir (expand-file-name (make-temp-name "") consult-gh-tempdir))
+        (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-files repos))))
+    (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
+      (progn
+          (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
+          (consult--multi candidates
+                    :require-match t
+                    :sort t
+                    :group #'consult-gh--files-group
+                    :history 'consult-gh--repos-history
+                    :category 'consult-gh
+                    :sort t
+                    ))
+      (message (concat "consult-gh: " (propertize "no contents matched your repo!" 'face 'warning))))))
 
 (provide 'consult-gh)
 

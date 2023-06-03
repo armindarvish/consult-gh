@@ -20,10 +20,13 @@
 (defun consult-gh-embark-open-in-browser (cand)
   "Open the link in browser"
   (let* ((repo (get-text-property 0 :repo cand))
-         (issue (or (get-text-property 0 :issue cand) nil)))
+         (issue (or (get-text-property 0 :issue cand) nil))
+         (path (or (get-text-property 0 :path cand) nil)))
     (if issue
         (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties issue))
-      (consult-gh--call-process "repo" "view" "--web" (substring repo)))))
+      (if path
+        (browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path))
+        (consult-gh--call-process "repo" "view" "--web" (substring repo))))))
 
 (defun consult-gh-embark-get-ssh-link (cand)
   "Copy the ssh based link of the repo to `kill-ring'."
