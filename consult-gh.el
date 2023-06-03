@@ -684,7 +684,7 @@
 "Create a source for consult from contents of a repo to use in `consult-gh-browse-repo'."
                   `(:narrow ,(consult-gh--files-narrow repo)
                     :category 'consult-gh
-                    :items  ,(consult-gh--api-trees-list-items repo)
+                    :items  ,(consult-gh--files-list-items repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall 'consult-gh--files-browse-url-action)
                     :annotate ,(consult-gh--files-annotate)
