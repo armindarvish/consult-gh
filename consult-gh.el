@@ -323,8 +323,7 @@
 
 (defun consult-gh--files-preview ()
   (lambda (action cand)
-    (let* ((open (consult--temporary-files))
-           (preview (consult--buffer-preview))
+    (let* ((preview (consult--buffer-preview))
            (tempdir consult-gh-tempdir)
            )
       (pcase action
@@ -341,7 +340,7 @@
                     (text (and file-p (consult-gh--files-get-content url)))
                     (_ (and file-p (with-temp-file temp-file (insert text) (set-buffer-file-coding-system 'raw-text)
                                                    )))
-                    (buffer (or (and file-p (with-temp-buffer (find-file-noselect temp-file t t))) nil)))
+                    (buffer (or (and file-p (with-temp-buffer (find-file-noselect temp-file t))) nil)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
                (funcall preview action
                         (and
@@ -686,7 +685,7 @@
                     :category 'consult-gh
                     :items  ,(consult-gh--files-list-items repo)
                     :face 'consult-gh-default-face
-                    :action ,(funcall 'consult-gh--files-browse-url-action)
+                    :action ,(funcall consult-gh-file-action)
                     :annotate ,(consult-gh--files-annotate)
                     :state ,(and consult-gh-show-preview #'consult-gh--files-preview)
                     :default t
