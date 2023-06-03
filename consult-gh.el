@@ -31,6 +31,27 @@
   :group 'consult-gh
   :type 'symbol)
 
+(defcustom consult-gh-repos-category 'consult-gh-repos
+  "Category symbol for the `consult-gh' package."
+  :group 'consult-gh
+  :type 'symbol)
+
+(defcustom consult-gh--issues-category 'consult-gh-issues
+  "Category symbol for the `consult-gh' package."
+  :group 'consult-gh
+  :type 'symbol)
+
+
+(defcustom consult-gh-files-category 'consult-gh-files
+  "Category symbol for the `consult-gh' package."
+  :group 'consult-gh
+  :type 'symbol)
+
+(defcustom consult-gh--issues-category 'consult-gh-issues
+  "Category symbol for the `consult-gh' package."
+  :group 'consult-gh
+  :type 'symbol)
+
 (defcustom consult-gh-tempdir nil
 "Temporary file directory for the `consult-gh' package."
   :group 'consult-gh
@@ -76,6 +97,11 @@
   :type 'boolean)
 
 (defcustom consult-gh-default-clone-directory nil
+  "Default directory to clone github repos in for `consult-gh' package."
+  :group 'consult-gh
+  :type 'string)
+
+(defcustom consult-gh-default-save-directory "~/Downloads/"
   "Default directory to clone github repos in for `consult-gh' package."
   :group 'consult-gh
   :type 'string)
@@ -290,7 +316,7 @@
         (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
         (browse-url url))))
 
-(defun consult-gh--files-view (repo path url &optional tempdir buffer)
+(defun consult-gh--files-view (repo path url &optional no-select tempdir buffer)
   "Default action to run on selected item in `consult-gh'."
   (let* ((tempdir (or tempdir consult-gh-tempdir))
          (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
@@ -303,7 +329,10 @@
            (insert text)
            (set-buffer-file-coding-system 'raw-text)
            )
-         (find-file temp-file)))
+         (if no-select
+             (find-file-noselect temp-file)
+           (find-file temp-file)
+         )))
 
 (defun consult-gh--files-view-action ()
   "Default action to run on selected item in `consult-gh'."
@@ -315,6 +344,22 @@
       (if file-p
           (consult-gh--files-view repo path url)
       ))))
+
+(defun consult-gh--files-save-file-action ()
+(lambda (cand)
+    (let* ((repo (get-text-property 0 ':repo cand))
+           (path (get-text-property 0 ':path cand))
+           (url (get-text-property 0 ':url cand))
+           (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
+           (filename (and file-p (file-name-nondirectory path)))
+           (buffer (and file-p (consult-gh--files-view repo path url t))))
+    (if file-p
+    (save-mark-and-excursion
+      (save-restriction
+        (with-current-buffer buffer
+          (write-file (read-file-name "Save As: " consult-gh-default-save-directory filename nil filename) t)
+        )
+        ))))))
 
 (defun consult-gh--files-group (cand transform)
 "Group the list of item in `consult-gh' by the name of the user"
@@ -682,7 +727,7 @@
 (defun consult-gh--make-source-from-files  (repo)
 "Create a source for consult from contents of a repo to use in `consult-gh-browse-repo'."
                   `(:narrow ,(consult-gh--files-narrow repo)
-                    :category 'consult-gh
+                    :category 'consult-gh-files
                     :items  ,(consult-gh--files-list-items repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-file-action)
@@ -778,7 +823,7 @@
                     :sort t
                     :group #'consult-gh--files-group
                     :history 'consult-gh--repos-history
-                    :category 'consult-gh
+                    :category 'consult-gh-files
                     :sort t
                     ))
       (message (concat "consult-gh: " (propertize "no contents matched your repo!" 'face 'warning))))))

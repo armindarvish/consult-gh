@@ -44,6 +44,27 @@
   :group 'consult-gh
   :type 'symbol)
 
+(defcustom consult-gh-repos-category 'consult-gh-repos
+  "Category symbol for the `consult-gh' package."
+  :group 'consult-gh
+  :type 'symbol)
+
+(defcustom consult-gh--issues-category 'consult-gh-issues
+  "Category symbol for the `consult-gh' package."
+  :group 'consult-gh
+  :type 'symbol)
+
+
+(defcustom consult-gh-files-category 'consult-gh-files
+  "Category symbol for the `consult-gh' package."
+  :group 'consult-gh
+  :type 'symbol)
+
+(defcustom consult-gh--issues-category 'consult-gh-issues
+  "Category symbol for the `consult-gh' package."
+  :group 'consult-gh
+  :type 'symbol)
+
 (defcustom consult-gh-tempdir nil
 "Temporary file directory for the `consult-gh' package."
   :group 'consult-gh
@@ -89,6 +110,11 @@
   :type 'boolean)
 
 (defcustom consult-gh-default-clone-directory nil
+  "Default directory to clone github repos in for `consult-gh' package."
+  :group 'consult-gh
+  :type 'string)
+
+(defcustom consult-gh-default-save-directory "~/Downloads/"
   "Default directory to clone github repos in for `consult-gh' package."
   :group 'consult-gh
   :type 'string)
@@ -345,7 +371,7 @@
 #+end_src
 ***** view file
 #+begin_src emacs-lisp
-(defun consult-gh--files-view (repo path url &optional tempdir buffer)
+(defun consult-gh--files-view (repo path url &optional no-select tempdir buffer)
   "Default action to run on selected item in `consult-gh'."
   (let* ((tempdir (or tempdir consult-gh-tempdir))
          (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
@@ -358,7 +384,10 @@
            (insert text)
            (set-buffer-file-coding-system 'raw-text)
            )
-         (find-file temp-file)))
+         (if no-select
+             (find-file-noselect temp-file)
+           (find-file temp-file)
+         )))
 
 (defun consult-gh--files-view-action ()
   "Default action to run on selected item in `consult-gh'."
@@ -370,6 +399,25 @@
       (if file-p
           (consult-gh--files-view repo path url)
       ))))
+
+#+end_src
+***** save file
+#+begin_src emacs-lisp
+(defun consult-gh--files-save-file-action ()
+(lambda (cand)
+    (let* ((repo (get-text-property 0 ':repo cand))
+           (path (get-text-property 0 ':path cand))
+           (url (get-text-property 0 ':url cand))
+           (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
+           (filename (and file-p (file-name-nondirectory path)))
+           (buffer (and file-p (consult-gh--files-view repo path url t))))
+    (if file-p
+    (save-mark-and-excursion
+      (save-restriction
+        (with-current-buffer buffer
+          (write-file (read-file-name "Save As: " consult-gh-default-save-directory filename nil filename) t)
+        )
+        ))))))
 
 #+end_src
 **** group
@@ -814,7 +862,7 @@
 (defun consult-gh--make-source-from-files  (repo)
 "Create a source for consult from contents of a repo to use in `consult-gh-browse-repo'."
                   `(:narrow ,(consult-gh--files-narrow repo)
-                    :category 'consult-gh
+                    :category 'consult-gh-files
                     :items  ,(consult-gh--files-list-items repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-file-action)
@@ -925,7 +973,7 @@
                     :sort t
                     :group #'consult-gh--files-group
                     :history 'consult-gh--repos-history
-                    :category 'consult-gh
+                    :category 'consult-gh-files
                     :sort t
                     ))
       (message (concat "consult-gh: " (propertize "no contents matched your repo!" 'face 'warning))))))
@@ -1005,23 +1053,38 @@
   "Clone the repo at point."
   (funcall (consult-gh--repo-clone-action) (get-text-property 0 :repo cand)))
 
+
 (defun consult-gh-embark-fork-repo (cand)
   "Fork the repo at point."
   (funcall (consult-gh--repo-fork-action) (get-text-property 0 :repo cand)))
 
-(defvar-keymap consult-gh-embark-actions
+(defun consult-gh-embark-save-file (cand)
+  "Save the file at point."
+  (funcall (consult-gh--files-save-file-action) cand))
+
+(defvar-keymap consult-gh-embark-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
-  "s" #'consult-gh-embark-get-ssh-link
-  "h" #'consult-gh-embark-get-https-link
+  "l s" #'consult-gh-embark-get-ssh-link
+  "l h" #'consult-gh-embark-get-https-link
   "e" #'consult-gh-embark-get-straight-usepackage
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
   "z" #'consult-gh-embark-view-issues-of-repo
-  "o" #'consult-gh-embark-open-in-browser)
+  "o" #'consult-gh-embark-open-in-browser
+)
 
-(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions))
+(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions-map))
+
+
+(defvar-keymap consult-gh-embark-files-actions-map
+  :doc "Keymap for consult-gh-embark-files"
+  :parent consult-gh-embark-actions-map
+  "s" #'consult-gh-embark-save-file)
+
+(add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
+
 
 (provide 'consult-gh-embark)
 #+end_src
