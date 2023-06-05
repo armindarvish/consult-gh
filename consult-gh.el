@@ -65,7 +65,7 @@
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-crm-separator "[\s]"
+(defcustom consult-gh-crm-separator (or crm-separator "[\s]")
   "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'."
   :group 'consult-gh
   :type 'string)
@@ -784,7 +784,6 @@
   (interactive
    (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
-     (print crm-separator)
    (list (delete-dups (completing-read-multiple "Search GitHub Users/Organization: " candidates nil nil nil 'consult-gh--org-history nil t)))))
 
   (let ((candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-org orgs))))
