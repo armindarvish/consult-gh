@@ -782,7 +782,7 @@
 (defun consult-gh-orgs (&optional orgs)
 "Get a list of organizations from the user and provide their repos."
   (interactive
-   (let ((crm-separator consult-gh-crm-separator)
+   (let* ((crm-separator `,consult-gh-crm-separator)
          (candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
    (list (delete-dups (completing-read-multiple "Search GitHub Users/Organization: " candidates nil nil nil 'consult-gh--org-history nil t)))))
 
@@ -809,7 +809,7 @@
 
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
-   (let ((crm-separator consult-gh-crm-separator)
+   (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
    (list (delete-dups (completing-read-multiple "Search GitHub Repositories: " candidates nil nil nil nil nil t)))))
   (let ((candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
@@ -830,7 +830,7 @@
 (defun consult-gh-issue-list (&optional repos)
 "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
-   (let ((crm-separator consult-gh-crm-separator)
+   (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
    (list (delete-dups (completing-read-multiple "Search GitHub Repositories: " candidates nil nil nil nil nil t)))))
   (let ((candidates (consult--slow-operation "Collecting Issues ..." (mapcar #'consult-gh--make-source-from-issues repos))))
@@ -854,7 +854,7 @@
 
   "Get a list of repos from the user and return the results in `consult-gh' menu by runing \"gh search repos\"."
   (interactive
-   (let ((crm-separator consult-gh-crm-separator)
+   (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
      (list (delete-dups (completing-read-multiple "Select Repository(s): " candidates nil nil nil nil nil t)))))
   (let ((branches (list)))
