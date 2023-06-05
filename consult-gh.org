@@ -334,14 +334,17 @@
 *** files
 **** list files items
 #+begin_src emacs-lisp
-(defun consult-gh--files-get-trees (repo)
-  (consult-gh--api-get-json (concat "repos/" repo "/git/trees/HEAD:?recursive=1")))
+(defun consult-gh--files-get-trees (repo &optional branch)
+  (let ((branch (or branch "HEAD")))
+  (consult-gh--api-get-json (concat "repos/" repo "/git/trees/" branch ":?recursive=1"))))
 
-(defun consult-gh--files-table-to-list (table repo)
-    (mapcar (lambda (el) (propertize (gethash "path" el) ':repo repo ':url (gethash "url" el) ':path (gethash "path" el) ':size (gethash "size" el))) table))
+(defun consult-gh--files-table-to-list (table repo &optional branch)
+   (let ((branch (or branch "HEAD")))
+    (mapcar (lambda (el) (propertize (gethash "path" el) ':repo repo ':branch branch ':url (gethash "url" el) ':path (gethash "path" el) ':size (gethash "size" el))) table)))
 
-(defun consult-gh--files-list-items (repo)
-(let ((response (consult-gh--files-get-trees repo)))
+(defun consult-gh--files-list-items (repo &optional branch)
+(let* ((branch (or branch "HEAD"))
+       (response (consult-gh--files-get-trees repo branch)))
   (if (eq (car response) 0)
       (consult-gh--files-table-to-list (consult-gh--api-json-to-table (cadr response) "tree") repo)
     (message (cadr response)))))
@@ -366,7 +369,8 @@
 (lambda (cand)
   (let* ((path (substring-no-properties (get-text-property 0 ':path cand)))
         (repo (substring-no-properties (get-text-property 0 ':repo cand)))
-        (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
+        (branch (substring-no-properties (get-text-property 0 ':branch cand)))
+        (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "HEAD/" path)))
         (browse-url url))))
 #+end_src
 ***** view file
@@ -434,15 +438,16 @@
 (defun consult-gh--files-preview ()
   (lambda (action cand)
     (let* ((preview (consult--buffer-preview))
-           (tempdir consult-gh-tempdir)
            )
       (pcase action
         ('preview
          (if cand
              (let* ((repo (get-text-property 0 ':repo cand))
                     (path (get-text-property 0 ':path cand))
+                    (branch (get-text-property 0 ':branch cand))
                     (url (get-text-property 0 ':url cand))
                     (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
+                    (tempdir (expand-file-name (concat repo "/" branch) consult-gh-tempdir))
                     (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
                     (suffix (concat "." (file-name-extension path)))
                     (temp-file (expand-file-name path tempdir))
@@ -859,11 +864,11 @@
 #+end_src
 *** source from repo trees
 #+begin_src emacs-lisp
-(defun consult-gh--make-source-from-files  (repo)
+(defun consult-gh--make-source-from-files  (repo &optional branch)
 "Create a source for consult from contents of a repo to use in `consult-gh-browse-repo'."
                   `(:narrow ,(consult-gh--files-narrow repo)
                     :category 'consult-gh-files
-                    :items  ,(consult-gh--files-list-items repo)
+                    :items  ,(consult-gh--files-list-items repo branch)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-file-action)
                     :annotate ,(consult-gh--files-annotate)
