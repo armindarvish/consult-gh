@@ -65,7 +65,7 @@
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-crm-separator ","
+(defcustom consult-gh-crm-separator "[,\s]"
   "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'."
   :group 'consult-gh
   :type 'string)
