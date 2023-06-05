@@ -106,7 +106,7 @@
   :group 'consult-gh
   :type 'boolean)
 
-(defcustom consult-gh-default-branch-to-load 'ask
+(defcustom consult-gh-default-branch-to-load "ask"
   "This variable defines whether `consult-gh' queries the user for directory and name before cloning a repo or uses the default directory and package name. It's useful to set this to nil if you want to clone multiple repos without all at once."
   :group 'consult-gh
   :type 'symbol)
@@ -854,7 +854,7 @@
      (list (delete-dups (completing-read-multiple "Select Repository(s): " candidates nil nil nil nil nil t)))))
   (let ((branches (list)))
     (pcase consult-gh-default-branch-to-load
-      ('ask
+      ("ask"
     (if (y-or-n-p "Load Default HEAD branch?")
         (setq branches (mapcar (lambda (repo) (cons repo "HEAD")) repos))
       (setq branches (cl-loop for repo in repos
