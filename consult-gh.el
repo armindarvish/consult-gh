@@ -47,11 +47,6 @@
   :group 'consult-gh
   :type 'symbol)
 
-(defcustom consult-gh--issues-category 'consult-gh-issues
-  "Category symbol for the `consult-gh' package."
-  :group 'consult-gh
-  :type 'symbol)
-
 (defcustom consult-gh-tempdir nil
 "Temporary file directory for the `consult-gh' package."
   :group 'consult-gh
@@ -71,7 +66,7 @@
   :type 'string)
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
-  "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'."
+  "Major Mode to show README of repositories in preview."
   :group 'consult-gh
   :type 'symbol)
 
