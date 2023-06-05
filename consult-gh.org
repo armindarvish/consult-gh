@@ -124,6 +124,11 @@
   :group 'consult-gh
   :type 'boolean)
 
+(defcustom consult-gh-default-branch-to-load 'ask
+  "This variable defines whether `consult-gh' queries the user for directory and name before cloning a repo or uses the default directory and package name. It's useful to set this to nil if you want to clone multiple repos without all at once."
+  :group 'consult-gh
+  :type 'symbol)
+
 (defcustom consult-gh-repo-action #'consult-gh--repo-browse-url-action
   "This variable defines the function that is used when selecting a repo. By default it is set to `consult-gh--repo-browse-url-action', but you can cahnge it to other actions such as `consult-gh--repo-clone-action' or `consult-gh--repo-fork-action'."
   :group 'consult-gh
@@ -473,7 +478,7 @@
 #+begin_src emacs-lisp
 (defun consult-gh--files-group (cand transform)
 "Group the list of item in `consult-gh' by the name of the user"
-  (let ((name (concat (get-text-property 0 ':repo cand) "::@" (get-text-property 0 ':branch cand))))
+  (let ((name (concat (get-text-property 0 ':repo cand) "[@" (get-text-property 0 ':branch cand) "]")))
            (if transform (substring cand) name)))
 #+end_src
 
@@ -905,7 +910,7 @@
 (defun consult-gh--make-source-from-files  (repo &optional branch)
 "Create a source for consult from contents of a repo to use in `consult-gh-browse-repo'."
                   `(:narrow ,(consult-gh--files-narrow repo)
-                    :category 'consult-gh-files
+                    :category 'consult-files
                     :items  ,(consult-gh--files-list-items repo branch)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-file-action)
@@ -924,13 +929,14 @@
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
-   (list (delete-dups (completing-read-multiple "GitHub Org: " candidates nil nil nil 'consult-gh--org-history nil t)))))
+   (list (delete-dups (completing-read-multiple "Search GitHub Users/Organization: " candidates nil nil nil 'consult-gh--org-history nil t)))))
 
   (let ((candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-org orgs))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-orgs-list (append consult-gh--known-orgs-list orgs))
           (consult--multi candidates
+                    :prompt "Select User/Organization: "
                     :require-match t
                     :sort t
                     :group #'consult-gh--repo-group
@@ -955,12 +961,13 @@
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-   (list (delete-dups (completing-read-multiple "Repos: " candidates nil nil nil nil nil t)))))
+   (list (delete-dups (completing-read-multiple "Search GitHub Repositories: " candidates nil nil nil nil nil t)))))
   (let ((candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
           (consult--multi candidates
+                    :prompt "Select Repositories(s): "
                     :require-match t
                     :sort t
                     :group #'consult-gh--repo-group
@@ -979,12 +986,13 @@
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-   (list (delete-dups (completing-read-multiple "Repos: " candidates nil nil nil nil nil t)))))
-  (let ((candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-issues repos))))
+   (list (delete-dups (completing-read-multiple "Search GitHub Repositories: " candidates nil nil nil nil nil t)))))
+  (let ((candidates (consult--slow-operation "Collecting Issues ..." (mapcar #'consult-gh--make-source-from-issues repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
           (consult--multi candidates
+                    :prompt "Select Issue(s): "
                     :require-match t
                     :sort t
                     :group #'consult-gh--issue-group
@@ -1005,19 +1013,27 @@
   (interactive
    (let ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-     (list (delete-dups (completing-read-multiple "Repos: " candidates nil nil nil nil nil t)))))
+     (list (delete-dups (completing-read-multiple "Select Repository(s): " candidates nil nil nil nil nil t)))))
   (let ((branches (list)))
+    (pcase consult-gh-default-branch-to-load
+      ('ask
     (if (y-or-n-p "Load Default HEAD branch?")
         (setq branches (mapcar (lambda (repo) (cons repo "HEAD")) repos))
       (setq branches (cl-loop for repo in repos
-                              collect (cons repo (completing-read "branch: " (consult-gh--files-branches-list-items repo))))))
+                              collect (cons repo (completing-read (concat "Select Branch for " (propertize (format "\"%s\"" repo) 'face 'consult-gh-default-face) ": ") (consult-gh--files-branches-list-items repo)))))))
+      ('nil
+        (setq branches (mapcar (lambda (repo) (cons repo "HEAD")) repos))
+        )
+      (_
+        (setq branches (mapcar (lambda (repo) (cons repo (format "%s" consult-gh-default-branch-to-load))) repos))))
     (let ((consult-gh-tempdir (expand-file-name (make-temp-name "") consult-gh-tempdir))
-          (candidates (consult--slow-operation "Collecting Repos ..." (mapcar (lambda (repo) (consult-gh--make-source-from-files repo (alist-get repo branches))) repos)))
+          (candidates (consult--slow-operation "Collecting Contents ..." (mapcar (lambda (repo) (consult-gh--make-source-from-files repo (alist-get repo branches))) repos)))
           )
       (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
           (progn
             (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
             (consult--multi candidates
+                            :prompt "Select File: "
                             :require-match t
                             :sort t
                             :group #'consult-gh--files-group
