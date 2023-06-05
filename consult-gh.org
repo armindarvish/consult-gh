@@ -370,10 +370,16 @@
     (mapcar (lambda (el) (propertize (gethash "path" el) ':repo repo ':branch branch ':url (gethash "url" el) ':path (gethash "path" el) ':size (gethash "size" el))) table)))
 
 (defun consult-gh--files-list-items (repo &optional branch)
-(let* ((branch (or branch "HEAD"))
-       (response (consult-gh--files-get-trees repo branch)))
+(let* (
+       (branch (or branch "HEAD"))
+       (response (consult-gh--files-get-trees repo branch))
+       (my:make-table (apply-partially #'completion-table-with-predicate
+                                 #'completion-file-name-table
+                                 t
+                                 'strict))
+       )
   (if (eq (car response) 0)
-      (consult-gh--files-table-to-list (consult-gh--api-json-to-table (cadr response) "tree") repo branch)
+     (completion-table-in-turn (delete-dups (sort (consult-gh--files-table-to-list (consult-gh--api-json-to-table (cadr response) "tree") repo branch) 'string<)) my:make-table)
     (message (cadr response)))))
 
 #+end_src
