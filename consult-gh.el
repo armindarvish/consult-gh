@@ -792,7 +792,7 @@
           (setq consult-gh--known-orgs-list (append consult-gh--known-orgs-list orgs))
           (consult--multi candidates
                     :prompt "Select User/Organization: "
-                    :require-match t
+                    :require-match nil
                     :sort t
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
@@ -819,7 +819,7 @@
           (consult--multi candidates
                     :prompt "Select Repositories(s): "
                     :require-match t
-                    :sort t
+                    :sort nil
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
                     :category 'consult-gh
