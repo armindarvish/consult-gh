@@ -27,23 +27,23 @@
          (my:table
           (completion-table-in-turn (delete-dups (sort items 'string<)) my:make-table))
          (path (completing-read prompt my:table (lambda (path) (all-completions root all-items)) t))
-         (selected-path (expand-file-path (concat root (string-trim path "./")) all-items)))
+         (selected-path (consult-gh--expand-file-path (concat root (string-trim path "./")) all-items)))
     `(,path ,selected-path)
     ))
 
 (defun consult-gh--completing-read-loop (prompt items root all-items)
   (while  items
-    (setq res (my-completing-read-file-path (format "%s: " root) (expand-file-path root all-items) root all-items))
+    (setq res (my-completing-read-file-path (format "%s: " root) (consult-gh--expand-file-path root all-items) root all-items))
     (pcase (car res)
       ("./"
        (setq root (concat (string-join (butlast (butlast (string-split root "\/"))) "/") "/"))
-       (setq items (cadr (expand-file-path root all-items)))
+       (setq items (cadr (consult-gh--expand-file-path root all-items)))
        )
       ("../"
        )
       (_
        (setq root (concat root (string-trim (car res) "./")))
-       (setq items (cadr (expand-file-path root all-items)))
+       (setq items (cadr (consult-gh--expand-file-path root all-items)))
        (print root)
        (print items)))
     )
@@ -55,11 +55,15 @@
                                        (concat prefix path))
                                      (consult-gh--files-list-items repo branch))))
        (root (car (sort file-paths 'string<)))
-       (items  (cl-sort (remove prefix (expand-file-path root file-paths)) 'string-lessp :key 'downcase)))
+       (items  (cl-sort (remove prefix (consult-gh--expand-file-path root file-paths)) 'string-lessp :key 'downcase)))
 
   (if items
      (my-completing-read-loop "Select file path:" items root file-paths)
     )))
+
+#+end_src
+
+#+begin_src emacs-lisp
 
 #+end_src
 * Working code
@@ -70,7 +74,7 @@
       (let* ((parent-dir (substring path 0 -1))
              (sub-entries (seq-filter (lambda (entry) (string-prefix-p parent-dir entry))
                                       file-paths))
-             (sub-entries (cons "../" (mapcar (lambda (dir) (concat "." (substring dir (length parent-dir)))) sub-entries)))
+             (sub-entries (mapcar (lambda (dir) (concat "." (substring dir (length parent-dir)))) sub-entries))
              (sub-dirs (seq-filter (lambda (entry) (and (string-suffix-p "/" entry) (<= (length (string-split entry "\/")) 3))) sub-entries))
              (sub-files (seq-filter (lambda (entry) (and (not (string-suffix-p "/" entry)) (<= (length (string-split entry "\/")) 2) )) sub-entries))
              (sub-dirs (mapcar (lambda (dir) (propertize (file-name-directory dir) 'face 'consult-gh-visibility-face)) sub-dirs))
@@ -83,58 +87,341 @@
 
 (defun consult-gh--completing-read-file-path (prompt items root all-items)
   "Prompts the user to select a file path using dynamic expansion."
-  (let* ((my:make-table (apply-partially #'completion-table-with-predicate
+  (let* ((completion-cycle-threshold t)
+         (consult-gh--make-table (apply-partially #'completion-table-with-predicate
                                  #'completion-file-name-table
                                  t
                                  'strict))
-         (my:table
-          (completion-table-in-turn (delete-dups (sort items 'string<)) my:make-table))
-         (path (completing-read prompt my:table (lambda (path) (all-completions root all-items)) t))
-         (selected-path (expand-file-path (concat root (string-trim path "./")) all-items)))
+         (consult-gh--table (completion-table-in-turn (delete-dups (sort items 'string<)) consult-gh--make-table))
+         (path (completing-read prompt consult-gh--table (lambda (path) (all-completions root all-items)) t ;;(string-trim (format "%s" root) "./")
+                                ))
+         ;; (path  (completing-read prompt (completion-table-in-turn (mapcar (lambda (el) (completion-file-name-table el t 'strict)))) (lambda (path) (all-completions root all-items)) t))
+         (selected-path (consult-gh--expand-file-path (concat root (string-trim path "./")) all-items)))
     `(,path ,selected-path)
     ))
 
 (defun consult-gh--completing-read-loop (prompt items root all-items)
   (while  items
-    (setq res (my-completing-read-file-path (format "%s: " root) (expand-file-path root all-items) root all-items))
+    (setq res (consult-gh--completing-read-file-path "Select File: " (consult-gh--expand-file-path root all-items) root all-items))
     (pcase (car res)
       ("./"
        (setq root (concat (string-join (butlast (butlast (string-split root "\/"))) "/") "/"))
-       (setq items (cadr (expand-file-path root all-items)))
-       )
-      ("../"
+       (setq items (consult-gh--expand-file-path root all-items))
        )
       (_
        (setq root (concat root (string-trim (car res) "./")))
-       (setq items (cadr (expand-file-path root all-items)))
+       (setq items (consult-gh--expand-file-path root all-items))
        (print root)
-       (print items)))
+       (print items)
+       ))
     )
   (string-trim root "./"))
 
 (defun consult-gh--completing-read-file-directory (repo branch)
-  (let* ((file-paths (append '("./") (mapcar (lambda (path)
+  (let* ((root "./")
+         (file-paths (append `(,root) (mapcar (lambda (path)
                                        (unless (get-text-property 0 ':size path) (setq path (concat path "/")))
                                        (concat "./" path))
                                      (consult-gh--files-list-items repo branch))))
-       (root (car (sort file-paths 'string<)))
-       (items  (cl-sort (remove "./" (expand-file-path root file-paths)) 'string-lessp :key 'downcase)))
+       (items  (cl-sort (remove "./" (consult-gh--expand-file-path root file-paths)) 'string-lessp :key 'downcase)))
 
   (if items
-     (my-completing-read-loop "Select file path:" items root file-paths)
+     (consult-gh--completing-read-loop "Select file path:" items root file-paths)
     )))
+
+(consult-gh--completing-read-file-directory "minad/vertico" "main")
 
 ;; ;;Example usage:
 ;; (let ((file-paths '("/foo/" "/foo/bar/" "/foo/file0" "/foo/baz/" "/foo/bar/file1" "/foo/bar/file2"))
 ;;       (path "/foo/bar/"))
-;;   ;; (completing-read "Select file path:" (completion-table-in-turn file-paths) )
-
-;;   (my-completing-read-file-path "test:"  (expand-file-path path file-paths) path file-paths)
+;;   ;;(completing-read "Select file path:" (completion-table-in-turn file-paths) )
+;;   (consult-gh--completing-read-file-path "/foo/"  (consult-gh--expand-file-path path file-paths) path file-paths)
 ;; ;;(all-completions path file-paths)
-;;   ;; (expand-file-path path file-paths)
+;;   ;; (consult-gh--expand-file-path path file-paths)
 ;;   ;;(all-completions path file-paths)
 ;;   )
 #+end_src
+* tests
+#+begin_src emacs-lisp
+(defun consult-gh--expand-file-path (path file-paths)
+  "Expands the file path to show subdirectories and files based on the given path."
+   (if (string-suffix-p "/" path)
+       (let* ((parent-dir (substring path 0 -1))
+             (sub-entries (seq-filter (lambda (entry) (string-prefix-p parent-dir entry))
+                                      file-paths))
+             (sub-entries (mapcar (lambda (dir) (concat "." (substring dir (length parent-dir)))) sub-entries))
+             (sub-dirs (seq-filter (lambda (entry) (and (string-suffix-p "/" entry) (<= (length (string-split entry "\/")) 3))) sub-entries))
+             (sub-files (seq-filter (lambda (entry) (and (not (string-suffix-p "/" entry)) (<= (length (string-split entry "\/")) 2) )) sub-entries))
+             (sub-dirs (mapcar (lambda (dir) (propertize (file-name-directory dir) 'face 'consult-gh-visibility-face)) sub-dirs))
+             (sub-files (mapcar (lambda (file) (propertize (file-name-nondirectory file) 'face 'consult-gh-default-face)) sub-files))
+             (items (append sub-dirs sub-files)))
+        items
+        )
+    '()))
+
+(defun consult-gh--completing-read-file-path (prompt items root all-items &optional prefix)
+  "Prompts the user to select a file path using dynamic expansion."
+  (let* (;(completion-cycle-threshold t)
+         (prefix (concat (or prefix ".") "/"))
+         (consult-gh--table (completion-table-in-turn (delete-dups (sort items 'string<)) #'completion-file-name-table))
+         (path (consult--read consult-gh--table
+                              :prompt prompt
+                              :sort nil
+                              ;;:predicate (lambda (path) (all-completions root all-items))
+                              :require-match t
+                              ;;(string-trim (format "%s" root) "./")
+                                ))
+         ;; (path  (completing-read prompt (completion-table-in-turn (mapcar (lambda (el) (completion-file-name-table el t 'strict)))) (lambda (path) (all-completions root all-items)) t))
+         (selected-path (consult-gh--expand-file-path (concat root (string-trim path prefix)) all-items)))
+    `(,path ,selected-path)
+    ))
+
+(defun consult-gh--completing-read-loop (prompt items root all-items &optional prefix)
+ (let ((prefix (concat (or prefix ".") "/")))
+  (while  items
+    (setq res (consult-gh--completing-read-file-path "Select File: " items root all-items))
+    (pcase (car res)
+      ("./"
+       (setq root (concat (string-join (butlast (butlast (string-split root "\/"))) "/") "/"))
+       (setq items (remove root (consult-gh--expand-file-path root all-items)))
+       )
+      (_
+       (setq root (concat root (string-trim (car res) prefix)))
+       (setq items (consult-gh--expand-file-path root all-items))
+       (print root)
+       (print items)
+       ))
+    )
+  (string-trim root prefix)))
+
+(defun consult-gh--completing-read-file-directory (repo branch)
+  (let* ((root "./")
+         (file-paths (append `(,root) (mapcar (lambda (path)
+                                       (unless (get-text-property 0 ':size path) (setq path (concat path "/")))
+                                       (concat root path))
+                                     (consult-gh--files-list-items repo branch))))
+       ;(items  (cl-sort (remove root (consult-gh--expand-file-path root file-paths)) 'string-lessp :key 'downcase))
+         (items (remove root (consult-gh--expand-file-path root file-paths)))
+         )
+  (if items
+     (consult-gh--completing-read-loop "Select file path:" items root file-paths)
+    )))
+
+(consult-gh--completing-read-file-directory "numpy/numpy" "main")
+
+;; ;;Example usage:
+;; (let ((file-paths '("/foo/" "/foo/bar/" "/foo/file0" "/foo/baz/" "/foo/bar/file1" "/foo/bar/file2"))
+;;       (path "/foo/bar/"))
+;;   ;;(completing-read "Select file path:" (completion-table-in-turn file-paths) )
+;;   (consult-gh--completing-read-file-path "/foo/"  (consult-gh--expand-file-path path file-paths) path file-paths)
+;; ;;(all-completions path file-paths)
+;;   ;; (consult-gh--expand-file-path path file-paths)
+;;   ;;(all-completions path file-paths)
+;;   )
+#+end_src
+
+#+begin_src emacs-lisp
+(defun consult-gh--files-lookup (selected candidates &rest _)
+(let ((list (all-completions selected candidates)))
+  (if (> (length list) 1)
+      (consult--read list :prompt "Select File: ")
+    list)
+))
+
+(let* ((root "./")
+       (repo "minad/vertico")
+       (branch "main")
+       (response (consult-gh--files-get-trees repo branch))
+       (items (completion-table-dynamic (lambda (_) (completion-table-in-turn (delete-dups (consult-gh--files-hashtable-to-list (consult-gh--api-json-to-table (cadr response) "tree") repo branch)) #'completion-file-name-table)))
+       ))
+;(type-of items)
+(consult--read items :prompt "Select Files: "
+               :lookup )
+;;(type-of items)
+)
+
+;; (defun consult--lookup-candidate (selected candidates &rest _)
+;;   "Lookup SELECTED in CANDIDATES list and return property `consult--candidate'."
+;;   (consult--lookup-prop 'consult--candidate selected candidates))
+
+#+end_src
+
+#+RESULTS:
+: vertico.el
+
+#+begin_src emacs-lisp :results raw
+
+#+end_src
+
+#+RESULTS:
+(. .#consult-gh.org .#dir-expansion.org .. .git .gitignore LICENSE README.md README.org README.org~ consult-gh-embark.el consult-gh.el consult-gh.org consult-gh.org~ dir-expansion.org dir-expansion.org~)
+
+#+begin_src emacs-lisp
+(let* ((root "./")
+       (repo "minad/vertico")
+       (branch "main")
+       (file-paths (append `(,root) (mapcar (lambda (path)
+                                       (unless (get-text-property 0 ':size path) (setq path (concat path "/")))
+                                       (concat root path))
+                                     (consult-gh--files-list-items repo branch))))
+       (items  (cl-sort (remove "./" (consult-gh--expand-file-path root file-paths)) 'string-lessp :key 'downcase)))
+;(consult-gh--completing-read-file-path "Select: " file-paths root file-paths)
+(consult-gh--files-list-items repo branch)
+)
+#+end_src
+
+#+RESULTS:
+| CHANGELOG.org | LICENSE | README.org | extensions | extensions/vertico-buffer.el | extensions/vertico-directory.el | extensions/vertico-flat.el | extensions/vertico-grid.el | extensions/vertico-indexed.el | extensions/vertico-mouse.el | extensions/vertico-multiform.el | extensions/vertico-quick.el | extensions/vertico-repeat.el | extensions/vertico-reverse.el | extensions/vertico-unobtrusive.el | vertico.el |
+
+#+begin_src emacs-lisp
+(defun consult-gh--expand-file-path (path file-paths)
+  "Expands the file path to show subdirectories and files based on the given path."
+   (if (string-suffix-p "/" path)
+      (let* ((parent-dir (substring path 0 -1))
+             (sub-entries (seq-filter (lambda (entry) (string-prefix-p parent-dir entry))
+                                      file-paths))
+             (sub-entries (mapcar (lambda (dir) (concat "." (substring dir (length parent-dir)))) sub-entries))
+             (sub-dirs (seq-filter (lambda (entry) (and (string-suffix-p "/" entry) (<= (length (string-split entry "\/")) 3))) sub-entries))
+             (sub-files (seq-filter (lambda (entry) (and (not (string-suffix-p "/" entry)) (<= (length (string-split entry "\/")) 2) )) sub-entries))
+             (sub-dirs (mapcar (lambda (dir) (propertize (file-name-directory dir) 'face 'consult-gh-visibility-face)) sub-dirs))
+             (sub-files (mapcar (lambda (file) (propertize (file-name-nondirectory file) 'face 'consult-gh-default-face)) sub-files))
+             (items (append sub-dirs sub-files)))
+        items
+        )
+
+    '()))
+
+(defun consult-gh--completing-read-file-path (prompt items root all-items)
+  "Prompts the user to select a file path using dynamic expansion."
+  (let* ((completion-cycle-threshold t)
+         (consult-gh--make-table (apply-partially #'completion-table-with-predicate
+                                 #'completion-file-name-table
+                                 t
+                                 'strict))
+         (consult-gh--table (mapcar (lambda (str) (completion-file-name-table str t 'strict)) (delete-dups (sort items 'string<))))
+         (path (completing-read prompt consult-gh--table (lambda (path) (all-completions root all-items)) t ;;(string-trim (format "%s" root) "./")
+                                ))
+         ;; (path  (completing-read prompt (completion-table-in-turn (mapcar (lambda (el) (completion-file-name-table el t 'strict)))) (lambda (path) (all-completions root all-items)) t))
+         (selected-path (consult-gh--expand-file-path (concat root (string-trim path "./")) all-items)))
+    `(,path ,selected-path)
+    ))
+
+(defun consult-gh--completing-read-loop (prompt items root all-items)
+  (while  items
+    (setq res (consult-gh--completing-read-file-path "Select File: " (consult-gh--expand-file-path root all-items) root all-items))
+    (pcase (car res)
+      ("./"
+       (setq root (concat (string-join (butlast (butlast (string-split root "\/"))) "/") "/"))
+       (setq items (consult-gh--expand-file-path root all-items))
+       )
+      (_
+       (setq root (concat root (string-trim (car res) "./")))
+       (setq items (consult-gh--expand-file-path root all-items))
+       (print root)
+       (print items)
+       ))
+    )
+  (string-trim root "./"))
+
+(defun consult-gh--completing-read-file-directory (repo branch)
+  (let* ((root "./")
+         (file-paths (append `(,root) (mapcar (lambda (path)
+                                       (unless (get-text-property 0 ':size path) (setq path (concat path "/")))
+                                       (concat "./" path))
+                                     (consult-gh--files-list-items repo branch))))
+       (items  (cl-sort (remove "./" (consult-gh--expand-file-path root file-paths)) 'string-lessp :key 'downcase)))
+
+  (if items
+     (consult-gh--completing-read-loop "Select file path:" items root file-paths)
+    )))
+
+(consult-gh--completing-read-file-directory "minad/vertico" "main")
+
+;; ;;Example usage:
+;; (let ((file-paths '("/foo/" "/foo/bar/" "/foo/file0" "/foo/baz/" "/foo/bar/file1" "/foo/bar/file2"))
+;;       (path "/foo/bar/"))
+;;   ;;(completing-read "Select file path:" (completion-table-in-turn file-paths) )
+;;   (consult-gh--completing-read-file-path "/foo/"  (consult-gh--expand-file-path path file-paths) path file-paths)
+;; ;;(all-completions path file-paths)
+;;   ;; (consult-gh--expand-file-path path file-paths)
+;;   ;;(all-completions path file-paths)
+;;   )
+#+end_src
+#+begin_src emacs-lisp
+(let* ((repo "minad/vertico")
+      (branch "main")
+      (root "./")
+      ;; (items (append `(,root) (mapcar (lambda (path)
+      ;;                                  (unless (get-text-property 0 ':size path) (setq path (concat path "/")))
+      ;;                                  (concat "./" path))
+      ;;                                (consult-gh--files-list-items repo branch))))
+      (items '("/foo/" "/foo/file0" "/foo/file1" "/foo/bar/" "/foo/bar/file2" "/foo/bar/file3" "/foo/baz/" "/foo/baz/file4" "/foo/baz/file5"))
+      (my:make-table (apply-partially #'completion-table-with-predicate
+                                 #'completion-file-name-table
+                                 t
+                                 'strict))
+         (my:table
+          (completion-table-in-turn (delete-dups (sort items 'string<)) my:make-table)))
+
+(completing-read "Select File: " my:table)
+;; (consult--read my:table :prompt "Select File: " :lookup)
+)
+#+end_src
+
+#+begin_src emacs-lisp
+(let* ((repo "minad/vertico")
+      (branch "main")
+      (root "./")
+      ;; (items (append `(,root) (mapcar (lambda (path)
+      ;;                                  (unless (get-text-property 0 ':size path) (setq path (concat path "/")))
+      ;;                                  (concat "./" path))
+      ;;                                (consult-gh--files-list-items repo branch))))
+      (items '("/foo/" "/foo/file0" "/foo/file1" "/foo/bar/" "/foo/bar/file2" "/foo/bar/file3" "/foo/baz/" "/foo/baz/file4" "/foo/baz/file5"))
+      (my:make-table #'completion-file-name-table)
+         (my:table
+          (completion-table-in-turn items)))
+
+(completing-read "Select File: " my:table)
+;; (consult--read my:table :prompt "Select File: " :lookup)
+)
+#+end_src
+
+#+begin_src emacs-lisp
+                      (completing-read prompt 'read-file-name-internal
+                                       pred mustmatch insdef
+                                       'file-name-history default-filename)))
+                ;; If DEFAULT-FILENAME not supplied and DIR contains
+  (completion-table-in-turn #'completion--embedded-envvar-table
+                            #'completion--file-name-table)
+
+#+end_src
+#+RESULTS:
+: /foo/
+
+#+begin_src emacs-lisp
+(defun my-completion-function (prefix nil t)
+  ;; You can just ignore the prefix
+  (let* ((items '("/foo/" "/foo/file0" "/foo/file1" "/foo/bar/" "/foo/bar/file2" "/foo/bar/file3" "/foo/baz/" "/foo/baz/file4" "/foo/baz/file5")))
+    (completion-table-dynamic (all-completions prefix items))
+  ))
+
+(completing-read "Select One:" #'my-completion-function)
+
+;; (let* ((items '("/foo/" "/foo/file0" "/foo/file1" "/foo/bar/" "/foo/bar/file2" "/foo/bar/file3" "/foo/baz/" "/foo/baz/file4" "/foo/baz/file5")))
+;; (completing-read "Chose one: "
+;;                  (completion-table-dynamic (apply-partially #'my-completion-function items))))
+
+;; (completing-read "Choose One: " (completion-table-dynamic  '("/foo/" "/foo/file0" "/foo/file1" "/foo/bar/" "/foo/bar/file2" "/foo/bar/file3" "/foo/baz/" "/foo/baz/file4" "/foo/baz/file5")))
+#+end_src
+
+#+begin_src emacs-lisp
+(completion-table-dynamic (all-completions "/foo/bar/"'("/foo/" "/foo/file0" "/foo/file1" "/foo/bar/" "/foo/bar/file2" "/foo/bar/file3" "/foo/baz/" "/foo/baz/file4" "/foo/baz/file5")))
+#+end_src
+#+RESULTS:
+: #[771 "\211\242\302=\206
+:  \211\303=?\2054 r\300\204 p\202) \304 \305!\203' \306!\262\202) \210pq\210\307\301!$)\207" [nil ("/foo/bar/" "/foo/bar/file2" "/foo/bar/file3") boundaries metadata minibuffer-selected-window window-live-p window-buffer complete-with-action] 8 "
+:
+: (fn STRING PRED ACTION)"]
 
 
 * from stackoverflow
@@ -876,3 +1163,12 @@ See `read-file-name' for the meaning of the arguments."
         (completion-table-in-turn (mapcar (lambda (path) (expand-file-path path file-paths)) file-paths) my:make-table)))
   (completing-read "Foo:" my:table))
 #+end_src
+
+*
+
+* extra tests
+#+begin_src emacs-lisp
+(completion-file-name-table "/foo/bar/" t 'strict)
+#+end_src
+
+#+RESULTS:
