@@ -383,7 +383,9 @@
            )
          (if no-select
              (find-file-noselect temp-file)
-           (find-file temp-file)
+           (progn
+             (find-file temp-file)
+            (add-to-list 'consult-gh--preview-buffers-list (current-buffer)))
          )))
 
 (defun consult-gh--files-view-action ()
