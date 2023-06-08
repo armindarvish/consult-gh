@@ -248,19 +248,28 @@
   (let ((branch (or branch "HEAD")))
   (consult-gh--api-get-json (concat "repos/" repo "/git/trees/" branch ":?recursive=1"))))
 
+;; (defun consult-gh--files-table-to-list (table repo &optional branch)
+;;    (let ((branch (or branch "HEAD")))
+;;     (mapcar (lambda (el) (propertize (gethash :path el) ':repo repo ':branch branch ':url (gethash "url" el) ':path (gethash :path el) ':size (gethash :size el))) table)))
+
+;; (defun consult-gh--files-list-items (repo &optional branch)
+;; (let* ((branch (or branch "HEAD"))
+;;        (response (consult-gh--files-get-trees repo branch))
+;;        )
+;;   (if (eq (car response) 0)
+;;      (delete-dups (sort (consult-gh--files-table-to-list (consult-gh--api-json-to-table (cadr response) :tree) repo branch) 'string<))
+;;     (message (cadr response)))))
+
 (defun consult-gh--files-table-to-list (table repo &optional branch prefix)
    (let ((branch (or branch "HEAD"))
-         (prefix (or prefix ".")))
+         (prefix (or prefix "./")))
      (append  `(,(propertize prefix ':repo repo ':branch branch ':url nil ':path nil ':size nil))
     (mapcar (lambda (el) (propertize (concat prefix (gethash :path el)) ':repo repo ':branch branch ':url (gethash "url" el) ':path (gethash :path el) ':size (gethash :size el))) table))))
 
 
-;; (defun consult-gh--files-table-to-list (table repo &optional branch)
-;;    (let ((branch (or branch "HEAD")))
-;;     (mapcar (lambda (el) (propertize (concat repo "/" (gethash :path el)) ':repo repo ':branch branch ':url (gethash "url" el) ':path (gethash :path el) ':size (gethash :size el))) table)))
-
 (defun consult-gh--files-list-items (repo &optional branch prefix)
 (let* ((branch (or branch "HEAD"))
+       (prefix (or prefix "./"))
        (response (consult-gh--files-get-trees repo branch))
        )
   (if (eq (car response) 0)
@@ -453,7 +462,7 @@ out
 
 * completion tables
 ** recursive consult--read
-#+begin_src emacs-lisp :results raw drawer
+#+begin_src emacs-lisp :results verbatim drawer
 ;; (defun consult-gh--only-siblings (path items &rest _)
 ;;    (if (string-suffix-p "/" path)
 ;;        (let* ((parent-dir (substring path 0 -1))
@@ -476,13 +485,6 @@ out
 ;;       (consult--read list :prompt "Select File: ")
 ;;     list)
 ;; ))
-
-(defun consult-gh--files-sibling-pred (candidates current string)
-  (let ((string (string-trim string "" "/")))
-  (equal (file-name-directory current) (file-name-directory string))))
-
-
-
 
 ;; (defun consult-gh--files-lookup  (sel cand &rest _)
 ;;                            (let ((comp (all-completions sel cand)))
@@ -510,40 +512,105 @@ out
 ;;                :predicate (apply-partially #'consult-gh--files-sibling-pred table current)
 ;;                :lookup #'consult-gh--files-lookup))
 
+;; (defun consult-gh--files-sibling-pred (candidates current parent string)
+;;   (let (;(string (string-trim string "" "/"))
+;;         )
+;;   (or  (and (not (equal current "/")) (equal string parent))
+;;       (equal (file-name-directory current) (file-name-directory string))
+;;       )))
+
+(defun consult-gh--files-sibling-pred (current string)
+  (equal (file-name-parent-directory current) (file-name-parent-directory string)))
+
+(defun consult-gh--files-children-and-parent-pred (current string)
+  (or (equal current (file-name-parent-directory string))
+      (equal string (file-name-parent-directory current))))
+
 (defun consult-gh--files-lookup  (sel cand &rest _)
+  ;;(print cand)
   (consult-gh--files-completing-read sel cand))
 
 (defun consult-gh--files-make-table (items)
 (completion-table-in-turn (delete-dups items) #'completion-file-name-table))
 
+(defun consult-gh--files-expand-action (table)
+  (lambda (action cand)
+    ;; (when (eq action 'preview)
+    ;; (print action)
+    ;; )
+    (print action)
+    (let* ((preview (consult--buffer-preview))
+           (out nil)
+           )
+      (pcase action
+        ('setup
+         )
+        ('preview
+         (if cand
+             (when-let* ((repo (get-text-property 0 ':repo cand))
+                    (path (get-text-property 0 ':path cand))
+                    (branch (get-text-property 0 ':branch cand))
+                    (url (get-text-property 0 ':url cand))
+                    (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
+                    (tempdir (expand-file-name (concat repo "/" branch) consult-gh-tempdir))
+                    (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
+                    (suffix (concat "." (file-name-extension path)))
+                    (temp-file (expand-file-name path tempdir))
+                    (_ (and file-p (make-directory (file-name-directory temp-file) t)))
+                    (text (and file-p (consult-gh--files-get-content url)))
+                    (_ (and file-p (with-temp-file temp-file (insert text) (set-buffer-file-coding-system 'raw-text)
+                                                   )))
+                    (buffer (or (and file-p (with-temp-buffer (find-file-noselect temp-file t))) nil)))
+               (print text)
+               ;; (add-to-list 'consult-gh--preview-buffers-list buffer)
+               ;; (funcall preview action
+               ;;          (and
+               ;;           cand
+               ;;           buffer
+               ;;           ))) ()))
+
+        )))
+        ('return
+         (setq my:test (consult-gh--files-lookup cand table))
+        ))
+)))
+
+
 (defun consult-gh--files-completing-read (current table &rest args)
-  (let ((comp (all-completions current table)))
-    (print (format "%s:\n%s\n from %s table" current comp table))
+  (let* ((comp (all-completions current table))
+        (parent (file-name-parent-directory current)))
+    ;; (when (equal parent "/")
+    ;;   (setq parent ""))
+    ;; (print (format "current: %s\n parent: %s\n" current parent))
     (if (> (length comp) 1)
         (progn
-        (unless (equal current "") (setq table (append (list (string-join (butlast (butlast (string-split current "/"))) "/")) (all-completions current table))))
+        ;(unless (equal current "") (setq table (append (list parent) (all-completions "" table))))
         (consult--read table
                       :prompt "Select a File: "
                       :require-match t
-                      :default current
-                      :predicate (apply-partially #'consult-gh--files-sibling-pred table current)
-                      :lookup #'consult-gh--files-lookup
+                      ;;:default current
+                      :predicate (apply-partially #'consult-gh--files-children-and-parent-pred current)
+                      ;;:lookup #'consult-gh--files-lookup
                       :inherit-input-method t
                       :sort nil
+                      :state (funcall (apply-partially #'consult-gh--files-expand-action table))
+                      :preview-key "C-p"
                       ;;:initial current
                       ))
-                      comp)))
-
+                      comp
+                      )))
 
 (let* (
        (repo "minad/vertico")
        (branch "main")
        ;;(file-paths (consult-gh--files-list-items repo branch))
-       (root "./")
+       (root "/")
+       (file-paths (consult-gh--files-list-items repo branch root))
+       ;;(items (consult-gh--files-list-items repo branch))
        (items (consult-gh--files-list-items repo branch root))
        ;;(items '("/foo/" "/foo/file0.el" "/foo/bar/" "/foo/bar/file1.el" "/foo/bar/file2.org" "/foo/baz/" "/foo/baz/file3.txt" "/foo/baz/filr4.py"))
-       (items (mapcar (lambda (item) (string-trim item root)) items))
-       (items (mapcar (lambda (item) (if (not (get-text-property 0 :size item)) (concat item "/") item)) (remove "" items)))
+       ;;(items (mapcar (lambda (item) (string-trim item root )) items))
+       (items (mapcar (lambda (item) (if (and (not (get-text-property 0 :size item)) (not (equal item root))) (concat item "/") item)) items))
        ;; (make-table (apply-partially #'completion-table-with-predicate
        ;;                           #'completion-file-name-table
        ;;                           t
@@ -555,18 +622,25 @@ out
 ;;(consult--read table
 ;;               :prompt "Select a File: ")
 
-(consult-gh--files-completing-read "" table)
-;;(all-completions "branding/logo" table)
+(consult-gh--files-completing-read "/" table)
+;;(all-completions "/" table)
+;(file-name-parent-directory "/")
 ;;items
 ;;table
+;;file-paths
 )
 
 #+end_src
 
 #+RESULTS:
 :results:
-(./ CHANGELOG.org LICENSE README.org extensions/ extensions/vertico-buffer.el extensions/vertico-directory.el extensions/vertico-flat.el extensions/vertico-grid.el extensions/vertico-indexed.el extensions/vertico-mouse.el extensions/vertico-multiform.el extensions/vertico-quick.el extensions/vertico-repeat.el extensions/vertico-reverse.el extensions/vertico-unobtrusive.el vertico.el)
+"/extensions/"
 :end:
+
+
+
+
+
 
 
 
@@ -902,3 +976,87 @@ items
 (all-completions "" func)
 )
 #+end_src
+
+* Example for minad
+** recursive consult--read
+#+begin_src emacs-lisp :results verbatim drawer
+
+(defun consult-gh--files-children-and-parent-pred (current string)
+  (or (equal current (file-name-parent-directory string))
+      (equal string (file-name-parent-directory current))))
+
+(defun consult-gh--files-lookup  (sel cand &rest _)
+  (consult-gh--files-completing-read sel cand))
+
+(defun consult-gh--files-make-table (items)
+(completion-table-in-turn (delete-dups items) #'completion-file-name-table))
+
+(defun consult-gh--files-preview (table)
+  (lambda (action cand)
+      (pcase action
+        ('preview
+         (if cand
+             ;;;;preview function goes here;;;
+        ))
+        ('return
+         (setq out (consult-gh--files-lookup cand table))
+        ))
+out))
+
+
+(defun consult-gh--files-completing-read (current table &rest args)
+  (let* ((comp (all-completions current table))
+        (parent (file-name-parent-directory current)))
+    (if (> (length comp) 1)
+        (progn
+        (consult--read table
+                      :prompt "Select a File: "
+                      :require-match t
+                      :predicate (apply-partially #'consult-gh--files-children-and-parent-pred current)
+                      :lookup #'consult-gh--files-lookup
+                      :inherit-input-method t
+                      :sort nil
+                      ;;:state (funcall (apply-partially #'consult-gh--files-preview table))
+                      :preview-key "C-p"
+                      ))
+                      comp
+                      )))
+
+(let* ((root "/")
+       (items '("/" "/foo/" "/foo/file0" "/foo/file1.org" "/foo/file2.el" "/foo/bar/" "/foo/bar/file3.el" "/foo/bar/file4.el" "/foo/bar/file5.el" "/foo/baz/" "/foo/baz/file6.el" "/foo/baz/file7.el"))
+       (table (consult-gh--files-make-table items))
+       )
+
+(consult-gh--files-completing-read root table)
+
+)
+
+#+end_src
+
+
+
+
+
+
+
+
+
+
+#+begin_src emacs-lisp :results raw drawer
+(let* ((repo "minad/vertico")
+      (branch "main")
+      (items (consult-gh--files-list-items repo branch))
+      )
+items
+)
+#+end_src
+
+#+RESULTS:
+:results:
+(minad/vertico/ minad/vertico/CHANGELOG.org minad/vertico/LICENSE minad/vertico/README.org minad/vertico/extensions minad/vertico/extensions/vertico-buffer.el minad/vertico/extensions/vertico-directory.el minad/vertico/extensions/vertico-flat.el minad/vertico/extensions/vertico-grid.el minad/vertico/extensions/vertico-indexed.el minad/vertico/extensions/vertico-mouse.el minad/vertico/extensions/vertico-multiform.el minad/vertico/extensions/vertico-quick.el minad/vertico/extensions/vertico-repeat.el minad/vertico/extensions/vertico-reverse.el minad/vertico/extensions/vertico-unobtrusive.el minad/vertico/vertico.el)
+:end:
+
+
+
+#+RESULTS:
+: minad/vertico/extension
