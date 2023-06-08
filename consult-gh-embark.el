@@ -59,22 +59,37 @@
   "Clone the repo at point."
   (funcall (consult-gh--repo-clone-action) (get-text-property 0 :repo cand)))
 
+
 (defun consult-gh-embark-fork-repo (cand)
   "Fork the repo at point."
   (funcall (consult-gh--repo-fork-action) (get-text-property 0 :repo cand)))
 
-(defvar-keymap consult-gh-embark-actions
+(defun consult-gh-embark-save-file (cand)
+  "Save the file at point."
+  (funcall (consult-gh--files-save-file-action) cand))
+
+(defvar-keymap consult-gh-embark-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
-  "s" #'consult-gh-embark-get-ssh-link
-  "h" #'consult-gh-embark-get-https-link
+  "l s" #'consult-gh-embark-get-ssh-link
+  "l h" #'consult-gh-embark-get-https-link
   "e" #'consult-gh-embark-get-straight-usepackage
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
   "z" #'consult-gh-embark-view-issues-of-repo
-  "o" #'consult-gh-embark-open-in-browser)
+  "o" #'consult-gh-embark-open-in-browser
+)
 
-(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions))
+(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions-map))
+
+
+(defvar-keymap consult-gh-embark-files-actions-map
+  :doc "Keymap for consult-gh-embark-files"
+  :parent consult-gh-embark-actions-map
+  "s" #'consult-gh-embark-save-file)
+
+(add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
+
 
 (provide 'consult-gh-embark)
