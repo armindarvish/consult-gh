@@ -293,10 +293,10 @@
 (defun consult-gh--api-get-json (url)
   (consult-gh--call-process "api" "-H" "Accept: application/vnd.github+json" url))
 
-(defun consult-gh--api-json-to-table (json &optional key)
+(defun consult-gh--api-json-to-hashtable (json &optional key)
   (let ((json-object-type 'hash-table)
         (json-array-type 'list)
-        (json-key-type 'string)
+        (json-key-type 'keyword)
         (json-false :false))
     (if key
         (gethash key (json-read-from-string json))
@@ -305,16 +305,14 @@
 (defun consult-gh--files-get-branches (repo)
   (consult-gh--api-get-json (concat "repos/" repo "/branches")))
 
-(defun consult-gh--files-branches-table-to-list (table repo)
-    (mapcar (lambda (el) (propertize (gethash "name" el) ':repo repo ':branch (gethash "name" el) ':url (gethash "url" el))) table))
+(defun consult-gh--files-branches-hashtable-to-list (table repo)
+    (mapcar (lambda (item) (propertize (gethash :name item) ':repo repo ':branch (gethash :name item) ':url (gethash :url item))) table))
 
 (defun consult-gh--files-branches-list-items (repo)
 (let ((response (consult-gh--files-get-branches repo)))
   (if (eq (car response) 0)
-      (consult-gh--files-branches-table-to-list (consult-gh--api-json-to-table (cadr response)) repo)
+      (consult-gh--files-branches-hashtable-to-list (consult-gh--api-json-to-hashtable (cadr response)) repo)
     (message (cadr response)))))
-
-
 
 (defun consult-gh--files-get-trees (repo &optional branch)
   (let ((branch (or branch "HEAD")))
@@ -322,19 +320,19 @@
 
 (defun consult-gh--files-table-to-list (table repo &optional branch)
    (let ((branch (or branch "HEAD")))
-    (mapcar (lambda (el) (propertize (gethash "path" el) ':repo repo ':branch branch ':url (gethash "url" el) ':path (gethash "path" el) ':size (gethash "size" el))) table)))
+    (mapcar (lambda (item) (propertize (gethash :path item) ':repo repo ':branch branch ':url (gethash :url item) ':path (gethash :path item) ':size (gethash :size item))) table)))
 
 (defun consult-gh--files-list-items (repo &optional branch)
 (let* ((branch (or branch "HEAD"))
        (response (consult-gh--files-get-trees repo branch))
        )
   (if (eq (car response) 0)
-     (delete-dups (sort (consult-gh--files-table-to-list (consult-gh--api-json-to-table (cadr response) "tree") repo branch) 'string<))
+     (delete-dups (sort (consult-gh--files-table-to-list (consult-gh--api-json-to-hashtable (cadr response) :tree) repo branch) 'string<))
     (message (cadr response)))))
 
 (defun consult-gh--files-get-content (url)
   (let* ((response (consult-gh--api-get-json url))
-        (content (if (eq (car response) 0) (consult-gh--api-json-to-table (cadr response) "content")
+        (content (if (eq (car response) 0) (consult-gh--api-json-to-hashtable (cadr response) :content)
                    nil)))
     (if content
         (base64-decode-string content)
