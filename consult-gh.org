@@ -696,9 +696,6 @@
                          )
                         ))
              )
-            ('return
-             (when consult-gh--preview-buffers-list
-             (mapcar (lambda (buff) (if (buffer-live-p buff) (kill-buffer-if-not-modified buff))) consult-gh--preview-buffers-list)))
             )
         ))))
 
@@ -821,9 +818,6 @@
                          )
                         ))
              )
-            ('return
-             (when consult-gh--preview-buffers-list
-             (mapcar #'kill-buffer-if-not-modified consult-gh--preview-buffers-list)))
             )
         ))))
 #+end_src

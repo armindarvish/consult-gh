@@ -16,6 +16,7 @@
 
 (eval-when-compile
 (require 'consult)
+(require 'json)
 )
 
 (defgroup consult-gh nil
@@ -278,6 +279,17 @@
               nil)
             )))
 
+(defun consult-gh-kill-preview-buffers ()
+  (interactive)
+  (when consult-gh--preview-buffers-list
+    (mapcar (lambda (buff) (if (buffer-live-p buff)
+                             (kill-buffer buff))
+               (unless (buffer-live-p buff)
+                             (setq consult-gh--preview-buffers-list (delete buff consult-gh--preview-buffers-list)))
+               ) consult-gh--preview-buffers-list)
+    )
+)
+
 (defun consult-gh--api-get-json (url)
   (consult-gh--call-process "api" "-H" "Accept: application/vnd.github+json" url))
 
@@ -433,10 +445,6 @@
                          cand
                          buffer
                          ))) ()))
-        ('return
-         (when consult-gh--preview-buffers-list
-           (mapcar (lambda (buff) (if (buffer-live-p buff) (kill-buffer-if-not-modified buff))) consult-gh--preview-buffers-list))
-         )
         ))))
 
 (defun consult-gh--files-annotate ()
@@ -582,9 +590,6 @@
                          )
                         ))
              )
-            ('return
-             (when consult-gh--preview-buffers-list
-             (mapcar (lambda (buff) (if (buffer-live-p buff) (kill-buffer-if-not-modified buff))) consult-gh--preview-buffers-list)))
             )
         ))))
 
@@ -684,9 +689,6 @@
                          )
                         ))
              )
-            ('return
-             (when consult-gh--preview-buffers-list
-             (mapcar #'kill-buffer-if-not-modified consult-gh--preview-buffers-list)))
             )
         ))))
 
@@ -851,7 +853,7 @@
   (interactive
    (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-     (list (delete-dups (completing-read-multiple "Select Repository(s): " candidates nil nil nil nil nil t)))))
+     (list (completing-read-multiple "Select Repository(s): " candidates nil nil nil nil nil t))))
   (let ((branches (list)))
     (pcase consult-gh-default-branch-to-load
       ("ask"
