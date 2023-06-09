@@ -15,7 +15,7 @@ Consult-GH offers the following "MAIN" interactive commands
 
 1. =consult-gh-orgs=: for looking up github users/organizations including and loading their repositories including looking up multiple accounts at the same time.
 2. =consult-gh-search-repos=: for looking up repositories including multiple repositories at the same time.
-3. =consult-gh-browse-repo-files=: for looking up files within any branch of one or more repositories. This can include looking at different branches within the same repository.
+3. =consult-gh-find-file=: for looking up files within any branch of one or more repositories. This can include looking at different branches within the same repository.
 4. =consult-gh-issue-list=: for looking up issues of one or more repositories
 
 In addition Consult-GH provides interactive functions for "ADDITIONAL" useful quick actions:
@@ -176,6 +176,10 @@ Similar to =consult-gh-repo-action= and =consult-gh-issue-action= but for files.
 
 * TODO Features with Examples
 To be completed
+
+** Embrak Integration
+Consult-GH also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu. For example you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's url in a browser, but then call embark on any item for runing alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= and etc. You can also call embark and select items before runing some commands on all of them, for example select multiple repos and run clone for all of them.
+
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]]  and see if there is an existing solution or add relevant comments, discussion under the same issue. If not file a new issue following these steps:
 
