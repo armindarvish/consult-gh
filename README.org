@@ -190,7 +190,7 @@ To report bug, first check if it is already reported in the [[https://github.com
 
 3. Remove the package and install the latest version (along with dependencies) and see if the issue persists.
 
-4. In a bare bone vanilla Emacs (>=28) (e.g. emacs -Q), install the latest version of Consult-GH (and its dependencies) without any configuration or other packages and see if the issue still persists.
+4. In a bare bone vanilla Emacs (>=28) (e.g. =emacs -Q=), install the latest version of Consult-GH (and its dependencies) without any configuration or other packages and see if the issue still persists.
 
 5. File an issue and provide important information and context in as much detail as possible in your bug report. Important information can include:
 - Your operating system, version of Emacs (or the version of emacsen you are using), version of gh (run =gh --version= in a shell), version of consult (see [[https://github.com/emacsorphanage/pkg-info][pkg-info]]).
