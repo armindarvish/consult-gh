@@ -17,6 +17,7 @@
 ;;; Requirements
 (eval-when-compile
 (require 'consult)
+(require 'crm)
 (require 'json)
 )
 
