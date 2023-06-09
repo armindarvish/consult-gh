@@ -1,7 +1,7 @@
 #+include: ~/OrgFiles/armin/org-macros.setup
 #+OPTIONS: h:1 num:nil toc:nil d:nil
 
-#+TITLE: consult-gh - consulting GitHub CLI inside Emacs
+#+TITLE: Consult-GH - A [[https://cli.github.com/][GitHub CLI]] client inside GNU Emacs using [[https://github.com/minad/consult][Consult]]
 #+AUTHOR: Armin Darvish
 #+LANGUAGE: en
 
@@ -9,14 +9,13 @@
 #+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://img.shields.io/static/v1?label=Made%20For&message=GNU%20Emacs&color=7a5aba&logo=gnuemacs&logoColor=white"/></a>
 
 
-* The  [[https://cli.github.com/][GitHub CLI]] integration for GNU Emacs using [[https://github.com/minad/consult][Consult]].
 Consult-GH provides an interface to interact with github repositories (search, view files and issues, clone, fork, ...) from inside emacs. It uses the awesome package [[https://github.com/minad/consult][consult]] by [[https://github.com/minad][Daniel Mendler]] and [[https://cli.github.com/][GitHub CLI]] and optionally [[https://github.com/oantolin/embark][Embark]] by [[https://github.com/oantolin][Omar Antolín Camarena]], and provides an intuitive UI using minibuffer completion familiar to emacs users.
 
 Consult-GH offers the following "MAIN" interactive commands
 
 1. =consult-gh-orgs=: for looking up github users/organizations including and loading their repositories including looking up multiple accounts at the same time.
 2. =consult-gh-search-repos=: for looking up repositories including multiple repositories at the same time.
-3. =consult-gh-browse-repo-files=: for looking up files within any branch of one or more repositories. This can include looking at different branches within the same repository.
+3. =consult-gh-find-file=: for looking up files within any branch of one or more repositories. This can include looking at different branches within the same repository.
 4. =consult-gh-issue-list=: for looking up issues of one or more repositories
 
 In addition Consult-GH provides interactive functions for "ADDITIONAL" useful quick actions:
@@ -178,6 +177,9 @@ Similar to =consult-gh-repo-action= and =consult-gh-issue-action= but for files.
 * TODO Features with Examples
 To be completed
 
+** Embrak Integration
+Consult-GH also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu. For example you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's url in a browser, but then call embark on any item for runing alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= and etc. You can also call embark and select items before runing some commands on all of them, for example select multiple repos and run clone for all of them.
+
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]]  and see if there is an existing solution or add relevant comments, discussion under the same issue. If not file a new issue following these steps:
 
@@ -188,7 +190,7 @@ To report bug, first check if it is already reported in the [[https://github.com
 
 3. Remove the package and install the latest version (along with dependencies) and see if the issue persists.
 
-4. In a bare bone vanilla Emacs (>=28) (e.g. emacs -Q), install the latest version of Consult-GH (and its dependencies) without any configuration or other packages and see if the issue still persists.
+4. In a bare bone vanilla Emacs (>=28) (e.g. =emacs -Q=), install the latest version of Consult-GH (and its dependencies) without any configuration or other packages and see if the issue still persists.
 
 5. File an issue and provide important information and context in as much detail as possible in your bug report. Important information can include:
 - Your operating system, version of Emacs (or the version of emacsen you are using), version of gh (run =gh --version= in a shell), version of consult (see [[https://github.com/emacsorphanage/pkg-info][pkg-info]]).
