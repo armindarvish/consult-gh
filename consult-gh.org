@@ -105,6 +105,22 @@
   :group 'consult-gh
   :type 'boolean)
 
+(defcustom consult-gh-show-preview nil
+  "Default directory to clone github repos in for `consult-gh' package."
+  :group 'consult-gh
+  :type 'boolean)
+
+(defcustom consult-gh-preview-key consult-preview-key
+  "Preview key for consult-gh similar to preview key from `consult' package. For more info see `consult-preview-key'."
+  :type '(choice (const :tag "Any key" any)
+                 (list :tag "Debounced"
+                       (const :debounce)
+                       (float :tag "Seconds" 0.1)
+                       (const any))
+                 (const :tag "No preview" nil)
+                 (key :tag "Key")
+                 (repeat :tag "List of keys" key)))
+
 (defcustom consult-gh-default-clone-directory nil
   "Default directory to clone github repos in for `consult-gh' package."
   :group 'consult-gh
@@ -943,6 +959,7 @@
                     :history 'consult-gh--repos-history
                     :category 'consult-gh
                     :sort t
+                    :preview-key consult-gh-preview-key
                     )))))
 #+end_src
 *** define consult gh default repos
@@ -974,6 +991,7 @@
                     :history 'consult-gh--repos-history
                     :category 'consult-gh
                     :sort t
+                    :preview-key consult-gh-preview-key
                     ))
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
@@ -1000,6 +1018,7 @@
                     :history 'consult-gh--issues-history
                     :category 'consult-gh
                     :sort t
+                    :preview-key consult-gh-preview-key
                     )
           )
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
@@ -1040,6 +1059,7 @@
                             :history 'consult-gh--repos-history
                             :category 'consult-gh-files
                             :sort t
+                            :preview-key consult-gh-preview-key
                             ))
         (message (concat "consult-gh: " (propertize "no contents matched your repo!" 'face 'warning)))))))
 
@@ -1114,6 +1134,13 @@
   "Copy the http based link of the repo to `kill-ring'."
   (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim (get-text-property 0 :repo cand)) "--no-browser"))))
 
+(defun consult-gh-embark-get-org-link (cand)
+  "Copy the http based link of the repo to `kill-ring'."
+  (let* ((repo (get-text-property 0 :repo cand))
+         (url  (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+         (package (car (last (split-string repo "\/")))))
+  (kill-new (concat "[[" url "][" package "]]"))))
+
 (defun consult-gh-embark-get-straight-usepackage (cand)
   "Copy a drop-in straight use package setup of this repo to `kill-ring'."
   (let* ((repo (get-text-property 0 :repo cand))
@@ -1149,9 +1176,10 @@
 (defvar-keymap consult-gh-embark-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
-  "l s" #'consult-gh-embark-get-ssh-link
   "l h" #'consult-gh-embark-get-https-link
+  "l s" #'consult-gh-embark-get-ssh-link
   "l l" #'consult-gh-embark-get-url-link
+  "l o" #'consult-gh-embark-get-org-link
   "e" #'consult-gh-embark-get-straight-usepackage
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
@@ -1161,6 +1189,7 @@
 )
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions-map))
+
 
 
 (defvar-keymap consult-gh-embark-files-actions-map

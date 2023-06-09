@@ -92,6 +92,22 @@
   :group 'consult-gh
   :type 'boolean)
 
+(defcustom consult-gh-show-preview nil
+  "Default directory to clone github repos in for `consult-gh' package."
+  :group 'consult-gh
+  :type 'boolean)
+
+(defcustom consult-gh-preview-key consult-preview-key
+  "Preview key for consult-gh similar to preview key from `consult' package. For more info see `consult-preview-key'."
+  :type '(choice (const :tag "Any key" any)
+                 (list :tag "Debounced"
+                       (const :debounce)
+                       (float :tag "Seconds" 0.1)
+                       (const any))
+                 (const :tag "No preview" nil)
+                 (key :tag "Key")
+                 (repeat :tag "List of keys" key)))
+
 (defcustom consult-gh-default-clone-directory nil
   "Default directory to clone github repos in for `consult-gh' package."
   :group 'consult-gh
@@ -795,6 +811,7 @@
                     :history 'consult-gh--repos-history
                     :category 'consult-gh
                     :sort t
+                    :preview-key consult-gh-preview-key
                     )))))
 
 (defun consult-gh-default-repos ()
@@ -821,6 +838,7 @@
                     :history 'consult-gh--repos-history
                     :category 'consult-gh
                     :sort t
+                    :preview-key consult-gh-preview-key
                     ))
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 
@@ -843,6 +861,7 @@
                     :history 'consult-gh--issues-history
                     :category 'consult-gh
                     :sort t
+                    :preview-key consult-gh-preview-key
                     )
           )
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
@@ -880,6 +899,7 @@
                             :history 'consult-gh--repos-history
                             :category 'consult-gh-files
                             :sort t
+                            :preview-key consult-gh-preview-key
                             ))
         (message (concat "consult-gh: " (propertize "no contents matched your repo!" 'face 'warning)))))))
 

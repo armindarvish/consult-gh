@@ -34,7 +34,18 @@
 
 (defun consult-gh-embark-get-https-link (cand)
   "Copy the http based link of the repo to `kill-ring'."
-  (kill-new (concat "https://github.com/" (string-trim (get-text-property 0 :repo cand))) ".git"))
+  (kill-new (concat "https://github.com/" (string-trim (get-text-property 0 :repo cand)) ".git")))
+
+(defun consult-gh-embark-get-url-link (cand)
+  "Copy the http based link of the repo to `kill-ring'."
+  (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim (get-text-property 0 :repo cand)) "--no-browser"))))
+
+(defun consult-gh-embark-get-org-link (cand)
+  "Copy the http based link of the repo to `kill-ring'."
+  (let* ((repo (get-text-property 0 :repo cand))
+         (url  (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+         (package (car (last (split-string repo "\/")))))
+  (kill-new (concat "[[" url "][" package "]]"))))
 
 (defun consult-gh-embark-get-straight-usepackage (cand)
   "Copy a drop-in straight use package setup of this repo to `kill-ring'."
@@ -71,8 +82,10 @@
 (defvar-keymap consult-gh-embark-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
-  "l s" #'consult-gh-embark-get-ssh-link
   "l h" #'consult-gh-embark-get-https-link
+  "l s" #'consult-gh-embark-get-ssh-link
+  "l l" #'consult-gh-embark-get-url-link
+  "l o" #'consult-gh-embark-get-org-link
   "e" #'consult-gh-embark-get-straight-usepackage
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
@@ -82,6 +95,7 @@
 )
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions-map))
+
 
 
 (defvar-keymap consult-gh-embark-files-actions-map
