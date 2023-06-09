@@ -175,7 +175,6 @@ Similar to =consult-gh-repo-action= and =consult-gh-issue-action= but for files.
 
 * TODO Features with Examples
 To be completed
-
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]]  and see if there is an existing solution or add relevant comments, discussion under the same issue. If not file a new issue following these steps:
 
