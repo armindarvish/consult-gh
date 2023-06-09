@@ -45,7 +45,7 @@
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-crm-separator crm-separator
+(defcustom consult-gh-crm-separator crm-default-separator
   "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'. Uses crm-separator for default."
   :group 'consult-gh
   :type 'string)

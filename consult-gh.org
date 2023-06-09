@@ -61,7 +61,7 @@
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-crm-separator crm-separator
+(defcustom consult-gh-crm-separator crm-default-separator
   "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'. Uses crm-separator for default."
   :group 'consult-gh
   :type 'string)
@@ -125,7 +125,7 @@
 \"ask\": Asks the user to select a branch.
 'nil: loads the \"HEAD\" branch
 A STRING: loads the branch STRING.
-*Note that setting this to a STRING would mean that this STRING is used for any repository that is fetched with `consult-gh' and if the branch does not exist, it will cause an error. Therefore using a STRING is not recommended as a general case but in temporary settings where one is sure the branch exists on the repositories being fetched.*"
+,*Note that setting this to a STRING would mean that this STRING is used for any repository that is fetched with `consult-gh' and if the branch does not exist, it will cause an error. Therefore using a STRING is not recommended as a general case but in temporary settings where one is sure the branch exists on the repositories being fetched.*"
   :group 'consult-gh
   :type '(choice "confirm" "ask" string (const nil)))
 
