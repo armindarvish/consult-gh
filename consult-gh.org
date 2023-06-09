@@ -1108,7 +1108,11 @@
 
 (defun consult-gh-embark-get-https-link (cand)
   "Copy the http based link of the repo to `kill-ring'."
-  (kill-new (concat "https://github.com/" (string-trim (get-text-property 0 :repo cand))) ".git"))
+  (kill-new (concat "https://github.com/" (string-trim (get-text-property 0 :repo cand)) ".git")))
+
+(defun consult-gh-embark-get-url-link (cand)
+  "Copy the http based link of the repo to `kill-ring'."
+  (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim (get-text-property 0 :repo cand)) "--no-browser"))))
 
 (defun consult-gh-embark-get-straight-usepackage (cand)
   "Copy a drop-in straight use package setup of this repo to `kill-ring'."
@@ -1147,6 +1151,7 @@
   :parent embark-general-map
   "l s" #'consult-gh-embark-get-ssh-link
   "l h" #'consult-gh-embark-get-https-link
+  "l l" #'consult-gh-embark-get-url-link
   "e" #'consult-gh-embark-get-straight-usepackage
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
