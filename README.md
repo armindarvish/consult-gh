@@ -27,24 +27,26 @@ Furthermore Consult-GH, also provides a bunch of useful [Embark](https://github.
 
 While there are several packages for interacting with Github API such as [gh.el](https://github.com/sigma/gh.el), [magit/ghub](https://github.com/magit/ghub) and [magit/forge](https://github.com/magit/forge), [git-link](https://github.com/sshaw/git-link), [browse-at-remote](https://github.com/rmuslimov/browse-at-remote), and &#x2026; in my opinion none of these packages provide an intuitive UI to interact with github repositories. Some of these are a collection of low-level API calls without user-friendly interactive commands and others simply retrieve a URL in the browser instead of providing github interface inside emacs. As a result the user either has to implement their own functions to use the api calls or simply jump to the browser to interact with GitHub. Consult-GH aims to fill this gap and provide a tool that allows the user to interact with GitHub from within emacs.
 
-Note that currently Consult-GH does not provide interactive commands to manage issues or pull request mainly because those functionalities are already available in other packages. Personally, I like to use Consult-GH for searching repositories, browsing issues or view/download files without cloning entire repositories, etc. and use a package like [magit/forge](https://github.com/magit/forge) for managing issues, pull requests, etc.
+Note that currently Consult-GH does not provide interactive commands to manage issues or pull request mainly because those functionalities are already available in other packages.  Personally, I like to use Consult-GH for searching repositories, browsing issues or view/download files without cloning entire repositories, etc. and use a package like [magit/forge](https://github.com/magit/forge) for managing issues, pull requests, etc.
 
 
 # Getting Started
 
-## Installation
+-   Installation
 
     Before you start, make sure you understand that this is work in progress in its early stage and bugs and breaks very much expected so use this at your own risk.
     
-### Requirements
+    -   Requirements
     
         In order to use Consult-GH, you need the following requirements:
         
         -   [GitHub CLI](https://github.com/cli/cli)
         
-            To install GitHub Cli, follow the official documentations here: [GitHub CLI Installation](https://github.com/cli/cli#installation). Make sure you are logged in gh by runing `gh auth login` and following the instructions. Refer to the official manual if you need further help, [GitHub CLI Manual](https://cli.github.com/manual/).
+            To install GitHub Cli, follow the official documentations here: [GitHub CLI Installation](https://github.com/cli/cli#installation).
+            Make sure you are logged in gh by runing `gh auth login` and following the instructions. Refer to the official manual if you need further help, [GitHub CLI Manual](https://cli.github.com/manual/).
             
-            **Why use gh instead of other emacs packages?** While there are other emacs packages to interact with github api, we use "gh" commandline tool as the backend instead of direct calls to REST API or GraphQL inside emacs and this is very much intentional. By leaving api functionalities we simplify usage (no need to setup authentication within emacs), reduce security risks (no risk of exposing authentication tokens, &#x2026;) and increase maintainability (no need to keep compatibility with API changes).
+            **Why use gh instead of other emacs packages?**
+            While there are other emacs packages to interact with github api, we use "gh" commandline tool as the backend instead of direct calls to REST API or GraphQL inside emacs and this is very much intentional. By leaving api functionalities we simplify usage (no need to setup authentication within emacs), reduce security risks (no risk of exposing authentication tokens, &#x2026;) and increase maintainability (no need to keep compatibility with API changes).
         
         -   [Consult](https://github.com/minad/consult)
         
@@ -56,7 +58,7 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
             As of Emacs 27, json is available as built-in **if emacs is compiled with json.** You can run the command `json-available-p` to see if it is available in your version of Emacs. If json is not available you may still be able to use Consult-GH with limited functionlity (you cannot view file contents).
     
-### Recommended (but not requires) packages
+    -   Recommended (but not requires) packages
     
         The following packages are not strictly required for Consult-GH to work but it can improve your experience depending on your use-case.
         
@@ -64,7 +66,7 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
             Since "gh" returns information in markdown, installing markdown-mode can significantly improve your experience (e.g. readability of previews, etc.). When "markdown-mode" is available, by default Consult-GH will use it as major mode to show previews of READMEs, otherwise everything it will be in raw text in "fundamental mode".
     
-### Installing Consult-GH Package
+    -   Installing Consult-GH Package
     
         Consult-GH is not currently on [ELPA](https://elpa.gnu.org/packages/consult.html) or [MELPA](https://melpa.org/#/consult). Therefore you need ton install it using an alternative non-standard package managers such as [straight.el](https://github.com/radian-software/straight.el) or manual installation.
         
@@ -72,18 +74,14 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
             To install Consult-GH with straight.el you can use the following command
             
-            ```emacs-lisp
-            (straight-use-package
-             '(consult-gh :type git :host github :repo "armindarvish/consult-gh" :branch "main"))
-            ```
+                (straight-use-package
+                 '(consult-gh :type git :host github :repo "armindarvish/consult-gh" :branch "main"))
             
             or if you use `use-package` macro with straight, you can do:
             
-            ```emacs-lisp
-            (use-package consult-gh
-            	:straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
-            )
-            ```
+                (use-package consult-gh
+                	:straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+                )
             
             You can also fork this repository and use your own repo.
         
@@ -91,30 +89,27 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
             Clone this repo and make sure the files are on your load path, as described on [EmacsWiki](https://www.emacswiki.org/emacs/LoadPath).
 
-## Configuration
+-   Configuration
 
-    Consult-GH is built with the idea that the user should be able to customize everything based on their use-case. In fact, the default configurations are minimal and prioritize performance over usability, therefore for optimal use, the user is very much expected to configure Consult-GH according to their use case. For example, with the default configuration, when selecting a repository, Consult-GH opens the link in a browser, but you can configure that to show the README inside Emacs or clone the repository, etc. Therefore I recommend you read through this section and understand how to configure the package according to your needs and use-case, but if you just want a drop-in minimal config, look at the snippet below and make sure you replace "armindarvish" with your GitHub username:
+    Consult-GH is built with the idea that the user should be able to customize everything based on their use-case. In fact, the default configurations are minimal and prioritize performance over usability, therefore for optimal use, the user is very much expected to configure Consult-GH according to their use case. For example, with the default configuration, when selecting a repository,  Consult-GH opens the link in a browser, but you can configure that to show the README inside Emacs or clone the repository, etc. Therefore I recommend you read through this section and understand how to configure the package according to your needs and use-case, but if you just want a drop-in minimal config, look at the snippet below and make sure you replace "armindarvish" with your GitHub username:
     
-    ```emacs-lisp
-    (use-package consult-gh
-      :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh" :branch "develop")
-    
-      :config
-      ;;add your main GitHub account (replace "armindarvish" with your user or org)
-      (add-to-list 'consult-gh-default-orgs-list "armindarvish")
-    
-      ;;use "gh org list" to get a list of all your organizations and adds them to default list
-      (setq consult-gh-default-orgs-list (append consult-gh-default-orgs-list (remove "" (split-string (consult-gh--command-to-string "org" "list") "\n"))))
-    
-      ;; set the default folder for cloning repositories, By default Consult-GH will confirm this before cloning
-      (setq consult-gh-default-clone-directory "~/")
-    )
-    
-    ```
+        (use-package consult-gh
+          :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh" :branch "develop")
+        
+          :config
+          ;;add your main GitHub account (replace "armindarvish" with your user or org)
+          (add-to-list 'consult-gh-default-orgs-list "armindarvish")
+        
+          ;;use "gh org list" to get a list of all your organizations and adds them to default list
+          (setq consult-gh-default-orgs-list (append consult-gh-default-orgs-list (remove "" (split-string (consult-gh--command-to-string "org" "list") "\n"))))
+        
+          ;; set the default folder for cloning repositories, By default Consult-GH will confirm this before cloning
+          (setq consult-gh-default-clone-directory "~/")
+        )
     
     The configuration above adds "armindarvish" to the default orgs (used by `consult-gh-default-repos` so you can quickly see all your repositories.
     
-### Custom Variables
+    -   Custom Variables
     
         -   `consult-gh-tempdir`
         
@@ -132,23 +127,17 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
             This is the major-mode used to show repository previews. By default it is set to `markdown-moe` because "gh repo view" returns the README contents (commonly in markdown syntax). But if you prefer to see the contents in other `org-mode`, you can set this variable to 'org-mode. Note that currently, the org-mode conversion is done with some simple regex replacement and while the performance is decent and the converted version is perfectly understandable, the org conversion may cause some inaccuracies. If you want to try this you can do:
             
-            ```emacs-lisp
-            (setq consult-gh-preview-buffer-mode 'org-mode)
-            ```
+                (setq consult-gh-preview-buffer-mode 'org-mode)
         
         -   `consult-gh-default-orgs-list`
         
             This is the list default organizations you want to access frequently. I set this variable to organizations I am part of (a.k.a. to look at my own repositories) but you can add any account you want to look at frequently to this list. Here is an example of setting the default list to "alphapapa" and "systemcrafters":
             
-            ```emacs-lisp
-            (setq consult-gh-default-orgs-list '("alphapapa" "systemcrafters"))
-            ```
+                (setq consult-gh-default-orgs-list '("alphapapa" "systemcrafters"))
             
             or if you want to append to the list:
             
-            ```emacs-lisp
-            (setq consult-gh-default-orgs-list (append consult-gh-default-orgs-list '("alphapapa" "systemcrafters")))
-            ```
+                (setq consult-gh-default-orgs-list (append consult-gh-default-orgs-list '("alphapapa" "systemcrafters")))
         
         -   `consult-gh-show-preview`
         
@@ -160,18 +149,18 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
         -   `consult-gh-preview-key`
         
-            This is similar to `consult-preview-key` but only for `consult-gh`. By default it is set to the value of consult-preview-key to keep consistent experience across different consult packages, but you can set this variable explicitly for consult-gh For example if you have turned preview on by setting `consult-gh-show-preview` to t, but you still only want to see previews on demand, you can set `consult-gh-preview-key` to the key binding that shows the preview. Here is an example using "M-o" as preview key. With this setting, previews are shown only when you hit "M-o".
+            This is similar to `consult-preview-key` but only for `consult-gh`. By default it is set to the value of consult-preview-key to keep consistent experience across different consult packages, but you can set this variable explicitly for consult-gh
+            For example if you have turned preview on by setting `consult-gh-show-preview` to t, but you still only want to see previews on demand, you can set `consult-gh-preview-key` to the key binding that shows the preview. Here is an example using "M-o" as preview key. With this setting, previews are shown only when you hit "M-o".
             
-            ```emacs-lisp
-            (setq consult-gh-show-preview t)
-            (setq consult-gh-preview-key "M-o")
-            ```
+                (setq consult-gh-show-preview t)
+                (setq consult-gh-preview-key "M-o")
             
             Note that getting previews is resource heavy since it has to make an api call to github and get contents of a file. If you set a specific key for `consult-gh-preview-key`, this api call and downloading the content is done only when you hit the key binding.
         
         -   `consult-gh-confirm-before-clone`
         
-            This is a boolean determining whether Consult-GH asks for path and directory name before cloning a repository. By default it is set to `t`, meaning that Consult-GH asks the user for the path to clone a repository and the name to give the directory. However, if you don't want consult-gh to ask you every time you clone a repository, you can set this variable to `nil`, in which case Consult-GH clones repositories at `consult-gh-default-clone-directory` (see below) with the name of the repository itself. Note that setting this variable to `nil` along with setting `consult-gh-default-clone-directory` to a directory where you keep all your repositories, allows quick cloning of multiple repositories (possibly even from different accounts on GitHub).
+            This is a boolean determining whether Consult-GH asks for path and directory name before cloning a repository. By default it is set to `t`, meaning that Consult-GH asks the user for the path to clone a repository and the name to give the directory. However, if you don't want consult-gh to ask you every time you clone a repository, you can set this variable to `nil`, in which case Consult-GH clones repositories at `consult-gh-default-clone-directory` (see below) with the name of the repository itself.
+            Note that setting this variable to `nil` along with setting  `consult-gh-default-clone-directory` to a directory where you keep all your repositories, allows quick cloning of multiple repositories (possibly even from different accounts on GitHub).
         
         -   `consult-gh-default-clone-directory`
         
@@ -189,7 +178,8 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
         -   `consult-gh-repo-action`
         
-            This variable stores the function that is called when a repository is selected. By default it is bound to `#'consult-gh--repo-browse-url-action` which opens the homepage of the repository in a browser. You can change it to other provided functions such as `#'consult-gh--repo-view-action` which instead fetches the README of the repository within an emacs buffer (using ) or `#' consult-gh--repo-browse-files-action` which shows the file tree of the repository (after choosing a branch) for the user to view the files. Other provided built-in actions include `#'consult-gh--repo-clone-action` and `#'consult-gh--repo-fork-action`. You can also set this variable to any custom function as long as it follows the patterns of the built-in functions for input ARGs,&#x2026;
+            This variable stores the function that is called when a repository is selected. By default it is bound to `#'consult-gh--repo-browse-url-action` which opens the homepage of the repository in a browser. You can change it to other provided functions such as `#'consult-gh--repo-view-action` which instead fetches the README of the repository within an emacs buffer (using ) or `#' consult-gh--repo-browse-files-action` which shows the file tree of the repository (after choosing a branch) for the user to view the files. Other provided built-in actions include `#'consult-gh--repo-clone-action` and `#'consult-gh--repo-fork-action`.
+            You can also set this variable to any custom function as long as it follows the patterns of the built-in functions for input ARGs,&#x2026;
         
         -   `consult-gh-issue-action`
         
@@ -197,7 +187,7 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
         -   `consult-gh-file-action`
         
-            Similar to `consult-gh-repo-action` and `consult-gh-issue-action` but for files. This variable stores the default function that is called, when a file is selected. By default it is bound to `#' consult-gh--files-browse-url-action` which opens the file page in a browser. Alternative you can bind it to other provided action functions for files such as `consult-gh--files-view-action` which opens the file in an emacs buffer (in the right major mode as well) or `consult-gh--files-save-file-action` which allows you to save a file without cloning the entire repository. If you select multiple files using [`consult-gh-crm-separator`](#orgf4608dd) you can even save multiple files possibly from different repositories.
+            Similar to `consult-gh-repo-action` and `consult-gh-issue-action` but for files. This variable stores the default function that is called, when a file is selected. By default it is bound to `#' consult-gh--files-browse-url-action` which opens the file page in a browser. Alternative you can bind it to other provided action functions for files such as `consult-gh--files-view-action` which opens the file in an emacs buffer (in the right major mode as well) or `consult-gh--files-save-file-action` which allows you to save a file without cloning the entire repository. If you select multiple files using [`consult-gh-crm-separator`](#org21dda2f) you can even save multiple files possibly from different repositories.
 
 
 # Features with Examples
@@ -207,11 +197,12 @@ To be completed
 
 # Bug reports
 
-To report bug, first check if it is already reported in the [**issue tracker**](https://github.com/armindarvish/consult-gh/issues) and see if there is an existing solution or add relevant comments, discussion under the same issue. If not file a new issue following these steps:
+To report bug, first check if it is already reported in the [**issue tracker**](https://github.com/armindarvish/consult-gh/issues)  and see if there is an existing solution or add relevant comments, discussion under the same issue. If not file a new issue following these steps:
 
 1.  Make sure the dependencies are installed and you are logged in with "gh auth login".
 
-2.  Make sure that dependencies (i.e. `consult` and `gh`) work properly independent of Consult-GH. You can for example run some other consult commands (`consult-buffer`) to make sure the problem is not form consult and run some gh commands in the shell (i.e. `gh repo list`) to see if they are working properly. If the problem is from consult or gh, please refer to their manuals and documentation.
+2.  Make sure that dependencies (i.e. `consult` and `gh`) work properly independent of Consult-GH. You can for example run some other consult commands (`consult-buffer`) to make sure the problem is not form consult and run some gh commands in the shell (i.e. `gh repo list`) to see if they are working properly.
+    If the problem is from consult or gh, please refer to their manuals and documentation.
 
 3.  Remove the package and install the latest version (along with dependencies) and see if the issue persists.
 
@@ -228,9 +219,11 @@ To report bug, first check if it is already reported in the [**issue tracker**](
 
 This is an open source package, and I appreciate feedback, suggestions, ideas,&#x2026;
 
-If you want to contribute to the code, please note that the main branch is currently stable (as stable as a work in progress like this can be) and the develop branch is the current work in progress. Start from the develop/main accrodingly and create a new branch with names such as feature/name-of-the-fature or fix/issue, &#x2026; Do the edits and then create new pull requests when you are done with your edits. Importantly, keep in mind that I am using a **literate programming approach** (given that this is a small project with very limited number of files) where everything goes into consult-gh.org and then gets tangled to appropriate files (for now that includes consult-gh.el and consult-gh-embark.el). If you open a pull-request where you directly edited the .el files, I will likely not approve it because that will then get overwritten later when I tangle from the .org file. So always only edit the .org file and tangle to .el files. Also for updates in the README, you should edit the README.org and then export it to README.md.
+If you want to contribute to the code, please note that the main branch is currently stable (as stable as a work in progress like this can be) and the develop branch is the current work in progress. Start from the develop/main accrodingly and create a new branch with names such as feature/name-of-the-fature or fix/issue, &#x2026; Do the edits and then create new pull requests when you are done with your edits.
+Importantly, keep in mind that I am using a **literate programming approach** (given that this is a small project with very limited number of files) where everything goes into consult-gh.org and then gets tangled to appropriate files (for now that includes consult-gh.el and consult-gh-embark.el). If you open a pull-request where you directly edited the .el files, I will likely not approve it because that will then get overwritten later when I tangle from the .org file. So always only edit the .org file and tangle to .el files. Also for updates in the README, you should edit the README.org and then export it to README.md.
 
 
 # Acknowledgments
 
 Obviously this package would not have been possible without the fabulous [Consult](https://github.com/minad/consult) package. It also took inspiration some of the auxillary packages of consult as well as [gh.el](https://github.com/sigma/gh.el), [magit/forge](https://github.com/magit/forge) and some other github related work. Special thanks to the maintainer of consult package, [Daniel Mendler](https://github.com/minad), for useful advice, feedback and discussion.
+
