@@ -10,7 +10,6 @@
 
 
 * The  [[https://cli.github.com/][GitHub CLI]] integration for GNU Emacs using [[https://github.com/minad/consult][Consult]].
-
 Consult-GH provides an interface to interact with github repositories (search, view files and issues, clone, fork, ...) from inside emacs. It uses the awesome package [[https://github.com/minad/consult][consult]] by [[https://github.com/minad][Daniel Mendler]] and [[https://cli.github.com/][GitHub CLI]] and optionally [[https://github.com/oantolin/embark][Embark]] by [[https://github.com/oantolin][Omar Antolín Camarena]], and provides an intuitive UI using minibuffer completion familiar to emacs users.
 
 Consult-GH offers the following "MAIN" interactive commands
@@ -33,35 +32,31 @@ While there are several packages for interacting with Github API such as [[https
 Note that currently Consult-GH does not provide interactive commands to manage issues or pull request mainly because those functionalities are already available in other packages.  Personally, I like to use Consult-GH for searching repositories, browsing issues or view/download files without cloning entire repositories, etc. and use a package like [[https://github.com/magit/forge][magit/forge]] for managing issues, pull requests, etc.
 
 * Getting Started
-
 ** Installation
-
+Before you start, make sure you understand that this is work in progress in its early stage and bugs and breaks very much expected so use this at your own risk.
 *** Requirements
 In order to use Consult-GH, you need the following requirements:
 
 ****  [[https://github.com/cli/cli][GitHub CLI]]
-
 To install GitHub Cli, follow the official documentations here: [[https://github.com/cli/cli#installation][GitHub CLI Installation]].
+Make sure you are logged in gh by runing =gh auth login= and following the instructions. Refer to the official manual if you need further help, [[https://cli.github.com/manual/][GitHub CLI Manual]].
 
 *Why use gh instead of other emacs packages?*
 While there are other emacs packages to interact with github api, we use "gh" commandline tool as the backend instead of direct calls to REST API or GraphQL inside emacs and this is very much intentional. By leaving api functionalities we simplify usage (no need to setup authentication within emacs), reduce security risks (no risk of exposing authentication tokens, ...) and increase maintainability (no need to keep compatibility with API changes).
 
-
 ****  [[https://github.com/minad/consult][Consult]]
-
 To install consult follow the official instructions here: [[https://github.com/minad/consult#configuration][Configuration of Consult.]]
 
 Also, make sure you review Consult's README since it recommends some other packages and useful configurations for different settings. Some of those may improve your experience of Consult-GH as well.
 
 ****  [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Parsing-JSON.html][json library]] in emacs
-
 As of Emacs 27, json is available as built-in *if emacs is compiled with json.* You can run the command =json-available-p= to see if it is available in your version of Emacs. If json is not available you may still be able to use Consult-GH with limited functionlity (you cannot view file contents).
 
 *** Recommended (but not requires) packages
 The following packages are not strictly required for Consult-GH to work but it can improve your experience depending on your use-case.
+
 **** [[https://github.com/jrblevin/markdown-mode][markdown-mode]]
 Since "gh" returns information in markdown, installing markdown-mode can significantly improve your experience (e.g. readability of previews, etc.). When "markdown-mode" is available, by default Consult-GH will use it as major mode to show previews of READMEs, otherwise everything it will be in raw text in "fundamental mode".
-
 
 *** Installing Consult-GH Package
 Consult-GH is not currently on [[https://elpa.gnu.org/packages/consult.html][ELPA]] or [[https://melpa.org/#/consult][MELPA]]. Therefore you need ton install it using an alternative non-standard package managers such as [[https://github.com/radian-software/straight.el][straight.el]] or manual installation.
@@ -85,10 +80,7 @@ You can also fork this repository and use your own repo.
 **** manual installation
 Clone this repo and make sure the files are on your load path, as described on [[https://www.emacswiki.org/emacs/LoadPath][EmacsWiki]].
 
-
-
 ** Configuration
-
 Consult-GH is built with the idea that the user should be able to customize everything based on their use-case. In fact, the default configurations are minimal and prioritize performance over usability, therefore for optimal use, the user is very much expected to configure Consult-GH according to their use case. For example, with the default configuration, when selecting a repository,  Consult-GH opens the link in a browser, but you can configure that to show the README inside Emacs or clone the repository, etc. Therefore I recommend you read through this section and understand how to configure the package according to your needs and use-case, but if you just want a drop-in minimal config, look at the snippet below and make sure you replace "armindarvish" with your GitHub username:
 
 #+begin_src emacs-lisp
@@ -141,7 +133,6 @@ or if you want to append to the list:
 #+end_src
 
 **** =consult-gh-show-preview=
-
 This variable is boolean determining whether Consult-GH shows previews or not. By default this is set to nil because loading repository views or file contents can be resource-heavy depending on the size of the content. Therefore it is left to the user to decide whether showing previews is suitable for their use-case and their setup or not.
 
 Note that getting previews makes an api call to github downloads contents of a file. When you =consult-gh-show-preview= is set nil (default setting), this api call is not made (no resources used) but no preview will be available inside emacs either. This might be a useful configuration if you only want to see the name of repositories or issues and do actions such as cloning, forking or getting links, or jumping to urls in the browser but not for viewing files within emacs. .
@@ -186,8 +177,8 @@ Similar to =consult-gh-repo-action= and =consult-gh-issue-action= but for files.
 
 * TODO Features with Examples
 To be completed
-* Bug reports
 
+* Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]]  and see if there is an existing solution or add relevant comments, discussion under the same issue. If not file a new issue following these steps:
 
 1. Make sure the dependencies are installed and you are logged in with "gh auth login".
@@ -205,12 +196,11 @@ To report bug, first check if it is already reported in the [[https://github.com
 - If there is an error message, turn debug-on-error on (by =M-x toggle-debug-on-error=) and include the backtrace content in your report.
 - If the error only exists when you have some other packages installed, list those packages (e.g. peoblem happens when evil is installed)
 
-
-
 * Contributions
+This is an open source package, and I appreciate feedback, suggestions, ideas,...
 
-This is an open source package, and I appreciate feedback, suggestions, ideas,... If you want to contribute to the code, please open a pull request.
+If you want to contribute to the code, please note that the main branch is currently stable (as stable as a work in progress like this can be) and the develop branch is the current work in progress. Start from the develop/main accrodingly and create a new branch with names such as feature/name-of-the-fature or fix/issue, ... Do the edits and then create new pull requests when you are done with your edits.
+Importantly, keep in mind that I am using a *literate programming approach* (given that this is a small project with very limited number of files) where everything goes into consult-gh.org and then gets tangled to appropriate files (for now that includes consult-gh.el and consult-gh-embark.el). If you open a pull-request where you directly edited the .el files, I will likely not approve it because that will then get overwritten later when I tangle from the .org file. So always only edit the .org file and tangle to .el files. Also for updates in the README, you should edit the README.org and then export it to README.md.
 
 * Acknowledgments
-
 Obviously this package would not have been possible without the fabulous [[https://github.com/minad/consult][Consult]] package. It also took inspiration some of the auxillary packages of consult as well as [[https://github.com/sigma/gh.el][gh.el]], [[https://github.com/magit/forge][magit/forge]] and some other github related work. Special thanks to the maintainer of consult package, [[https://github.com/minad][Daniel Mendler]], for useful advice, feedback and discussion.

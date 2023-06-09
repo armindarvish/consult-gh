@@ -34,13 +34,15 @@ Note that currently Consult-GH does not provide interactive commands to manage i
 
 -   Installation
 
+    Before you start, make sure you understand that this is work in progress in its early stage and bugs and breaks very much expected so use this at your own risk.
+    
     -   Requirements
     
         In order to use Consult-GH, you need the following requirements:
         
         -   [GitHub CLI](https://github.com/cli/cli)
         
-            To install GitHub Cli, follow the official documentations here: [GitHub CLI Installation](https://github.com/cli/cli#installation).
+            To install GitHub Cli, follow the official documentations here: [GitHub CLI Installation](https://github.com/cli/cli#installation). Make sure you are logged in gh by runing `gh auth login` and following the instructions. Refer to the official manual if you need further help, [GitHub CLI Manual](https://cli.github.com/manual/).
             
             **Why use gh instead of other emacs packages?** While there are other emacs packages to interact with github api, we use "gh" commandline tool as the backend instead of direct calls to REST API or GraphQL inside emacs and this is very much intentional. By leaving api functionalities we simplify usage (no need to setup authentication within emacs), reduce security risks (no risk of exposing authentication tokens, &#x2026;) and increase maintainability (no need to keep compatibility with API changes).
         
@@ -195,7 +197,7 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
         -   `consult-gh-file-action`
         
-            Similar to `consult-gh-repo-action` and `consult-gh-issue-action` but for files. This variable stores the default function that is called, when a file is selected. By default it is bound to `#' consult-gh--files-browse-url-action` which opens the file page in a browser. Alternative you can bind it to other provided action functions for files such as `consult-gh--files-view-action` which opens the file in an emacs buffer (in the right major mode as well) or `consult-gh--files-save-file-action` which allows you to save a file without cloning the entire repository. If you select multiple files using [`consult-gh-crm-separator`](#org1f75033) you can even save multiple files possibly from different repositories.
+            Similar to `consult-gh-repo-action` and `consult-gh-issue-action` but for files. This variable stores the default function that is called, when a file is selected. By default it is bound to `#' consult-gh--files-browse-url-action` which opens the file page in a browser. Alternative you can bind it to other provided action functions for files such as `consult-gh--files-view-action` which opens the file in an emacs buffer (in the right major mode as well) or `consult-gh--files-save-file-action` which allows you to save a file without cloning the entire repository. If you select multiple files using [`consult-gh-crm-separator`](#orgf4608dd) you can even save multiple files possibly from different repositories.
 
 
 # Features with Examples
@@ -224,7 +226,9 @@ To report bug, first check if it is already reported in the [**issue tracker**](
 
 # Contributions
 
-This is an open source package, and I appreciate feedback, suggestions, ideas,&#x2026; If you want to contribute to the code, please open a pull request.
+This is an open source package, and I appreciate feedback, suggestions, ideas,&#x2026;
+
+If you want to contribute to the code, please note that the main branch is currently stable (as stable as a work in progress like this can be) and the develop branch is the current work in progress. Start from the develop/main accrodingly and create a new branch with names such as feature/name-of-the-fature or fix/issue, &#x2026; Do the edits and then create new pull requests when you are done with your edits. Importantly, keep in mind that I am using a **literate programming approach** (given that this is a small project with very limited number of files) where everything goes into consult-gh.org and then gets tangled to appropriate files (for now that includes consult-gh.el and consult-gh-embark.el). If you open a pull-request where you directly edited the .el files, I will likely not approve it because that will then get overwritten later when I tangle from the .org file. So always only edit the .org file and tangle to .el files. Also for updates in the README, you should edit the README.org and then export it to README.md.
 
 
 # Acknowledgments
