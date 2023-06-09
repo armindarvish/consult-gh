@@ -14,11 +14,13 @@
 
 ;;; Code:
 
+;;; Requirements
 (eval-when-compile
 (require 'consult)
 (require 'json)
 )
 
+;;; Group
 (defgroup consult-gh nil
   "Consulting GitHub CLI"
   :group 'convenience
@@ -27,28 +29,7 @@
   :group 'magit
   :prefix "consult-gh-")
 
-(defcustom consult-gh-category 'consult-gh
-  "Category symbol for the `consult-gh' package."
-  :group 'consult-gh
-  :type 'symbol)
-
-(defcustom consult-gh-repos-category 'consult-gh-repos
-  "Category symbol for the `consult-gh' package."
-  :group 'consult-gh
-  :type 'symbol)
-
-(defcustom consult-gh--issues-category 'consult-gh-issues
-  "Category symbol for the `consult-gh' package."
-  :group 'consult-gh
-  :type 'symbol)
-
-
-(defcustom consult-gh-files-category 'consult-gh-files
-  "Category symbol for the `consult-gh' package."
-  :group 'consult-gh
-  :type 'symbol)
-
-;;; Customization
+;;; Customization Variables
 
 (defcustom consult-gh-tempdir nil
 "Temporary file directory for the `consult-gh' package. This directory is used for storing temporary files when pulling files for viewing"
@@ -74,10 +55,6 @@
   :group 'consult-gh
   :type 'symbol)
 
-(defcustom consult-gh--preview-buffers-list (list)
-  "List of currently open preview buffers"
-  :group 'consult-gh
-  :type 'list)
 
 (defcustom consult-gh-default-orgs-list (list)
   "List of default github orgs. A good choice would be to add personal accounts or frequently visited github accounts to this list"
@@ -106,7 +83,7 @@
                  (key :tag "Key")
                  (repeat :tag "List of keys" key)))
 
-(defcustom consult-gh-default-clone-directory nil
+(defcustom consult-gh-default-clone-directory "~/"
   "Default directory to clone github repos used by `consult-gh-repo-clone' and `consult-gh--repo-clone-action'."
   :group 'consult-gh
   :type 'string)
@@ -150,6 +127,23 @@ A STRING: loads the branch STRING.
   "This variable defines the function that is used when selecting a file. By default it is bound to `consult-gh--browse-files-url-action',but can be changed to other actions such as `consult-gh--files-view-action', `consult-gh--files-save-file-action', or similar user-defined custom actions"
   :group 'consult-gh
   :type 'function)
+
+;;;Other Variables
+(defvar consult-gh-category 'consult-gh
+  "Category symbol for the `consult-gh' package.")
+
+(defvar consult-gh-repos-category 'consult-gh-repos
+  "Category symbol for the `consult-gh' package.")
+
+(defvar consult-gh--issues-category 'consult-gh-issues
+  "Category symbol for the `consult-gh' package.")
+
+
+(defvar consult-gh-files-category 'consult-gh-files
+  "Category symbol for the `consult-gh' package.")
+
+(defvar consult-gh--preview-buffers-list (list)
+  "List of currently open preview buffers")
 
 (defvar consult-gh--repos-history nil
   "History variable for repos used in `consult-gh-search-repos'.")
