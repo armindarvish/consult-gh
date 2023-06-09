@@ -32,11 +32,11 @@ Note that currently Consult-GH does not provide interactive commands to manage i
 
 # Getting Started
 
--   Installation
+## Installation
 
     Before you start, make sure you understand that this is work in progress in its early stage and bugs and breaks very much expected so use this at your own risk.
     
-    -   Requirements
+### Requirements
     
         In order to use Consult-GH, you need the following requirements:
         
@@ -56,7 +56,7 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
             As of Emacs 27, json is available as built-in **if emacs is compiled with json.** You can run the command `json-available-p` to see if it is available in your version of Emacs. If json is not available you may still be able to use Consult-GH with limited functionlity (you cannot view file contents).
     
-    -   Recommended (but not requires) packages
+### Recommended (but not requires) packages
     
         The following packages are not strictly required for Consult-GH to work but it can improve your experience depending on your use-case.
         
@@ -64,7 +64,7 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
             Since "gh" returns information in markdown, installing markdown-mode can significantly improve your experience (e.g. readability of previews, etc.). When "markdown-mode" is available, by default Consult-GH will use it as major mode to show previews of READMEs, otherwise everything it will be in raw text in "fundamental mode".
     
-    -   Installing Consult-GH Package
+### Installing Consult-GH Package
     
         Consult-GH is not currently on [ELPA](https://elpa.gnu.org/packages/consult.html) or [MELPA](https://melpa.org/#/consult). Therefore you need ton install it using an alternative non-standard package managers such as [straight.el](https://github.com/radian-software/straight.el) or manual installation.
         
@@ -91,7 +91,7 @@ Note that currently Consult-GH does not provide interactive commands to manage i
         
             Clone this repo and make sure the files are on your load path, as described on [EmacsWiki](https://www.emacswiki.org/emacs/LoadPath).
 
--   Configuration
+## Configuration
 
     Consult-GH is built with the idea that the user should be able to customize everything based on their use-case. In fact, the default configurations are minimal and prioritize performance over usability, therefore for optimal use, the user is very much expected to configure Consult-GH according to their use case. For example, with the default configuration, when selecting a repository, Consult-GH opens the link in a browser, but you can configure that to show the README inside Emacs or clone the repository, etc. Therefore I recommend you read through this section and understand how to configure the package according to your needs and use-case, but if you just want a drop-in minimal config, look at the snippet below and make sure you replace "armindarvish" with your GitHub username:
     
@@ -114,7 +114,7 @@ Note that currently Consult-GH does not provide interactive commands to manage i
     
     The configuration above adds "armindarvish" to the default orgs (used by `consult-gh-default-repos` so you can quickly see all your repositories.
     
-    -   Custom Variables
+### Custom Variables
     
         -   `consult-gh-tempdir`
         
