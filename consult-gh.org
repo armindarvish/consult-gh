@@ -56,15 +56,25 @@
   :type 'string
 )
 
-(defcustom consult-gh--default-maxnum 30
-  "Maximum number of output for gh list and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
-  :group 'consult-gh
-  :type 'integer)
-
 (defcustom consult-gh-crm-separator crm-separator
   "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'. Uses crm-separator for default."
   :group 'consult-gh
   :type 'string)
+
+(defcustom consult-gh--repo-maxnum 30
+  "Maximum number of output for showing repos with gh list and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
+  :group 'consult-gh
+  :type 'integer)
+
+(defcustom consult-gh--issue-maxnum 30
+  "Maximum number of output for gh issue list and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
+  :group 'consult-gh
+  :type 'integer)
+
+(defcustom consult-gh--issue-list-state "open"
+  "The state of issues that will be listed by `consult-gh-issue-list' functions. This is what is passed to \"--state\" argument in the command line when runing `gh issue list`. The possible options are \"open\", \"closed\" or\"all\". The default value is, \"open\", the same s `gh` default value."
+  :group 'consult-gh
+  :type '(choice "open" "closed" "all"))
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to show README of repositories in preview. choices are 'markdown-mode or 'org-mode"
@@ -596,7 +606,7 @@ Define functions to fetch list of repos
 "Get a list of repos of \"organization\" org and format each as a text with properties to pass to consult. It fetches a list of repos by runing \"gh repo list org\" and returns a list of propertized strings containing name of repos and their information such as visibility date updated, etc.
 
 org is the name of a github account in string format e.g. \"armindarvish\"."
-  (let* ((maxnum (format "%s" consult-gh--default-maxnum))
+  (let* ((maxnum (format "%s" consult-gh--repo-maxnum))
          (repolist  (or (consult-gh--command-to-string "repo" "list" org "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
 
@@ -788,7 +798,7 @@ This section deals with searching repos in github e.g. =gh search repos armindar
 #+begin_src emacs-lisp
 (defun consult-gh--search-repos (repo)
 "Search for repos with \"gh search repos\" and return a list of items each formatted with properties to pass to consult."
-  (let* ((maxnum (format "%s" consult-gh--default-maxnum))
+  (let* ((maxnum (format "%s" consult-gh--repo-maxnum))
          (repolist  (or (consult-gh--command-to-string "search" "repos" repo "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
     (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
@@ -802,8 +812,8 @@ This section deals with listing and viewing issues of repos e.g. =gh issue --rep
 "Get a list of issues of the repository `repo` and format each as a text with properties to pass to `consult-gh-issue-list'. It fetches a list of issues by runing \"gh issuee --repo name-of-repo list\" and returns a list of propertized strings containing title of issue name of the repo and other relevant information such as discription tags and date of the issue, etc.
 
 repo is the name of the repository for which the issues should be listed in a string format e.g. \"armindarvish\\consult-gh\"."
-  (let* ((maxnum (format "%s" consult-gh--default-maxnum))
-         (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum) ""))
+  (let* ((maxnum (format "%s" consult-gh--issue-maxnum))
+         (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum "--state" consult-gh--issue-list-state) ""))
          (issues (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n"))))
     (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':issue (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
    ))
