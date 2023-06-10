@@ -49,14 +49,10 @@
   :group 'consult-gh
   :type 'string)
 
-;; set consult-gh-crm-separator to defualt crm-separator
-;; (customize-set-variable 'consult-gh-crm-separator crm-separator)
-
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to show README of repositories in preview. choices are 'markdown-mode or 'org-mode"
   :group 'consult-gh
   :type 'symbol)
-
 
 (defcustom consult-gh-default-orgs-list (list)
   "List of default github orgs. A good choice would be to add personal accounts or frequently visited github accounts to this list"
@@ -67,7 +63,6 @@
   "Default name to use for preview buffers showing repo readmes retrieved by \"gh repo view\"."
   :group 'consult-gh
   :type 'string)
-
 
 (defcustom consult-gh-show-preview nil
   "This variable determines whether `consult-gh' shows previews. It turns previews on/off globally for all categories: repos, issues, files."
