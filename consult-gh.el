@@ -657,7 +657,7 @@ For more info on state functions refer to `consult''s manual, and particularly `
 
 repo is the name of the repository for which the issues should be listed in a string format e.g. \"armindarvish\\consult-gh\"."
   (let* ((maxnum (format "%s" consult-gh--default-maxnum))
-         (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum) ""))
+         (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum "--state all") ""))
          (issues (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n"))))
     (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':issue (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
    ))
