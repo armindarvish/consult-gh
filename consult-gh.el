@@ -47,10 +47,13 @@
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-crm-separator crm-separator
+(defcustom consult-gh-crm-separator nil
   "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'. Uses crm-separator for default."
   :group 'consult-gh
   :type 'string)
+
+;; set consult-gh-crm-separator to defualt crm-separator
+(customize-set-variable 'consult-gh-crm-separator (or crm-separator crm-default-separator))
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to show README of repositories in preview. choices are 'markdown-mode or 'org-mode"
