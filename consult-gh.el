@@ -20,6 +20,8 @@
 (require 'json)
 )
 
+(require 'crm)
+
 ;;; Group
 (defgroup consult-gh nil
   "Consulting GitHub CLI"
@@ -31,14 +33,11 @@
 
 ;;; Customization Variables
 
-(defcustom consult-gh-tempdir nil
+(defcustom consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory)
 "Temporary file directory for the `consult-gh' package. This directory is used for storing temporary files when pulling files for viewing"
   :group 'consult-gh
   :type 'string
 )
-
-;; set the tempdir to system's default temporary directory
-(customize-set-variable 'consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory))
 
 (defcustom consult-gh--default-maxnum 30
   "Maximum number of output for gh list and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
@@ -55,7 +54,6 @@
   :group 'consult-gh
   :type 'symbol)
 
-
 (defcustom consult-gh-default-orgs-list (list)
   "List of default github orgs. A good choice would be to add personal accounts or frequently visited github accounts to this list"
   :group 'consult-gh
@@ -65,7 +63,6 @@
   "Default name to use for preview buffers showing repo readmes retrieved by \"gh repo view\"."
   :group 'consult-gh
   :type 'string)
-
 
 (defcustom consult-gh-show-preview nil
   "This variable determines whether `consult-gh' shows previews. It turns previews on/off globally for all categories: repos, issues, files."
@@ -915,7 +912,7 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
   (interactive
    (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-   (list (delete-dups (completing-read-multiple "Search GitHub Repositories: " candidates nil nil nil nil nil t)))))
+   (list (delete-dups (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t)))))
   (let ((candidates (consult--slow-operation "Collecting Issues ..." (mapcar #'consult-gh--make-source-from-issues repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
