@@ -1100,7 +1100,7 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
   (interactive
    (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-   (list (delete-dups (completing-read-multiple "Search GitHub Repositories: " candidates nil nil nil nil nil t)))))
+   (list (delete-dups (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t)))))
   (let ((candidates (consult--slow-operation "Collecting Issues ..." (mapcar #'consult-gh--make-source-from-issues repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
