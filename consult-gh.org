@@ -56,21 +56,18 @@
   :type 'string
 )
 
-;; set the tempdir to system's default temporary directory
-;;(customize-set-variable 'consult-gh-tempdir )
-
 (defcustom consult-gh--default-maxnum 30
   "Maximum number of output for gh list and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-crm-separator nil
+(defcustom consult-gh-crm-separator crm-separator
   "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'. Uses crm-separator for default."
   :group 'consult-gh
   :type 'string)
 
 ;; set consult-gh-crm-separator to defualt crm-separator
-(customize-set-variable 'consult-gh-crm-separator crm-separator)
+;; (customize-set-variable 'consult-gh-crm-separator crm-separator)
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to show README of repositories in preview. choices are 'markdown-mode or 'org-mode"
