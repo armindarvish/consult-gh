@@ -26,9 +26,11 @@
 ;;; Requirements
 (eval-when-compile
 (require 'consult)
-(require 'crm)
 (require 'json)
 )
+
+(require 'crm)
+
 #+end_src
 
 ** Define Group, Customs, Vars, etc.

@@ -17,9 +17,10 @@
 ;;; Requirements
 (eval-when-compile
 (require 'consult)
-(require 'crm)
 (require 'json)
 )
+
+(require 'crm)
 
 ;;; Group
 (defgroup consult-gh nil
