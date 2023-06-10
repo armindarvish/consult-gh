@@ -100,8 +100,8 @@ Consult-GH is built with the idea that the user should be able to customize ever
 #+end_src
 The configuration above adds "armindarvish" to the default orgs (used by =consult-gh-default-repos= so you can quickly see all your repositories.
 
-*** Custom Variables
-
+*** Customization
+The following customizable variables are provided:
 **** =consult-gh-tempdir=
 This is where temporary files are saved. By default this is set to your system temporary directory (=temporary-file-directory= variable in emacs. Consult-GH uses this folder to store temporary files (such as files you are previewing).
 
@@ -174,7 +174,7 @@ Similar to =consult-gh-repo-action= but for issues. This variable stores the def
 **** =consult-gh-file-action=
 Similar to =consult-gh-repo-action= and =consult-gh-issue-action= but for files. This variable stores the default function that is called, when a file is selected. By default it is bound to =#' consult-gh--files-browse-url-action= which opens the file page in a browser. Alternative you can bind it to other provided action functions for files such as =consult-gh--files-view-action= which opens the file in an emacs buffer (in the right major mode as well) or =consult-gh--files-save-file-action= which allows you to save a file without cloning the entire repository. If you select multiple files using [[*=consult-gh-crm-separator=][=consult-gh-crm-separator=]] you can even save multiple files possibly from different repositories.
 
-* TODO Features with Examples
+* TODO Features and Examples
 To be completed
 
 ** Embrak Integration
