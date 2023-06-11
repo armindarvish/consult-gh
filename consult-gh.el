@@ -662,6 +662,18 @@ For more info on state functions refer to `consult''s manual, and particularly `
     (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
+(defun consult-gh--search-issues (repo search)
+"Search for repos with \"gh search repos\" and return a list of items each formatted with properties to pass to consult."
+  (let* ((maxnum (format "%s" consult-gh--issue-maxnum))
+         (state consult-gh--issue-list-state)
+         (issuelist  (if (equal state "all")
+                         (or (string-join `(,(consult-gh--command-to-string "search" "issues" search "--repo" repo "--limit" maxnum "--state" "open") ,(consult-gh--command-to-string "search" "issues" search "--repo" repo "--limit" maxnum "--state" "closed")) "\n") "")
+                       (or (consult-gh--command-to-string "search" "issues" search "--repo" repo "--limit" maxnum "--state" state) "")))
+         (issues (mapcar (lambda (s) (string-split s "\t")) (remove "" (split-string issuelist "\n")))))
+    (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (cadr src) ":" (cadr (cdr (cdr  src)))) ':issue (string-trim (cadr src) "#") ':repo repo ':status (cadr (cdr src)) ':description (cadr (cdr (cdr  src))) ':tags (cadr (cdr (cdr (cdr src)))) ':date (cadr (cdr (cdr (cdr (cdr src))))))) issues))
+   )
+))
+
 (defun consult-gh--issue-list (repo)
 "Get a list of issues of the repository `repo` and format each as a text with properties to pass to `consult-gh-issue-list'. It fetches a list of issues by runing \"gh issuee --repo name-of-repo list\" and returns a list of propertized strings containing title of issue name of the repo and other relevant information such as discription tags and date of the issue, etc.
 
@@ -672,6 +684,7 @@ repo is the name of the repository for which the issues should be listed in a st
     (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':issue (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
    ))
     )
+(setq my:test (consult-gh--issue-list "minad/consult"))
 
 (defun consult-gh--issue-browse-url-action ()
 "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens the url of the issue on github in a browser. To use this as the default action in `consult-gh-issue-list', set `consult-gh-issue-action' to #'consult-gh--issue-browse-url-action."
@@ -742,7 +755,7 @@ For more info on state functions refer to `consult''s manual, and particularly `
 
 (defun consult-gh--issue-group (cand transform)
 "Grouping function for the list of items in `consult-gh-issue-list'. It groups issues by the status of the issue e.g. \"Open\"."
-(let ((name (substring (get-text-property 0 :status cand))))
+(let ((name (substring (get-text-property 0 :repo cand))))
            (if transform (substring cand) name)))
 
 (defun consult-gh--issue-annotate ()
@@ -757,7 +770,7 @@ For more info on state functions refer to `consult''s manual, and particularly `
         (setq status (propertize status 'face 'consult-gh-user-face)
               tags (propertize tags 'face 'consult-gh-visibility-face)
               date (propertize date 'face 'consult-gh-date-face))
-        (format "%s\t%s\t%s" status tags date)
+        (format "%s\t%s\t%s\t%s" repo status tags date)
      )
     nil)
 ))
@@ -787,6 +800,20 @@ For more info on consult dources see `consult''s manual for example documentaion
                     :action ,(funcall consult-gh-repo-action)
                     :annotate ,(consult-gh--repo-annotate)
                     :state ,(and consult-gh-show-preview #'consult-gh--repo-preview)
+                    :default t
+                    :history t
+                    :sort t
+                    ))
+
+(defun consult-gh--make-source-from-search-issues (repo search)
+"Create a source for consult from the issues retrieved by fetching all the issues of the `repo` from GitHub by using `consult-gh--issue-list' which in turn uses `gh search issues --repo name-of-the-repo`. This is used by the interactive command `consult-gh-issue-list'.
+For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
+                  `(:category 'consult-gh
+                    :items  ,(consult-gh--search-issues repo search)
+                    :face 'consult-gh-default-face
+                    :action ,(funcall consult-gh-issue-action)
+                    :annotate ,(consult-gh--issue-annotate)
+                    :state ,(and consult-gh-show-preview #'consult-gh--issue-preview)
                     :default t
                     :history t
                     :sort t
@@ -873,6 +900,34 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
                     :preview-key consult-gh-preview-key
                     ))
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
+
+(defun consult-gh-search-issues (&optional repos search)
+"Runs the interactive command in the minibuffer that queries the user for name of repos in the format `user/repo` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
+The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
+It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
+  (interactive)
+   (let* ((crm-separator consult-gh-crm-separator)
+         (candidates (or (delete-dups consult-gh--known-repos-list) (list)))
+         (repos (or repos (delete-dups (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t))))
+         (search (or search (read-string "Search Term: ")))
+         (candidates (consult--slow-operation "Collecting Issues ..." (mapcar (lambda (repo) (consult-gh--make-source-from-search-issues repo search)) repos))))
+    (if (not (seq-empty-p (remove nil (mapcar (lambda (cand) (plist-get cand :items)) candidates))))
+        (progn
+          (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
+          (consult--multi candidates
+                    :prompt "Select Issue(s): "
+                    :require-match t
+                    :sort t
+                    :group #'consult-gh--issue-group
+                    :preview-key 'any
+                    :history 'consult-gh--issues-history
+                    :category 'consult-gh
+                    :sort t
+                    :preview-key consult-gh-preview-key
+                    )
+           )
+      (message (concat "consult-gh: " (propertize "no issues matched your search!" 'face 'warning))))
+))
 
 (defun consult-gh-find-file (&optional repos)
 "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `user/repo` e.g. armindarvish/consult-gh and then asks for the branch depending on the variable `consult-gh-default-branch-to-load' and returns the file tree of that repo and branch to the user for further actions such as viewing in emacs or the browser, saving as local files, ...
