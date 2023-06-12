@@ -1,8 +1,8 @@
 #+PROPERTY: header-args:emacs-lisp :results none :mkdirp yes :link yes :tangle ./consult-gh.el
 
-* main
+* Consult-GH.el
 
-** header
+** Header
 #+begin_src emacs-lisp
 ;;; consult-gh.el --- Consulting GitHub Client -*- lexical-binding: t -*-
 
@@ -71,7 +71,7 @@
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh--issue-list-state "open"
+(defcustom consult-gh--issues-state-to-show "open"
   "The state of issues that will be listed by `consult-gh-issue-list' functions. This is what is passed to \"--state\" argument in the command line when runing `gh issue list`. The possible options are \"open\", \"closed\" or\"all\". The default value is, \"open\", the same s `gh` default value."
   :group 'consult-gh
   :type '(choice "open" "closed" "all"))
@@ -1192,16 +1192,16 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
       (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
 #+end_src
 
-** provide
+** Provide
 #+begin_src emacs-lisp
 (provide 'consult-gh)
 #+end_src
-** footer
+** Footer
 #+begin_src emacs-lisp
 ;;; filename ends here
 #+end_src
-* embark
-** header
+* Consult-GH-Embark.el
+** Header
 #+begin_src  emacs-lisp :tangle ./consult-gh-embark.el
 ;;; consult-gh-embark.el --- Emabrk Actions for consult-gh -*- lexical-binding: t -*-
 
@@ -1219,7 +1219,7 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
 
 ;;; Code:
 #+end_src
-** main
+** Main
 This section includes additional useful embark actions as well as possible keymaps. This will be provided as examples and starting point to users, so that they can make their own custom embark actions and functions.
 
 #+begin_src emacs-lisp :tangle ./consult-gh-embark.el

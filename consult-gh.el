@@ -54,7 +54,7 @@
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh--issue-list-state "open"
+(defcustom consult-gh--issues-state-to-show "open"
   "The state of issues that will be listed by `consult-gh-issue-list' functions. This is what is passed to \"--state\" argument in the command line when runing `gh issue list`. The possible options are \"open\", \"closed\" or\"all\". The default value is, \"open\", the same s `gh` default value."
   :group 'consult-gh
   :type '(choice "open" "closed" "all"))
