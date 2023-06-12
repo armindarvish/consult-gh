@@ -61,17 +61,17 @@
   :group 'consult-gh
   :type 'string)
 
-(defcustom consult-gh--repo-maxnum 30
+(defcustom consult-gh-repo-maxnum 30
   "Maximum number of output for showing repos with gh list and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh--issue-maxnum 30
+(defcustom consult-gh-issue-maxnum 30
   "Maximum number of output for gh issue list and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh--issues-state-to-show "open"
+(defcustom consult-gh-issues-state-to-show "open"
   "The state of issues that will be listed by `consult-gh-issue-list' functions. This is what is passed to \"--state\" argument in the command line when runing `gh issue list`. The possible options are \"open\", \"closed\" or\"all\". The default value is, \"open\", the same s `gh` default value."
   :group 'consult-gh
   :type '(choice "open" "closed" "all"))

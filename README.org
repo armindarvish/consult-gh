@@ -16,7 +16,7 @@ Consult-GH offers the following "MAIN" interactive commands
 1. =consult-gh-orgs=: for looking up github users/organizations including and loading their repositories including looking up multiple accounts at the same time.
 2. =consult-gh-search-repos=: for looking up repositories including multiple repositories at the same time.
 3. =consult-gh-find-file=: for looking up files within any branch of one or more repositories. This can include looking at different branches within the same repository.
-4. =consult-gh-issue-list=: for looking up issues of one or more repositories
+4. =consult-gh-search-issues=: for searching issues of one or more repositories
 
 In addition Consult-GH provides interactive functions for "ADDITIONAL" useful quick actions:
 5.  =consult-gh-default-repos=: This calls consult-gh-org on a defined default list of orgs stored in variable =consult-gh-default-orgs-list= for quick access to frequently used repositories. This can for example be useful for accessing your own repositories quickly.
@@ -105,18 +105,17 @@ The following customizable variables are provided:
 **** =consult-gh-tempdir=
 This is where temporary files are saved. By default this is set to your system temporary directory (=temporary-file-directory= variable in emacs. Consult-GH uses this folder to store temporary files (such as files you are previewing).
 
-**** =consult-gh--default-maxnum=
-This is the limit passed to "gh" as "--limit" argument to "gh" commands and defines the number of results you get when searching or listing. By degault it is set to 30 following the default values of "gh" itself, but you can change it you want to see more or fewer results.
-
 **** =consult-gh-crm-separator=
 This is used as =crm-separator= when selecting multiple values in completing read. By default, this is set to default value of =crm-separator= (e.g. ",") but if you want to use a different character, you can change this for example by setting it to "[\s]" for using space as separator.
 
-**** =consult-gh-preview-buffer-mode=
-This is the major-mode used to show repository previews. By default it is set to =markdown-moe= because "gh repo view" returns the README contents (commonly in markdown syntax). But if you prefer to see the contents in other =org-mode=, you can set this variable to 'org-mode. Note that currently, the org-mode conversion is done with some simple regex replacement and while the performance is decent and the converted version is perfectly understandable, the org conversion may cause some inaccuracies. If you want to try this you can do:
+**** =consult-gh--repo-maxnum=
+This is the limit passed to "gh" as "--limit" argument to "gh repo list" or "gh search repos" commands and defines the number of repos shown when listing or searching repos. By default, it is set to 30 following the default values of "gh" itself, but it can be customized by the user to see more or fewer results.
 
-#+begin_src emacs-lisp
-(setq consult-gh-preview-buffer-mode 'org-mode)
-#+end_src
+**** =consult-gh--issue-maxnum=
+This is the limit passed to "gh" as "--limit" argument to "gh issue list" or "gh search issues" commands and defines the number of issues shown when listing or searching for issues. By default, it is set to 30 following the default values of "gh" itself, but it can be customized by the user to see more or fewer results.
+
+**** =consult-gh--issues-state-to-show=
+The state of issues shown when listing or searching for issues. This is the string passed as "--state" argument to "gh search issues" or "gh issue list" and can accept "open", "closed" or "all for open, closed or all issues.
 
 **** =consult-gh-default-orgs-list=
 This is the list default organizations you want to access frequently. I set this variable to organizations I am part of (a.k.a. to look at my own repositories) but you can add any account you want to look at frequently to this list. Here is an example of setting the default list to "alphapapa" and "systemcrafters":
@@ -129,6 +128,13 @@ or if you want to append to the list:
 
 #+begin_src emacs-lisp
 (setq consult-gh-default-orgs-list (append consult-gh-default-orgs-list '("alphapapa" "systemcrafters")))
+#+end_src
+
+**** =consult-gh-preview-buffer-mode=
+This is the major-mode used to show repository previews. By default it is set to =markdown-moe= because "gh repo view" returns the README contents (commonly in markdown syntax). But if you prefer to see the contents in other =org-mode=, you can set this variable to 'org-mode. Note that currently, the org-mode conversion is done with some simple regex replacement and while the performance is decent and the converted version is perfectly understandable, the org conversion may cause some inaccuracies. If you want to try this you can do:
+
+#+begin_src emacs-lisp
+(setq consult-gh-preview-buffer-mode 'org-mode)
 #+end_src
 
 **** =consult-gh-show-preview=
@@ -157,6 +163,10 @@ Note that setting this variable to =nil= along with setting  =consult-gh-default
 This variable points to the directory where repositories are cloned by default. By default it is set to ="~/"= (a.k.a. user's home directory). By default Consult-GH asks for confirmation of the location, so no matter what this variable is, you can still chose the right path to clone each repository, but this allows you set the default directory at a convinient location where you keep all your repositories (e.g. ="~/code/"= or ="~/projects/"=).
 
 Keep in mind that if you do clone multiple repositories at the same time, it would be convenient to have this variable set to the right path so you don't have to navigate to it for each repository especially if you turn =consult-gh-confirm-before-clone= to nil (see above).
+
+**** =consult-gh-ask-for-path-before-save=
+This is a boolean determining whether Consult-GH asks for a path before saving  a file (for single files and not cloning entire repositories). By default it is set to =t=, meaning that Consult-GH asks the user for the path to save a file. However, if you don't want consult-gh to ask you every time you save a file, you can set this variable to =nil=, in which case Consult-GH saves files  at =consult-gh-default-save-directory= (see below) with the name of the file.
+Note that setting this variable to =nil= along with setting  =consult-gh-default-save-directory=, allows quick saving of multiple files (possibly even from different repositories).
 
 **** =consult-gh-default-save-directory=
 This variable stores the default path where files are saved and by default is set to ="~/Downloads"=. Note that this is used for saving individual files and not for cloning entire repositories, which uses =consult-gh-default-clone-directory= (see above).
