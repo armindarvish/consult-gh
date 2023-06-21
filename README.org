@@ -51,7 +51,7 @@ Also, make sure you review Consult's README since it recommends some other packa
 **** [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Parsing-JSON.html][json library]] in Emacs
 As of Emacs 27, json is available as built-in *if Emacs is compiled with json.* You can run the command =json-available-p= to see if it is available in your version of Emacs. If json is not available you may still be able to use Consult-GH with limited functionality (for example you cannot view file contents).
 
-*** Recommended (but not requires) packages
+*** Recommended (*but not required*) packages
 The following packages are not strictly required for Consult-GH to work, but it can improve your experience depending on your use-case.
 
 **** [[https://github.com/jrblevin/markdown-mode][markdown-mode]]
