@@ -391,7 +391,7 @@ A STRING: loads the branch STRING.
   (let* ((path (substring-no-properties (get-text-property 0 ':path cand)))
         (repo (substring-no-properties (get-text-property 0 ':repo cand)))
         (branch (substring-no-properties (get-text-property 0 ':branch cand)))
-        (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "HEAD/" path)))
+        (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "/" path)))
         (browse-url url))))
 
 (defun consult-gh--files-view (repo path url &optional no-select tempdir)
@@ -504,7 +504,7 @@ For more info on state functions refer to `consult''s manual, and particularly `
 "Get a list of repos of \"organization\" org and format each as a text with properties to pass to consult. It fetches a list of repos by runing \"gh repo list org\" and returns a list of propertized strings containing name of repos and their information such as visibility date updated, etc.
 
 org is the name of a github account in string format e.g. \"armindarvish\"."
-  (let* ((maxnum (format "%s" consult-gh--repo-maxnum))
+  (let* ((maxnum (format "%s" consult-gh-repo-maxnum))
          (repolist  (or (consult-gh--command-to-string "repo" "list" org "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
 
@@ -664,21 +664,22 @@ For more info on state functions refer to `consult''s manual, and particularly `
 
 (defun consult-gh--search-repos (repo)
 "Search for repos with \"gh search repos\" and return a list of items each formatted with properties to pass to consult."
-  (let* ((maxnum (format "%s" consult-gh--repo-maxnum))
+  (let* ((maxnum (format "%s" consult-gh-repo-maxnum))
          (repolist  (or (consult-gh--command-to-string "search" "repos" repo "--limit" maxnum) ""))
          (repos (mapcar (lambda (s) (string-split s "\t")) (split-string repolist "\n"))))
     (remove "" (mapcar (lambda (src) (propertize (car src) ':repo (car src) ':user (car (string-split (car src) "\/")) ':description (cadr src) ':visible (cadr (cdr src)) ':version (cadr (cdr (cdr src))))) repos)))
     )
 
-(defun consult-gh--search-issues (repo search)
+(defun consult-gh--search-issues (search &optional repo)
 "Search for repos with \"gh search repos\" and return a list of items each formatted with properties to pass to consult."
-  (let* ((maxnum (format "%s" consult-gh--issue-maxnum))
-         (state consult-gh--issue-list-state)
+  (let* ((maxnum (format "%s" consult-gh-issue-maxnum))
+         (state consult-gh-issues-state-to-show)
+         (repo (or repo ""))
          (issuelist  (if (equal state "all")
                          (or (string-join `(,(consult-gh--command-to-string "search" "issues" search "--repo" repo "--limit" maxnum "--state" "open") ,(consult-gh--command-to-string "search" "issues" search "--repo" repo "--limit" maxnum "--state" "closed")) "\n") "")
                        (or (consult-gh--command-to-string "search" "issues" search "--repo" repo "--limit" maxnum "--state" state) "")))
          (issues (mapcar (lambda (s) (string-split s "\t")) (remove "" (split-string issuelist "\n")))))
-    (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (cadr src) ":" (cadr (cdr (cdr  src)))) ':issue (string-trim (cadr src) "#") ':repo repo ':status (cadr (cdr src)) ':description (cadr (cdr (cdr  src))) ':tags (cadr (cdr (cdr (cdr src)))) ':date (cadr (cdr (cdr (cdr (cdr src))))))) issues))
+    (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (cadr src) ":" (cadr (cdr (cdr  src)))) ':issue (string-trim (cadr src) "#") ':repo (car src) ':status (cadr (cdr src)) ':description (cadr (cdr (cdr  src))) ':tags (cadr (cdr (cdr (cdr src)))) ':date (cadr (cdr (cdr (cdr (cdr src))))))) issues))
    )
 ))
 
@@ -686,8 +687,8 @@ For more info on state functions refer to `consult''s manual, and particularly `
 "Get a list of issues of the repository `repo` and format each as a text with properties to pass to `consult-gh-issue-list'. It fetches a list of issues by runing \"gh issuee --repo name-of-repo list\" and returns a list of propertized strings containing title of issue name of the repo and other relevant information such as discription tags and date of the issue, etc.
 
 repo is the name of the repository for which the issues should be listed in a string format e.g. \"armindarvish\\consult-gh\"."
-  (let* ((maxnum (format "%s" consult-gh--issue-maxnum))
-         (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum "--state" consult-gh--issue-list-state) ""))
+  (let* ((maxnum (format "%s" consult-gh-issue-maxnum))
+         (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum "--state" consult-gh-issues-state-to-show) ""))
          (issues (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n"))))
     (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':issue (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
    ))
@@ -778,7 +779,7 @@ For more info on state functions refer to `consult''s manual, and particularly `
         (setq status (propertize status 'face 'consult-gh-user-face)
               tags (propertize tags 'face 'consult-gh-visibility-face)
               date (propertize date 'face 'consult-gh-date-face))
-        (format "%s\t%s\t%s\t%s" repo status tags date)
+        (format "%s\t%s\t%s\t%s" status repo tags date)
      )
     nil)
 ))
@@ -813,11 +814,12 @@ For more info on consult dources see `consult''s manual for example documentaion
                     :sort t
                     ))
 
-(defun consult-gh--make-source-from-search-issues (repo search)
+(defun consult-gh--make-source-from-search-issues (search &optional repo)
 "Create a source for consult from the issues retrieved by fetching all the issues of the `repo` from GitHub by using `consult-gh--issue-list' which in turn uses `gh search issues --repo name-of-the-repo`. This is used by the interactive command `consult-gh-issue-list'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
+(let ((repo (or repo "")))
                   `(:category 'consult-gh
-                    :items  ,(consult-gh--search-issues repo search)
+                    :items  ,(consult-gh--search-issues search repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-issue-action)
                     :annotate ,(consult-gh--issue-annotate)
@@ -825,7 +827,7 @@ For more info on consult dources see `consult''s manual for example documentaion
                     :default t
                     :history t
                     :sort t
-                    ))
+                    )))
 
 (defun consult-gh--make-source-from-issues (repo)
 "Create a source for consult from the issues retrieved by fetching all the issues of the `repo` from GitHub by using `consult-gh--issue-list' which in turn uses `gh search issues --repo name-of-the-repo`. This is used by the interactive command `consult-gh-issue-list'.
@@ -916,9 +918,9 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
   (interactive)
    (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list)))
-         (repos (or repos (delete-dups (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t))))
          (search (or search (read-string "Search Term: ")))
-         (candidates (consult--slow-operation "Collecting Issues ..." (mapcar (lambda (repo) (consult-gh--make-source-from-search-issues repo search)) repos))))
+         (repos (or (or repos (delete-dups (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t))) '("")))
+         (candidates (consult--slow-operation "Collecting Issues ..." (mapcar (lambda (repo) (consult-gh--make-source-from-search-issues search repo)) repos))))
     (if (not (seq-empty-p (remove nil (mapcar (lambda (cand) (plist-get cand :items)) candidates))))
         (progn
           (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
@@ -927,7 +929,6 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
                     :require-match t
                     :sort t
                     :group #'consult-gh--issue-group
-                    :preview-key 'any
                     :history 'consult-gh--issues-history
                     :category 'consult-gh
                     :sort t
