@@ -184,6 +184,25 @@ Similar to =consult-gh-repo-action= but for issues. This variable stores the def
 **** =consult-gh-file-action=
 Similar to =consult-gh-repo-action= and =consult-gh-issue-action= but for files. This variable stores the default function that is called, when a file is selected. By default, it is bound to =#' consult-gh--files-browse-url-action= which opens the file page in a browser. Alternatively, you can bind it to other provided action functions for files such as =consult-gh--files-view-action= which opens the file in an Emacs buffer (in the right major mode as well) or =consult-gh--files-save-file-action= which allows you to save a file without cloning the entire repository. If you select multiple files, using [[*=consult-gh-crm-separator=][=consult-gh-crm-separator=]], you can even save multiple files possibly from different repositories.
 
+*** Example Customization for Good Performance and Functionality
+Here is a good customization for great performance as well as functionality:
+
+#+begin_src emacs-lisp
+(use-package consult-gh
+  :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+  :custom
+  (consult-gh-default-clone-directory "~/projects")
+  (consult-gh-show-preview t)
+  (consult-gh-preview-key "M-o")
+  (consult-gh-issue-action #'consult-gh--issue-view-action)
+  (consult-gh-repo-action #'consult-gh--repo-browse-files-action)
+  (consult-gh-file-action #'consult-gh--files-view-action)
+  :config
+  ;;add your main GitHub account (replace "armindarvish" with your user or org)
+  (add-to-list 'consult-gh-default-orgs-list "armindarvish")
+  (require 'consult-gh-embark)
+#+end_src
+
 * Features and Examples
 For a detailed discussion and demo, see this blog post: [[https://www.armindarvish.com/en/post/consult-gh_working_with_github_inside_emacs_in_2023_/][consult-gh_working_with_github_inside_emacs_in_2023]].
 If you prefer demo videos, you can watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]].
@@ -213,9 +232,7 @@ In the screenshot below, I use =consult-gh-search-repos= to search for repositor
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
-[[./screenshots/consult-gh-orgs.gif]]
-
-
+[[./screenshots/consult-gh-search-repos.gif]]
 
 
 ** Looking at Repositories of User(s)
@@ -227,9 +244,32 @@ In the screenshot below, I use =consult-gh-orgs= to find repositories of multipl
 [[./screenshots/consult-gh-orgs.gif]]
 
 
+** Browsing Files in a Repository
+In the screenshot below, I use =consult-gh-find-file= to browse files of a repository.
+In this case I set =consult-gh-preview-key= to ="M-o"= to avoid automatically loading preview of large files. Instead I can load preview on demand by using "M-o" keybinding.
+#+begin_src emacs-lisp
+(setq consult-gh-preview-key "M-o")
+#+end_src
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[./screenshots/consult-gh-find-file.gif]]
+
+
+** Searching/Viewing Issues
+In the screenshot below, I use =consult-gh-search-issues= to search for issues and then view them inside Emacs.
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[./screenshots/consult-gh-search-issues.gif]]
+
 
 ** Embark Integration
 Consult-GH also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu. For example, you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's url in a browser, but then call embark on any item for running alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= etc. You can also call embark and select items with =embark-select= (by default bound to =SPC=) before running some commands on all of them, for example select multiple repos and run clone for all of them.
+
+
 
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]] and see if there is an existing solution or add relevant comments and discussion under the same issue. If not file a new issue following these steps:
