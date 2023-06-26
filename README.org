@@ -184,7 +184,38 @@ Similar to =consult-gh-repo-action= but for issues. This variable stores the def
 **** =consult-gh-file-action=
 Similar to =consult-gh-repo-action= and =consult-gh-issue-action= but for files. This variable stores the default function that is called, when a file is selected. By default, it is bound to =#' consult-gh--files-browse-url-action= which opens the file page in a browser. Alternatively, you can bind it to other provided action functions for files such as =consult-gh--files-view-action= which opens the file in an Emacs buffer (in the right major mode as well) or =consult-gh--files-save-file-action= which allows you to save a file without cloning the entire repository. If you select multiple files, using [[*=consult-gh-crm-separator=][=consult-gh-crm-separator=]], you can even save multiple files possibly from different repositories.
 
-* TODO Features and Examples
+* Features and Examples
+For a detailed discussion and demo, see this blog post: [[https://www.armindarvish.com/en/post/consult-gh_working_with_github_inside_emacs_in_2023_/][consult-gh_working_with_github_inside_emacs_in_2023]].
+If you prefer demo videos, you can watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]].
+
+In the screenshots below,  I am using vanilla emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], and [[https://github.com/oantolin/embark][embark]] and this repo with the following config:
+
+#+begin_src emacs-lisp
+    (use-package consult-gh
+      :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+      :custom
+      (consult-gh--default-maxnum 50) ;;change defualt max number of repos to 50
+      (consult-gh-show-preview t) ;;show preview automaically
+      (consult-gh-preview-buffer-mode 'org-mode) ;;convert markdown files to org-mode for previews
+      (consult-gh-issue-action #'consult-gh--issue-view-action) ;;view issues inside emacs
+      (consult-gh-repo-action #'consult-gh--repo-browse-files-action) ;;browse files inside emacs
+      (consult-gh-file-action #'consult-gh--files-view-action) ;;open files in an emacs buffer
+      :config
+      (add-to-list 'consult-gh-default-orgs-list "armindarvish") ;;add your GitHub user
+      (require 'consult-gh-embark)
+      (add-to-list 'savehist-additional-variables 'consult-gh--known-orgs-list) ;;keep record of searched orgs
+      (add-to-list 'savehist-additional-variables 'consult-gh--known-repos-list)) ;;keep record of searched repos
+#+end_src
+
+
+** Looking at Repositories of User(s)
+In the screenshot below, I use =consult-gh-orgs= to find repositories of multiple accounts.
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[file:~/projects/consult-gh/screenshots/consult-gh-orgs.gif]]
+
 
 
 ** Embark Integration

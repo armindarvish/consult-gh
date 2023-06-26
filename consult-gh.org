@@ -380,7 +380,7 @@ Under each category we have subentries for different type of functions including
 - *narrow function(s):* define how narrowing would work for the items in this category
 - *state/preview function(s):* define how a state function to pass to =consult--read= or =consult--multi=, mainly to achieve previews.
 - *group function(s):* define how items are grouped for each category. For example when looking at files, we want to group them by the name of the repo and the branch that is being viewed.
-- *annotate function(s)*: define annotations for the items in each category for example for repositories we want annotations for the user, date and visibilit, and for issues we want repo, status, tags and date
+- *annotate function(s)*: define annotations for the items in each category for example for repositories we want annotations for the user, date and visibility, and for issues we want repo, status, tags and date
 
 Other functions can also be defined under apropriate subentries ddepending on the needs for each category.
 
@@ -480,7 +480,7 @@ This section deals with fetching file trees and file contents of repositories by
   (let* ((path (substring-no-properties (get-text-property 0 ':path cand)))
         (repo (substring-no-properties (get-text-property 0 ':repo cand)))
         (branch (substring-no-properties (get-text-property 0 ':branch cand)))
-        (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "HEAD/" path)))
+        (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "/" path)))
         (browse-url url))))
 #+end_src
 ***** view file
@@ -1119,7 +1119,6 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
                     :require-match t
                     :sort t
                     :group #'consult-gh--issue-group
-                    :preview-key 'any
                     :history 'consult-gh--issues-history
                     :category 'consult-gh
                     :sort t

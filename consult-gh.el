@@ -391,7 +391,7 @@ A STRING: loads the branch STRING.
   (let* ((path (substring-no-properties (get-text-property 0 ':path cand)))
         (repo (substring-no-properties (get-text-property 0 ':repo cand)))
         (branch (substring-no-properties (get-text-property 0 ':branch cand)))
-        (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "HEAD/" path)))
+        (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "/" path)))
         (browse-url url))))
 
 (defun consult-gh--files-view (repo path url &optional no-select tempdir)
@@ -929,7 +929,6 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
                     :require-match t
                     :sort t
                     :group #'consult-gh--issue-group
-                    :preview-key 'any
                     :history 'consult-gh--issues-history
                     :category 'consult-gh
                     :sort t
