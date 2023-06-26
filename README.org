@@ -232,7 +232,7 @@ In the screenshot below, I use =consult-gh-search-repos= to search for repositor
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
-[[./screenshots/consult-gh-search-repos.gif]]
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-repos.gif]]
 
 
 ** Looking at Repositories of User(s)
@@ -241,7 +241,7 @@ In the screenshot below, I use =consult-gh-orgs= to find repositories of multipl
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
-[[./screenshots/consult-gh-orgs.gif]]
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-orgs.gif]]
 
 
 ** Browsing Files in a Repository
@@ -263,13 +263,13 @@ In the screenshot below, I use =consult-gh-search-issues= to search for issues a
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
-[[./screenshots/consult-gh-search-issues.gif]]
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-issues.gif]]
 
 
 ** Embark Integration
 Consult-GH also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu. For example, you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's url in a browser, but then call embark on any item for running alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= etc. You can also call embark and select items with =embark-select= (by default bound to =SPC=) before running some commands on all of them, for example select multiple repos and run clone for all of them.
 
-
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-embark.gif]]
 
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]] and see if there is an existing solution or add relevant comments and discussion under the same issue. If not file a new issue following these steps:
