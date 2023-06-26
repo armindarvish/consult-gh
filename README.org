@@ -203,7 +203,7 @@ Here is a good customization for great performance as well as functionality:
   (require 'consult-gh-embark)
 #+end_src
 
-* Features and Examples
+* Features and Demos
 For a detailed discussion and demo, see this blog post: [[https://www.armindarvish.com/en/post/consult-gh_working_with_github_inside_emacs_in_2023_/][consult-gh_working_with_github_inside_emacs_in_2023]].
 If you prefer demo videos, you can watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]].
 
