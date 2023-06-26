@@ -206,6 +206,16 @@ In the screenshots below,  I am using vanilla emacs and a minimal config with [[
       (add-to-list 'savehist-additional-variables 'consult-gh--known-orgs-list) ;;keep record of searched orgs
       (add-to-list 'savehist-additional-variables 'consult-gh--known-repos-list)) ;;keep record of searched repos
 #+end_src
+** Search repositories
+In the screenshot below, I use =consult-gh-search-repos= to search for repositories.
+
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[./screenshots/consult-gh-orgs.gif]]
+
+
 
 
 ** Looking at Repositories of User(s)
@@ -214,7 +224,7 @@ In the screenshot below, I use =consult-gh-orgs= to find repositories of multipl
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
-[[file:~/projects/consult-gh/screenshots/consult-gh-orgs.gif]]
+[[./screenshots/consult-gh-orgs.gif]]
 
 
 
