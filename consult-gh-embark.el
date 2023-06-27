@@ -86,7 +86,7 @@
   "l s" #'consult-gh-embark-get-ssh-link
   "l l" #'consult-gh-embark-get-url-link
   "l o" #'consult-gh-embark-get-org-link
-  "e" #'consult-gh-embark-get-straight-usepackage
+  "l e" #'consult-gh-embark-get-straight-usepackage
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
