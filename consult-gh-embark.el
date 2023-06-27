@@ -47,7 +47,7 @@
          (package (car (last (split-string repo "\/")))))
   (kill-new (concat "[[" url "][" package "]]"))))
 
-(defun consult-gh-embark-get-straight-usepackage (cand)
+(defun consult-gh-embark-get-straight-usepackage-link (cand)
   "Copy a drop-in straight use package setup of this repo to `kill-ring'."
   (let* ((repo (get-text-property 0 :repo cand))
          (package (car (last (split-string repo "\/"))))
@@ -86,7 +86,7 @@
   "l s" #'consult-gh-embark-get-ssh-link
   "l l" #'consult-gh-embark-get-url-link
   "l o" #'consult-gh-embark-get-org-link
-  "l e" #'consult-gh-embark-get-straight-usepackage
+  "l e" #'consult-gh-embark-get-straight-usepackage-link
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
