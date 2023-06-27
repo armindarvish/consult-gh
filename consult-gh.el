@@ -565,13 +565,13 @@ buffer is an optional buffer the preview should be shown in.
       (consult-gh-find-file (list repo))
       )))
 
-(defun consult-gh--repo-clone (repo targetdir name)
+(defun consult-gh--repo-clone (repo targetdir name &rest args)
 "This is an internal function for non-interactive use. For interactive use see `consult-gh-repo-clone'. It clones the repository defined by `repo` to targetdir/name path by runing `gh clone repo ...`."
   (consult-gh--command-to-string "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
   (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face))))
 
 
-(defun consult-gh-repo-clone (&optional repo targetdir name)
+(defun consult-gh-repo-clone (&optional repo targetdir name &rest args)
 "Interactively clones the repo to targetdir/name directory after confirming names and dir. It uses the internal function `consult-gh--repo-clone' which in turn runs `gh clone repo ...`.
 If repo, targetdir and name are not supplied interactively asks user for those values."
   (interactive)
@@ -593,10 +593,14 @@ If repo, targetdir and name are not supplied interactively asks user for those v
       (consult-gh--repo-clone reponame consult-gh-default-clone-directory package))
     )))
 
+(defvar consult-gh--repo-post-fork-hook nil
+"Hook to run after `consult-gh--repo-fork'.")
+
 (defun consult-gh--repo-fork (repo &rest args)
 "This is an internal function for non-interactive use. For interactive uses see `consult-gh-repo-fork'. It forks the repository defined by `repo` to the current user account logged in with `gh` command line tool."
-  (consult-gh--command-to-string "repo" "fork" (format "%s" repo) )
-  (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face))))
+(run-hook-with-args 'consult-gh--repo-post-fork-hook repo args)
+(consult-gh--command-to-string "repo" "fork" (format "%s" repo) )
+(message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face))))
 
 (defun consult-gh-repo-fork (&optional repo name &rest args)
 "Interactively forks the repository defined by `repo` to the current user account logged in with `gh` command line tool after confirming name. It uses `gh fork repo ...`."
