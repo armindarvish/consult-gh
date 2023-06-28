@@ -713,7 +713,7 @@ If repo, targetdir and name are not supplied interactively asks user for those v
   (let* ((repo (or repo (read-string "repo: " repo)))
          (package (car (last (split-string repo "\/"))))
         (targetdir (or targetdir (if consult-gh-confirm-before-clone (read-directory-name "target directory: " targetdir) consult-gh-default-clone-directory)))
-        (name (or name (if consult-gh-confirm-before-clone (read-string "name: " name) package)))
+        (name (or name (if consult-gh-confirm-before-clone (read-string "name: " package) package)))
         )
   (consult-gh--repo-clone repo name targetdir)
     ))
