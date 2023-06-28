@@ -169,11 +169,13 @@ A STRING: loads the branch STRING.
   "Category symbol for the `consult-gh' package.")
 
 (defvar consult-gh-repos-category 'consult-gh-repos
-  "Category symbol for the `consult-gh' package.")
+  "Category symbol for repos in `consult-gh' package.")
 
-(defvar consult-gh--issues-category 'consult-gh-issues
-  "Category symbol for the `consult-gh' package.")
+(defvar consult-gh-issues-category 'consult-gh-issues
+  "Category symbol for issues in `consult-gh' package.")
 
+(defvar consult-gh-orgs-category 'consult-gh-orgs
+  "Category symbol for orgs in `consult-gh' package.")
 
 (defvar consult-gh-files-category 'consult-gh-files
   "Category symbol for the `consult-gh' package.")
@@ -1102,6 +1104,33 @@ For more info on consult dources see `consult''s manual for example documentaion
 #+end_src
 ** Frontend Consult-GH Interactive Commands
 These define the main interactive commands that the user will be using. For each interactive command we have a subentry and we can make further subentries if needed.
+*** consult-gh--read
+This section defines functions that are used to get input from user without consult
+**** consult-gh--read-org
+#+begin_src emacs-lisp
+(defun consult-gh--read-orgs (candidates)
+"Runs the interactive command in the minibuffer that queries the user for name of organizations (a.k.a. GitHub usernames) of interest to pass to other interactive commands such as `consult-gh-orgs'."
+
+  (let ((crm-separator consult-gh-crm-separator))
+(completing-read-multiple "Search GitHub Users/Organization: " (lambda (string predicate action)
+         (if (eq action 'metadata)
+             '(metadata (category . consult-gh-orgs))
+           (complete-with-action
+            action candidates string predicate))) nil nil nil 'consult-gh--org-history nil t)
+))
+#+end_src
+**** consult-gh--read-repos
+#+begin_src emacs-lisp
+(defun consult-gh--read-repos (candidates)
+"Runs the interactive command in the minibuffer that queries the user for name of repos of interest to pass to other interactive commands such as `consult-gh-search-repos'."
+  (let ((crm-separator consult-gh-crm-separator))
+(completing-read-multiple "Search GitHub Repositories: " (lambda (string predicate action)
+         (if (eq action 'metadata)
+             '(metadata (category . consult-gh-repos))
+           (complete-with-action
+            action candidates string predicate))) nil nil nil nil nil t)))
+
+#+end_src
 *** consult-gh-orgs
 #+begin_src emacs-lisp
 (defun consult-gh-orgs (&optional orgs)
@@ -1109,12 +1138,11 @@ These define the main interactive commands that the user will be using. For each
 The user can provide multiple orgs by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh repo list name-of-the-org`) to fetch the list of repositories of those accounts and show them back to the user.
 It uses `consult-gh--make-source-from-org' to create the list of items for consult and saves the history in `consult-gh--repos-history'. It also keep tracks of previously selected orgs by the user in `consult-gh--known-orgs-list' and offers them as possible entries in future runs of `consult-gh-orgs'."
   (interactive)
-   (let* ((crm-separator consult-gh-crm-separator)
-         (candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
-     (unless orgs
-       (setq orgs (delete-dups (completing-read-multiple "Search GitHub Users/Organization: " candidates nil nil nil 'consult-gh--org-history nil t)))))
-
-  (let ((candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-org orgs))))
+  (unless orgs
+   (let ((candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
+     (setq orgs (or (delete-dups (consult-gh--read-org candidates)) '("")))))
+  (let* ((crm-separator consult-gh-crm-separator)
+        (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-org orgs))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-orgs-list (append consult-gh--known-orgs-list orgs))
@@ -1143,11 +1171,12 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
 "Runs the interactive command in the minibuffer that queries the user for name of repos to search for and returns a list of possible entries in the format `OWNER/REPO` (e.g. armindarvish/consult-gh) for further actions such as viewing, cloning, forking, ...
 The user can provide multiple search terms by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search repos name-of-the-repo`) to fetch the list of repositories and show them back to the user.
 It uses `consult-gh--make-source-from-search-repo' to create the list of items for consult and saves the history in `consult-gh--repos-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-repos'."
-  (interactive
+  (interactive)
+  (unless repos
+   (let* ((candidates (or (delete-dups consult-gh--known-repos-list) (list))))
+   (setq repos (consult-gh--read-repos candidates))))
    (let* ((crm-separator consult-gh-crm-separator)
-         (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-   (list (delete-dups (completing-read-multiple "Search GitHub Repositories: " candidates nil nil nil nil nil t)))))
-  (let ((candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
+         (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
@@ -1161,8 +1190,8 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
                     :sort t
                     :preview-key consult-gh-preview-key
                     ))
-      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
-
+      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))
+))
 #+end_src
 
 *** consult-gh-search-issues
@@ -1314,6 +1343,27 @@ This section includes additional useful embark actions as well as possible keyma
 (require 'embark)
 (require 'consult-gh)
 
+(defun consult-gh-embark-add-repo-to-favorites (cand)
+  (let ((repo (get-text-property 0 :repo cand)))
+    (setq consult-gh--known-repos-list (delete repo  consult-gh--known-repos-list))
+    ))
+
+(defun consult-gh-embark-remove-repo-from-favorites (cand)
+  (let ((repo (get-text-property 0 :repo cand)))
+    (add-to-list 'consult-gh--known-repos-list repo))
+  )
+
+(defun consult-gh-embark-add-org-to-favorites (cand)
+  (let ((org (consult-gh--output-cleanup cand)))
+    (add-to-list 'consult-gh--known-orgs-list org))
+  )
+
+(defun consult-gh-embark-remove-org-from-favorites (cand)
+  (let ((org (consult-gh--output-cleanup cand)))
+    (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list))
+    )
+  )
+
 (defun consult-gh-embark-open-in-browser (cand)
   "Open the link in browser"
   (let* ((repo (get-text-property 0 :repo cand))
@@ -1322,7 +1372,7 @@ This section includes additional useful embark actions as well as possible keyma
     (if issue
         (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties issue))
       (if path
-        (browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path))
+          (browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path))
         (consult-gh--call-process "repo" "view" "--web" (substring repo))))))
 
 (defun consult-gh-embark-get-ssh-link (cand)
@@ -1342,7 +1392,7 @@ This section includes additional useful embark actions as well as possible keyma
   (let* ((repo (get-text-property 0 :repo cand))
          (url  (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
          (package (car (last (split-string repo "\/")))))
-  (kill-new (concat "[[" url "][" package "]]"))))
+    (kill-new (concat "[[" url "][" package "]]"))))
 
 (defun consult-gh-embark-get-straight-usepackage-link (cand)
   "Copy a drop-in straight use package setup of this repo to `kill-ring'."
@@ -1384,12 +1434,14 @@ This section includes additional useful embark actions as well as possible keyma
   "l l" #'consult-gh-embark-get-url-link
   "l o" #'consult-gh-embark-get-org-link
   "l e" #'consult-gh-embark-get-straight-usepackage-link
+  "b b" #'consult-gh-embark-add-repo-to-favorites
+  "b k" #'consult-gh-embark-remove-repo-from-favorites
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
   "z" #'consult-gh-embark-view-issues-of-repo
   "o" #'consult-gh-embark-open-in-browser
-)
+  )
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions-map))
 
@@ -1401,6 +1453,14 @@ This section includes additional useful embark actions as well as possible keyma
   "s" #'consult-gh-embark-save-file)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
+
+(defvar-keymap consult-gh-embark-orgs-actions-map
+  :doc "Keymap for consult-gh-embark-orgs"
+  ;;:parent consult-gh-embark-actions-map
+  "b b" #'consult-gh-embark-add-org-to-favorites
+  "b k" #'consult-gh-embark-remove-org-from-favorites)
+
+(add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-files-actions-map))
 
 
 (provide 'consult-gh-embark)
