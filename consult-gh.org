@@ -693,21 +693,21 @@ buffer is an optional buffer the preview should be shown in.
 #+end_src
 ***** clone
 #+begin_src emacs-lisp
-(defun consult-gh--repo-clone (repo targetdir name &rest args)
+(defun consult-gh--repo-clone (repo name targetdir &rest args)
 "This is an internal function for non-interactive use. For interactive use see `consult-gh-repo-clone'. It clones the repository defined by `repo` to targetdir/name path by runing `gh clone repo ...`."
   (consult-gh--command-to-string "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
   (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face))))
 
 
-(defun consult-gh-repo-clone (&optional repo targetdir name &rest args)
+(defun consult-gh-repo-clone (&optional repo name targetdir &rest args)
 "Interactively clones the repo to targetdir/name directory after confirming names and dir. It uses the internal function `consult-gh--repo-clone' which in turn runs `gh clone repo ...`.
 If repo, targetdir and name are not supplied interactively asks user for those values."
   (interactive)
-  (let ((repo (read-string "repo: " repo))
-        (targetdir (read-directory-name "target directory: " targetdir))
-        (name (read-string "name: " name))
+  (let ((repo (or repo (read-string "repo: " repo)))
+        (targetdir (or targetdir (read-directory-name "target directory: " targetdir)))
+        (name (or name (read-string "name: " name)))
         )
-  (consult-gh--repo-clone repo targetdir name)
+  (consult-gh--repo-clone repo name targetdir)
     ))
 
 (defun consult-gh--repo-clone-action ()
@@ -717,8 +717,8 @@ If repo, targetdir and name are not supplied interactively asks user for those v
          (package (car (last (split-string reponame "\/"))))
          )
     (if consult-gh-confirm-before-clone
-        (consult-gh-repo-clone reponame consult-gh-default-clone-directory package)
-      (consult-gh--repo-clone reponame consult-gh-default-clone-directory package))
+        (consult-gh-repo-clone reponame package consult-gh-default-clone-directory )
+      (consult-gh--repo-clone reponame package consult-gh-default-clone-directory ))
     )))
 #+end_src
 
@@ -728,22 +728,23 @@ If repo, targetdir and name are not supplied interactively asks user for those v
 (defvar consult-gh--repo-post-fork-hook nil
 "Hook to run after `consult-gh--repo-fork'.")
 
-(defun consult-gh--repo-fork (repo &optional name &rest args)
+(defun consult-gh--repo-fork (repo &optional name)
 "This is an internal function for non-interactive use. For interactive uses see `consult-gh-repo-fork'. It forks the repository defined by `repo` to the current user account logged in with `gh` command line tool."
 (let* ((package (car (last (split-string repo "\/"))))
       (name (or name package))
-      (forkrepo (concat consult-gh--get-current-username "/" name)))
-(consult-gh--command-to-string "repo" "fork" (format "%s" repo) "--fork-name" name args)
+      (forkrepo (concat (consult-gh--get-current-username) "/" name)))
+(consult-gh--command-to-string "repo" "fork" (format "%s" repo) "--fork-name" name)
 (message (format "repo %s was forked to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize forkrepo 'face 'font-lock-warning-face)))
-(run-hook-with-args 'consult-gh--repo-post-fork-hook forkrepo)))
+(run-hook-with-args 'consult-gh--repo-post-fork-hook forkrepo name)
+))
 
-(defun consult-gh-repo-fork (&optional repo name &rest args)
+(defun consult-gh-repo-fork (&optional repo name)
 "Interactively forks the repository defined by `repo` to the current user account logged in with `gh` command line tool after confirming name. It uses `gh fork repo ...`."
   (interactive)
   (let* ((repo (read-string "repo: " repo))
         (package (car (last (split-string repo "\/"))))
         (name (read-string "name: " package)))
-  (consult-gh--repo-fork repo name args)
+  (consult-gh--repo-fork repo name)
     ))
 
 (defun consult-gh--repo-fork-action ()
