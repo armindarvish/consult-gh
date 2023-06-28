@@ -1,0 +1,11 @@
+#+begin_src emacs-lisp
+(defun consult-gh--get-repo-from-directory (&optional dir)
+(let* ((default-directory (or dir default-directory))
+      (response (consult-gh--call-process "repo" "view" "--json" "nameWithOwner" "--jq" ".nameWithOwner")))
+(if (eq (car response) 0)
+    (if (not (string-empty-p (cadr response)))
+    (string-trim (cadr response))
+    nil)
+  nil)
+))
+#+end_src
