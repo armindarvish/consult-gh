@@ -17,6 +17,27 @@
 (require 'embark)
 (require 'consult-gh)
 
+(defun consult-gh-embark-add-repo-to-favorites (cand)
+  (let ((repo (get-text-property 0 :repo cand)))
+    (setq consult-gh--known-repos-list (delete repo  consult-gh--known-repos-list))
+    ))
+
+(defun consult-gh-embark-remove-repo-from-favorites (cand)
+  (let ((repo (get-text-property 0 :repo cand)))
+    (add-to-list 'consult-gh--known-repos-list repo))
+  )
+
+(defun consult-gh-embark-add-org-to-favorites (cand)
+  (let ((org (consult-gh--output-cleanup cand)))
+    (add-to-list 'consult-gh--known-orgs-list org))
+  )
+
+(defun consult-gh-embark-remove-org-from-favorites (cand)
+  (let ((org (consult-gh--output-cleanup cand)))
+    (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list))
+    )
+  )
+
 (defun consult-gh-embark-open-in-browser (cand)
   "Open the link in browser"
   (let* ((repo (get-text-property 0 :repo cand))
@@ -25,7 +46,7 @@
     (if issue
         (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties issue))
       (if path
-        (browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path))
+          (browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path))
         (consult-gh--call-process "repo" "view" "--web" (substring repo))))))
 
 (defun consult-gh-embark-get-ssh-link (cand)
@@ -45,7 +66,7 @@
   (let* ((repo (get-text-property 0 :repo cand))
          (url  (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
          (package (car (last (split-string repo "\/")))))
-  (kill-new (concat "[[" url "][" package "]]"))))
+    (kill-new (concat "[[" url "][" package "]]"))))
 
 (defun consult-gh-embark-get-straight-usepackage-link (cand)
   "Copy a drop-in straight use package setup of this repo to `kill-ring'."
@@ -87,12 +108,14 @@
   "l l" #'consult-gh-embark-get-url-link
   "l o" #'consult-gh-embark-get-org-link
   "l e" #'consult-gh-embark-get-straight-usepackage-link
+  "b b" #'consult-gh-embark-add-repo-to-favorites
+  "b k" #'consult-gh-embark-remove-repo-from-favorites
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
   "z" #'consult-gh-embark-view-issues-of-repo
   "o" #'consult-gh-embark-open-in-browser
-)
+  )
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions-map))
 
@@ -104,6 +127,14 @@
   "s" #'consult-gh-embark-save-file)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
+
+(defvar-keymap consult-gh-embark-orgs-actions-map
+  :doc "Keymap for consult-gh-embark-orgs"
+  ;;:parent consult-gh-embark-actions-map
+  "b b" #'consult-gh-embark-add-org-to-favorites
+  "b k" #'consult-gh-embark-remove-org-from-favorites)
+
+(add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-files-actions-map))
 
 
 (provide 'consult-gh-embark)

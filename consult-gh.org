@@ -32,7 +32,7 @@
 
 #+end_src
 
-** Define Group, Customs, Vars, etc.
+** Definee Group, Customs, Vars, etc.
 *** Group
 #+begin_src emacs-lisp
 ;;; Group
