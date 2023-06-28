@@ -59,6 +59,11 @@
   :group 'consult-gh
   :type '(choice "open" "closed" "all"))
 
+(defcustom consult-gh-large-file-warning-threshold large-file-warning-threshold
+  "Maximum size of file above which `consult-gh' requests a confirmation for previewing, opening or saving the file. Default value is set by `large-file-warning-threshold'."
+  :group 'consult-gh
+  :type '(choice integer (const :tag "Never request confirmation" nil)))
+
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to show README of repositories in preview. choices are 'markdown-mode or 'org-mode"
   :group 'consult-gh
@@ -413,7 +418,6 @@ Output is the buffer visiting the file."
          (suffix (concat "." (file-name-extension path)))
          (temp-file (expand-file-name path tempdir))
          (text (consult-gh--files-get-content url)))
-
          (make-directory (file-name-directory temp-file) t)
          (with-temp-file temp-file
            (insert text)
@@ -432,8 +436,14 @@ Output is the buffer visiting the file."
     (let* ((repo (get-text-property 0 ':repo cand))
            (path (get-text-property 0 ':path cand))
            (url (get-text-property 0 ':url cand))
-           (file-p (or (file-name-extension path) (get-text-property 0 ':size cand))))
-      (if file-p
+           (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
+           (file-size (and file-p (get-text-property 0 ':size cand)))
+           (confirm t))
+      (when (>= file-size consult-gh-large-file-warning-threshold)
+        (if (yes-or-no-p (format "File is %s Bytes. Do you really want to load it?" file-size))
+         (setq confirm t)
+       (setq confirm nil)))
+      (if (and file-p confirm)
           (consult-gh--files-view repo path url)
       ))))
 
@@ -445,15 +455,21 @@ Output is the buffer visiting the file."
            (url (get-text-property 0 ':url cand))
            (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
            (filename (and file-p (file-name-nondirectory path)))
-           (buffer (and file-p (consult-gh--files-view repo path url t))))
-    (if file-p
+           (file-size (and file-p (get-text-property 0 ':size cand)))
+           (confirm t)
+           (targetpath (if consult-gh-ask-for-path-before-save
+                           (file-truename (read-file-name "Save As: " consult-gh-default-save-directory filename nil filename))
+                         consult-gh-default-save-directory)))
+   (when (>= file-size consult-gh-large-file-warning-threshold)
+     (if (yes-or-no-p (format "File is %s Bytes. Do you really want to load it?" file-size))
+         (setq confirm t)
+       (setq confirm nil)))
+(let ((buffer (and file-p (consult-gh--files-view repo path url t))))
+      (if (and file-p confirm)
     (save-mark-and-excursion
       (save-restriction
         (with-current-buffer buffer
-          (if consult-gh-ask-for-path-before-save
-          (write-file (read-file-name "Save As: " consult-gh-default-save-directory filename nil filename) t)
-          (write-file consult-gh-default-save-directory t)
-          )
+          (write-file targetpath t))
         )))))))
 
 (defun consult-gh--files-group (cand transform)
@@ -475,15 +491,19 @@ For more info on state functions refer to `consult''s manual, and particularly `
                     (branch (get-text-property 0 ':branch cand))
                     (url (get-text-property 0 ':url cand))
                     (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
+                    (file-size (and file-p (get-text-property 0 ':size cand)))
+                    (confirm (if (and file-p (>= file-size consult-gh-large-file-warning-threshold))
+                                 (yes-or-no-p (format "File is %s Bytes. Do you really want to load it?" file-size))
+                               t))
                     (tempdir (expand-file-name (concat repo "/" branch) consult-gh-tempdir))
                     (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
                     (suffix (concat "." (file-name-extension path)))
                     (temp-file (expand-file-name path tempdir))
-                    (_ (and file-p (make-directory (file-name-directory temp-file) t)))
-                    (text (and file-p (consult-gh--files-get-content url)))
-                    (_ (and file-p (with-temp-file temp-file (insert text) (set-buffer-file-coding-system 'raw-text)
+                    (_ (and file-p confirm (make-directory (file-name-directory temp-file) t)))
+                    (text (and file-p confirm (consult-gh--files-get-content url)))
+                    (_ (and file-p confirm (with-temp-file temp-file (insert text) (set-buffer-file-coding-system 'raw-text)
                                                    )))
-                    (buffer (or (and file-p (with-temp-buffer (find-file-noselect temp-file t))) nil)))
+                    (buffer (or (and file-p confirm (with-temp-buffer (find-file-noselect temp-file t))) nil)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
                (funcall preview action
                         (and
