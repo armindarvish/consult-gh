@@ -598,8 +598,8 @@ If repo, targetdir and name are not supplied interactively asks user for those v
 
 (defun consult-gh--repo-fork (repo &rest args)
 "This is an internal function for non-interactive use. For interactive uses see `consult-gh-repo-fork'. It forks the repository defined by `repo` to the current user account logged in with `gh` command line tool."
-(run-hook-with-args 'consult-gh--repo-post-fork-hook repo args)
-(consult-gh--command-to-string "repo" "fork" (format "%s" repo) )
+(run-hook-with-args 'consult-gh--repo-post-fork-hook repo)
+(consult-gh--command-to-string "repo" "fork" (format "%s" repo))
 (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face))))
 
 (defun consult-gh-repo-fork (&optional repo name &rest args)
@@ -608,7 +608,7 @@ If repo, targetdir and name are not supplied interactively asks user for those v
   (let* ((repo (read-string "repo: " repo))
         (package (car (last (split-string repo "\/"))))
         (name (read-string "name: " package)))
-  (consult-gh--repo-fork repo  "--fork-name" name args)
+  (consult-gh--repo-fork repo "--fork-name" name args)
     ))
 
 (defun consult-gh--repo-fork-action ()
