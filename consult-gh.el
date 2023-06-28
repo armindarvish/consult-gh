@@ -215,6 +215,10 @@ A STRING: loads the branch STRING.
         (gethash key (json-read-from-string json))
       (json-read-from-string json))))
 
+(defun consult-gh--get-current-username ()
+"Gets the currently logged in user by running `gh api user` and returning the login field."
+ (consult-gh--api-json-to-hashtable (cadr (consult-gh--api-get-json "user")) :login))
+
 (defun consult-gh--output-cleanup (string)
 "Remove non UTF-8 characters if any in the string. For example, this is used in `consult-gh--repo-clone-action' and `consult-gh--repo-fork-action' to clean up the string before passing it to other functions."
   (string-join
@@ -596,11 +600,14 @@ If repo, targetdir and name are not supplied interactively asks user for those v
 (defvar consult-gh--repo-post-fork-hook nil
 "Hook to run after `consult-gh--repo-fork'.")
 
-(defun consult-gh--repo-fork (repo &rest args)
+(defun consult-gh--repo-fork (repo &optional name &rest args)
 "This is an internal function for non-interactive use. For interactive uses see `consult-gh-repo-fork'. It forks the repository defined by `repo` to the current user account logged in with `gh` command line tool."
-(run-hook-with-args 'consult-gh--repo-post-fork-hook repo)
-(consult-gh--command-to-string "repo" "fork" (format "%s" repo))
-(message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face))))
+(let* ((package (car (last (split-string repo "\/"))))
+      (name (or name package))
+      (forkrepo (concat consult-gh--get-current-username "/" name)))
+(consult-gh--command-to-string "repo" "fork" (format "%s" repo) "--fork-name" name args)
+(message (format "repo %s was forked to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize forkrepo 'face 'font-lock-warning-face)))
+(run-hook-with-args 'consult-gh--repo-post-fork-hook forkrepo)))
 
 (defun consult-gh-repo-fork (&optional repo name &rest args)
 "Interactively forks the repository defined by `repo` to the current user account logged in with `gh` command line tool after confirming name. It uses `gh fork repo ...`."
@@ -608,7 +615,7 @@ If repo, targetdir and name are not supplied interactively asks user for those v
   (let* ((repo (read-string "repo: " repo))
         (package (car (last (split-string repo "\/"))))
         (name (read-string "name: " package)))
-  (consult-gh--repo-fork repo "--fork-name" name args)
+  (consult-gh--repo-fork repo name args)
     ))
 
 (defun consult-gh--repo-fork-action ()
