@@ -115,6 +115,9 @@ This is the limit passed to =gh= as =--limit= argument to =gh repo list= or =gh 
 **** =consult-gh--issue-maxnum=
 This is the limit passed to =gh= as =--limit= argument to =gh issue list= or =gh search issues= commands and defines the number of issues shown when listing or searching for issues. By default, it is set to 30 following the default values of =gh= itself, but it can be customized by the user to see more or fewer results.
 
+**** =consult-gh-large-file-warning-threshold=
+This is the maximum file size, above which =consult-gh= requests a confirmation for previewing, opening or saving the file. Default value is set by emacs built-in =large-file-warning-threshold= variable, but since =consult-gh= is downloading files from the internet, you may want to set this to a smaller value than =large-file-warning-threshold=  depending on your network performance.
+
 **** =consult-gh--issues-state-to-show=
 The state of issues shown when listing or searching for issues. This is the string passed as =--state= argument to =gh search issues= or =gh issue list= and can accept =open=, =closed= or =all= for open, closed or all issues, respectively.
 
@@ -197,6 +200,7 @@ Here is a good customization for great performance as well as functionality:
   (consult-gh-issue-action #'consult-gh--issue-view-action)
   (consult-gh-repo-action #'consult-gh--repo-browse-files-action)
   (consult-gh-file-action #'consult-gh--files-view-action)
+  (consult-gh-large-file-warning-threshold 2500000)
   :config
   ;;add your main GitHub account (replace "armindarvish" with your user or org)
   (add-to-list 'consult-gh-default-orgs-list "armindarvish")
