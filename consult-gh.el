@@ -946,7 +946,7 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
   (interactive)
   (unless orgs
    (let ((candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
-     (setq orgs (or (delete-dups (consult-gh--read-org candidates)) '("")))))
+     (setq orgs (or (delete-dups (consult-gh--read-orgs candidates)) '("")))))
   (let* ((crm-separator consult-gh-crm-separator)
         (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-org orgs))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))

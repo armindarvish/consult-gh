@@ -17,19 +17,19 @@
 (require 'embark)
 (require 'consult-gh)
 
-(defun consult-gh-embark-add-repo-to-favorites (cand)
-  (let ((repo (get-text-property 0 :repo cand)))
-    (setq consult-gh--known-repos-list (delete repo  consult-gh--known-repos-list))
+(defun consult-gh-embark-remove-repo-from-favorites (cand)
+  (let ((repo (consult-gh--output-cleanup cand)))
+    (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list))
     ))
 
-(defun consult-gh-embark-remove-repo-from-favorites (cand)
-  (let ((repo (get-text-property 0 :repo cand)))
+(defun consult-gh-embark-add-repo-to-favorites (cand)
+  (let ((repo (consult-gh--output-cleanup cand)))
     (add-to-list 'consult-gh--known-repos-list repo))
   )
 
 (defun consult-gh-embark-add-org-to-favorites (cand)
   (let ((org (consult-gh--output-cleanup cand)))
-    (add-to-list 'consult-gh--known-orgs-list org))
+    (add-to-list 'consult-gh--known-orgs-list (format "%s" org)))
   )
 
 (defun consult-gh-embark-remove-org-from-favorites (cand)
@@ -100,7 +100,7 @@
   "Save the file at point."
   (funcall (consult-gh--files-save-file-action) cand))
 
-(defvar-keymap consult-gh-embark-actions-map
+(defvar-keymap consult-gh-embark-general-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
   "l h" #'consult-gh-embark-get-https-link
@@ -117,24 +117,33 @@
   "o" #'consult-gh-embark-open-in-browser
   )
 
-(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-actions-map))
+(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-general-actions-map))
+
+(defvar-keymap consult-gh-embark-repos-actions-map
+  :doc "Keymap for consult-gh-embark-repos"
+  :parent consult-gh-embark-general-actions-map
+  "b b" #'consult-gh-embark-add-repo-to-favorites
+  "b k" #'consult-gh-embark-remove-repo-from-favorites
+  )
+
+(add-to-list 'embark-keymap-alist '(consult-gh-repos . consult-gh-embark-repos-actions-map))
 
 
 
 (defvar-keymap consult-gh-embark-files-actions-map
   :doc "Keymap for consult-gh-embark-files"
-  :parent consult-gh-embark-actions-map
+  :parent consult-gh-embark-general-actions-map
   "s" #'consult-gh-embark-save-file)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
 
 (defvar-keymap consult-gh-embark-orgs-actions-map
   :doc "Keymap for consult-gh-embark-orgs"
-  ;;:parent consult-gh-embark-actions-map
+  :parent consult-gh-embark-general-actions-map
   "b b" #'consult-gh-embark-add-org-to-favorites
   "b k" #'consult-gh-embark-remove-org-from-favorites)
 
-(add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-files-actions-map))
+(add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
 
 
 (provide 'consult-gh-embark)
