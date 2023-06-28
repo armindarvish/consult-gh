@@ -200,7 +200,7 @@ Here is a good customization for great performance as well as functionality:
   (consult-gh-issue-action #'consult-gh--issue-view-action)
   (consult-gh-repo-action #'consult-gh--repo-browse-files-action)
   (consult-gh-file-action #'consult-gh--files-view-action)
-  (consult-gh-large-file-warning-threshold 5000000)
+  (consult-gh-large-file-warning-threshold 2500000)
   :config
   ;;add your main GitHub account (replace "armindarvish" with your user or org)
   (add-to-list 'consult-gh-default-orgs-list "armindarvish")
