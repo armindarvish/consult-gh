@@ -883,13 +883,13 @@ This section deals with listing and viewing issues of repos e.g. =gh issue --rep
 "Get a list of issues of the repository `repo` and format each as a text with properties to pass to `consult-gh-issue-list'. It fetches a list of issues by runing \"gh issuee --repo name-of-repo list\" and returns a list of propertized strings containing title of issue name of the repo and other relevant information such as discription tags and date of the issue, etc.
 
 repo is the name of the repository for which the issues should be listed in a string format e.g. \"armindarvish\\consult-gh\"."
-  (let* ((maxnum (format "%s" consult-gh-issue-maxnum))
-         (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum "--state" consult-gh-issues-state-to-show) ""))
-         (issues (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n"))))
+  (when-let* ((maxnum (format "%s" consult-gh-issue-maxnum))
+         (issueslist (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum "--state" consult-gh-issues-state-to-show))
+         (issues (and issueslist (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n")))))
+    (if issues
     (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':issue (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
-   ))
-    )
-(setq my:test (consult-gh--issue-list "minad/consult"))
+   ) (progn (message (concat "consult-gh: no issues of state " (propertize (format "%s" consult-gh-issues-state-to-show) 'face 'warning) (format " in repo: %s" repo))) nil))
+    ))
 #+end_src
 
 **** actions
@@ -1226,10 +1226,10 @@ It uses `consult-gh--make-source-from-files' to create the list of the files for
 "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `user/repo` e.g. armindarvish/consult-gh and returns the list of issues for that repo. for further actions such as viewing in emacs or the browser.
 The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh issue --repo name-of-the-repo list`) to fetch the list of issues for a particular repository and shows them back to the user.
 It uses `consult-gh--make-source-from-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-issue-list'."
-  (interactive
+  (interactive)
    (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-   (list (delete-dups (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t)))))
+   (unless repos (setq repos (delete-dups (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t)))))
   (let ((candidates (consult--slow-operation "Collecting Issues ..." (mapcar #'consult-gh--make-source-from-issues repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
@@ -1239,14 +1239,13 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
                     :require-match t
                     :sort t
                     :group #'consult-gh--issue-group
-                    :preview-key 'any
                     :history 'consult-gh--issues-history
                     :category 'consult-gh
                     :sort t
                     :preview-key consult-gh-preview-key
                     )
           )
-      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
+      )))
 #+end_src
 
 ** Provide
