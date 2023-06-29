@@ -5,7 +5,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 0.1
+;; Version: 0.11
 ;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: convenience, matching, tools, vc
@@ -59,6 +59,19 @@
   :group 'consult-gh
   :type '(choice "open" "closed" "all"))
 
+(defcustom consult-gh-large-file-warning-threshold large-file-warning-threshold
+  "Maximum size of file above which `consult-gh' requests a confirmation for previewing, opening or saving the file. Default value is set by `large-file-warning-threshold'."
+  :group 'consult-gh
+  :type '(choice integer (const :tag "Never request confirmation" nil)))
+
+(defcustom consult-gh-prioritize-local-folder nil
+"This varibale defines how `gh` selects repositories and it can either be the string \"suggest\" or a a boolean.
+If it is set to \"suggest\", consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, as the initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'.
+If it is set to t, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, instead of querying the user and if there is no GitHub repository in the current folder falls back on querying the user for those commands.
+If it is set to nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `default-directory') and always queris the user to chose a repository for those commands."
+:group 'consult-gh
+:type '(choice boolean (const "suggest")))
+
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to show README of repositories in preview. choices are 'markdown-mode or 'org-mode"
   :group 'consult-gh
@@ -105,6 +118,11 @@
   :group 'consult-gh
   :type 'boolean)
 
+(defcustom consult-gh-confirm-name-before-fork nil
+  "This variable defines whether `consult-gh' queries the user for a name before forking a repo or uses the default repo name. By default it is set to nil."
+  :group 'consult-gh
+  :type 'boolean)
+
 (defcustom consult-gh-ask-for-path-before-save t
   "This variable defines whether `consult-gh' queries the user for a path before saving a file or uses the default directory and `buffer-file-name'. It may be useful to set this to nil if saving multiple files all at once frequently."
   :group 'consult-gh
@@ -140,11 +158,13 @@ A STRING: loads the branch STRING.
   "Category symbol for the `consult-gh' package.")
 
 (defvar consult-gh-repos-category 'consult-gh-repos
-  "Category symbol for the `consult-gh' package.")
+  "Category symbol for repos in `consult-gh' package.")
 
-(defvar consult-gh--issues-category 'consult-gh-issues
-  "Category symbol for the `consult-gh' package.")
+(defvar consult-gh-issues-category 'consult-gh-issues
+  "Category symbol for issues in `consult-gh' package.")
 
+(defvar consult-gh-orgs-category 'consult-gh-orgs
+  "Category symbol for orgs in `consult-gh' package.")
 
 (defvar consult-gh-files-category 'consult-gh-files
   "Category symbol for the `consult-gh' package.")
@@ -214,6 +234,21 @@ A STRING: loads the branch STRING.
     (if key
         (gethash key (json-read-from-string json))
       (json-read-from-string json))))
+
+(defun consult-gh--get-current-username ()
+"Gets the currently logged in user by running `gh api user` and returning the login field."
+ (consult-gh--api-json-to-hashtable (cadr (consult-gh--api-get-json "user")) :login))
+
+(defun consult-gh--get-repo-from-directory (&optional dir)
+"Returns the full name of the GitHub repository in the current folder (a.k.a. `default-directory') in the format \"[HOST/]OWNER/REPO\" if any, otherwise returns nil."
+(let* ((default-directory (or dir default-directory))
+      (response (consult-gh--call-process "repo" "view" "--json" "nameWithOwner" "--jq" ".nameWithOwner")))
+(if (eq (car response) 0)
+    (if (not (string-empty-p (cadr response)))
+    (string-trim (cadr response))
+    nil)
+  nil)
+))
 
 (defun consult-gh--output-cleanup (string)
 "Remove non UTF-8 characters if any in the string. For example, this is used in `consult-gh--repo-clone-action' and `consult-gh--repo-fork-action' to clean up the string before passing it to other functions."
@@ -409,7 +444,6 @@ Output is the buffer visiting the file."
          (suffix (concat "." (file-name-extension path)))
          (temp-file (expand-file-name path tempdir))
          (text (consult-gh--files-get-content url)))
-
          (make-directory (file-name-directory temp-file) t)
          (with-temp-file temp-file
            (insert text)
@@ -428,8 +462,14 @@ Output is the buffer visiting the file."
     (let* ((repo (get-text-property 0 ':repo cand))
            (path (get-text-property 0 ':path cand))
            (url (get-text-property 0 ':url cand))
-           (file-p (or (file-name-extension path) (get-text-property 0 ':size cand))))
-      (if file-p
+           (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
+           (file-size (and file-p (get-text-property 0 ':size cand)))
+           (confirm t))
+      (when (>= file-size consult-gh-large-file-warning-threshold)
+        (if (yes-or-no-p (format "File is %s Bytes. Do you really want to load it?" file-size))
+         (setq confirm t)
+       (setq confirm nil)))
+      (if (and file-p confirm)
           (consult-gh--files-view repo path url)
       ))))
 
@@ -441,15 +481,21 @@ Output is the buffer visiting the file."
            (url (get-text-property 0 ':url cand))
            (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
            (filename (and file-p (file-name-nondirectory path)))
-           (buffer (and file-p (consult-gh--files-view repo path url t))))
-    (if file-p
+           (file-size (and file-p (get-text-property 0 ':size cand)))
+           (confirm t)
+           (targetpath (if consult-gh-ask-for-path-before-save
+                           (file-truename (read-file-name "Save As: " consult-gh-default-save-directory filename nil filename))
+                         consult-gh-default-save-directory)))
+   (when (>= file-size consult-gh-large-file-warning-threshold)
+     (if (yes-or-no-p (format "File is %s Bytes. Do you really want to load it?" file-size))
+         (setq confirm t)
+       (setq confirm nil)))
+(let ((buffer (and file-p (consult-gh--files-view repo path url t))))
+      (if (and file-p confirm)
     (save-mark-and-excursion
       (save-restriction
         (with-current-buffer buffer
-          (if consult-gh-ask-for-path-before-save
-          (write-file (read-file-name "Save As: " consult-gh-default-save-directory filename nil filename) t)
-          (write-file consult-gh-default-save-directory t)
-          )
+          (write-file targetpath t))
         )))))))
 
 (defun consult-gh--files-group (cand transform)
@@ -471,15 +517,19 @@ For more info on state functions refer to `consult''s manual, and particularly `
                     (branch (get-text-property 0 ':branch cand))
                     (url (get-text-property 0 ':url cand))
                     (file-p (or (file-name-extension path) (get-text-property 0 ':size cand)))
+                    (file-size (and file-p (get-text-property 0 ':size cand)))
+                    (confirm (if (and file-p (>= file-size consult-gh-large-file-warning-threshold))
+                                 (yes-or-no-p (format "File is %s Bytes. Do you really want to load it?" file-size))
+                               t))
                     (tempdir (expand-file-name (concat repo "/" branch) consult-gh-tempdir))
                     (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
                     (suffix (concat "." (file-name-extension path)))
                     (temp-file (expand-file-name path tempdir))
-                    (_ (and file-p (make-directory (file-name-directory temp-file) t)))
-                    (text (and file-p (consult-gh--files-get-content url)))
-                    (_ (and file-p (with-temp-file temp-file (insert text) (set-buffer-file-coding-system 'raw-text)
+                    (_ (and file-p confirm (make-directory (file-name-directory temp-file) t)))
+                    (text (and file-p confirm (consult-gh--files-get-content url)))
+                    (_ (and file-p confirm (with-temp-file temp-file (insert text) (set-buffer-file-coding-system 'raw-text)
                                                    )))
-                    (buffer (or (and file-p (with-temp-buffer (find-file-noselect temp-file t))) nil)))
+                    (buffer (or (and file-p confirm (with-temp-buffer (find-file-noselect temp-file t))) nil)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
                (funcall preview action
                         (and
@@ -565,22 +615,18 @@ buffer is an optional buffer the preview should be shown in.
       (consult-gh-find-file (list repo))
       )))
 
-(defun consult-gh--repo-clone (repo targetdir name)
+(defvar consult-gh-repo-post-clone-hook nil
+"Function(s) called after `consult-gh--repo-clone'.
+Full path of the cloned repo is passed to these functions as input arg.")
+
+(defun consult-gh--repo-clone (repo name targetdir &rest args)
 "This is an internal function for non-interactive use. For interactive use see `consult-gh-repo-clone'. It clones the repository defined by `repo` to targetdir/name path by runing `gh clone repo ...`."
   (consult-gh--command-to-string "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
-  (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face))))
-
-
-(defun consult-gh-repo-clone (&optional repo targetdir name)
-"Interactively clones the repo to targetdir/name directory after confirming names and dir. It uses the internal function `consult-gh--repo-clone' which in turn runs `gh clone repo ...`.
-If repo, targetdir and name are not supplied interactively asks user for those values."
-  (interactive)
-  (let ((repo (read-string "repo: " repo))
-        (targetdir (read-directory-name "target directory: " targetdir))
-        (name (read-string "name: " name))
-        )
-  (consult-gh--repo-clone repo targetdir name)
-    ))
+  (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name name targetdir))
+   (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face)))
+   (let ((inhibit-message t))
+   (expand-file-name name targetdir))
+  )
 
 (defun consult-gh--repo-clone-action ()
 "The action function that gets a repo candidate for example from `consult-gh-search-repos' and clones the repository using `consult-gh-repo-clone'. If `consult-gh-confirm-before-clone' is nil it runs the internal non-interacctive function `consult-gh--repo-clone' that clones the directory in `consult-gh-default-clone-directory'."
@@ -589,23 +635,28 @@ If repo, targetdir and name are not supplied interactively asks user for those v
          (package (car (last (split-string reponame "\/"))))
          )
     (if consult-gh-confirm-before-clone
-        (consult-gh-repo-clone reponame consult-gh-default-clone-directory package)
-      (consult-gh--repo-clone reponame consult-gh-default-clone-directory package))
+        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or consult-gh-default-clone-directory default-directory)))
+        (name (read-string "name: " package)))
+          (consult-gh--repo-clone reponame package targetdir))
+      (consult-gh--repo-clone reponame package consult-gh-default-clone-directory))
     )))
 
-(defun consult-gh--repo-fork (repo &rest args)
-"This is an internal function for non-interactive use. For interactive uses see `consult-gh-repo-fork'. It forks the repository defined by `repo` to the current user account logged in with `gh` command line tool."
-  (consult-gh--command-to-string "repo" "fork" (format "%s" repo) )
-  (message (format "repo %s was forked" (propertize repo 'face 'font-lock-keyword-face))))
+(defvar consult-gh-repo-post-fork-hook nil
+"Function(s) called after `consult-gh--repo-fork'.
+Full name of the forked repo e.g. \"armindarvish/consult-gh\" is passed to these functions as input arg.")
 
-(defun consult-gh-repo-fork (&optional repo name &rest args)
-"Interactively forks the repository defined by `repo` to the current user account logged in with `gh` command line tool after confirming name. It uses `gh fork repo ...`."
-  (interactive)
-  (let* ((repo (read-string "repo: " repo))
-        (package (car (last (split-string repo "\/"))))
-        (name (read-string "name: " package)))
-  (consult-gh--repo-fork repo  "--fork-name" name args)
-    ))
+(defun consult-gh--repo-fork (repo &optional name)
+"This is an internal function for non-interactive use. For interactive uses see `consult-gh-repo-fork'. It forks the repository defined by `repo` to the current user account logged in with `gh` command line tool."
+(let* ((package (car (last (split-string repo "\/"))))
+      (name (or name package))
+      (forkrepo (concat (consult-gh--get-current-username) "/" name)))
+(consult-gh--command-to-string "repo" "fork" (format "%s" repo) "--fork-name" name)
+(message (format "repo %s was forked to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize forkrepo 'face 'font-lock-warning-face)))
+(run-hook-with-args 'consult-gh-repo-post-fork-hook forkrepo)
+  (let ((inhibit-message t))
+    forkrepo)
+))
+
 
 (defun consult-gh--repo-fork-action ()
 "The action function that gets a repo candidate for example from `consult-gh-search-repos' and forks the repository to current user's github account (the account logged in with `gh` command line tool)."
@@ -687,13 +738,13 @@ For more info on state functions refer to `consult''s manual, and particularly `
 "Get a list of issues of the repository `repo` and format each as a text with properties to pass to `consult-gh-issue-list'. It fetches a list of issues by runing \"gh issuee --repo name-of-repo list\" and returns a list of propertized strings containing title of issue name of the repo and other relevant information such as discription tags and date of the issue, etc.
 
 repo is the name of the repository for which the issues should be listed in a string format e.g. \"armindarvish\\consult-gh\"."
-  (let* ((maxnum (format "%s" consult-gh-issue-maxnum))
-         (issueslist  (or (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum "--state" consult-gh-issues-state-to-show) ""))
-         (issues (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n"))))
+  (when-let* ((maxnum (format "%s" consult-gh-issue-maxnum))
+         (issueslist (consult-gh--command-to-string "issue" "--repo" repo "list" "--limit" maxnum "--state" consult-gh-issues-state-to-show))
+         (issues (and issueslist (mapcar (lambda (s) (string-split s "\t")) (split-string issueslist "\n")))))
+    (if issues
     (remove ":" (remove "" (mapcar (lambda (src) (propertize (concat (car src) ":" (cadr (cdr src))) ':issue (string-trim (car src) "#") ':repo repo ':status (cadr src) ':description (cadr (cdr src)) ':tags (cadr (cdr (cdr src))) ':date (cadr (cdr (cdr (cdr src)))))) issues))
-   ))
-    )
-(setq my:test (consult-gh--issue-list "minad/consult"))
+   ) (progn (message (concat "consult-gh: no issues of state " (propertize (format "%s" consult-gh-issues-state-to-show) 'face 'warning) (format " in repo: %s" repo))) nil))
+    ))
 
 (defun consult-gh--issue-browse-url-action ()
 "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens the url of the issue on github in a browser. To use this as the default action in `consult-gh-issue-list', set `consult-gh-issue-action' to #'consult-gh--issue-browse-url-action."
@@ -858,16 +909,81 @@ For more info on consult dources see `consult''s manual for example documentaion
                     :sort t
                     ))
 
+(defun consult-gh--read-orgs (candidates)
+"Runs the interactive command in the minibuffer that queries the user for name of organizations (a.k.a. GitHub usernames) of interest to pass to other interactive commands such as `consult-gh-orgs'."
+
+  (let ((crm-separator consult-gh-crm-separator))
+(completing-read-multiple "Search GitHub Users/Organization: " (lambda (string predicate action)
+         (if (eq action 'metadata)
+             '(metadata (category . consult-gh-orgs))
+           (complete-with-action
+            action candidates string predicate))) nil nil nil 'consult-gh--org-history nil t)
+))
+
+(defun consult-gh--read-search-repos (candidates)
+"Runs the interactive command in the minibuffer that queries the user for name of repos of interest to pass to other interactive commands such as `consult-gh-search-repos'."
+  (let ((crm-separator consult-gh-crm-separator))
+(completing-read-multiple "Search GitHub Repositories: " (lambda (string predicate action)
+         (if (eq action 'metadata)
+             '(metadata (category . consult-gh-repos))
+           (complete-with-action
+            action candidates string predicate))) nil nil nil nil nil t)))
+
+(defun consult-gh--read-repo-name (&optional candidates)
+  (let ((crm-separator consult-gh-crm-separator)
+        (candidates (or candidates (delete-dups consult-gh--known-repos-list) (list)))
+        (repo-from-current-dir (consult-gh--get-repo-from-directory)))
+    (pcase consult-gh-prioritize-local-folder
+      ("suggest"
+       (if repo-from-current-dir
+           (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
+         (if (eq action 'metadata)
+             '(metadata (category . consult-gh-repos))
+           (complete-with-action
+            action candidates string predicate))) nil nil repo-from-current-dir consult-gh--repos-history nil t)) '(""))
+         (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
+         (if (eq action 'metadata)
+             '(metadata (category . consult-gh-repos))
+           (complete-with-action
+            action candidates string predicate))) nil nil nil consult-gh--repos-history nil t)) '(""))))
+      ('nil
+       (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
+         (if (eq action 'metadata)
+             '(metadata (category . consult-gh-repos))
+           (complete-with-action
+            action candidates string predicate))) nil nil nil consult-gh--repos-history nil t)) '("")))
+      ('t
+       (if repo-from-current-dir
+           (list repo-from-current-dir)
+         (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
+         (if (eq action 'metadata)
+             '(metadata (category . consult-gh-repos))
+           (complete-with-action
+            action candidates string predicate))) nil nil nil consult-gh--repos-history nil t)) '("")))))))
+
+(defun consult-gh--read-branch (repo)
+  (pcase consult-gh-default-branch-to-load
+    ("confirm"
+     (if (y-or-n-p "Load Default HEAD branch?")
+         (cons repo "HEAD")
+       (cons repo (completing-read (concat "Select Branch for " (propertize (format "\"%s\"" repo) 'face 'consult-gh-default-face) ": ") (consult-gh--files-branches-list-items repo)))))
+    ("ask"
+     (cons repo (completing-read (concat "Select Branch for " (propertize (format "\"%s\"" repo) 'face 'consult-gh-default-face) ": ") (consult-gh--files-branches-list-items repo))))
+    ('nil
+     (cons repo "HEAD"))
+    (_
+     (cons repo (format "%s" consult-gh-default-branch-to-load)))))
+
 (defun consult-gh-orgs (&optional orgs)
 "Runs the interactive command in the minibuffer that queries the user for name of organizations (a.k.a. GitHub usernames) and returns a list of repositories of those organizations for further actions.
 The user can provide multiple orgs by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh repo list name-of-the-org`) to fetch the list of repositories of those accounts and show them back to the user.
 It uses `consult-gh--make-source-from-org' to create the list of items for consult and saves the history in `consult-gh--repos-history'. It also keep tracks of previously selected orgs by the user in `consult-gh--known-orgs-list' and offers them as possible entries in future runs of `consult-gh-orgs'."
-  (interactive
-   (let* ((crm-separator consult-gh-crm-separator)
-         (candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
-   (list (delete-dups (completing-read-multiple "Search GitHub Users/Organization: " candidates nil nil nil 'consult-gh--org-history nil t)))))
-
-  (let ((candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-org orgs))))
+  (interactive)
+  (unless orgs
+   (let ((candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
+     (setq orgs (or (delete-dups (consult-gh--read-orgs candidates)) '("")))))
+  (let* ((crm-separator consult-gh-crm-separator)
+        (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-org orgs))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-orgs-list (append consult-gh--known-orgs-list orgs))
@@ -888,14 +1004,16 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
 (consult-gh-orgs consult-gh-default-orgs-list))
 
 (defun consult-gh-search-repos (&optional repos)
-"Runs the interactive command in the minibuffer that queries the user for name of repos to search for and returns a list of possible entries in the format user/repo (e.g. armindarvish/consult-gh) for further actions such as viewing, cloning, forking, ...
+"Runs the interactive command in the minibuffer that queries the user for name of repos to search for and returns a list of possible entries in the format `OWNER/REPO` (e.g. armindarvish/consult-gh) for further actions such as viewing, cloning, forking, ...
 The user can provide multiple search terms by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search repos name-of-the-repo`) to fetch the list of repositories and show them back to the user.
 It uses `consult-gh--make-source-from-search-repo' to create the list of items for consult and saves the history in `consult-gh--repos-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-repos'."
-  (interactive
+  (interactive)
+  (unless repos
+   (let* ((candidates ))
+   (setq repos (consult-gh--read-search-repos candidates))))
    (let* ((crm-separator consult-gh-crm-separator)
-         (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-   (list (delete-dups (completing-read-multiple "Search GitHub Repositories: " candidates nil nil nil nil nil t)))))
-  (let ((candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
+          (repos (or repos (consult-gh--read-search-repo)))
+         (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
@@ -909,61 +1027,47 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
                     :sort t
                     :preview-key consult-gh-preview-key
                     ))
-      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
+      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))
+))
 
 (defun consult-gh-search-issues (&optional repos search)
-"Runs the interactive command in the minibuffer that queries the user for name of repos in the format `user/repo` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
+  "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
 The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
 It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
   (interactive)
-   (let* ((crm-separator consult-gh-crm-separator)
-         (candidates (or (delete-dups consult-gh--known-repos-list) (list)))
+  (let* ((crm-separator consult-gh-crm-separator)
+         (repos (or repos (consult-gh--read-repo-name)))
          (search (or search (read-string "Search Term: ")))
-         (repos (or (or repos (delete-dups (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t))) '("")))
          (candidates (consult--slow-operation "Collecting Issues ..." (mapcar (lambda (repo) (consult-gh--make-source-from-search-issues search repo)) repos))))
     (if (not (seq-empty-p (remove nil (mapcar (lambda (cand) (plist-get cand :items)) candidates))))
         (progn
           (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
           (consult--multi candidates
-                    :prompt "Select Issue(s): "
-                    :require-match t
-                    :sort t
-                    :group #'consult-gh--issue-group
-                    :history 'consult-gh--issues-history
-                    :category 'consult-gh
-                    :sort t
-                    :preview-key consult-gh-preview-key
-                    )
-           )
+                          :prompt "Select Issue(s): "
+                          :require-match t
+                          :sort t
+                          :group #'consult-gh--issue-group
+                          :history 'consult-gh--issues-history
+                          :category 'consult-gh
+                          :sort t
+                          :preview-key consult-gh-preview-key
+                          )
+          )
       (message (concat "consult-gh: " (propertize "no issues matched your search!" 'face 'warning))))
-))
+    ))
 
 (defun consult-gh-find-file (&optional repos)
-"Runs the interactive command in the minibuffer that queries the user for name of repos in the format `user/repo` e.g. armindarvish/consult-gh and then asks for the branch depending on the variable `consult-gh-default-branch-to-load' and returns the file tree of that repo and branch to the user for further actions such as viewing in emacs or the browser, saving as local files, ...
+"Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh and then asks for the branch depending on the variable `consult-gh-default-branch-to-load' and returns the file tree of that repo and branch to the user for further actions such as viewing in emacs or the browser, saving as local files, ...
 The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh api repos/name-of-the-repo/git/trees/branch`) to fetch the file tree for a particular repository and branch and shows them back to the user.
 It uses `consult-gh--make-source-from-files' to create the list of the files for consult. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-find-file'."
-  (interactive
+  (interactive)
    (let* ((crm-separator consult-gh-crm-separator)
-         (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-     (list (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t))))
-  (let ((branches (list)))
-    (pcase consult-gh-default-branch-to-load
-      ("confirm"
-    (if (y-or-n-p "Load Default HEAD branch?")
-        (setq branches (mapcar (lambda (repo) (cons repo "HEAD")) repos))
-      (setq branches (cl-loop for repo in repos
-                              collect (cons repo (completing-read (concat "Select Branch for " (propertize (format "\"%s\"" repo) 'face 'consult-gh-default-face) ": ") (consult-gh--files-branches-list-items repo)))))))
-      ("ask"
-       (setq branches (cl-loop for repo in repos
-                              collect (cons repo (completing-read (concat "Select Branch for " (propertize (format "\"%s\"" repo) 'face 'consult-gh-default-face) ": ") (consult-gh--files-branches-list-items repo))))))
-      ('nil
-        (setq branches (mapcar (lambda (repo) (cons repo "HEAD")) repos))
-        )
-      (_
-        (setq branches (mapcar (lambda (repo) (cons repo (format "%s" consult-gh-default-branch-to-load))) repos))))
-    (let ((consult-gh-tempdir (expand-file-name (make-temp-name "") consult-gh-tempdir))
-          (candidates (consult--slow-operation "Collecting Contents ..." (mapcar (lambda (repo) (consult-gh--make-source-from-files repo (alist-get repo branches))) repos)))
-          )
+         (repo-from-current-dir (consult-gh--get-repo-from-directory))
+         (repos (or repos  (consult-gh--read-repo-name)))
+         (branches (cl-loop for repo in repos
+                                 collect (consult-gh--read-branch repo)))
+         (consult-gh-tempdir (expand-file-name (make-temp-name "") consult-gh-tempdir))
+         (candidates (consult--slow-operation "Collecting Contents ..." (mapcar (lambda (repo) (consult-gh--make-source-from-files repo (alist-get repo branches))) repos))))
       (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
           (progn
             (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
@@ -972,22 +1076,22 @@ It uses `consult-gh--make-source-from-files' to create the list of the files for
                             :require-match t
                             :sort t
                             :group #'consult-gh--files-group
-                            ;;:history 'consult-gh--repos-history
                             :category 'consult-gh-files
                             :sort t
                             :preview-key consult-gh-preview-key
                             ))
-        (message (concat "consult-gh: " (propertize "no contents matched your repo!" 'face 'warning)))))))
+        (message (concat "consult-gh: " (propertize "no contents matched your repo!" 'face 'warning))))))
 
 (defun consult-gh-issue-list (&optional repos)
-"Runs the interactive command in the minibuffer that queries the user for name of repos in the format `user/repo` e.g. armindarvish/consult-gh and returns the list of issues for that repo. for further actions such as viewing in emacs or the browser.
+"Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh and returns the list of issues for that repo. for further actions such as viewing in emacs or the browser.
 The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh issue --repo name-of-the-repo list`) to fetch the list of issues for a particular repository and shows them back to the user.
 It uses `consult-gh--make-source-from-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-issue-list'."
-  (interactive
+  (interactive)
    (let* ((crm-separator consult-gh-crm-separator)
-         (candidates (or (delete-dups consult-gh--known-repos-list) (list))))
-   (list (delete-dups (completing-read-multiple "Repo(s) in User/Repo format (e.g. armindarvish/consult-gh): " candidates nil nil nil nil nil t)))))
-  (let ((candidates (consult--slow-operation "Collecting Issues ..." (mapcar #'consult-gh--make-source-from-issues repos))))
+         (candidates (or (delete-dups consult-gh--known-repos-list) (list)))
+         (repo-from-current-dir (consult-gh--get-repo-from-directory))
+         (repos (or repos (consult-gh--read-repo-name candidates)))
+         (candidates (consult--slow-operation "Collecting Issues ..." (mapcar #'consult-gh--make-source-from-issues repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
           (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
@@ -996,14 +1100,38 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
                     :require-match t
                     :sort t
                     :group #'consult-gh--issue-group
-                    :preview-key 'any
                     :history 'consult-gh--issues-history
                     :category 'consult-gh
                     :sort t
                     :preview-key consult-gh-preview-key
                     )
           )
-      (message (concat "consult-gh: " (propertize "no repositories matched your search!" 'face 'warning))))))
+      )))
+
+(defun consult-gh-repo-clone (&optional repos targetdir)
+"Interactively clones the repo to targetdir directory. It uses the internal function `consult-gh--repo-clone' which in turn runs `gh clone repo ...`.
+If repo or targetdir are not supplied, interactively asks user for those values."
+  (interactive)
+  (let* ((consult-gh-prioritize-local-folder nil)
+         (repos (or repos (consult-gh--read-repo-name)))
+         (targetdir (or targetdir consult-gh-default-clone-directory))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir) targetdir)))
+    (mapcar (lambda (repo)
+              (let* ((package (car (last (split-string repo "\/"))))
+                     (name (if consult-gh-confirm-before-clone (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
+              (consult-gh--repo-clone repo name clonedir))
+    ) repos)))
+
+(defun consult-gh-repo-fork (&optional repos)
+"Interactively forks the repository defined by `repo` to the current user account logged in with `gh` command line tool after confirming name. It uses `gh fork repo ...`."
+  (interactive)
+  (let* ((consult-gh-prioritize-local-folder nil)
+         (repos (or repos (consult-gh--read-repo-name))))
+    (mapcar (lambda (repo)
+              (let* ((package (car (last (split-string repo "\/"))))
+                     (name (if consult-gh-confirm-name-before-fork (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
+  (consult-gh--repo-fork repo name))) repos)
+    ))
 
 (provide 'consult-gh)
 

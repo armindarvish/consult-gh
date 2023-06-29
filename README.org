@@ -20,8 +20,8 @@ Consult-GH offers the following "MAIN" interactive commands
 
 In addition, Consult-GH provides interactive functions for /additional/ useful quick actions:
 5.  =consult-gh-default-repos=: This calls =consult-gh-org= on a defined default list of orgs stored in variable =consult-gh-default-orgs-list= for quick access to frequently used repositories. This can for example be useful for accessing your own repositories (in multiple accounts) quickly.
-6. =consult-gh-repo-clone=: Quickly clone a repository with just typing the name of the repository. You can also clone multiple repositories at the same time (see examples below).
-7. =consult-gh-repo-fork=: Quickly fork one or more repositories.
+6. =consult-gh-repo-clone=: Quickly clone a repository with just typing the name of the repository. You can also clone multiple repositories at the same time (see examples below). This function has a post-hook =consult-gh-repo-post-clone-hook=.
+7. =consult-gh-repo-fork=: Quickly fork one or more repositories. This function also has a post-hook =consult-gh-repo-post-fork-hook=.
 
 Furthermore, Consult-GH, also provides a number of useful [[https://github.com/oantolin/embark][Embark]] actions (see examples below.) You can see a full list of commands here:
 
@@ -115,6 +115,17 @@ This is the limit passed to =gh= as =--limit= argument to =gh repo list= or =gh 
 **** =consult-gh--issue-maxnum=
 This is the limit passed to =gh= as =--limit= argument to =gh issue list= or =gh search issues= commands and defines the number of issues shown when listing or searching for issues. By default, it is set to 30 following the default values of =gh= itself, but it can be customized by the user to see more or fewer results.
 
+**** =consult-gh-large-file-warning-threshold=
+This is the maximum file size, above which =consult-gh= requests a confirmation for previewing, opening or saving the file. Default value is set by emacs built-in =large-file-warning-threshold= variable, but since =consult-gh= is downloading files from the internet, you may want to set this to a smaller value than =large-file-warning-threshold=  depending on your network performance.
+
+**** =consult-gh-prioritize-local-folder=
+
+This varibale defines whther =gh= uses the git repo in the local folder to select/guess the repository for commands like =consult-gh-find-file= and =consult-gh-issue-list=, etc. Note that everything is still retrieved from the remote (for example =consult-gh-find-file=  would fetch the contents of the repo from remote and not from the local folder) but the local repo name is used instead of querying the user.
+You can set this varibale to ="suggest"=, =t=, or =nil=
+- "suggest" simply adds the local repo name as default input in the minibuffer so you don't have to type it out.
+- t would skip the query and uses the local repo name, if any, otherwise it falls back to querying the user.
+- nil would ignore the local repo name in the default-directory.
+
 **** =consult-gh--issues-state-to-show=
 The state of issues shown when listing or searching for issues. This is the string passed as =--state= argument to =gh search issues= or =gh issue list= and can accept =open=, =closed= or =all= for open, closed or all issues, respectively.
 
@@ -156,10 +167,12 @@ For example, if you have turned preview on by setting =consult-gh-show-preview= 
 
 Be aware that getting previews is resource heavy since it has to make an API call to GitHub and download contents of a file. If you set a specific key for =consult-gh-preview-key=, this API call and downloading the content is done only when you hit the key binding.
 
+
+**** =consult-gh-confirm-name-before-fork=
+This is a boolean determining whether Consult-GH asks for a repo  name before forking a repository. By default, it is set to =nil=, meaning that Consult-GH uses the same repo name when forking.
 **** =consult-gh-confirm-before-clone=
 This is a boolean determining whether Consult-GH asks for path and directory name before cloning a repository. By default, it is set to =t=, meaning that Consult-GH asks the user for the path to clone a repository and the name to give the directory. However, if you don't want consult-gh to ask you every time you clone a repository, you can set this variable to =nil=, in which case Consult-GH clones repositories at =consult-gh-default-clone-directory= (see below) with the default name of the repository itself.
 Note that setting this variable to =nil= along with setting =consult-gh-default-clone-directory= to a directory where you keep all your repositories, allows quick cloning of multiple repositories (possibly even from different accounts on GitHub).
-
 **** =consult-gh-default-clone-directory=
 This variable points to the directory where repositories are cloned by default. By default, this is set to ="~/"= (a.k.a. user's home directory), and the user is asked for confirmation before cloning. Therefore, in the default setting no matter what this variable is, you can still choose the right path to clone each repository, but this means that you have to do this for every each repository you clone. By setting this variable to a default convenient path where you keep all your repositories, for example ="~/code/"= or ="~/projects/"= , you can minimize the effort to navigate to the right path.
 Keep in mind that if you do clone multiple repositories at the same time, it would be convenient to have this variable set to the right path, so you don't have to navigate to it for each repository especially if you turn =consult-gh-confirm-before-clone= to nil (see above).
@@ -197,6 +210,8 @@ Here is a good customization for great performance as well as functionality:
   (consult-gh-issue-action #'consult-gh--issue-view-action)
   (consult-gh-repo-action #'consult-gh--repo-browse-files-action)
   (consult-gh-file-action #'consult-gh--files-view-action)
+  (consult-gh-large-file-warning-threshold 2500000)
+  (consult-gh-prioritize-local-folder "suggest")
   :config
   ;;add your main GitHub account (replace "armindarvish" with your user or org)
   (add-to-list 'consult-gh-default-orgs-list "armindarvish")
