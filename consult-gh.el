@@ -839,7 +839,7 @@ For more info on state functions refer to `consult''s manual, and particularly `
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'. It fethces the list by using `consult-gh--repo-list' which in turn uses `gh repo list name-of-the-org`. This is used by the interactive command `consult-gh-orgs'
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
                   `(:narrow ,(consult-gh--repo-narrow org)
-                    :category 'consult-gh
+                    :category 'consult-gh-orgs
                     :items  ,(consult-gh--repo-list org)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
@@ -854,7 +854,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 "Create a source for consult from the repos return by search GitHub for `repo` by using `consult-gh--search-repos' which in turn uses `gh search repos name-of-the-repo`. This is used by the interactive command `consult-gh-search-repos'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
                   `(:narrow ,(consult-gh--repo-narrow repo)
-                    :category 'consult-gh
+                    :category 'consult-gh-repos
                     :items  ,(consult-gh--search-repos repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
@@ -869,7 +869,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 "Create a source for consult from the issues retrieved by fetching all the issues of the `repo` from GitHub by using `consult-gh--issue-list' which in turn uses `gh search issues --repo name-of-the-repo`. This is used by the interactive command `consult-gh-issue-list'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
 (let ((repo (or repo "")))
-                  `(:category 'consult-gh
+                  `(:category 'consult-gh-issues
                     :items  ,(consult-gh--search-issues search repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-issue-action)
@@ -883,7 +883,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 (defun consult-gh--make-source-from-issues (repo)
 "Create a source for consult from the issues retrieved by fetching all the issues of the `repo` from GitHub by using `consult-gh--issue-list' which in turn uses `gh search issues --repo name-of-the-repo`. This is used by the interactive command `consult-gh-issue-list'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
-                  `(:category 'consult-gh
+                  `(:category 'consult-gh-issues
                     :items  ,(consult-gh--issue-list repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-issue-action)
@@ -993,7 +993,7 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
                     :sort t
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
-                    :category 'consult-gh
+                    :category 'consult-gh-orgs
                     :sort t
                     :preview-key consult-gh-preview-key
                     )))))
@@ -1023,7 +1023,7 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
                     :sort nil
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
-                    :category 'consult-gh
+                    :category 'consult-gh-repos
                     :sort t
                     :preview-key consult-gh-preview-key
                     ))
@@ -1048,7 +1048,7 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
                           :sort t
                           :group #'consult-gh--issue-group
                           :history 'consult-gh--issues-history
-                          :category 'consult-gh
+                          :category 'consult-gh-issues
                           :sort t
                           :preview-key consult-gh-preview-key
                           )
@@ -1101,7 +1101,7 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
                     :sort t
                     :group #'consult-gh--issue-group
                     :history 'consult-gh--issues-history
-                    :category 'consult-gh
+                    :category 'consult-gh-issues
                     :sort t
                     :preview-key consult-gh-preview-key
                     )
