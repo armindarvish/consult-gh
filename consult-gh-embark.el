@@ -17,22 +17,26 @@
 (require 'embark)
 (require 'consult-gh)
 
-(defun consult-gh-embark-remove-repo-from-favorites (cand)
-  (let ((repo (consult-gh--output-cleanup cand)))
-    (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list))
-    ))
-
 (defun consult-gh-embark-add-repo-to-favorites (cand)
+"Adds repo to `consult-gh--known-repos-list'."
   (let ((repo (consult-gh--output-cleanup cand)))
     (add-to-list 'consult-gh--known-repos-list repo))
   )
 
+(defun consult-gh-embark-remove-repo-from-favorites (cand)
+"Removes repo from `consult-gh--known-repos-list'."
+  (let ((repo (consult-gh--output-cleanup cand)))
+    (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list))
+    ))
+
 (defun consult-gh-embark-add-org-to-favorites (cand)
+"Adds org to `consult-gh--known-orgs-list'."
   (let ((org (consult-gh--output-cleanup cand)))
     (add-to-list 'consult-gh--known-orgs-list (format "%s" org)))
   )
 
 (defun consult-gh-embark-remove-org-from-favorites (cand)
+  "Removes org from `consult-gh--known-orgs-list'."
   (let ((org (consult-gh--output-cleanup cand)))
     (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list))
     )
