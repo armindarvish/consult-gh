@@ -17,28 +17,42 @@
 (require 'embark)
 (require 'consult-gh)
 
-(defun consult-gh-embark-add-repo-to-favorites (cand)
+(defun consult-gh-embark-add-repo-to-known-repos (cand)
 "Adds repo to `consult-gh--known-repos-list'."
   (let ((repo (consult-gh--output-cleanup cand)))
     (add-to-list 'consult-gh--known-repos-list repo))
   )
 
-(defun consult-gh-embark-remove-repo-from-favorites (cand)
+(defun consult-gh-embark-remove-repo-from-known-repos (cand)
 "Removes repo from `consult-gh--known-repos-list'."
   (let ((repo (consult-gh--output-cleanup cand)))
     (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list))
     ))
 
-(defun consult-gh-embark-add-org-to-favorites (cand)
+(defun consult-gh-embark-add-org-to-known-orgs (cand)
 "Adds org to `consult-gh--known-orgs-list'."
   (let ((org (consult-gh--output-cleanup cand)))
     (add-to-list 'consult-gh--known-orgs-list (format "%s" org)))
   )
 
-(defun consult-gh-embark-remove-org-from-favorites (cand)
+
+(defun consult-gh-embark-remove-org-from-known-orgs (cand)
   "Removes org from `consult-gh--known-orgs-list'."
   (let ((org (consult-gh--output-cleanup cand)))
     (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list))
+    )
+  )
+
+(defun consult-gh-embark-add-org-to-default-list (cand)
+"Adds org to `consult-gh--known-orgs-list'."
+  (let ((org (consult-gh--output-cleanup cand)))
+    (add-to-list 'consult-gh-default-orgs-list (format "%s" org)))
+  )
+
+(defun consult-gh-embark-remove-org-from-default-list (cand)
+  "Removes org from `consult-gh--known-orgs-list'."
+  (let ((org (consult-gh--output-cleanup cand)))
+    (setq consult-gh-default-orgs-list (delete org consult-gh-default-orgs-list))
     )
   )
 
@@ -112,8 +126,6 @@
   "l l" #'consult-gh-embark-get-url-link
   "l o" #'consult-gh-embark-get-org-link
   "l e" #'consult-gh-embark-get-straight-usepackage-link
-  "b b" #'consult-gh-embark-add-repo-to-favorites
-  "b k" #'consult-gh-embark-remove-repo-from-favorites
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
@@ -126,8 +138,8 @@
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
-  "b b" #'consult-gh-embark-add-repo-to-favorites
-  "b k" #'consult-gh-embark-remove-repo-from-favorites
+  "b b" #'consult-gh-embark-add-repo-to-known-repos
+  "b k" #'consult-gh-embark-remove-repo-from-known-repos
   )
 
 (add-to-list 'embark-keymap-alist '(consult-gh-repos . consult-gh-embark-repos-actions-map))
@@ -144,8 +156,10 @@
 (defvar-keymap consult-gh-embark-orgs-actions-map
   :doc "Keymap for consult-gh-embark-orgs"
   :parent consult-gh-embark-general-actions-map
-  "b b" #'consult-gh-embark-add-org-to-favorites
-  "b k" #'consult-gh-embark-remove-org-from-favorites)
+  "b b" #'consult-gh-embark-add-org-to-known-orgs
+  "b k" #'consult-gh-embark-remove-org-from-known-orgs
+  "b d" #'consult-gh-embark-add-org-to-default-list
+  "b D" #'consult-gh-embark-remove-org-from-default-list)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
 

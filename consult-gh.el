@@ -65,7 +65,10 @@
   :type '(choice integer (const :tag "Never request confirmation" nil)))
 
 (defcustom consult-gh-prioritize-local-folder nil
-"If non-nil, consult-gh tries git repository from the local folder (a.k.a. `default-directory') first"
+"This varibale defines how `gh` selects repositories and it can either be the string \"suggest\" or a a boolean.
+If it is set to \"suggest\", consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, as the initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'.
+If it is set to t, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, instead of querying the user and if there is no GitHub repository in the current folder falls back on querying the user for those commands.
+If it is set to nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `default-directory') and always queris the user to chose a repository for those commands."
 :group 'consult-gh
 :type '(choice boolean (const "suggest")))
 

@@ -81,7 +81,10 @@
   :type '(choice integer (const :tag "Never request confirmation" nil)))
 
 (defcustom consult-gh-prioritize-local-folder nil
-"If non-nil, consult-gh tries git repository from the local folder (a.k.a. `default-directory') first"
+"This varibale defines how `gh` selects repositories and it can either be the string \"suggest\" or a a boolean.
+If it is set to \"suggest\", consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, as the initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'.
+If it is set to t, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, instead of querying the user and if there is no GitHub repository in the current folder falls back on querying the user for those commands.
+If it is set to nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `default-directory') and always queris the user to chose a repository for those commands."
 :group 'consult-gh
 :type '(choice boolean (const "suggest")))
 
@@ -1365,28 +1368,42 @@ This section includes additional useful embark actions as well as possible keyma
 (require 'embark)
 (require 'consult-gh)
 
-(defun consult-gh-embark-add-repo-to-favorites (cand)
+(defun consult-gh-embark-add-repo-to-known-repos (cand)
 "Adds repo to `consult-gh--known-repos-list'."
   (let ((repo (consult-gh--output-cleanup cand)))
     (add-to-list 'consult-gh--known-repos-list repo))
   )
 
-(defun consult-gh-embark-remove-repo-from-favorites (cand)
+(defun consult-gh-embark-remove-repo-from-known-repos (cand)
 "Removes repo from `consult-gh--known-repos-list'."
   (let ((repo (consult-gh--output-cleanup cand)))
     (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list))
     ))
 
-(defun consult-gh-embark-add-org-to-favorites (cand)
+(defun consult-gh-embark-add-org-to-known-orgs (cand)
 "Adds org to `consult-gh--known-orgs-list'."
   (let ((org (consult-gh--output-cleanup cand)))
     (add-to-list 'consult-gh--known-orgs-list (format "%s" org)))
   )
 
-(defun consult-gh-embark-remove-org-from-favorites (cand)
+
+(defun consult-gh-embark-remove-org-from-known-orgs (cand)
   "Removes org from `consult-gh--known-orgs-list'."
   (let ((org (consult-gh--output-cleanup cand)))
     (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list))
+    )
+  )
+
+(defun consult-gh-embark-add-org-to-default-list (cand)
+"Adds org to `consult-gh--known-orgs-list'."
+  (let ((org (consult-gh--output-cleanup cand)))
+    (add-to-list 'consult-gh-default-orgs-list (format "%s" org)))
+  )
+
+(defun consult-gh-embark-remove-org-from-default-list (cand)
+  "Removes org from `consult-gh--known-orgs-list'."
+  (let ((org (consult-gh--output-cleanup cand)))
+    (setq consult-gh-default-orgs-list (delete org consult-gh-default-orgs-list))
     )
   )
 
@@ -1460,8 +1477,6 @@ This section includes additional useful embark actions as well as possible keyma
   "l l" #'consult-gh-embark-get-url-link
   "l o" #'consult-gh-embark-get-org-link
   "l e" #'consult-gh-embark-get-straight-usepackage-link
-  "b b" #'consult-gh-embark-add-repo-to-favorites
-  "b k" #'consult-gh-embark-remove-repo-from-favorites
   "c" #'consult-gh-embark-clone-repo
   "f" #'consult-gh-embark-fork-repo
   "x" #'consult-gh-embark-get-other-repos-by-same-user
@@ -1474,8 +1489,8 @@ This section includes additional useful embark actions as well as possible keyma
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
-  "b b" #'consult-gh-embark-add-repo-to-favorites
-  "b k" #'consult-gh-embark-remove-repo-from-favorites
+  "b b" #'consult-gh-embark-add-repo-to-known-repos
+  "b k" #'consult-gh-embark-remove-repo-from-known-repos
   )
 
 (add-to-list 'embark-keymap-alist '(consult-gh-repos . consult-gh-embark-repos-actions-map))
@@ -1492,8 +1507,10 @@ This section includes additional useful embark actions as well as possible keyma
 (defvar-keymap consult-gh-embark-orgs-actions-map
   :doc "Keymap for consult-gh-embark-orgs"
   :parent consult-gh-embark-general-actions-map
-  "b b" #'consult-gh-embark-add-org-to-favorites
-  "b k" #'consult-gh-embark-remove-org-from-favorites)
+  "b b" #'consult-gh-embark-add-org-to-known-orgs
+  "b k" #'consult-gh-embark-remove-org-from-known-orgs
+  "b d" #'consult-gh-embark-add-org-to-default-list
+  "b D" #'consult-gh-embark-remove-org-from-default-list)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
 
