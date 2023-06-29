@@ -118,6 +118,14 @@ This is the limit passed to =gh= as =--limit= argument to =gh issue list= or =gh
 **** =consult-gh-large-file-warning-threshold=
 This is the maximum file size, above which =consult-gh= requests a confirmation for previewing, opening or saving the file. Default value is set by emacs built-in =large-file-warning-threshold= variable, but since =consult-gh= is downloading files from the internet, you may want to set this to a smaller value than =large-file-warning-threshold=  depending on your network performance.
 
+**** =consult-gh-prioritize-local-folder=
+
+This varibale defines whther =gh= uses the git repo in the local folder to select/guess the repository for commands like =consult-gh-find-file= and =consult-gh-issue-list=, etc. Note that everything is still retrieved from the remote (for example =consult-gh-find-file=  would fetch the contents of the repo from remote and not from the local folder) but the local repo name is used instead of querying the user.
+You can set this varibale to ="suggest"=, =t=, or =nil=
+- "suggest" simply adds the local repo name as default input in the minibuffer so you don't have to type it out.
+- t would skip the query and uses the local repo name, if any, otherwise it falls back to querying the user.
+- nil would ignore the local repo name in the default-directory.
+
 **** =consult-gh--issues-state-to-show=
 The state of issues shown when listing or searching for issues. This is the string passed as =--state= argument to =gh search issues= or =gh issue list= and can accept =open=, =closed= or =all= for open, closed or all issues, respectively.
 
