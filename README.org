@@ -167,10 +167,12 @@ For example, if you have turned preview on by setting =consult-gh-show-preview= 
 
 Be aware that getting previews is resource heavy since it has to make an API call to GitHub and download contents of a file. If you set a specific key for =consult-gh-preview-key=, this API call and downloading the content is done only when you hit the key binding.
 
+
+**** =consult-gh-confirm-name-before-fork=
+This is a boolean determining whether Consult-GH asks for a repo  name before forking a repository. By default, it is set to =nil=, meaning that Consult-GH uses the same repo name when forking.
 **** =consult-gh-confirm-before-clone=
 This is a boolean determining whether Consult-GH asks for path and directory name before cloning a repository. By default, it is set to =t=, meaning that Consult-GH asks the user for the path to clone a repository and the name to give the directory. However, if you don't want consult-gh to ask you every time you clone a repository, you can set this variable to =nil=, in which case Consult-GH clones repositories at =consult-gh-default-clone-directory= (see below) with the default name of the repository itself.
 Note that setting this variable to =nil= along with setting =consult-gh-default-clone-directory= to a directory where you keep all your repositories, allows quick cloning of multiple repositories (possibly even from different accounts on GitHub).
-
 **** =consult-gh-default-clone-directory=
 This variable points to the directory where repositories are cloned by default. By default, this is set to ="~/"= (a.k.a. user's home directory), and the user is asked for confirmation before cloning. Therefore, in the default setting no matter what this variable is, you can still choose the right path to clone each repository, but this means that you have to do this for every each repository you clone. By setting this variable to a default convenient path where you keep all your repositories, for example ="~/code/"= or ="~/projects/"= , you can minimize the effort to navigate to the right path.
 Keep in mind that if you do clone multiple repositories at the same time, it would be convenient to have this variable set to the right path, so you don't have to navigate to it for each repository especially if you turn =consult-gh-confirm-before-clone= to nil (see above).
@@ -209,6 +211,7 @@ Here is a good customization for great performance as well as functionality:
   (consult-gh-repo-action #'consult-gh--repo-browse-files-action)
   (consult-gh-file-action #'consult-gh--files-view-action)
   (consult-gh-large-file-warning-threshold 2500000)
+  (consult-gh-prioritize-local-folder "suggest")
   :config
   ;;add your main GitHub account (replace "armindarvish" with your user or org)
   (add-to-list 'consult-gh-default-orgs-list "armindarvish")
