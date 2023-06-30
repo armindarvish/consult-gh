@@ -121,8 +121,8 @@ This is the maximum file size, above which =consult-gh= requests a confirmation 
 **** =consult-gh-prioritize-local-folder=
 
 This varibale defines whther =gh= uses the git repo in the local folder to select/guess the repository for commands like =consult-gh-find-file= and =consult-gh-issue-list=, etc. Note that everything is still retrieved from the remote (for example =consult-gh-find-file=  would fetch the contents of the repo from remote and not from the local folder) but the local repo name is used instead of querying the user.
-You can set this varibale to ="suggest"=, =t=, or =nil=
-- "suggest" simply adds the local repo name as default input in the minibuffer so you don't have to type it out.
+You can set this varibale to ='suggest=, =t=, or =nil=
+- 'suggest simply adds the local repo name as default input in the minibuffer so you don't have to type it out.
 - t would skip the query and uses the local repo name, if any, otherwise it falls back to querying the user.
 - nil would ignore the local repo name in the default-directory.
 
@@ -211,7 +211,7 @@ Here is a good customization for great performance as well as functionality:
   (consult-gh-repo-action #'consult-gh--repo-browse-files-action)
   (consult-gh-file-action #'consult-gh--files-view-action)
   (consult-gh-large-file-warning-threshold 2500000)
-  (consult-gh-prioritize-local-folder "suggest")
+  (consult-gh-prioritize-local-folder 'suggest)
   :config
   ;;add your main GitHub account (replace "armindarvish" with your user or org)
   (add-to-list 'consult-gh-default-orgs-list "armindarvish")
