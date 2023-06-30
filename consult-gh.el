@@ -635,7 +635,7 @@ Full path of the cloned repo is passed to these functions as input arg.")
          (package (car (last (split-string reponame "\/"))))
          )
     (if consult-gh-confirm-before-clone
-        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or consult-gh-default-clone-directory default-directory)))
+        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or consult-gh-default-clone-directory default-directory) default-directory))
         (name (read-string "name: " package)))
           (consult-gh--repo-clone reponame package targetdir))
       (consult-gh--repo-clone reponame package consult-gh-default-clone-directory))
@@ -759,7 +759,7 @@ issue is the issue number
 buffer is an optional buffer the preview should be shown in.
 "
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-        (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue))))
+        (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue "--comments"))))
     (with-current-buffer buffer
       (erase-buffer)
       (insert text)
@@ -1115,7 +1115,7 @@ If repo or targetdir are not supplied, interactively asks user for those values.
   (let* ((consult-gh-prioritize-local-folder nil)
          (repos (or repos (consult-gh--read-repo-name)))
          (targetdir (or targetdir consult-gh-default-clone-directory))
-         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir) targetdir)))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir default-directory) targetdir)))
     (mapcar (lambda (repo)
               (let* ((package (car (last (split-string repo "\/"))))
                      (name (if consult-gh-confirm-before-clone (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
