@@ -121,10 +121,6 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
       (while (not repo)
         (sit-for 0.0001)
         (setq repo (forge-get-repository url)))
-      ;; (forge--zap-repository-cache repo)
-      ;; (forge--pull-topic repo
-      ;;                    (forge-issue :repository (oref repo id)
-      ;;                                 :number topic))
       (consult-gh-forge--pull-topic url topic)
       )))
 
