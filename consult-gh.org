@@ -920,7 +920,7 @@ issue is the issue number
 buffer is an optional buffer the preview should be shown in.
 "
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-        (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue))))
+        (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue "--comments"))))
     (with-current-buffer buffer
       (erase-buffer)
       (insert text)
