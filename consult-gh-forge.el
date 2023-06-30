@@ -20,7 +20,7 @@
 (require 'consult-gh)
 ;;; Customization Variables
 
-(defcustom consult-gh-forge-timeout-seconds 8
+(defcustom consult-gh-forge-timeout-seconds 10
   "Timeout in seconds for forge-visit to load the issue, otherwise revert back to normal viewing in consult-gh."
   :group 'consult-gh
   :type 'integer
@@ -30,12 +30,14 @@
   "Add a repository to the forge database and only
 pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
   (if (forge-get-repository url nil 'full)
-      ()
+      nil
+    (progn
     (let ((repo (forge-get-repository url nil 'create)))
       (oset repo sparse-p nil)
       (oset repo selective-p t)
       (forge--pull repo nil)
-      )))
+      )
+    "created")))
 
 (defun consult-gh-forge--remove-repository (url)
   (let* ((forge-repo (forge-get-repository url))
@@ -54,6 +56,22 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
                    (forge-issue :repository (oref repo id)
                                 :number topic))
       ))
+
+(defun consult-gh-forge--add-topic (url topic)
+  "Add a repository to the forge database and only
+pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
+  (cl-letf (((symbol-function #'magit-toplevel)
+             (lambda () "/")))
+    (let ((created (consult-gh-forge--add-repository url))
+          (repo (forge-get-repository url)))
+      (while (not repo)
+        (sit-for 0.0001)
+        (setq repo (forge-get-repository url)))
+      (consult-gh-forge--pull-topic url topic)
+      (message "created from add-topic is: %s" created)
+      created
+      )))
+
 
 (defun consult-gh-forge--magit-setup-buffer-internal (mode locked bindings)
   (let* ((value (and locked
@@ -111,19 +129,6 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
 (defun consult-gh-forge--visit-topic (topic)
   (consult-gh-forge--topic-setup-buffer topic))
 
-(defun consult-gh-forge--add-topic (url topic)
-  "Add a repository to the forge database and only
-pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
-  (cl-letf (((symbol-function #'magit-toplevel)
-             (lambda () "/")))
-    (consult-gh-forge--add-repository url)
-    (let ((repo (forge-get-repository url)))
-      (while (not repo)
-        (sit-for 0.0001)
-        (setq repo (forge-get-repository url)))
-      (consult-gh-forge--pull-topic url topic)
-      )))
-
 (defun consult-gh-forge--issue-view (repo issue &optional timeout)
   "Try to load the issue in forge within the timeout limit, otherwise revert back to running `consult-gh--issue-view-action'."
   (cl-letf (((symbol-function #'magit-toplevel)
@@ -134,7 +139,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
            (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
            (id (string-to-number issue))
            (timeout (or timeout consult-gh-forge-timeout-seconds))
-           (_ (consult-gh-forge--add-topic url id))
+           (created (consult-gh-forge--add-topic url id))
            (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
       (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--issue-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
         (while (not topic)
@@ -144,6 +149,9 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
         (if topic
             (consult-gh-forge--visit-topic topic)
           (consult-gh--issue-view repo issue)))
+      (when created
+          (consult-gh-forge--remove-repository url))
+      (message "creatd is: %s" created)
       )))
 
 (defun consult-gh-forge--issue-view-action ()
