@@ -26,6 +26,121 @@
   :type 'integer
 )
 
+(defun consult-gh-forge--add-repository (url)
+  "Add a repository to the forge database and only
+pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
+  (if (forge-get-repository url nil 'full)
+      ()
+    (let ((repo (forge-get-repository url nil 'create)))
+      (oset repo sparse-p nil)
+      (oset repo selective-p t)
+      (forge--pull repo nil)
+      )))
+
+(defun consult-gh-forge--remove-repository (url)
+(let* ((forge-repo (forge-get-repository url))
+       (owner (oref forge-repo owner))
+       (name (oref forge-repo name))
+       (host (oref forge-repo githost)))
+(closql-delete (forge-get-repository (list host owner name)))
+))
+
+
+;; (defun consult-gh-forge--pull-topic (url topic)
+;;   "Add a repository to the forge database and only
+;; pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
+;;     (let ((repo (forge-get-repository url nil 'create)))
+;;       (forge--zap-repository-cache repo)
+;;       (forge--pull-topic repo
+;;                    (forge-issue :repository (oref repo id)
+;;                                 :number topic))
+;;       ))
+
+(defun consult-gh-forge--pull-topic (url id)
+  (let* ((repo (or (forge-get-repository url)))
+         (topic  (forge-get-topic repo id))
+         (fetch #'ghub-fetch-issue)
+         (update #'forge--update-issue)
+         (errorback (lambda (err _headers _status _req)
+                     (when (equal (cdr (assq 'type (cadr err))) "NOT_FOUND")
+                       (forge--pull-topic
+                        repo (forge-pullreq :repository (oref repo id)
+                                            :number (oref topic number)))))))
+    (when (cl-typep topic 'forge-pullreq)
+      (setq fetch #'ghub-fetch-pullreq)
+      (setq update #'forge--update-pullreq)
+      (setq errorback nil))
+    (funcall
+     fetch
+     (oref repo owner)
+     (oref repo name)
+     (oref topic number)
+     (lambda (data)
+       (funcall update repo data nil))
+     nil
+     :errorback errorback
+     :host (oref repo apihost)
+     :auth 'forge)))
+
+(defun consult-gh-forge--magit-setup-buffer-internal (mode locked bindings)
+  (let* ((value (and locked
+                       (with-temp-buffer
+                         (pcase-dolist (`(,var ,val) bindings)
+                           (set (make-local-variable var) val))
+                         (let ((major-mode mode))
+                           (magit-buffer-value)))))
+         (buffer  (magit-get-mode-buffer mode value))
+         (section (and buffer (magit-current-section)))
+         (created (not buffer)))
+    (unless buffer
+      (setq buffer (magit-generate-new-buffer mode value)))
+    (with-current-buffer buffer
+      (setq magit-previous-section section)
+      (funcall mode)
+      (magit-xref-setup #'magit-setup-buffer-internal bindings)
+      (setq magit-buffer-gitdir (magit-gitdir))
+      (setq magit-buffer-topdir (magit-toplevel))
+      (pcase-dolist (`(,var ,val) bindings)
+        (set (make-local-variable var) val))
+      (when created
+        (run-hooks 'magit-create-buffer-hook)))
+    (magit-display-buffer buffer)
+    (with-current-buffer buffer
+      (run-hooks 'magit-setup-buffer-hook)
+      (magit-refresh-buffer))
+    buffer)
+)
+
+(defmacro consult-gh-forge--magit-setup-buffer (mode &optional locked &rest bindings)
+  (declare (indent 2))
+  `(consult-gh-forge--magit-setup-buffer-internal
+    ,mode ,locked
+    ,(cons 'list (mapcar (pcase-lambda (`(,var ,form))
+                           `(list ',var ,form))
+                         bindings))))
+
+(defun consult-gh-forge--topic-setup-buffer (topic)
+  (let* ((repo  (forge-get-repository topic))
+         (ident (concat (forge--topic-type-prefix topic)
+                        (number-to-string (oref topic number))))
+         (name  (format "*forge: %s/%s %s*"
+                        (oref repo owner)
+                        (oref repo name)
+                        ident))
+         (magit-generate-buffer-name-function (lambda (_mode _value) name))
+         (default-directory (or (oref repo worktree)
+                                "/")))
+    (cl-letf (((symbol-function #'magit-toplevel)
+               (lambda () default-directory)))
+      (message default-directory)
+      (consult-gh--magit-setup-buffer #'forge-topic-mode t
+        (forge-buffer-topic topic)
+        (forge-buffer-topic-ident ident)))
+    ))
+
+(defun consult-gh-forge--visit-topic (topic)
+  (consult-gh-forge--topic-setup-buffer topic))
+
 (defun consult-gh-forge--add-topic (url topic)
   "Add a repository to the forge database and only
 pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
@@ -46,7 +161,9 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
 (let* ((url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
        (id (string-to-number issue))
       (timeout (or timeout consult-gh-forge-timeout-seconds))
-      (_ (consult-gh-forge--add-topic url id))
+      (_  (consult-gh-forge--add-repository url))
+      (_  (consult-gh-forge--pull-topic url id))
+      ;(_ (consult-gh-forge--add-topic url id))
       (topic nil))
   (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (consult-gh--issue-view repo issue))
     (while (not topic)
