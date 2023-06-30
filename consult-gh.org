@@ -1616,6 +1616,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
                        (forge--pull-topic
                         repo (forge-pullreq :repository (oref repo id)
                                             :number (oref topic number)))))))
+    (forge--zap-repository-cache repo)
     (when (cl-typep topic 'forge-pullreq)
       (setq fetch #'ghub-fetch-pullreq)
       (setq update #'forge--update-pullreq)
@@ -1712,7 +1713,6 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
        (id (string-to-number issue))
       (timeout (or timeout consult-gh-forge-timeout-seconds))
       (_  (consult-gh-forge--add-repository url))
-      (_  (consult-gh-forge--pull-topic url id))
       ;(_ (consult-gh-forge--add-topic url id))
       (topic nil))
   (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (consult-gh--issue-view repo issue))
@@ -1721,7 +1721,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
       (setq topic (forge-get-topic (forge-get-repository url) id))
       )
     (if topic
-        (forge-visit topic)
+        (consult-gh-forge--visit-topic topic)
       (consult-gh--issue-view repo issue)))
 ))
 
@@ -1734,4 +1734,9 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
       )))
 
 (provide 'consult-gh-forge)
+#+end_src
+
+#+begin_src emacs-lisp
+(consult-gh-forge--pull-topic "https://github.com/org-roam/org-roam" 2323)
+(consult-gh-forge--visit-topic  "https://github.com/org-roam/org-roam" 2323)
 #+end_src
