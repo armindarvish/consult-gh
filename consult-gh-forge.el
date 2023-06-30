@@ -20,7 +20,7 @@
 (require 'consult-gh)
 ;;; Customization Variables
 
-(defcustom consult-gh-forge-timeout-seconds 5
+(defcustom consult-gh-forge-timeout-seconds 8
 "Timeout in seconds for forge-visit to load the issue, otherwise revert back to normal viewing in consult-gh."
   :group 'consult-gh
   :type 'integer
@@ -43,9 +43,10 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
 
 (defun consult-gh-forge--issue-view (repo issue &optional timeout)
 "Try to load the issue in forge within the timeout limit, otherwise revert back to running `consult-gh--issue-view-action'."
-(let* ((url (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser"))
+(let* ((url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+       (id (string-to-number issue))
       (timeout (or timeout consult-gh-forge-timeout-seconds))
-      (_ (consult-gh-forge--add-topic url issue))
+      (_ (consult-gh-forge--add-topic url id))
       (topic nil))
   (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (consult-gh--issue-view repo issue))
     (while (not topic)
@@ -54,7 +55,8 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
       )
     (if topic
         (forge-visit topic)
-      (consult-gh--issue-view repo issue)))))
+      (consult-gh--issue-view repo issue)))
+))
 
 (defun consult-gh-forge--issue-view-action ()
    "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens a preview in `forge' using `consult-gh-forge--issue-view'."
