@@ -1633,10 +1633,6 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
                                   (delete url consult-gh-forge--added-repositories))))
             urls)))
 
-(let ((repo (forge-get-repository "https://github.com/armindarvish/emacs")))
-  (setq my:test repo)
-  (oref repo :homepage))
-
 (defun consult-gh-forge--pull-topic (url topic)
   "Pull the topic from repository at url using `forge-pull-topic'. see forge documentation for `forge-pull-topic'."
   (let ((repo (forge-get-repository url)))

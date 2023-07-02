@@ -47,17 +47,41 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
         )
       "created")))
 
-(defun consult-gh-forge--remove-repository (url)
+
+(defun consult-gh-forge--remove-repository (host owner name)
+  (closql-delete (forge-get-repository (list host owner name))))
+
+(defun consult-gh-forge--remove-repository-by-url (url)
   (let* ((forge-repo (forge-get-repository url))
          (owner (oref forge-repo owner))
          (name (oref forge-repo name))
          (host (oref forge-repo githost)))
     (closql-delete (forge-get-repository (list host owner name)))
-    ))
+    (setq consult-gh-forge--added-repositories (delete url consult-gh-forge--added-repositories))))
 
-(defun consult-gh-forge-remove-repositories (&optionals urls)
+(defun consult-gh-forge-remove-added-repositories (&optional urls)
+  (interactive)
   (let ((urls (or urls consult-gh-forge--added-repositories)))
-       (mapcar #'consult-gh-forge--remove-repository urls)))
+    (mapcar #'consult-gh-forge--remove-repository-by-url urls)))
+
+(defun consult-gh-forge-remove-repository (&optional urls)
+  (interactive)
+  (let* ((list (mapcar (lambda (url) (let* ((url-parse (forge--split-url url))
+                                            (repo (string-join (cdr url-parse) "/"))
+                                            (host (car url-parse)))
+                                       (format "%s @%s" repo host))) consult-gh-forge--added-repositories))
+         (urls (or urls (completing-read-multiple "Remove Repository from forge db: " list)))
+         )
+    (message (format "%s" urls))
+    (mapcar (lambda (url-parts) (let* ((parts (string-split url-parts " "))
+                                 (host (string-trim (car (cdr parts)) "@"))
+                                 (owner (car (string-split (car parts) "/")))
+                                 (name (cadr (string-split (car parts) "/")))
+                                 (url (string-trim (consult-gh--command-to-string "browse" "--repo" (format "%s/%s" owner name) "--no-browser"))))
+                            (consult-gh-forge--remove-repository host owner name)
+                            (setq consult-gh-forge--added-repositories
+                                  (delete url consult-gh-forge--added-repositories))))
+            urls)))
 
 (defun consult-gh-forge--pull-topic (url topic)
   "Pull the topic from repository at url using `forge-pull-topic'. see forge documentation for `forge-pull-topic'."
@@ -142,27 +166,30 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
 
 (defun consult-gh-forge--issue-view (repo issue &optional timeout)
   "Try to load the issue in forge within the timeout limit, otherwise revert back to running `consult-gh--issue-view-action'."
-  (cl-letf (((symbol-function #'magit-toplevel)
-             (lambda () (consult-gh-forge--make-tempdir repo)))
-            ((symbol-function #'magit-gitdir)
-             (lambda () (consult-gh-forge--make-tempdir repo))))
-    (let* ((default-directory consult-gh-tempdir)
-           (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
-           (id (string-to-number issue))
-           (timeout (or timeout consult-gh-forge-timeout-seconds))
-           (created (consult-gh-forge--add-topic url id))
-           (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-      (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--issue-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
-        (while (not topic)
-          (sit-for 0.001)
-          (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id)))
-          )
-        (if topic
-            (consult-gh-forge--visit-topic topic)
-          (consult-gh--issue-view repo issue)))
-      (when created
-        (add-to-list 'consult-gh-forge--added-repositories url))
-      )))
+  (let* ((repo (string-trim repo))
+         (tempdir (consult-gh-forge--make-tempdir repo))
+         (default-directory (consult-gh-forge--make-tempdir repo))
+         (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+         (id (string-to-number issue))
+         (timeout (or timeout consult-gh-forge-timeout-seconds)))
+
+    (cl-letf (((symbol-function #'magit-toplevel)
+               (lambda () tempdir))
+              ((symbol-function #'magit-gitdir)
+               (lambda () tempdir)))
+      (let* ((created (consult-gh-forge--add-topic url id))
+             (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
+        (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--issue-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
+          (while (not topic)
+            (sit-for 0.001)
+            (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id)))
+            )
+          (if topic
+              (consult-gh-forge--visit-topic topic)
+            (consult-gh--issue-view repo issue)))
+        (when created
+          (add-to-list 'consult-gh-forge--added-repositories url))
+        ))))
 
 (defun consult-gh-forge--issue-view-action ()
   "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens a preview in `forge' using `consult-gh-forge--issue-view'."
