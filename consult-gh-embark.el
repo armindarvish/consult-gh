@@ -14,9 +14,11 @@
 
 ;;; Code:
 
+;;; Requirements
 (require 'embark)
 (require 'consult-gh)
 
+;;; Define Embark Action Functions
 (defun consult-gh-embark-add-repo-to-known-repos (cand)
 "Adds repo to `consult-gh--known-repos-list'."
   (let ((repo (consult-gh--output-cleanup cand)))
@@ -118,6 +120,9 @@
   "Save the file at point."
   (funcall (consult-gh--files-save-file-action) cand))
 
+
+;;; Define Embark Keymaps
+
 (defvar-keymap consult-gh-embark-general-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
@@ -170,5 +175,6 @@
 
 (add-to-list 'embark-keymap-alist '(consult-gh-issues . consult-gh-embark-issues-actions-map))
 
+;;; Provide `consul-gh-embark' module
 
 (provide 'consult-gh-embark)

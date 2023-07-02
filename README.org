@@ -84,7 +84,7 @@ Consult-GH is built with the idea that the user should be able to customize ever
 
 #+begin_src emacs-lisp
 (use-package consult-gh
-  :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh" :branch "develop")
+  :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
 
   :config
   ;;add your main GitHub account (replace "armindarvish" with your user or org)
@@ -285,6 +285,41 @@ In the screenshot below, I use =consult-gh-search-issues= to search for issues a
 Consult-GH also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu. For example, you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's url in a browser, but then call embark on any item for running alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= etc. You can also call embark and select items with =embark-select= (by default bound to =SPC=) before running some commands on all of them, for example select multiple repos and run clone for all of them.
 
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-embark.gif]]
+
+** Magit/Forge Integration
+If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub repositories, you can use the =consult-gh-forge= to directly open issues in a magit/forge buffer. In addition, you can edit issues in a forge buffer as you would normally do by =forge-edit-post=, =forge-create-post=, etc. Here it is in action:
+
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-forge.gif]]
+
+*** Set Up and Customization of Forge Integration
+*Warning*: Before you decide to use =consult-gh-forge=, be aware that due the way magit/forge is implemented, it is deeply integrated with magit and its different components (like ghub) and everything is intended for a git repository with a =.git= folder path to work otherwise =magit= will show errors. As a result, I had to reimplement some of the functionalities in magit and forge, to ensure that =consult-gh-forge= works without those errors and also does not break magit or forge. *But this is still highly experimental and you may experience bugs and issues with magit and forge if you decide to integrate =consult-gh= with magit/forge*. Also, dependence on the =magit/forge= package may cuase maintainability issues down the road. So use this at your own risk.
+
+To use =consult-gh-forge=, make sure that both [[https://github.com/magit/magit][magit]] and [[https://github.com/magit/forge][forge]] are installed and loaded before loading consult-gh and then add =require 'consult-gh-forge= to your config. An example of a minimal config:
+
+#+begin_src emacs-lisp
+(use-package consult-gh
+  :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+  :after forge
+  :config
+  (require 'consult-gh-embark)
+  (require 'consult-gh-forge)
+  (setq consult-gh-preview-key "M-o")
+  (setq consult-gh-repo-action #'consult-gh--repo-browse-files-action)
+  (setq consult-gh-file-action #'consult-gh--files-view-action)
+  (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action) ;;this enables opening issues in magit/forge buffer
+  (setq consult-gh-forge-timeout-seconds 20) ;;maximum time inseconds for consult-gh to try opening issuers in forge, and then reverts back to opening in normal emacs buffer with consult-gh-issue--view.
+)
+#+end_src
+
+Note that we are trying to keep =consult-gh-forge= edits of forge database transparent. Therefore a list of all the repositories that are added to =forge-database= is stored under the variable =consult-gh-forge-added-repositories= and interactive commands are provided to remove them from =forge-databse= either all at once (by using =consult-gh-forge-remove-added-repositories=) or by interactive selection through =consult-gh-forge-remove-repository=. This can still be done by =forge-remove-repository= as well, but consult-gh versions provide a transparent way to only remove the forge repositories added by consult-gh.
+
+*Keep in Mind*: consult-gh adds temporary folders to =consult-gh-tempdir= in order to do magit/forge actions, and therefore you may face issues when those temporary folders are deleted on system restarts. In this case, you may want to use =consult-gh-forge-remove-added-repositories= to clean up forge-database and then you should be able to use =consult-gh-forge--issue-view= normally again.
+
+
+With =consult-gh-forge=, you get one more "customization" variable as well:
+
+**** =consult-gh-forge-timeout-seconds=
+This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before the reaching the timeout time!
 
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]] and see if there is an existing solution or add relevant comments and discussion under the same issue. If not file a new issue following these steps:

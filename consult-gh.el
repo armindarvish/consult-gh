@@ -153,7 +153,7 @@ A STRING: loads the branch STRING.
   :group 'consult-gh
   :type 'function)
 
-;;;Other Variables
+;;; Other Variables
 (defvar consult-gh-category 'consult-gh
   "Category symbol for the `consult-gh' package.")
 
@@ -187,6 +187,8 @@ A STRING: loads the branch STRING.
 (defvar consult-gh--known-repos-list nil
   "List of previously visited repos for `consult-gh-search-repos'.")
 
+;;; Faces
+
 (defface consult-gh-default-face
   `((t :inherit 'default)) "default face used for listing items in minibuffer by `consult-gh'.")
 (defface consult-gh-visibility-face
@@ -198,6 +200,7 @@ A STRING: loads the branch STRING.
 (defface consult-gh-tags-face
   `((t :inherit 'font-lock-comment-face)) "the face for tags/comments annotation in minibuffer by `consult-gh'. by default inherits from font-lock-comment-face")
 
+;;; Backend `gh` related functions
 (defun consult-gh--call-process (&rest args)
  "Run \"gh\" with args and return outputs as a list where the CAR is exit status (e.g. 0 means success and non-zero means error) and CADR is the output. If gh is not found we return '(127 \"\") and a message saying \"gh\" is not found."
 (if (executable-find "gh")
@@ -351,6 +354,8 @@ A STRING: loads the branch STRING.
       (org-fold-show-all)
       (goto-char (point-min))))
   nil)
+
+;;; Backend functions for `consult-gh'.
 
 (defun consult-gh-kill-preview-buffers ()
 "Kill all open preview buffers stored in `consult-gh--preview-buffers-list'. It asks for confirmation if the buffer is modified and removes the buffers that are killed from the list."
@@ -835,6 +840,8 @@ For more info on state functions refer to `consult''s manual, and particularly `
     nil)
 ))
 
+;;; make sources for `consult'.
+
 (defun consult-gh--make-source-from-org  (org)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'. It fethces the list by using `consult-gh--repo-list' which in turn uses `gh repo list name-of-the-org`. This is used by the interactive command `consult-gh-orgs'
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
@@ -909,6 +916,7 @@ For more info on consult dources see `consult''s manual for example documentaion
                     :sort t
                     ))
 
+;;; Interactive Commands
 (defun consult-gh--read-orgs (candidates)
 "Runs the interactive command in the minibuffer that queries the user for name of organizations (a.k.a. GitHub usernames) of interest to pass to other interactive commands such as `consult-gh-orgs'."
 
@@ -1132,6 +1140,8 @@ If repo or targetdir are not supplied, interactively asks user for those values.
                      (name (if consult-gh-confirm-name-before-fork (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
   (consult-gh--repo-fork repo name))) repos)
     ))
+
+;;; provide `consult-gh' module
 
 (provide 'consult-gh)
 
