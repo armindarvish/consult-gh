@@ -287,8 +287,11 @@ Consult-GH also provides embark integration defined in =consult-gh-embark.el= If
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-embark.gif]]
 
 ** Magit/Forge Integration
-If you use magit/forge to see issues of GitHub repositories, you can use the =consult-gh-forge= to directly open issues in a magit/forge buffer. In addition, you can edit issues in a forge buffer as you would normally do by =forge-edit-post=, =forge-create-post=, etc.
+If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub repositories, you can use the =consult-gh-forge= to directly open issues in a magit/forge buffer. In addition, you can edit issues in a forge buffer as you would normally do by =forge-edit-post=, =forge-create-post=, etc. Here it is in action:
 
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-forge.gif]]
+
+*** Set Up and Customization of Forge Integration
 *Warning*: Before you decide to use =consult-gh-forge=, be aware that due the way magit/forge is implemented, it is deeply integrated with magit and its different components (like ghub) and everything is intended for a git repository with a =.git= folder path to work otherwise =magit= will show errors. As a result, I had to reimplement some of the functionalities in magit and forge, to ensure that =consult-gh-forge= works without those errors and also does not break magit or forge. *But this is still highly experimental and you may experience bugs and issues with magit and forge if you decide to integrate =consult-gh= with magit/forge*. Also, dependence on the =magit/forge= package may cuase maintainability issues down the road. So use this at your own risk.
 
 To use =consult-gh-forge=, make sure that both [[https://github.com/magit/magit][magit]] and [[https://github.com/magit/forge][forge]] are installed and loaded before loading consult-gh and then add =require 'consult-gh-forge= to your config. An example of a minimal config:
