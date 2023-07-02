@@ -49,7 +49,7 @@
 #+begin_src emacs-lisp
 ;;; Customization Variables
 
-(defcustom consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory)
+(defcustom Consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory)
 "Temporary file directory for the `consult-gh' package. This directory is used for storing temporary files when pulling files for viewing"
   :group 'consult-gh
   :type 'string
@@ -1670,7 +1670,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
                         ident))
          (magit-generate-buffer-name-function (lambda (_mode _value) name))
          (default-directory (or (oref repo worktree)
-                                "/")))
+                                consult-gh-tempdir)))
     (consult-gh-forge--magit-setup-buffer #'forge-topic-mode t
       (forge-buffer-topic topic)
       (forge-buffer-topic-ident ident)))
@@ -1685,7 +1685,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
              (lambda () "/"))
             ((symbol-function #'magit-gitdir)
              (lambda () "/")))
-    (let* ((default-directory "/")
+    (let* ((default-directory consult-gh-tempdir)
            (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
            (id (string-to-number issue))
            (timeout (or timeout consult-gh-forge-timeout-seconds))
