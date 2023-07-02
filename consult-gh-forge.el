@@ -120,7 +120,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
                         ident))
          (magit-generate-buffer-name-function (lambda (_mode _value) name))
          (default-directory (or (oref repo worktree)
-                                "/")))
+                                consult-gh-tempdir)))
     (consult-gh-forge--magit-setup-buffer #'forge-topic-mode t
       (forge-buffer-topic topic)
       (forge-buffer-topic-ident ident)))
@@ -135,7 +135,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
              (lambda () "/"))
             ((symbol-function #'magit-gitdir)
              (lambda () "/")))
-    (let* ((default-directory "/")
+    (let* ((default-directory consult-gh-tempdir)
            (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
            (id (string-to-number issue))
            (timeout (or timeout consult-gh-forge-timeout-seconds))

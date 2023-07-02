@@ -33,7 +33,7 @@
 
 ;;; Customization Variables
 
-(defcustom consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory)
+(defcustom Consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory)
 "Temporary file directory for the `consult-gh' package. This directory is used for storing temporary files when pulling files for viewing"
   :group 'consult-gh
   :type 'string
