@@ -65,12 +65,12 @@
   :type '(choice integer (const :tag "Never request confirmation" nil)))
 
 (defcustom consult-gh-prioritize-local-folder nil
-"This varibale defines how `gh` selects repositories and it can either be the string \"suggest\" or a a boolean.
-If it is set to \"suggest\", consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, as the initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'.
+"This varibale defines how `gh` selects repositories and it can either be the symbol 'suggest or a a boolean.
+If it is set to 'suggest, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, as the initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'.
 If it is set to t, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, instead of querying the user and if there is no GitHub repository in the current folder falls back on querying the user for those commands.
 If it is set to nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `default-directory') and always queris the user to chose a repository for those commands."
 :group 'consult-gh
-:type '(choice boolean (const "suggest")))
+:type '(choice boolean (symbol 'suggest)))
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to show README of repositories in preview. choices are 'markdown-mode or 'org-mode"
@@ -153,7 +153,7 @@ A STRING: loads the branch STRING.
   :group 'consult-gh
   :type 'function)
 
-;;;Other Variables
+;;; Other Variables
 (defvar consult-gh-category 'consult-gh
   "Category symbol for the `consult-gh' package.")
 
@@ -187,6 +187,8 @@ A STRING: loads the branch STRING.
 (defvar consult-gh--known-repos-list nil
   "List of previously visited repos for `consult-gh-search-repos'.")
 
+;;; Faces
+
 (defface consult-gh-default-face
   `((t :inherit 'default)) "default face used for listing items in minibuffer by `consult-gh'.")
 (defface consult-gh-visibility-face
@@ -198,6 +200,7 @@ A STRING: loads the branch STRING.
 (defface consult-gh-tags-face
   `((t :inherit 'font-lock-comment-face)) "the face for tags/comments annotation in minibuffer by `consult-gh'. by default inherits from font-lock-comment-face")
 
+;;; Backend `gh` related functions
 (defun consult-gh--call-process (&rest args)
  "Run \"gh\" with args and return outputs as a list where the CAR is exit status (e.g. 0 means success and non-zero means error) and CADR is the output. If gh is not found we return '(127 \"\") and a message saying \"gh\" is not found."
 (if (executable-find "gh")
@@ -351,6 +354,8 @@ A STRING: loads the branch STRING.
       (org-fold-show-all)
       (goto-char (point-min))))
   nil)
+
+;;; Backend functions for `consult-gh'.
 
 (defun consult-gh-kill-preview-buffers ()
 "Kill all open preview buffers stored in `consult-gh--preview-buffers-list'. It asks for confirmation if the buffer is modified and removes the buffers that are killed from the list."
@@ -635,7 +640,7 @@ Full path of the cloned repo is passed to these functions as input arg.")
          (package (car (last (split-string reponame "\/"))))
          )
     (if consult-gh-confirm-before-clone
-        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or consult-gh-default-clone-directory default-directory)))
+        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or consult-gh-default-clone-directory default-directory) default-directory))
         (name (read-string "name: " package)))
           (consult-gh--repo-clone reponame package targetdir))
       (consult-gh--repo-clone reponame package consult-gh-default-clone-directory))
@@ -759,7 +764,7 @@ issue is the issue number
 buffer is an optional buffer the preview should be shown in.
 "
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-        (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue))))
+        (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue "--comments"))))
     (with-current-buffer buffer
       (erase-buffer)
       (insert text)
@@ -835,11 +840,13 @@ For more info on state functions refer to `consult''s manual, and particularly `
     nil)
 ))
 
+;;; make sources for `consult'.
+
 (defun consult-gh--make-source-from-org  (org)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'. It fethces the list by using `consult-gh--repo-list' which in turn uses `gh repo list name-of-the-org`. This is used by the interactive command `consult-gh-orgs'
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
                   `(:narrow ,(consult-gh--repo-narrow org)
-                    :category 'consult-gh
+                    :category 'consult-gh-orgs
                     :items  ,(consult-gh--repo-list org)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
@@ -854,7 +861,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 "Create a source for consult from the repos return by search GitHub for `repo` by using `consult-gh--search-repos' which in turn uses `gh search repos name-of-the-repo`. This is used by the interactive command `consult-gh-search-repos'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
                   `(:narrow ,(consult-gh--repo-narrow repo)
-                    :category 'consult-gh
+                    :category 'consult-gh-repos
                     :items  ,(consult-gh--search-repos repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
@@ -869,7 +876,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 "Create a source for consult from the issues retrieved by fetching all the issues of the `repo` from GitHub by using `consult-gh--issue-list' which in turn uses `gh search issues --repo name-of-the-repo`. This is used by the interactive command `consult-gh-issue-list'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
 (let ((repo (or repo "")))
-                  `(:category 'consult-gh
+                  `(:category 'consult-gh-issues
                     :items  ,(consult-gh--search-issues search repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-issue-action)
@@ -883,7 +890,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 (defun consult-gh--make-source-from-issues (repo)
 "Create a source for consult from the issues retrieved by fetching all the issues of the `repo` from GitHub by using `consult-gh--issue-list' which in turn uses `gh search issues --repo name-of-the-repo`. This is used by the interactive command `consult-gh-issue-list'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
-                  `(:category 'consult-gh
+                  `(:category 'consult-gh-issues
                     :items  ,(consult-gh--issue-list repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-issue-action)
@@ -909,6 +916,7 @@ For more info on consult dources see `consult''s manual for example documentaion
                     :sort t
                     ))
 
+;;; Interactive Commands
 (defun consult-gh--read-orgs (candidates)
 "Runs the interactive command in the minibuffer that queries the user for name of organizations (a.k.a. GitHub usernames) of interest to pass to other interactive commands such as `consult-gh-orgs'."
 
@@ -934,7 +942,7 @@ For more info on consult dources see `consult''s manual for example documentaion
         (candidates (or candidates (delete-dups consult-gh--known-repos-list) (list)))
         (repo-from-current-dir (consult-gh--get-repo-from-directory)))
     (pcase consult-gh-prioritize-local-folder
-      ("suggest"
+      ('suggest
        (if repo-from-current-dir
            (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
          (if (eq action 'metadata)
@@ -993,7 +1001,7 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
                     :sort t
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
-                    :category 'consult-gh
+                    :category 'consult-gh-orgs
                     :sort t
                     :preview-key consult-gh-preview-key
                     )))))
@@ -1023,7 +1031,7 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
                     :sort nil
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
-                    :category 'consult-gh
+                    :category 'consult-gh-repos
                     :sort t
                     :preview-key consult-gh-preview-key
                     ))
@@ -1048,7 +1056,7 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
                           :sort t
                           :group #'consult-gh--issue-group
                           :history 'consult-gh--issues-history
-                          :category 'consult-gh
+                          :category 'consult-gh-issues
                           :sort t
                           :preview-key consult-gh-preview-key
                           )
@@ -1101,7 +1109,7 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
                     :sort t
                     :group #'consult-gh--issue-group
                     :history 'consult-gh--issues-history
-                    :category 'consult-gh
+                    :category 'consult-gh-issues
                     :sort t
                     :preview-key consult-gh-preview-key
                     )
@@ -1115,7 +1123,7 @@ If repo or targetdir are not supplied, interactively asks user for those values.
   (let* ((consult-gh-prioritize-local-folder nil)
          (repos (or repos (consult-gh--read-repo-name)))
          (targetdir (or targetdir consult-gh-default-clone-directory))
-         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir) targetdir)))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir default-directory) targetdir)))
     (mapcar (lambda (repo)
               (let* ((package (car (last (split-string repo "\/"))))
                      (name (if consult-gh-confirm-before-clone (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
@@ -1132,6 +1140,8 @@ If repo or targetdir are not supplied, interactively asks user for those values.
                      (name (if consult-gh-confirm-name-before-fork (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
   (consult-gh--repo-fork repo name))) repos)
     ))
+
+;;; provide `consult-gh' module
 
 (provide 'consult-gh)
 

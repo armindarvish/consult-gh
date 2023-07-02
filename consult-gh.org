@@ -81,12 +81,12 @@
   :type '(choice integer (const :tag "Never request confirmation" nil)))
 
 (defcustom consult-gh-prioritize-local-folder nil
-"This varibale defines how `gh` selects repositories and it can either be the string \"suggest\" or a a boolean.
-If it is set to \"suggest\", consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, as the initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'.
+"This varibale defines how `gh` selects repositories and it can either be the symbol 'suggest or a a boolean.
+If it is set to 'suggest, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, as the initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'.
 If it is set to t, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, instead of querying the user and if there is no GitHub repository in the current folder falls back on querying the user for those commands.
 If it is set to nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `default-directory') and always queris the user to chose a repository for those commands."
 :group 'consult-gh
-:type '(choice boolean (const "suggest")))
+:type '(choice boolean (symbol 'suggest)))
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to show README of repositories in preview. choices are 'markdown-mode or 'org-mode"
@@ -172,7 +172,7 @@ A STRING: loads the branch STRING.
 
 *** Other Variables
 #+begin_src emacs-lisp
-;;;Other Variables
+;;; Other Variables
 (defvar consult-gh-category 'consult-gh
   "Category symbol for the `consult-gh' package.")
 
@@ -209,6 +209,8 @@ A STRING: loads the branch STRING.
 
 ** Define faces
 #+begin_src emacs-lisp
+;;; Faces
+
 (defface consult-gh-default-face
   `((t :inherit 'default)) "default face used for listing items in minibuffer by `consult-gh'.")
 (defface consult-gh-visibility-face
@@ -228,6 +230,7 @@ This section includes functions that make calls to =gh= in the shell or provide 
 **** process and shell
 ***** call process
 #+begin_src emacs-lisp
+;;; Backend `gh` related functions
 (defun consult-gh--call-process (&rest args)
  "Run \"gh\" with args and return outputs as a list where the CAR is exit status (e.g. 0 means success and non-zero means error) and CADR is the output. If gh is not found we return '(127 \"\") and a message saying \"gh\" is not found."
 (if (executable-find "gh")
@@ -425,6 +428,8 @@ Other functions can also be defined under apropriate subentries ddepending on th
 *** buffers handling
 everything to do with handling buffers (such as preview buffers) that are created by consult-gh.
 #+begin_src emacs-lisp
+;;; Backend functions for `consult-gh'.
+
 (defun consult-gh-kill-preview-buffers ()
 "Kill all open preview buffers stored in `consult-gh--preview-buffers-list'. It asks for confirmation if the buffer is modified and removes the buffers that are killed from the list."
   (interactive)
@@ -760,7 +765,7 @@ Full path of the cloned repo is passed to these functions as input arg.")
          (package (car (last (split-string reponame "\/"))))
          )
     (if consult-gh-confirm-before-clone
-        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or consult-gh-default-clone-directory default-directory)))
+        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or consult-gh-default-clone-directory default-directory) default-directory))
         (name (read-string "name: " package)))
           (consult-gh--repo-clone reponame package targetdir))
       (consult-gh--repo-clone reponame package consult-gh-default-clone-directory))
@@ -920,7 +925,7 @@ issue is the issue number
 buffer is an optional buffer the preview should be shown in.
 "
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-        (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue))))
+        (text (cadr (consult-gh--call-process "issue" "--repo" repo "view" issue "--comments"))))
     (with-current-buffer buffer
       (erase-buffer)
       (insert text)
@@ -1010,11 +1015,13 @@ Here we define consult-sources to pass to the front-end interactive commands. Th
 
 *** list repos of users or org
 #+begin_src emacs-lisp
+;;; make sources for `consult'.
+
 (defun consult-gh--make-source-from-org  (org)
 "Create a source for consult from the repos of the organization to use in `consult-gh-orgs'. It fethces the list by using `consult-gh--repo-list' which in turn uses `gh repo list name-of-the-org`. This is used by the interactive command `consult-gh-orgs'
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
                   `(:narrow ,(consult-gh--repo-narrow org)
-                    :category 'consult-gh
+                    :category 'consult-gh-orgs
                     :items  ,(consult-gh--repo-list org)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
@@ -1031,7 +1038,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 "Create a source for consult from the repos return by search GitHub for `repo` by using `consult-gh--search-repos' which in turn uses `gh search repos name-of-the-repo`. This is used by the interactive command `consult-gh-search-repos'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
                   `(:narrow ,(consult-gh--repo-narrow repo)
-                    :category 'consult-gh
+                    :category 'consult-gh-repos
                     :items  ,(consult-gh--search-repos repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-repo-action)
@@ -1048,7 +1055,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 "Create a source for consult from the issues retrieved by fetching all the issues of the `repo` from GitHub by using `consult-gh--issue-list' which in turn uses `gh search issues --repo name-of-the-repo`. This is used by the interactive command `consult-gh-issue-list'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
 (let ((repo (or repo "")))
-                  `(:category 'consult-gh
+                  `(:category 'consult-gh-issues
                     :items  ,(consult-gh--search-issues search repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-issue-action)
@@ -1064,7 +1071,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 (defun consult-gh--make-source-from-issues (repo)
 "Create a source for consult from the issues retrieved by fetching all the issues of the `repo` from GitHub by using `consult-gh--issue-list' which in turn uses `gh search issues --repo name-of-the-repo`. This is used by the interactive command `consult-gh-issue-list'.
 For more info on consult dources see `consult''s manual for example documentaion on `consult--multi' and `consult-buffer-sources'."
-                  `(:category 'consult-gh
+                  `(:category 'consult-gh-issues
                     :items  ,(consult-gh--issue-list repo)
                     :face 'consult-gh-default-face
                     :action ,(funcall consult-gh-issue-action)
@@ -1098,6 +1105,7 @@ These define the main interactive commands that the user will be using. For each
 This section defines functions that are used to get input from user without consult
 **** consult-gh--read-orgs
 #+begin_src emacs-lisp
+;;; Interactive Commands
 (defun consult-gh--read-orgs (candidates)
 "Runs the interactive command in the minibuffer that queries the user for name of organizations (a.k.a. GitHub usernames) of interest to pass to other interactive commands such as `consult-gh-orgs'."
 
@@ -1128,7 +1136,7 @@ This section defines functions that are used to get input from user without cons
         (candidates (or candidates (delete-dups consult-gh--known-repos-list) (list)))
         (repo-from-current-dir (consult-gh--get-repo-from-directory)))
     (pcase consult-gh-prioritize-local-folder
-      ("suggest"
+      ('suggest
        (if repo-from-current-dir
            (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
          (if (eq action 'metadata)
@@ -1192,7 +1200,7 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
                     :sort t
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
-                    :category 'consult-gh
+                    :category 'consult-gh-orgs
                     :sort t
                     :preview-key consult-gh-preview-key
                     )))))
@@ -1227,7 +1235,7 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
                     :sort nil
                     :group #'consult-gh--repo-group
                     :history 'consult-gh--repos-history
-                    :category 'consult-gh
+                    :category 'consult-gh-repos
                     :sort t
                     :preview-key consult-gh-preview-key
                     ))
@@ -1255,7 +1263,7 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
                           :sort t
                           :group #'consult-gh--issue-group
                           :history 'consult-gh--issues-history
-                          :category 'consult-gh
+                          :category 'consult-gh-issues
                           :sort t
                           :preview-key consult-gh-preview-key
                           )
@@ -1313,7 +1321,7 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
                     :sort t
                     :group #'consult-gh--issue-group
                     :history 'consult-gh--issues-history
-                    :category 'consult-gh
+                    :category 'consult-gh-issues
                     :sort t
                     :preview-key consult-gh-preview-key
                     )
@@ -1329,7 +1337,7 @@ If repo or targetdir are not supplied, interactively asks user for those values.
   (let* ((consult-gh-prioritize-local-folder nil)
          (repos (or repos (consult-gh--read-repo-name)))
          (targetdir (or targetdir consult-gh-default-clone-directory))
-         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir) targetdir)))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir default-directory) targetdir)))
     (mapcar (lambda (repo)
               (let* ((package (car (last (split-string repo "\/"))))
                      (name (if consult-gh-confirm-before-clone (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
@@ -1352,6 +1360,8 @@ If repo or targetdir are not supplied, interactively asks user for those values.
 #+end_src
 ** Provide
 #+begin_src emacs-lisp
+;;; provide `consult-gh' module
+
 (provide 'consult-gh)
 #+end_src
 ** Footer
@@ -1381,10 +1391,11 @@ If repo or targetdir are not supplied, interactively asks user for those values.
 This section includes additional useful embark actions as well as possible keymaps. This will be provided as examples and starting point to users, so that they can make their own custom embark actions and functions.
 
 #+begin_src emacs-lisp :tangle ./consult-gh-embark.el
-
+;;; Requirements
 (require 'embark)
 (require 'consult-gh)
 
+;;; Define Embark Action Functions
 (defun consult-gh-embark-add-repo-to-known-repos (cand)
 "Adds repo to `consult-gh--known-repos-list'."
   (let ((repo (consult-gh--output-cleanup cand)))
@@ -1469,22 +1480,25 @@ This section includes additional useful embark actions as well as possible keyma
 
 (defun consult-gh-embark-view-issues-of-repo (cand)
   "View issues of the repo at point."
-  (let* ((repo (get-text-property 0 :repo cand))
-         )
+  (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--output-cleanup cand))))
     (consult-gh-issue-list `(,repo))))
 
 (defun consult-gh-embark-clone-repo (cand)
   "Clone the repo at point."
-  (funcall (consult-gh--repo-clone-action) (get-text-property 0 :repo cand)))
-
+  (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--output-cleanup cand))))
+  (funcall (consult-gh--repo-clone-action) repo)))
 
 (defun consult-gh-embark-fork-repo (cand)
   "Fork the repo at point."
-  (funcall (consult-gh--repo-fork-action) (get-text-property 0 :repo cand)))
+  (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--output-cleanup cand))))
+    (funcall (consult-gh--repo-fork-action) repo)))
 
 (defun consult-gh-embark-save-file (cand)
   "Save the file at point."
   (funcall (consult-gh--files-save-file-action) cand))
+
+
+;;; Define Embark Keymaps
 
 (defvar-keymap consult-gh-embark-general-actions-map
   :doc "Keymap for consult-gh-embark"
@@ -1503,6 +1517,17 @@ This section includes additional useful embark actions as well as possible keyma
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-general-actions-map))
 
+
+(defvar-keymap consult-gh-embark-orgs-actions-map
+  :doc "Keymap for consult-gh-embark-orgs"
+  :parent consult-gh-embark-general-actions-map
+  "b b" #'consult-gh-embark-add-org-to-known-orgs
+  "b k" #'consult-gh-embark-remove-org-from-known-orgs
+  "b d" #'consult-gh-embark-add-org-to-default-list
+  "b D" #'consult-gh-embark-remove-org-from-default-list)
+
+(add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
+
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
@@ -1520,16 +1545,246 @@ This section includes additional useful embark actions as well as possible keyma
 
 (add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
 
-(defvar-keymap consult-gh-embark-orgs-actions-map
-  :doc "Keymap for consult-gh-embark-orgs"
+(defvar-keymap consult-gh-embark-issues-actions-map
+  :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
-  "b b" #'consult-gh-embark-add-org-to-known-orgs
-  "b k" #'consult-gh-embark-remove-org-from-known-orgs
-  "b d" #'consult-gh-embark-add-org-to-default-list
-  "b D" #'consult-gh-embark-remove-org-from-default-list)
+  )
 
-(add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
+(add-to-list 'embark-keymap-alist '(consult-gh-issues . consult-gh-embark-issues-actions-map))
 
+;;; Provide `consul-gh-embark' module
 
 (provide 'consult-gh-embark)
+#+end_src
+* Consult-GH-Forge
+** Header
+#+begin_src  emacs-lisp :tangle ./consult-gh-forge.el
+;;; consult-gh-forge.el --- Magit/Forge Integration for consult-gh -*- lexical-binding: t -*-
+
+;; Copyright (C) 2021-2023 Free Software Foundation, Inc.
+
+;; Author: Armin Darvish
+;; Maintainer: Armin Darvish
+;; Created: 2023
+;; Version: 0.11
+;; Package-Requires: ((emacs "27.1") (consult "0.34") (forge "0.3.3") (gh "2.29"))
+;; Homepage: https://github.com/armindarvish/consult-gh
+;; Keywords: matching, git, repositories, forges, completion
+
+;;; Commentary:
+
+;;; Code:
+#+end_src
+** Main
+This section includes additional extension to open issues and potentially pull requests in magit/forge.
+
+#+begin_src  emacs-lisp :tangle ./consult-gh-forge.el
+;;; Requirements
+
+(if (featurep 'forge)
+    (require 'forge)
+  (message "magit/forge is not loaded. Make sure both magit and forge are installed and loaded before loading consult-gh-forge."))
+(require 'consult-gh)
+
+;;; Customization Variables
+
+(defcustom consult-gh-forge-timeout-seconds 10
+  "Timeout in seconds for forge-visit to load the issue, otherwise revert back to normal viewing in consult-gh."
+  :group 'consult-gh
+  :type 'integer
+  )
+
+;;; Other Variables
+
+(defvar consult-gh-forge--added-repositories (list)
+  "List of repositories added to forge's database by `consult-gh-forge--add-topic'.")
+
+;;; Define Backend Functions for `consult-gh-forge'
+
+(defun consult-gh-forge--make-tempdir (repo)
+"This function makes a temporary directory for repo in `consult-gh-tempdir' so that magit and forge can operate as intended."
+  (let* ((tempdir (expand-file-name (concat repo "/" "forge/.git/") consult-gh-tempdir))
+         (_ (make-directory (file-name-directory tempdir) t)))
+    tempdir))
+
+(defun consult-gh-forge--add-repository (url)
+  "Add a repository to the forge database and only
+pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
+  (if (forge-get-repository url nil 'full)
+      nil
+    (progn
+      (let ((repo (forge-get-repository url nil 'create)))
+        (oset repo sparse-p nil)
+        (oset repo selective-p t)
+        (forge--pull repo nil)
+        )
+      "created")))
+
+
+(defun consult-gh-forge--remove-repository (host owner name)
+"Removes the forge defined by host owner and name from `forge-database'."
+  (closql-delete (forge-get-repository (list host owner name))))
+
+(defun consult-gh-forge--remove-repository-by-url (url)
+"Removes the forge defined by url from `forge-database'."
+  (let* ((forge-repo (forge-get-repository url))
+         (owner (oref forge-repo owner))
+         (name (oref forge-repo name))
+         (host (oref forge-repo githost)))
+    (closql-delete (forge-get-repository (list host owner name)))
+    (setq consult-gh-forge--added-repositories (delete url consult-gh-forge--added-repositories))))
+
+(defun consult-gh-forge-remove-added-repositories (&optional urls)
+"Removes all the forge repositories added to `forge-database' by `consult-gh-forge--add-repository', which are stored in the list, `conuslt-gh-forge--aded-repositories'."
+  (interactive)
+  (let ((urls (or urls consult-gh-forge--added-repositories)))
+    (mapcar #'consult-gh-forge--remove-repository-by-url urls)))
+
+(defun consult-gh-forge-remove-repository (&optional urls)
+"Interactively queries the user the select forge(s) from `consult-gh-forge--added-repositories' list and removes the selecte dones from `forge-database'"
+  (interactive)
+  (let* ((list (mapcar (lambda (url) (let* ((url-parse (forge--split-url url))
+                                            (repo (string-join (cdr url-parse) "/"))
+                                            (host (car url-parse)))
+                                       (format "%s @%s" repo host))) consult-gh-forge--added-repositories))
+         (urls (or urls (completing-read-multiple "Remove Repository from forge db: " list)))
+         )
+    (message (format "%s" urls))
+    (mapcar (lambda (url-parts) (let* ((parts (string-split url-parts " "))
+                                 (host (string-trim (car (cdr parts)) "@"))
+                                 (owner (car (string-split (car parts) "/")))
+                                 (name (cadr (string-split (car parts) "/")))
+                                 (url (string-trim (consult-gh--command-to-string "browse" "--repo" (format "%s/%s" owner name) "--no-browser"))))
+                            (consult-gh-forge--remove-repository host owner name)
+                            (setq consult-gh-forge--added-repositories
+                                  (delete url consult-gh-forge--added-repositories))))
+            urls)))
+
+(defun consult-gh-forge--pull-topic (url topic)
+  "Pull the topic from repository at url using `forge-pull-topic'. see forge documentation for `forge-pull-topic'."
+  (let ((repo (forge-get-repository url)))
+    (forge--zap-repository-cache repo)
+    (forge--pull-topic repo
+                       (forge-issue :repository (oref repo id)
+                                    :number topic))
+    ))
+
+(defun consult-gh-forge--add-topic (url topic)
+  "Add a repository to the forge database and only
+pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
+  (cl-letf (((symbol-function #'magit-toplevel)
+             (lambda () (consult-gh--make-tempdir (string-join (cdr (forge--split-url url)) "/")))
+             ))
+    (let ((created (consult-gh-forge--add-repository url))
+          (repo (forge-get-repository url)))
+      (while (not repo)
+        (sit-for 0.0001)
+        (setq repo (forge-get-repository url)))
+      (consult-gh-forge--pull-topic url topic)
+      created
+      )))
+
+
+(defun consult-gh-forge--magit-setup-buffer-internal (mode locked bindings)
+"Reimplements `magit-setup-buffer-intenral' in order to avoid making changes to magit settings for the repository in the current working directory."
+  (let* ((value (and locked
+                     (with-temp-buffer
+                       (pcase-dolist (`(,var ,val) bindings)
+                         (set (make-local-variable var) val))
+                       (let ((major-mode mode))
+                         (magit-buffer-value)))))
+         (buffer  (magit-get-mode-buffer mode value))
+         (section (and buffer (magit-current-section)))
+         (created (not buffer)))
+    (unless buffer
+      (setq buffer (magit-generate-new-buffer mode value)))
+    (with-current-buffer buffer
+      (setq magit-previous-section section)
+      (funcall mode)
+      (magit-xref-setup #'magit-setup-buffer-internal bindings)
+      (setq magit-buffer-gitdir (magit-gitdir))
+      (setq magit-buffer-topdir (magit-toplevel))
+      (pcase-dolist (`(,var ,val) bindings)
+        (set (make-local-variable var) val))
+      (when created
+        (run-hooks 'magit-create-buffer-hook)))
+    (magit-display-buffer buffer)
+    (with-current-buffer buffer
+      (run-hooks 'magit-setup-buffer-hook)
+      (magit-refresh-buffer))
+    buffer)
+  )
+
+(defmacro consult-gh-forge--magit-setup-buffer (mode &optional locked &rest bindings)
+"Reimplements `magit-setup-buffer' in order to avoid making changes to magit settings for the repository in the current working directory."
+  (declare (indent 2))
+  `(consult-gh-forge--magit-setup-buffer-internal
+    ,mode ,locked
+    ,(cons 'list (mapcar (pcase-lambda (`(,var ,form))
+                           `(list ',var ,form))
+                         bindings))))
+
+(defun consult-gh-forge--topic-setup-buffer (topic)
+"Reimplements `forge-setup-buffer' in order to avoid making changes to magit settings for the repository in the current working directory."
+  (let* ((repo  (forge-get-repository topic))
+         (ident (concat (forge--topic-type-prefix topic)
+                        (number-to-string (oref topic number))))
+         (owner (oref repo owner))
+         (name (oref repo name))
+         (buffname  (format "*forge: %s/%s %s*" owner name ident))
+         (tempdir (consult-gh-forge--make-tempdir (format "%s/%s" owner name)))
+         (magit-generate-buffer-name-function (lambda (_mode _value) buffname))
+         (default-directory (or (oref repo worktree)
+                                tempdir)))
+    (consult-gh-forge--magit-setup-buffer #'forge-topic-mode t
+      (forge-buffer-topic topic)
+      (forge-buffer-topic-ident ident)))
+  )
+
+(defun consult-gh-forge--visit-topic (topic)
+"Reimplements `forge-visit-topic' in order to avoid making changes to magit settings for the repository in the current working directory."
+  (consult-gh-forge--topic-setup-buffer topic))
+
+
+;;; Define Functions and Interactive Commands for `consult-gh-forge'
+
+(defun consult-gh-forge--issue-view (repo issue &optional timeout)
+  "Adds the repo and issue to forge database by using `consult-gh-forge--add-topic' and Tries to load the issue in forge by `consult-gh-forge--visit-topic' within the timeout limit (in seconds), otherwise reverts back to using `consult-gh--issue-view-action' to open the issue."
+  (let* ((repo (string-trim repo))
+         (tempdir (consult-gh-forge--make-tempdir repo))
+         (default-directory (consult-gh-forge--make-tempdir repo))
+         (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+         (id (string-to-number issue))
+         (timeout (or timeout consult-gh-forge-timeout-seconds)))
+
+    (cl-letf (((symbol-function #'magit-toplevel)
+               (lambda () tempdir))
+              ((symbol-function #'magit-gitdir)
+               (lambda () tempdir)))
+      (let* ((created (consult-gh-forge--add-topic url id))
+             (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
+        (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--issue-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
+          (while (not topic)
+            (sit-for 0.001)
+            (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id)))
+            )
+          (if topic
+              (consult-gh-forge--visit-topic topic)
+            (consult-gh--issue-view repo issue)))
+        (when created
+          (add-to-list 'consult-gh-forge--added-repositories url))
+        ))))
+
+(defun consult-gh-forge--issue-view-action ()
+  "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens a preview in `forge' using `consult-gh-forge--issue-view'."
+  (lambda (cand)
+    (let* ((repo (substring (get-text-property 0 :repo cand)))
+           (issue (substring (get-text-property 0 :issue cand))))
+      (consult-gh-forge--issue-view repo issue)
+      )))
+
+
+;;; Provide `consult-gh-forge' module
+
+(provide 'consult-gh-forge)
 #+end_src
