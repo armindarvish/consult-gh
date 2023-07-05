@@ -921,7 +921,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 "Runs the interactive command in the minibuffer that queries the user for name of organizations (a.k.a. GitHub usernames) of interest to pass to other interactive commands such as `consult-gh-orgs'."
 
   (let ((crm-separator consult-gh-crm-separator)
-        (consult-gh--org-history (mapcar (lambda (item) (intern (consult-gh--output-cleanup item))) consult-gh--org-history)))
+        (consult-gh--org-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--org-history)))
 (completing-read-multiple "Search GitHub Users/Organization: " (lambda (string predicate action)
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-orgs))
@@ -993,6 +993,7 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
    (let ((candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
      (setq orgs (or (delete-dups (consult-gh--read-orgs candidates)) '("")))))
   (let* ((crm-separator consult-gh-crm-separator)
+         (consult-gh--repos-history (mapcar (lambda (item) (intern (consult-gh--output-cleanup item))) consult-gh--repos-history))
         (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-org orgs))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
@@ -1023,6 +1024,7 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
    (setq repos (consult-gh--read-search-repos candidates))))
    (let* ((crm-separator consult-gh-crm-separator)
           (repos (or repos (consult-gh--read-search-repo)))
+          (consult-gh--repos-history (mapcar (lambda (item) (intern (consult-gh--output-cleanup item))) consult-gh--repos-history))
          (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
@@ -1046,6 +1048,7 @@ The user can provide multiple repos by using the `consult-gh-crm-separator' simi
 It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
   (interactive)
   (let* ((crm-separator consult-gh-crm-separator)
+         (consult-gh--issues-history (mapcar (lambda (item) (intern (consult-gh--output-cleanup item))) consult-gh--issues-history))
          (repos (or repos (consult-gh--read-repo-name)))
          (search (or search (read-string "Search Term: ")))
          (candidates (consult--slow-operation "Collecting Issues ..." (mapcar (lambda (repo) (consult-gh--make-source-from-search-issues search repo)) repos))))
@@ -1098,6 +1101,7 @@ The user can provide multiple repos by using the `consult-gh-crm-separator' simi
 It uses `consult-gh--make-source-from-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-issue-list'."
   (interactive)
    (let* ((crm-separator consult-gh-crm-separator)
+          (consult-gh--issues-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--issues-history))
          (candidates (or (delete-dups consult-gh--known-repos-list) (list)))
          (repo-from-current-dir (consult-gh--get-repo-from-directory))
          (repos (or repos (consult-gh--read-repo-name candidates)))
