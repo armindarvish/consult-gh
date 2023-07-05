@@ -61,7 +61,8 @@ Since =gh= returns information in markdown, installing [[https://github.com/jrbl
 Consult-GH is not currently on [[https://elpa.gnu.org/packages/consult.html][ELPA]] or [[https://melpa.org/#/consult][MELPA]]. Therefore, you need to install it using an alternative non-standard package managers such as [[https://github.com/radian-software/straight.el][straight.el]] or use manual installation.
 
 **** straight.el
-To install Consult-GH with straight.el you can use the following command
+To install Consult-GH with straight.el you can use the following command. Make sure you load consult-gh *after loading consult*
+
 #+begin_src emacs-lisp
 (straight-use-package
  '(consult-gh :type git :host github :repo "armindarvish/consult-gh" :branch "main"))
@@ -71,13 +72,17 @@ or if you use =use-package= macro with straight, you can do:
 
 #+begin_src emacs-lisp
 (use-package consult-gh
-	:straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+	:straight (consult-gh :type git :host github :repo "armindarvish/consult-gh"
+        :after consult)
 )
 #+end_src
 You can also fork this repository and use your own repo.
 
 **** manual installation
 Clone this repo and make sure the files are on your load path, as described on [[https://www.emacswiki.org/emacs/LoadPath][EmacsWiki]].
+
+*Make sure you load consult (e.g. =require consult=) before you load consult-gh.*
+
 
 ** Configuration
 Consult-GH is built with the idea that the user should be able to customize everything based on their use-case. In fact, the default configurations are minimal and prioritize performance over usability, therefore the user is very much expected to configure Consult-GH according to their use case. For example, with the default configuration, when selecting a repository, Consult-GH opens the link in a browser, but you can configure that to show the README inside Emacs or do something else (e.g. clone the repository). Therefore, I recommend you read through this section and understand how to configure the package according to your needs and for your specific use-case, but if you just want a drop-in minimal config, look at the snippet below and make sure you set the =consult-gh-default-orgs-list= to your own GitHub username instead of "armindarvish":
