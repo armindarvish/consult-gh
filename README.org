@@ -61,7 +61,7 @@ Since =gh= returns information in markdown, installing [[https://github.com/jrbl
 Consult-GH is not currently on [[https://elpa.gnu.org/packages/consult.html][ELPA]] or [[https://melpa.org/#/consult][MELPA]]. Therefore, you need to install it using an alternative non-standard package managers such as [[https://github.com/radian-software/straight.el][straight.el]] or use manual installation.
 
 **** straight.el
-To install Consult-GH with straight.el you can use the following command. Make sure you load consult-gh *after loading consult*
+To install Consult-GH with straight.el you can use the following command. Make sure you load consult-gh *after loading consult (e.g. =require consult=)*
 
 #+begin_src emacs-lisp
 (straight-use-package
@@ -76,6 +76,7 @@ or if you use =use-package= macro with straight, you can do:
         :after consult)
 )
 #+end_src
+
 You can also fork this repository and use your own repo.
 
 **** manual installation
