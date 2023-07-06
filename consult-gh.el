@@ -997,7 +997,7 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
         (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-org orgs))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
-          (setq consult-gh--known-orgs-list (append consult-gh--known-orgs-list orgs))
+          (setq consult-gh--known-orgs-list (append consult-gh--known-orgs-list  (mapcar (lambda (item) (consult-gh--output-cleanup item)) orgs)))
           (consult--multi candidates
                     :prompt "Select User/Organization: "
                     :require-match nil
@@ -1021,12 +1021,10 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
   (interactive)
    (let* ((crm-separator consult-gh-crm-separator)
           (consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history))
-          (candidates (list))
-          (repos (or repos (consult-gh--read-search-repos candidates)))
+          (repos (or repos (consult-gh--read-search-repos (list))))
          (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
-          (setq consult-gh--known-repos-list (append consult-gh--known-repos-list candidates))
           (consult--multi candidates
                     :prompt "Select Repositories(s): "
                     :require-match t
@@ -1106,7 +1104,7 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
          (candidates (consult--slow-operation "Collecting Issues ..." (mapcar #'consult-gh--make-source-from-issues repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
-          (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
+          (setq consult-gh--known-repos-list (delete-dups (append consult-gh--known-repos-list repos)))
           (consult--multi candidates
                     :prompt "Select Issue(s): "
                     :require-match t
