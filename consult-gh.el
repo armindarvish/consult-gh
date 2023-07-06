@@ -919,7 +919,6 @@ For more info on consult dources see `consult''s manual for example documentaion
 ;;; Interactive Commands
 (defun consult-gh--read-orgs (candidates)
 "Runs the interactive command in the minibuffer that queries the user for name of organizations (a.k.a. GitHub usernames) of interest to pass to other interactive commands such as `consult-gh-orgs'."
-
   (let ((crm-separator consult-gh-crm-separator)
         (consult-gh--org-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--org-history)))
 (completing-read-multiple "Search GitHub Users/Organization: " (lambda (string predicate action)
@@ -940,9 +939,10 @@ For more info on consult dources see `consult''s manual for example documentaion
 
 (defun consult-gh--read-repo-name (&optional candidates)
   (let ((crm-separator consult-gh-crm-separator)
+        (consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history)
         (candidates (or candidates (delete-dups consult-gh--known-repos-list) (list)))
         (repo-from-current-dir (consult-gh--get-repo-from-directory))
-        (consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history)))
+        )
     (pcase consult-gh-prioritize-local-folder
       ('suggest
        (if repo-from-current-dir
