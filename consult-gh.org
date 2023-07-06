@@ -1136,7 +1136,7 @@ This section defines functions that are used to get input from user without cons
   (let ((crm-separator consult-gh-crm-separator)
         (candidates (or candidates (delete-dups consult-gh--known-repos-list) (list)))
         (repo-from-current-dir (consult-gh--get-repo-from-directory))
-        (consult-gh--repos-history (mapcar (lambda (item) (intern (consult-gh--output-cleanup item))) consult-gh--repos-history)))
+        (consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history)))
     (pcase consult-gh-prioritize-local-folder
       ('suggest
        (if repo-from-current-dir
@@ -1223,12 +1223,10 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
 The user can provide multiple search terms by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search repos name-of-the-repo`) to fetch the list of repositories and show them back to the user.
 It uses `consult-gh--make-source-from-search-repo' to create the list of items for consult and saves the history in `consult-gh--repos-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-repos'."
   (interactive)
-  (unless repos
-   (let* ((candidates ))
-   (setq repos (consult-gh--read-search-repos candidates))))
    (let* ((crm-separator consult-gh-crm-separator)
-          (repos (or repos (consult-gh--read-search-repo)))
-          (consult-gh--repos-history (mapcar (lambda (item) (intern (consult-gh--output-cleanup item))) consult-gh--repos-history))
+          (consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history))
+          (candidates (list))
+          (repos (or repos (consult-gh--read-search-repos candidates)))
          (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
