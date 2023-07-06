@@ -929,6 +929,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 
 (defun consult-gh--read-search-repos (candidates)
 "Runs the interactive command in the minibuffer that queries the user for name of repos of interest to pass to other interactive commands such as `consult-gh-search-repos'."
+(setq consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history))
   (let ((crm-separator consult-gh-crm-separator))
 (completing-read-multiple "Search GitHub Repositories: " (lambda (string predicate action)
          (if (eq action 'metadata)
@@ -937,8 +938,10 @@ For more info on consult dources see `consult''s manual for example documentaion
             action candidates string predicate))) nil nil nil nil nil t)))
 
 (defun consult-gh--read-repo-name (&optional candidates)
+(setq consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup (format "%s" item))) consult-gh--repos-history))
   (let ((crm-separator consult-gh-crm-separator)
         (candidates (or candidates (delete-dups consult-gh--known-repos-list) (list)))
+        (consult-gh--repos-history (mapcar (lambda (item) (intern item)) consult-gh--repos-history))
         (repo-from-current-dir (consult-gh--get-repo-from-directory))
         )
     (pcase consult-gh-prioritize-local-folder
@@ -987,7 +990,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 The user can provide multiple orgs by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh repo list name-of-the-org`) to fetch the list of repositories of those accounts and show them back to the user.
 It uses `consult-gh--make-source-from-org' to create the list of items for consult and saves the history in `consult-gh--repos-history'. It also keep tracks of previously selected orgs by the user in `consult-gh--known-orgs-list' and offers them as possible entries in future runs of `consult-gh-orgs'."
   (interactive)
-  (setq consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history))
+  (setq consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup (format "%s" item))) consult-gh--repos-history))
   (unless orgs
    (let ((candidates (or (delete-dups (append consult-gh-default-orgs-list consult-gh--known-orgs-list)) (list))))
      (setq orgs (or (delete-dups (consult-gh--read-orgs candidates)) '("")))))
@@ -1017,7 +1020,7 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
 The user can provide multiple search terms by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search repos name-of-the-repo`) to fetch the list of repositories and show them back to the user.
 It uses `consult-gh--make-source-from-search-repo' to create the list of items for consult and saves the history in `consult-gh--repos-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-repos'."
   (interactive)
-  (setq consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history))
+  (setq consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup (format "%s" item))) consult-gh--repos-history))
    (let* ((crm-separator consult-gh-crm-separator)
           (repos (or repos (consult-gh--read-search-repos (list))))
          (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
@@ -1041,7 +1044,7 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
 The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
 It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
   (interactive)
-  (setq consult-gh--issues-history (mapcar (lambda (item) (consult-gh--output-cleanup item))) consult-gh--issues-history)
+  (setq consult-gh--issues-history (mapcar (lambda (item) (consult-gh--output-cleanup (format "%s" item))) consult-gh--issues-history))
   (let* ((crm-separator consult-gh-crm-separator)
          (repos (or repos (consult-gh--read-repo-name)))
          (search (or search (read-string "Search Term: ")))
@@ -1094,7 +1097,7 @@ It uses `consult-gh--make-source-from-files' to create the list of the files for
 The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh issue --repo name-of-the-repo list`) to fetch the list of issues for a particular repository and shows them back to the user.
 It uses `consult-gh--make-source-from-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-issue-list'."
   (interactive)
-  (setq consult-gh--issues-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--issues-history))
+  (setq consult-gh--issues-history (mapcar (lambda (item) (consult-gh--output-cleanup (format "%s" item))) consult-gh--issues-history))
    (let* ((crm-separator consult-gh-crm-separator)
          (candidates (or (delete-dups consult-gh--known-repos-list) (list)))
          (repo-from-current-dir (consult-gh--get-repo-from-directory))
