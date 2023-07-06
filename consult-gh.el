@@ -942,7 +942,7 @@ For more info on consult dources see `consult''s manual for example documentaion
   (let ((crm-separator consult-gh-crm-separator)
         (candidates (or candidates (delete-dups consult-gh--known-repos-list) (list)))
         (repo-from-current-dir (consult-gh--get-repo-from-directory))
-        (consult-gh--repos-history (mapcar (lambda (item) (intern (consult-gh--output-cleanup item))) consult-gh--repos-history)))
+        (consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history)))
     (pcase consult-gh-prioritize-local-folder
       ('suggest
        (if repo-from-current-dir
