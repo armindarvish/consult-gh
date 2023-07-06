@@ -1230,7 +1230,7 @@ It uses `consult-gh--make-source-from-search-repo' to create the list of items f
          (candidates (consult--slow-operation "Collecting Repos ..." (mapcar #'consult-gh--make-source-from-search-repo repos))))
     (if (not (member nil (mapcar (lambda (cand) (plist-get cand :items)) candidates)))
       (progn
-          (setq consult-gh--known-repos-list (append consult-gh--known-repos-list repos))
+          (setq consult-gh--known-repos-list (append consult-gh--known-repos-list candidates))
           (consult--multi candidates
                     :prompt "Select Repositories(s): "
                     :require-match t
