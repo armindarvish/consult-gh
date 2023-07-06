@@ -929,7 +929,7 @@ For more info on consult dources see `consult''s manual for example documentaion
 
 (defun consult-gh--read-search-repos (candidates)
 "Runs the interactive command in the minibuffer that queries the user for name of repos of interest to pass to other interactive commands such as `consult-gh-search-repos'."
-(setq consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup item)) consult-gh--repos-history))
+(setq consult-gh--repos-history (mapcar (lambda (item) (consult-gh--output-cleanup (format "%s" item))) consult-gh--repos-history))
   (let ((crm-separator consult-gh-crm-separator))
 (completing-read-multiple "Search GitHub Repositories: " (lambda (string predicate action)
          (if (eq action 'metadata)
