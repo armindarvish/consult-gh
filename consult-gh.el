@@ -1136,8 +1136,7 @@ If repo or targetdir are not supplied, interactively asks user for those values.
 (defun consult-gh-repo-fork (&optional repos)
 "Interactively forks the repository defined by `repo` to the current user account logged in with `gh` command line tool after confirming name. It uses `gh fork repo ...`."
   (interactive)
-  (let* ((consult-gh-prioritize-local-folder nil)
-         (repos (or repos (consult-gh--read-repo-name))))
+  (let* ((repos (or repos (consult-gh--read-repo-name))))
     (mapcar (lambda (repo)
               (let* ((package (car (last (split-string repo "\/"))))
                      (name (if consult-gh-confirm-name-before-fork (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
