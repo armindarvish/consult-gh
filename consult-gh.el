@@ -65,10 +65,10 @@
   :type '(choice integer (const :tag "Never request confirmation" nil)))
 
 (defcustom consult-gh-prioritize-local-folder nil
-"This varibale defines how `gh` selects repositories and it can either be the symbol 'suggest or a a boolean.
-If it is set to 'suggest, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, as the initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'.
-If it is set to t, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, instead of querying the user and if there is no GitHub repository in the current folder falls back on querying the user for those commands.
-If it is set to nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `default-directory') and always queris the user to chose a repository for those commands."
+"This varibale defines how `gh` selects repositories and it can either be the symbol 'suggest or a boolean.
+If it is set to 'suggest, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, as the initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'. The user can still change the entry but this allows quickly selecting the current repo by just hitting return saving a few keystrokes.
+If it is set to t, consult-gh uses the git repository from the local folder (a.k.a. `default-directory'), if any, instead of querying the user. If there is no GitHub repository in the current folder, it falls back on querying the user.
+If it is set to nil, consult-gh always queries the user for name of repo but instead of suggesting the GitHub repository from the local folder (a.k.a. `default-directory') as initial-input, it adds that to  to the end of history (default keybinding `M-n`)."
 :group 'consult-gh
 :type '(choice boolean (symbol 'suggest)))
 
@@ -951,18 +951,24 @@ For more info on consult dources see `consult''s manual for example documentaion
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
            (complete-with-action
-            action candidates string predicate))) nil nil repo-from-current-dir consult-gh--repos-history nil t)) '(""))
+            action candidates string predicate))) nil nil repo-from-current-dir consult-gh--repos-history repo-from-current-dir t)) '(""))
          (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
            (complete-with-action
             action candidates string predicate))) nil nil nil consult-gh--repos-history nil t)) '(""))))
       ('nil
+       (if repo-from-current-dir
+           (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
+         (if (eq action 'metadata)
+             '(metadata (category . consult-gh-repos))
+           (complete-with-action
+            action candidates string predicate))) nil nil repo-from-current-dir consult-gh--repos-history repo-from-current-dir t)) '(""))
        (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
            (complete-with-action
-            action candidates string predicate))) nil nil nil consult-gh--repos-history nil t)) '("")))
+            action candidates string predicate))) nil nil nil consult-gh--repos-history nil t)) '(""))))
       ('t
        (if repo-from-current-dir
            (list repo-from-current-dir)
@@ -1123,7 +1129,7 @@ It uses `consult-gh--make-source-from-issues' to create the list of items for co
 "Interactively clones the repo to targetdir directory. It uses the internal function `consult-gh--repo-clone' which in turn runs `gh clone repo ...`.
 If repo or targetdir are not supplied, interactively asks user for those values."
   (interactive)
-  (let* ((consult-gh-prioritize-local-folder nil)
+  (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
          (repos (or repos (consult-gh--read-repo-name)))
          (targetdir (or targetdir consult-gh-default-clone-directory))
          (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir default-directory) targetdir)))
@@ -1136,7 +1142,7 @@ If repo or targetdir are not supplied, interactively asks user for those values.
 (defun consult-gh-repo-fork (&optional repos)
 "Interactively forks the repository defined by `repo` to the current user account logged in with `gh` command line tool after confirming name. It uses `gh fork repo ...`."
   (interactive)
-  (let* ((consult-gh-prioritize-local-folder nil)
+  (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
          (repos (or repos (consult-gh--read-repo-name))))
     (mapcar (lambda (repo)
               (let* ((package (car (last (split-string repo "\/"))))
