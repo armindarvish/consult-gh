@@ -951,24 +951,24 @@ For more info on consult dources see `consult''s manual for example documentaion
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
            (complete-with-action
-            action candidates string predicate))) nil nil repo-from-current-dir consult-gh--repos-history repo-from-current-dir t)) '(""))
+            action candidates string predicate))) nil nil repo-from-current-dir 'consult-gh--repos-history repo-from-current-dir t)) '(""))
          (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
            (complete-with-action
-            action candidates string predicate))) nil nil nil consult-gh--repos-history nil t)) '(""))))
+            action candidates string predicate))) nil nil nil 'consult-gh--repos-history nil t)) '(""))))
       ('nil
        (if repo-from-current-dir
            (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
            (complete-with-action
-            action candidates string predicate))) nil nil nil consult-gh--repos-history repo-from-current-dir t)) '(""))
+            action candidates string predicate))) nil nil nil 'consult-gh--repos-history repo-from-current-dir t)) '(""))
        (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
            (complete-with-action
-            action candidates string predicate))) nil nil nil consult-gh--repos-history nil t)) '(""))))
+            action candidates string predicate))) nil nil nil 'consult-gh--repos-history nil t)) '(""))))
       ('t
        (if repo-from-current-dir
            (list repo-from-current-dir)
@@ -976,7 +976,7 @@ For more info on consult dources see `consult''s manual for example documentaion
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
            (complete-with-action
-            action candidates string predicate))) nil nil nil consult-gh--repos-history nil t)) '("")))))))
+            action candidates string predicate))) nil nil nil 'consult-gh--repos-history nil t)) '("")))))))
 
 (defun consult-gh--read-branch (repo)
   (pcase consult-gh-default-branch-to-load
