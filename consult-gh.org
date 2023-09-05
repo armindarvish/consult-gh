@@ -1157,7 +1157,7 @@ This section defines functions that are used to get input from user without cons
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
            (complete-with-action
-            action candidates string predicate))) nil nil repo-from-current-dir consult-gh--repos-history repo-from-current-dir t)) '(""))
+            action candidates string predicate))) nil nil nil consult-gh--repos-history repo-from-current-dir t)) '(""))
        (or (delete-dups (completing-read-multiple "Repo(s) in OWNER/REPO format (e.g. armindarvish/consult-gh): " (lambda (string predicate action)
          (if (eq action 'metadata)
              '(metadata (category . consult-gh-repos))
