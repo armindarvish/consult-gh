@@ -1,8 +1,8 @@
-#+PROPERTY: header-args:emacs-lisp :results none :mkdirp yes :link yes :tangle ./consult-gh.el
 
-
-* Async Consult-GH.el
-
+* Consult-GH.el
+:PROPERTIES:
+:header-args:emacs-lisp: :results none :mkdirp yes :link yes :tangle ./consult-gh.el
+:END:
 ** Header
 #+begin_src emacs-lisp
 ;;; consult-gh.el --- Consulting GitHub Client -*- lexical-binding: t -*-
@@ -22,9 +22,11 @@
 ;;; Code:
 
 #+end_src
+
 ** Requirements
 #+begin_src emacs-lisp
 ;;; Requirements
+
 (eval-when-compile
 (require 'consult)
 (require 'json)
@@ -38,6 +40,7 @@
 *** Group
 #+begin_src emacs-lisp
 ;;; Group
+
 (defgroup consult-gh nil
   "Consulting GitHub CLI"
   :group 'convenience
