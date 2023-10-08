@@ -1636,14 +1636,17 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 "
   (let ((candidates (consult--async-command builder
                       (consult-gh--repo-list-transform builder)
-                      )))
+                      ))
+        (current-repo (consult-gh--get-repo-from-directory)))
     (consult--read candidates
                    :prompt prompt
                    :lookup (consult-gh--repo-lookup)
                    :state (funcall #'consult-gh--repo-state)
                    :initial (consult--async-split-initial initial)
                    :group #'consult-gh--repo-group
-                   :add-history (append (list (consult--async-split-initial (consult-gh--get-username (consult-gh--get-repo-from-directory))) (consult--async-split-thingatpt 'symbol))
+                   :add-history (append (list
+                                         (if current-repo
+ (consult--async-split-initial (consult-gh--get-username current-repo))) (consult--async-split-thingatpt 'symbol))
                                         consult-gh--known-orgs-list
                                         )
                    :history '(:input consult-gh--orgs-history)
