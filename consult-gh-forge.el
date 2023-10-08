@@ -38,8 +38,9 @@
 
 (defun consult-gh-forge--make-tempdir (repo)
 "This function makes a temporary directory for repo in `consult-gh-tempdir' so that magit and forge can operate as intended."
-  (let* ((tempdir (expand-file-name (concat repo "/" "forge/.git/") consult-gh-tempdir))
-         (_ (make-directory (file-name-directory tempdir) t)))
+  (let* ((tempdir (expand-file-name (concat repo "/" "forge/") consult-gh-tempdir))
+         (gitdir (expand-file-name ".git/" tempdir))
+         (_ (make-directory (file-name-directory gitdir) t)))
     tempdir))
 
 (defun consult-gh-forge--add-repository (url)
@@ -187,15 +188,15 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
   "Adds the repo and issue to forge database by using `consult-gh-forge--add-topic' and Tries to load the issue in forge by `consult-gh-forge--visit-topic' within the timeout limit (in seconds), otherwise reverts back to using `consult-gh--issue-view-action' to open the issue."
   (let* ((repo (string-trim repo))
          (tempdir (consult-gh-forge--make-tempdir repo))
-         (default-directory (consult-gh-forge--make-tempdir repo))
+         (default-directory (file-name-parent-directory tempdir))
          (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
          (id (string-to-number issue))
          (timeout (or timeout consult-gh-forge-timeout-seconds)))
 
     (cl-letf (((symbol-function #'magit-toplevel)
-               (lambda () tempdir))
+               `(lambda () ,tempdir))
               ((symbol-function #'magit-gitdir)
-               (lambda () tempdir)))
+               `(lambda () (expand-file-name ".git/" ,tempdir))))
       (let* ((created (consult-gh-forge--add-topic url id))
              (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
         (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--issue-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
@@ -210,14 +211,47 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
           (add-to-list 'consult-gh-forge--added-repositories url))
         ))))
 
-(defun consult-gh-forge--issue-view-action ()
+(defun consult-gh-forge--issue-view-action (cand)
   "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens a preview in `forge' using `consult-gh-forge--issue-view'."
-  (lambda (cand)
-    (let* ((repo (substring (get-text-property 0 :repo cand)))
-           (issue (substring (get-text-property 0 :issue cand))))
+    (let* ((info (cdr cand))
+           (repo (substring-no-properties (plist-get info :repo)))
+           (issue (substring-no-properties (format "%s" (plist-get info :issue)))))
       (consult-gh-forge--issue-view repo issue)
-      )))
+      ))
 
+(defun consult-gh-forge--pr-view (repo pr &optional timeout)
+  "Adds the repo and issue to forge database by using `consult-gh-forge--add-topic' and Tries to load the issue in forge by `consult-gh-forge--visit-topic' within the timeout limit (in seconds), otherwise reverts back to using `consult-gh--issue-view-action' to open the issue."
+  (let* ((repo (string-trim repo))
+         (tempdir (consult-gh-forge--make-tempdir repo))
+         (default-directory tempdir)
+         (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+         (id (string-to-number pr))
+         (timeout (or timeout consult-gh-forge-timeout-seconds)))
+    (cl-letf (((symbol-function #'magit-toplevel)
+               `(lambda () ,tempdir))
+              ((symbol-function #'magit-gitdir)
+               `(lambda () (expand-file-name ".git/" ,tempdir))))
+      (let* ((created (consult-gh-forge--add-topic url id))
+             (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
+        (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--pr-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
+          (while (not topic)
+            (sit-for 0.001)
+            (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id)))
+            )
+          (if topic
+              (consult-gh-forge--visit-topic topic)
+            (consult-gh--pr-view repo pr)))
+        (when created
+          (add-to-list 'consult-gh-forge--added-repositories url))
+        ))))
+
+(defun consult-gh-forge--pr-view-action (cand)
+  "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens a preview in `forge' using `consult-gh-forge--issue-view'."
+    (let* ((info (cdr cand))
+           (repo (substring-no-properties (plist-get info :repo)))
+           (pr (substring-no-properties (format "%s" (plist-get info :pr)))))
+      (consult-gh-forge--pr-view repo pr)
+      ))
 
 ;;; Provide `consult-gh-forge' module
 

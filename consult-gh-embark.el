@@ -21,39 +21,38 @@
 ;;; Define Embark Action Functions
 (defun consult-gh-embark-add-repo-to-known-repos (cand)
 "Adds repo to `consult-gh--known-repos-list'."
-  (let ((repo (consult-gh--output-cleanup cand)))
+  (let* ((repo (get-text-property 0 :repo cand)))
     (add-to-list 'consult-gh--known-repos-list repo))
   )
 
 (defun consult-gh-embark-remove-repo-from-known-repos (cand)
 "Removes repo from `consult-gh--known-repos-list'."
-  (let ((repo (consult-gh--output-cleanup cand)))
+  (let* ((repo (get-text-property 0 :repo cand)))
     (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list))
     ))
 
 (defun consult-gh-embark-add-org-to-known-orgs (cand)
 "Adds org to `consult-gh--known-orgs-list'."
-  (let ((org (consult-gh--output-cleanup cand)))
+  (let* ((org (get-text-property 0 :user cand)))
     (add-to-list 'consult-gh--known-orgs-list (format "%s" org)))
   )
 
-
 (defun consult-gh-embark-remove-org-from-known-orgs (cand)
   "Removes org from `consult-gh--known-orgs-list'."
-  (let ((org (consult-gh--output-cleanup cand)))
+  (let* ((org (get-text-property 0 :user cand)))
     (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list))
     )
   )
 
 (defun consult-gh-embark-add-org-to-default-list (cand)
 "Adds org to `consult-gh--known-orgs-list'."
-  (let ((org (consult-gh--output-cleanup cand)))
+  (let* ((org (get-text-property 0 :user cand)))
     (add-to-list 'consult-gh-default-orgs-list (format "%s" org)))
   )
 
 (defun consult-gh-embark-remove-org-from-default-list (cand)
   "Removes org from `consult-gh--known-orgs-list'."
-  (let ((org (consult-gh--output-cleanup cand)))
+  (let* ((org (get-text-property 0 :user cand)))
     (setq consult-gh-default-orgs-list (delete org consult-gh-default-orgs-list))
     )
   )
@@ -62,12 +61,18 @@
   "Open the link in browser"
   (let* ((repo (get-text-property 0 :repo cand))
          (issue (or (get-text-property 0 :issue cand) nil))
+         (pr (or (get-text-property 0 :pr cand) nil))
          (path (or (get-text-property 0 :path cand) nil)))
-    (if issue
-        (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties issue))
-      (if path
-          (browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path))
-        (consult-gh--call-process "repo" "view" "--web" (substring repo))))))
+    (cond
+     (issue
+        (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties issue)))
+     (path
+          (browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
+     (pr
+      (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties pr)))
+     (t
+        (consult-gh--call-process "repo" "view" "--web" (substring repo))))
+    ))
 
 (defun consult-gh-embark-get-ssh-link (cand)
   "Copy the ssh based link of the repo to `kill-ring'."
@@ -79,7 +84,21 @@
 
 (defun consult-gh-embark-get-url-link (cand)
   "Copy the http based link of the repo to `kill-ring'."
-  (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim (get-text-property 0 :repo cand)) "--no-browser"))))
+  (let* ((repo (get-text-property 0 :repo cand))
+         (issue (or (get-text-property 0 :issue cand) nil))
+         (pr (or (get-text-property 0 :pr cand) nil))
+         (path (or (get-text-property 0 :path cand) nil))
+         (branch (or (get-text-property 0 :branch cand) nil)))
+    (cond
+     (issue
+        (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" issue))))
+     (path
+          (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
+     (pr
+      (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" pr))))
+     (t
+        (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))
+    ))
 
 (defun consult-gh-embark-get-org-link (cand)
   "Copy the http based link of the repo to `kill-ring'."
@@ -99,26 +118,40 @@
   "List other repos by the same user/organization as the repo at point."
   (let* ((repo  (get-text-property 0 :repo cand))
          (user (car (split-string repo "\/"))))
-    (consult-gh-orgs `(,user))))
+    (consult-gh-repo-list user)))
 
 (defun consult-gh-embark-view-issues-of-repo (cand)
   "View issues of the repo at point."
-  (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--output-cleanup cand))))
-    (consult-gh-issue-list `(,repo))))
+  (let ((repo (or (get-text-property 0 :repo cand))))
+    (consult-gh-issue-list repo)))
+
+(defun consult-gh-embark-view-prs-of-repo (cand)
+  "View issues of the repo at point."
+  (let ((repo (or (get-text-property 0 :repo cand))))
+    (consult-gh-pr-list repo)))
+
+(defun consult-gh-embark-view-files-of-repo (cand)
+  "View issues of the repo at point."
+  (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--nonutf-cleanup cand))))
+    (consult-gh-find-file repo)))
 
 (defun consult-gh-embark-clone-repo (cand)
   "Clone the repo at point."
-  (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--output-cleanup cand))))
-  (funcall (consult-gh--repo-clone-action) repo)))
+  (let ((repo (get-text-property 0 :repo cand)))
+  (funcall #'consult-gh--repo-clone-action (cons repo `(:repo ,repo)))))
 
 (defun consult-gh-embark-fork-repo (cand)
   "Fork the repo at point."
-  (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--output-cleanup cand))))
-    (funcall (consult-gh--repo-fork-action) repo)))
+  (let ((repo (get-text-property 0 :repo cand)))
+    (funcall #'consult-gh--repo-fork-action (cons repo `(:repo ,repo)))))
 
 (defun consult-gh-embark-save-file (cand)
   "Save the file at point."
-  (funcall (consult-gh--files-save-file-action) cand))
+  (let* ((repo (get-text-property 0 :repo cand))
+         (path (get-text-property 0 :path cand))
+         (url (get-text-property 0 :url cand))
+         (size (get-text-property 0 :size cand)))
+  (funcall #'consult-gh--files-save-file-action (cons path `(:repo ,repo :path ,path :url ,url :size ,size)))))
 
 
 ;;; Define Embark Keymaps
@@ -126,36 +159,37 @@
 (defvar-keymap consult-gh-embark-general-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
+  "b r r" #'consult-gh-embark-add-repo-to-known-repos
+  "b r k" #'consult-gh-embark-remove-repo-from-known-repos
+  "b o o" #'consult-gh-embark-add-org-to-known-orgs
+  "b o k" #'consult-gh-embark-remove-org-from-known-orgs
+  "b o d" #'consult-gh-embark-add-org-to-default-list
+  "b o D" #'consult-gh-embark-remove-org-from-default-list
+  "f f" #'consult-gh-embark-view-files-of-repo
   "l h" #'consult-gh-embark-get-https-link
   "l s" #'consult-gh-embark-get-ssh-link
   "l l" #'consult-gh-embark-get-url-link
   "l o" #'consult-gh-embark-get-org-link
-  "l e" #'consult-gh-embark-get-straight-usepackage-link
-  "c" #'consult-gh-embark-clone-repo
-  "f" #'consult-gh-embark-fork-repo
-  "x" #'consult-gh-embark-get-other-repos-by-same-user
-  "z" #'consult-gh-embark-view-issues-of-repo
+  "l u" #'consult-gh-embark-get-straight-usepackage-link
+  "r c" #'consult-gh-embark-clone-repo
+  "r f" #'consult-gh-embark-fork-repo
+  "r r" #'consult-gh-embark-get-other-repos-by-same-user
+  "r i" #'consult-gh-embark-view-issues-of-repo
+  "r p" #'consult-gh-embark-view-prs-of-repo
   "o" #'consult-gh-embark-open-in-browser
   )
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-general-actions-map))
 
-
 (defvar-keymap consult-gh-embark-orgs-actions-map
   :doc "Keymap for consult-gh-embark-orgs"
-  :parent consult-gh-embark-general-actions-map
-  "b b" #'consult-gh-embark-add-org-to-known-orgs
-  "b k" #'consult-gh-embark-remove-org-from-known-orgs
-  "b d" #'consult-gh-embark-add-org-to-default-list
-  "b D" #'consult-gh-embark-remove-org-from-default-list)
+  :parent consult-gh-embark-general-actions-map)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
 
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
-  "b b" #'consult-gh-embark-add-repo-to-known-repos
-  "b k" #'consult-gh-embark-remove-repo-from-known-repos
   )
 
 (add-to-list 'embark-keymap-alist '(consult-gh-repos . consult-gh-embark-repos-actions-map))
@@ -174,6 +208,13 @@
   )
 
 (add-to-list 'embark-keymap-alist '(consult-gh-issues . consult-gh-embark-issues-actions-map))
+
+(defvar-keymap consult-gh-embark-prs-actions-map
+  :doc "Keymap for consult-gh-embark-repos"
+  :parent consult-gh-embark-general-actions-map
+  )
+
+(add-to-list 'embark-keymap-alist '(consult-gh-prs . consult-gh-embark-prs-actions-map))
 
 ;;; Provide `consul-gh-embark' module
 
