@@ -656,7 +656,7 @@ Other functions can also be defined under apropriate subentries depending on the
 "Splits repository's string to get username and packagename.
 Returns a list where CAR is the user's name and CADR is the package name."
   (let ((separators (or separators "\/")))
-  (string-split repo "\/")))
+  (string-split repo separators)))
 
 (defun consult-gh--get-username (repo)
 "Returns the user name of REPO
@@ -2065,12 +2065,11 @@ For more details on consult--async functionalities, see `consult-grep' and the o
 #+end_src
 
 **** consult-gh-orgs
-****** Interactive command
+****** Non-interactive command
 #+begin_src emacs-lisp
 (defun consult-gh-orgs (&optional orgs)
 "List repositories of ORGS.
-This is a wrapper fucntion around `consult-gh--repo-list'. If ORGS is nil, this simply calls `consult-gh--repo-list'. If ORGS is a list, then it runs `consult-gh--repo-list' on every member of ORGS and returns the results (repositories of all ORGS) to `consult--read'."
-  (interactive)
+This is a wrapper function around `consult-gh--repo-list'. If ORGS is nil, this simply calls `consult-gh--repo-list'. If ORGS is a list, then it runs `consult-gh--repo-list' on every member of ORGS and returns the results (repositories of all ORGS) to `consult--read'."
   (if (not orgs)
       (consult-gh-repo-list)
     (let* (

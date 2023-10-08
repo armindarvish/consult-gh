@@ -1791,8 +1791,7 @@ For more details on consult--async functionalities, see `consult-grep' and the o
 
 (defun consult-gh-orgs (&optional orgs)
 "List repositories of ORGS.
-This is a wrapper fucntion around `consult-gh--repo-list'. If ORGS is nil, this simply calls `consult-gh--repo-list'. If ORGS is a list, then it runs `consult-gh--repo-list' on every member of ORGS and returns the results (repositories of all ORGS) to `consult--read'."
-  (interactive)
+This is a wrapper function around `consult-gh--repo-list'. If ORGS is nil, this simply calls `consult-gh--repo-list'. If ORGS is a list, then it runs `consult-gh--repo-list' on every member of ORGS and returns the results (repositories of all ORGS) to `consult--read'."
   (if (not orgs)
       (consult-gh-repo-list)
     (let* (
