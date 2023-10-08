@@ -193,7 +193,7 @@ A STRING: loads the branch STRING.
   :type 'function)
 
 (defcustom consult-gh-highlight-matches t
-  "This variable defines whether `consult-gh' queries the user for a path before saving a file or uses the default directory and `buffer-file-name'. It may be useful to set this to nil if saving multiple files all at once frequently."
+  "This variable defines whether `consult-gh' highlights search queries (or code snippets) in preview buffers to visually guide the user see the most relevant content in afile."
   :group 'consult-gh
   :type 'boolean)
 
@@ -235,7 +235,7 @@ A STRING: loads the branch STRING.
   "History variable for issues used in  `consult-gh-search-issues' .")
 
 (defvar consult-gh--search-prs-history nil
-  "History variable for pull requaests used in  `consult-gh-search-issues' .")
+  "History variable for pull requaests used in  `consult-gh-search-prs' .")
 
 (defvar consult-gh--search-code-history nil
   "History variable for pull requaests used in  `consult-gh-search-code' .")
@@ -244,84 +244,96 @@ A STRING: loads the branch STRING.
   "History variable for files used in  `consult-gh-find-file' .")
 
 (defvar consult-gh--known-orgs-list nil
-  "List of previously visited orgs by `consult-gh-orgs'.")
+  "List of previously visited orgs.")
 
 (defvar consult-gh--known-repos-list nil
-  "List of previously visited repos for `consult-gh-search-repos'.")
+  "List of previously visited repos.")
 
 ;;; Faces
 (defface consult-gh-success-face
   `((t :inherit 'success))
-  "the face for user annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-constant-face'.")
+  "the face used to show issues or prs that are successfully dealt with (e.g. \"closed\" issues or \"merged\" prs) when listing or searching issues and prs with `consult-gh'; by default inherits from `success'.")
 
 (defface consult-gh-warning-face
   `((t :inherit 'warning))
-  "the face for user annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-constant-face'.")
+  "the face to show currently open issues or prs when listing or searching issues and prs with `consult-gh'; by default inherits from `warning'.")
 
 (defface consult-gh-error-face
   `((t :inherit 'error))
-  "the face for user annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-constant-face'.")
+  "the face to show closed prs when listing or searching prs with `consult-gh'; by default inherits from `error'.")
 
 (defface consult-gh-highlight-match-face
   `((t :inherit 'consult-highlight-match))
-  "the face for user annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-constant-face'.")
+  "highlight match face in `consult-gh''s preview buffers.
+By default inherits from `consult-highlight-match'. ")
 
 (defface consult-gh-preview-match-face
   `((t :inherit 'consult-preview-match))
-  "the face for user annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-constant-face'.")
+   "highlight match face in `consult-gh''s preview buffers.
+ By default inherits from `consult-preview-match'. This face is for example used to highlight the matches to the user's search queries (e.g. when using `consult-gh-search-repos') or code snippets (e.g. when using `consult-gh-search-code') in preview buffer.")
 
 (defface consult-gh-default-face
   `((t :inherit 'default))
-  "default face used for listing items in minibuffer by `consult-gh'; by default inherits from `default'.")
+  "default face in `consult-gh''s minibuffer annotations.
+By default inherits from `default'.")
 
 (defface consult-gh-user-face
   `((t :inherit 'font-lock-constant-face))
-  "the face for user annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-constant-face'.")
+  "user face in `consult-gh''s minibuffer annotations.
+By default inherits from `font-lock-constant-face'.")
 
 (defface consult-gh-package-face
   `((t :inherit 'font-lock-type-face))
-  "the face for package annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-type-face'.")
+  "packageface in `consult-gh''s minibuffer annotations.
+By default inherits from `font-lock-type-face'.")
 
 (defface consult-gh-repo-face
   `((t :inherit 'font-lock-type-face))
-  "the face for repository annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-type-face'.")
+  "repository face in `consult-gh''s minibuffer annotations.
+By default inherits from `font-lock-type-face'.")
 
 (defface consult-gh-issue-face
   `((t :inherit 'warning))
-"the face for issue number annotation in minibuffer by `consult-gh'; by default inherits from `error'.")
+"issue number face in `consult-gh''s minibuffer annotations.
+By default inherits from `warning'.")
 
 (defface consult-gh-pr-face
   `((t :inherit 'warning))
-"the face for issue number annotation in minibuffer by `consult-gh'; by default inherits from `error'.")
+"pull request number face in `consult-gh''s minibuffer annotations.
+By default inherits from `warning'.")
 
 
 (defface consult-gh-branch-face
   `((t :inherit 'font-lock-string-face))
-  "the face for branch annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-string-face'.")
+  "branchface in `consult-gh''s minibuffer annotations.
+By default inherits from `font-lock-string-face'.")
 
 (defface consult-gh-visibility-face
   `((t :inherit 'font-lock-warning-face))
-"the face visibility annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-warning-face'.")
+"visibility face in `consult-gh''s minibuffer annotations.
+By default inherits from `font-lock-warning-face'.")
 
 (defface consult-gh-date-face
   `((t :inherit 'font-lock-keyword-face))
-  "the face for date annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-keyword-face'.")
+  "date face in `consult-gh''s minibuffer annotations.
+By default inherits from `font-lock-keyword-face'.")
 
 (defface consult-gh-tags-face
   `((t :inherit 'font-lock-comment-face))
-  "the face for tags/comments annotation in minibuffer by `consult-gh'; by default inherits from `font-lock-comment-face'.")
+  "tags/comments face in `consult-gh''s minibuffer annotations.
+By default inherits from `font-lock-comment-face'.")
 
 (defface consult-gh-description-face
   `((t :inherit 'font-lock-builtin-face))
-  "the face for repository description annotation in minibuffer by `consult-gh'. by default inherits from `font-lock-builtin-face'.")
+  "repository description face in `consult-gh''s minibuffer annotations; by default inherits from `font-lock-builtin-face'.")
 
 (defface consult-gh-code-face
   `((t :inherit 'font-lock-variable-use-face))
-  "the face for repository description annotation in minibuffer by `consult-gh'. by default inherits from `font-lock-builtin-face'.")
+  "code snippets face in `consult-gh''s minibuffer annotations; By default inherits from `font-lock-vairable-use-face'.")
 
 (defface consult-gh-url-face
   `((t :inherit 'link))
-"the face for url annotation in minibuffer by `consult-gh'. by default inherits from `link'.")
+  "url face in `consult-gh''s minibuffer annotations; by default inherits from `link'.")
 
 ;;; Utility functions
 
@@ -332,7 +344,8 @@ A STRING: loads the branch STRING.
                      string))))
 
 (defun consult-gh--set-string-width (string width &optional prepend)
-  "Sets the STRING width to a fixed value, WIDTH. If the String is longer than width, it truncates the string and add an ellipsis, \"...\". If the string is shorter it adds whitespace to the string.
+  "Sets the STRING width to a fixed value, WIDTH.
+If the String is longer than WIDTH, it truncates the string and add an ellipsis, \"...\". If the string is shorter it adds whitespace to the string.
 If PREPEND is non-nil, it truncates or adds whitespace from the beginning of string, instead of the end."
   (let* ((string (format "%s" string))
          (w (string-width string)))
@@ -347,7 +360,8 @@ If PREPEND is non-nil, it truncates or adds whitespace from the beginning of str
     string))
 
 (defun consult-gh--justify-left (string prefix maxwidth)
-  "Set the string width by calling `consult-gh--set-string-width' in a way that string+prefix (e.g. `(concat prefix string)`) fits within maxwidth or a fraction of it. This is used for aligning marginalia info in minibuffer when using `consult-gh'."
+  "Sets the width of  STRING+PREFIX justified from left.
+It uses `consult-gh--set-string-width' and sets the width of the concatenate of STRING+PREFIX (e.g. `(concat prefix string)`) within MAXWIDTH or a fraction of MAXWIDTH. This is used for aligning marginalia info in minibuffer when using `consult-gh'."
   (let ((s (string-width string))
         (w (string-width prefix)))
     (cond ((< (+ s w) (floor (/ maxwidth 2)))
@@ -367,15 +381,11 @@ If PREPEND is non-nil, it truncates or adds whitespace from the beginning of str
     ))
 
 (defun consult-gh--highlight-match (regexp str ignore-case)
-  "Highlight REGEXPS in STR.
+  "Highlights REGEXP in STR.
 If a regular expression contains capturing groups, only these are highlighted.
-
 If no capturing groups are used highlight the whole match.  Case is ignored
-
 if IGNORE-CASE is non-nil.
-
-(This is copied from `consult--highlight-regexps'.)
-"
+(This is adapted from `consult--highlight-regexps'.)"
   (let ((i 0))
     (while (and (let ((case-fold-search ignore-case))
                   (string-match regexp str i))
@@ -391,7 +401,7 @@ if IGNORE-CASE is non-nil.
   str)
 
 (defun consult-gh--markdown-to-org-footnotes (&optional buffer)
-"Convert markdown style footnotes to org-mode style footnotes by regexp replacements."
+"Converts markdown style footnotes to org-mode style footnotes by regexp replacements."
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
       (save-mark-and-excursion
@@ -403,7 +413,7 @@ if IGNORE-CASE is non-nil.
     nil))
 
 (defun consult-gh--markdown-to-org-emphasis (&optional buffer)
-"Convert markdown style emphasis to org-mode style emphasis by regexp replacements."
+"Converts markdown style emphasis to org-mode style emphasis by regexp replacements."
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
       (save-mark-and-excursion
@@ -440,7 +450,7 @@ if IGNORE-CASE is non-nil.
     nil))
 
 (defun consult-gh--markdown-to-org-links (&optional buffer)
-"Convert markdown links to org-mode links by regexp replacements."
+"Converts markdown links to org-mode links by regexp replacements."
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
       (save-mark-and-excursion
@@ -474,7 +484,8 @@ if IGNORE-CASE is non-nil.
     nil))
 
 (defun consult-gh--markdown-to-org (&optional buffer)
-  "Convert from markdown format to org-mode format. This is used for viewing repos (a.k.a. fetching README file of repos) if `consult-gh-preview-buffer-mode' is set to 'org-mode."
+  "Converts from markdown format to org-mode format.
+This is used for viewing repos (a.k.a. fetching README file of repos) if `consult-gh-preview-buffer-mode' is set to 'org-mode."
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name))))
     (with-current-buffer buffer
       (consult-gh--markdown-to-org-footnotes buffer)
@@ -487,6 +498,8 @@ if IGNORE-CASE is non-nil.
   nil)
 
 (defun consult-gh-recenter (&optional pos)
+"Recenters the text in a window so that the cursor is at POS.
+POS a symbol and can be 'top, 'bottom or 'middle. The default is 'middle so if POS is nil or anything else, the text will be centered on the middle of the window."
   (let ((this-scroll-margin
 	 (min (max 0 scroll-margin)
 	      (truncate (/ (window-body-height) 4.0))))
@@ -498,12 +511,15 @@ if IGNORE-CASE is non-nil.
        (recenter this-scroll-margin t))
       ('bottom
        (recenter (- -1 this-scroll-margin) t))
+      (_
+       (recenter nil t))
       )))
 
 ;;; Backend `gh` related functions
 
 (defun consult-gh--call-process (&rest args)
- "Run \"gh\" with args and return outputs as a list where the CAR is exit status (e.g. 0 means success and non-zero means error) and CADR is the output. If gh is not found we return '(127 \"\") and a message saying \"gh\" is not found."
+ "Runs \"gh\" in the command line and passes ARGS as command-line arguments.
+Returns a list where the CAR is exit status (e.g. 0 means success and non-zero means error) and CADR is the output's text. If gh is not found it returns '(127 \"\") and a message saying \"gh\" is not found."
 (if (executable-find "gh")
       (with-temp-buffer
         (set-buffer-file-coding-system 'cp1047)
@@ -516,7 +532,8 @@ if IGNORE-CASE is non-nil.
 ))
 
 (defun consult-gh--command-to-string (&rest args)
-  "Run \"gh\" with args and return output as a string if there is no error. If there are erros pass them to *Messages*."
+  "Runs `consult-gh--call-process' and returns a string if there is no error.
+If there are erros passes them to *Messages*."
   (let ((out (apply #'consult-gh--call-process args)))
           (if (= (car out) 0)
               (cadr out)
@@ -525,8 +542,8 @@ if IGNORE-CASE is non-nil.
               nil)
             )))
 
-(defun consult-gh--api-get-json (arg )
-"Makes a github api call to get response in json format by passing the arg (e.g. a github api url) to \"gh api -H Accept:application/vnd.github+json\" command."
+(defun consult-gh--api-get-json (arg)
+"Makes a github api call to get response in json format by passing the ARG (e.g. a github api url) to \"gh api -H Accept:application/vnd.github+json\" command."
   (consult-gh--call-process "api" "-H" "Accept: application/vnd.github+json" arg))
 
 (defun consult-gh--api-json-to-hashtable (json &optional key)
@@ -540,11 +557,11 @@ if IGNORE-CASE is non-nil.
       (json-read-from-string json))))
 
 (defun consult-gh--get-current-username ()
-"Gets the currently logged in user by running `gh api user` and returning the login field."
+  "Gets the currently logged in user by running `gh api user` and returning the login field."
  (consult-gh--api-json-to-hashtable (cadr (consult-gh--api-get-json "user")) :login))
 
 (defun consult-gh--get-repo-from-directory (&optional dir)
-"Returns the full name of the GitHub repository in the current folder (a.k.a. `default-directory') in the format \"[HOST/]OWNER/REPO\" if any, otherwise returns nil."
+  "Returns the full name of the GitHub repository in the current folder (a.k.a. `default-directory') in the format \"[HOST/]OWNER/REPO\" if any, otherwise returns nil."
 (let* ((default-directory (or dir default-directory))
       (response (consult-gh--call-process "repo" "view" "--json" "nameWithOwner" "--jq" ".nameWithOwner")))
 (if (eq (car response) 0)
@@ -555,33 +572,27 @@ if IGNORE-CASE is non-nil.
 ))
 
 (defun consult-gh--split-repo (repo &optional separators)
+"Splits repository's string to get username and packagename.
+Returns a list where CAR is the user's name and CADR is the package name."
   (let ((separators (or separators "\/")))
   (string-split repo "\/")))
 
 (defun consult-gh--get-username (repo)
-  (car (consult-gh--split-repo repo)))
+"Returns the user name of REPO
+(e.g. \"armindarvish\" if REPO is \"armindarvish\consult-gh\")"
+(car (consult-gh--split-repo repo)))
 
 (defun consult-gh--get-package (repo)
+"Returns the package name of REPO
+(e.g. \"consult-gh\" if REPO is \"armindarvish\consult-gh\")"
   (cadr (consult-gh--split-repo repo)))
-
-(defun consult-gh--code-search-regexp-compiler (input ignore-case)
-  "Compile the INPUT string to a list of regular expressions.
-The function should return a pair, the list of regular expressions and a
-highlight function.  The highlight function should take a single
-argument, the string to highlight given the INPUT.  TYPE is the desired
-type of regular expression, which can be `basic', `extended', `emacs' or
-`pcre'.  If IGNORE-CASE is non-nil return a highlight function which
-matches case insensitively."
-  (setq input (consult--split-escaped input))
-  (cons input
-         (when-let (regexps (seq-filter #'consult--valid-regexp-p input))
-       (apply-partially #'consult--highlight-regexps regexps ignore-case))))
 
 ;;; Backend functions for `consult-gh'.
 
 ;; Buffers
 (defun consult-gh-kill-preview-buffers ()
-"Kill all open preview buffers stored in `consult-gh--preview-buffers-list'. It asks for confirmation if the buffer is modified and removes the buffers that are killed from the list."
+"Kill all open preview buffers stored in `consult-gh--preview-buffers-list'.
+It asks for confirmation if the buffer is modified and removes the buffers that are killed from the list."
   (interactive)
   (when consult-gh--preview-buffers-list
     (mapcar (lambda (buff) (if (buffer-live-p buff)
@@ -593,21 +604,24 @@ matches case insensitively."
 )
 
 (defun consult-gh--files-get-branches (repo)
-"List branches of a repository in json format by passing repo and \"branches\" to `consult-gh--api-get-json'."
+"Lists branches of REPO, in json format
+By passing REPO and \"branches\" to `consult-gh--api-get-json'."
   (consult-gh--api-get-json (concat "repos/" repo "/branches")))
 
 (defun consult-gh--files-branches-hashtable-to-list (table repo)
-"Converts a hashtable containing repository branches to a list of propertized text. The hashtable can for example be obtained by converting the json object from `consult-gh--files-get-branches' to a hashtable by using `consult-gh--api-json-to-hashtable'."
+"Converts a hashtable, TABLE, containing name of repository branches of REPO to a list of propertized text.
+The hashtable can for example be obtained by converting the json object from `consult-gh--files-get-branches' to a hashtable by using `consult-gh--api-json-to-hashtable'."
     (mapcar (lambda (item) (cons (gethash :name item) `(:repo ,repo :branch ,(gethash :name item) :url ,(gethash :url item)))) table))
 
 (defun consult-gh--files-branches-list-items (repo)
-"Gets a lit of propertized text that contains information about branches of the repository repo on GitHub by using  `consult-gh--files-get-branches', `consult-gh--files-branches-hashtable-to-list' and `consult-gh--api-json-to-hashtable'."
+"Gets a lit of propertized text that contains information about branches of the repository REPO on GitHub by using  `consult-gh--files-get-branches', `consult-gh--files-branches-hashtable-to-list' and `consult-gh--api-json-to-hashtable'."
 (let ((response (consult-gh--files-get-branches repo)))
   (if (eq (car response) 0)
       (consult-gh--files-branches-hashtable-to-list (consult-gh--api-json-to-hashtable (cadr response)) repo)
     (message (cadr response)))))
 
 (defun consult-gh--read-branch (repo)
+"Queries the user to select a branch name from the list of all branches of REPO (a github repository name in a srring like \"armindarvish/consult-gh\"."
   (pcase consult-gh-default-branch-to-load
     ("confirm"
      (if (y-or-n-p "Load Default HEAD branch?")
@@ -620,18 +634,22 @@ matches case insensitively."
     (_
      (cons repo (format "%s" consult-gh-default-branch-to-load)))))
 
+;; Files
 (defun consult-gh--files-get-trees (repo &optional branch)
-"Gets a recursive git \"tree\" of repo and branch in json object format by using `consult-gh--api-get-json'. "
+"Gets a recursive git \"tree\" of REPO and BRANCH in json object format by using `consult-gh--api-get-json'. "
   (let ((branch (or branch "HEAD")))
   (consult-gh--api-get-json (concat "repos/" repo "/git/trees/" branch ":?recursive=1"))))
 
 (defun consult-gh--files-table-to-list (table repo &optional branch)
-"converts a hashtable containing git tree information of repo and branch to list of propertized texts formatted properly to be sent to  `consult-gh-find-file'."
+"Converts a hashtable containing git tree information of REPO and BRANCH to a list of propertized texts formatted properly to be sent to  `consult-gh-find-file'."
    (let ((branch (or branch "HEAD")))
     (mapcar (lambda (item) (cons (gethash :path item) `(:repo ,repo :branch ,branch :url ,(gethash :url item) :path ,(gethash :path item) :size ,(gethash :size item)))) table)))
 
 (defun consult-gh--files-list-items (repo &optional branch)
-"Fetches a list of files in repo and branch from GitHub. The format ois propertized text that include informaiton about the file generated by `consult-gh--files-table-to-list'. This list can be passed to `consult-gh-find-file'."
+"Fetches a list of files and dirctories in REPO and BRANCH from GitHub api.
+The format is propertized text that include informaiton about the file generated by `consult-gh--files-table-to-list'. This list can be passed to `consult-gh-find-file'.
+See `consult-gh--files-nodirectory-items' for getting a list of file but not directories.
+"
 (let* ((branch (or branch "HEAD"))
        (response (consult-gh--files-get-trees repo branch))
        )
@@ -640,7 +658,8 @@ matches case insensitively."
     (message (cadr response)))))
 
 (defun consult-gh--files-nodirectory-items (repo &optional branch)
-"Fetches a list of files in repo and branch from GitHub. The format ois propertized text that include informaiton about the file generated by `consult-gh--files-table-to-list'. This list can be passed to `consult-gh-find-file'."
+"Fetches a list of non-directory files in REPO and BRANCH from GitHub. The format is propertized text that include informaiton about the file generated by `consult-gh--files-table-to-list'. This list can be passed to `consult-gh-find-file'.
+This list does not have directories. See `consult-gh--files-list-items' for getting a list of file and directories."
 (let* ((branch (or branch "HEAD"))
        (items (consult-gh--files-list-items repo branch))
        )
@@ -648,7 +667,7 @@ matches case insensitively."
   items))
 
 (defun consult-gh--files-get-content (url)
-"Fetches the contents of file at url retrieved from github api by `consult-gh--api-get-json' and decodes it into raw text."
+"Fetches the contents of file at URL retrieved from github api by `consult-gh--api-get-json' and decodes it into raw text."
   (let* ((response (consult-gh--api-get-json url))
         (content (if (eq (car response) 0) (consult-gh--api-json-to-hashtable (cadr response) :content)
                    nil)))
@@ -657,7 +676,9 @@ matches case insensitively."
       "")))
 
 (defun consult-gh--file-format (cons)
-  (when-let* ((path (car cons))
+"Formats minibuffer candidates for files (e.g. in `consult-gh-find-file').
+CONS is the a list of files for example returned by `consult-gh--files-nodirectory-items'."
+(when-let* ((path (car cons))
          (path (string-join (mapcar (lambda (x) x) (string-split path "/")) (propertize "/" 'face 'consult-gh-path-face)))
          (info (cdr cons))
          (repo (plist-get info :repo))
@@ -672,12 +693,16 @@ matches case insensitively."
     (cons str (list :repo repo :user user :package package :path path :url url :branch branch :size size))))
 
 (defun consult-gh--file-lookup ()
+"Lookup function for file candidates in `consult-gh' (e.g. in `consult-gh-find-file').
+This is passed as LOOKUP to `consult--read' on file candidates and is used to format the output when a candidate is selected."
   (lambda (sel cands &rest args)
     (let* ((info (cdr (assoc sel cands)))
            (path (plist-get info :path)))
     (cons path info))))
 
 (defun consult-gh--file-state ()
+"State function for file candidates in `consult-gh' (e.g. in `consult-gh-find-file').
+This is passed as STATE to `consult--read' on file candidates and is used to preview files or do other actions on the file."
   (lambda (action cand)
     (let* ((preview (consult--buffer-preview))
            )
@@ -710,7 +735,8 @@ matches case insensitively."
     ))
 
 (defun consult-gh--file-annotate ()
-"Annotate each file in `consult-gh-find-file' by size of the file. For more info on annotation refer to `consult''s manual, particularly 'consult--read' and `consult--read-annotate' documentation."
+"Annotates each file candidate in the minibbuffer for `consult-gh-find-file'.
+For more info on annotation refer to `consult''s manual, particularly 'consult--read' and `consult--read-annotate' documentation."
 (lambda (cands cand)
   (if-let* ((info (cdr (assoc cand cands)))
             (size (format "%s Bytes" (plist-get info :size)))
@@ -732,18 +758,32 @@ matches case insensitively."
   ))
 
 (defun consult-gh--file-group (cand transform)
-"Grouping function for the list of items in `consult-gh-issue-list'. It groups issues by the status of the issue e.g. \"Open\"."
+"Group function for file candidate in minibuffer for consult-gh (e.g. in `consult-gh-find-file').
+This is passed as GROUP to `consult--read' on file candidates and is used to group files by repository names."
 (let ((name (car (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s"))))))
   (if transform (substring cand) name)))
 
-(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str)
-  "The action function that gets the \"path\" to a file within a \"repo\" and the \"url\" of the file on GitHub API and puts the contents in a temporary file buffer. It fethces the content from Github by `consult-gh--files-get-content' and insert it into a temporary file stored under `consult-gh-tempdir' in apropriate subdirectories for repo and branch. If the optional input no-select is nil, it switches to the buffer by find-file, otherwise it does not swith-to-buffer and only returns the name of the buffer.
+(defun consult-gh--files-browse-url-action (cand)
+"Browses the url for a file candidate, CAND, from consult-gh.
 
-repo is name of the repo in the format \"arimindarvish//consult-gh\"
-path is the realtive path of the file to the root of repo
-url is the url of the file as retrieved from GitHub API
-no-select is aboolean for whether to swith-to-buffer or not
-tempdir is the directory where the temporary file is saved
+This is an internal action function that gets a candidate, CAND, from `consult-gh-find-file' and opens the url of the file in a browser. To use this as the default action in `consult-gh-find-file', set `consult-gh-file-action' to #'consult-gh--files-browse-url-action."
+  (let* ((info (cdr cand))
+           (repo (plist-get info :repo))
+           (path (plist-get info :path))
+           (branch (plist-get info :branch))
+           (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "/" path)))
+        (browse-url url)))
+
+(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str)
+  "Opens file in an emacs buffer.
+
+This is an internal function that gets the PATH to a file within a REPO and the URL of the file on GitHub API and puts the contents in a temporary file buffer. It fethces the content from Github by `consult-gh--files-get-content' and inserts it into a temporary file stored under `consult-gh-tempdir' in apropriate subdirectories for REPO. If the optional input NO-SELECT is nil, it switches to the buffer by `find-file', otherwise it does not swith-to-buffer and only returns the name of the buffer. To use this as the default action in `consult-gh-find-file', see `consult-gh--files-view-action'.
+
+REPO is name of the repo in the format \"arimindarvish//consult-gh\"
+PATH is the realtive path of the file to the root of repo e.g. \"./README.org\"
+URL is the url of the file as retrieved from GitHub API
+NO-SELECT is a boolean for whether to swith-to-buffer or not
+TEMPDIR is the directory where the temporary file is saved
 
 Output is the buffer visiting the file."
   (let* ((tempdir (or tempdir consult-gh-tempdir))
@@ -772,7 +812,11 @@ Output is the buffer visiting the file."
          )))
 
 (defun consult-gh--files-view-action (cand)
-  "Default action to run on selected item in `consult-gh'."
+  "Opens file candidate, CAND, from consult-gh in an emacs buffer.
+
+This is a wrapper function around `consult-gh--files-view'. It parses CAND to extract relevant values (e.g. repository, file path, url, ...) and passes them to `consult-gh--files-view'.
+
+To use this as the default action on consult-gh's files, set `consult-gh-file-action' to #'consult-gh--files-view-action."
     (let* ((info (cdr cand))
            (repo (plist-get info :repo))
            (path (plist-get info :path))
@@ -790,17 +834,13 @@ Output is the buffer visiting the file."
           (consult-gh--files-view repo path url)
       )))
 
-(defun consult-gh--files-browse-url-action (cand)
-"The action function that gets a candidate from `consult-gh-find-file' and opens the url of the file in a browser. To use this as the default action in `consult-gh-find-file', set `consult-gh-file-action' to #'consult-gh--files-browse-url-action."
-  (let* ((info (cdr cand))
-           (repo (plist-get info :repo))
-           (path (plist-get info :path))
-           (branch (plist-get info :branch))
-           (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "/" path)))
-        (browse-url url)))
-
 (defun consult-gh--files-save-file-action (cand)
-  "The action function that gets a selection from `consult-gh-find-file' and saves it. If `consult-gh-ask-for-path-before-save' is non-nil, it queries the user for the path the file should be saved at otherwise it saves the file under `consult-gh-default-save-directory' with the buffer-file-name as the name of the file."
+"Saves file candidate, CAND, from consult-gh to a file.
+
+Its parses CAND to extract relevant infromation (e.g. repository's name, file path, url, ...) and passes them to `consult-gh--files-view', then saves the buffer to file.
+If `consult-gh-ask-for-path-before-save' is non-nil, it queries the user for a filepath, otherwise it saves the file under `consult-gh-default-save-directory' with the buffer-file-name as the name of the file.
+
+To use this as the default action on consult-gh's files, set `consult-gh-file-action' to #'consult-gh--files-save-file-action."
     (let* ((info (cdr cand))
            (repo (plist-get info :repo))
            (path (plist-get info :path))
@@ -824,13 +864,51 @@ Output is the buffer visiting the file."
           (write-file targetpath t))
         ))))))
 
+(defun consult-gh--repo-format (string input highlight)
+"Formats minibuffer candidates for repos (e.g. in `consult-gh-search-repos').
+STRING is the return of a \"gh\" call (e.g. \"gh search repos ...\"). INPUT is the query from the user (a.k.a. command line argument passed to the gh call).
+if HIGHLIGHT is t, input is highlightedwith `consult-gh-highlight-match-face' in the minibuffer."
+  (let* ((parts (string-split string "\t"))
+         (repo (car parts))
+         (user (consult-gh--get-username repo))
+         (package (consult-gh--get-package repo))
+         (description (cadr parts))
+         (visibility (cadr (cdr parts)))
+         (date (substring (cadr (cdr (cdr parts))) 0 10))
+         (query input)
+         (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
+         (w (string-width repo))
+         (s (string-width visibility))
+         (str (format "%s\s\s%s\s\s%s\s\s%s"
+                  (concat
+                   (propertize user 'face 'consult-gh-user-face )
+                   "/"
+                   (propertize package 'face 'consult-gh-package-face))
+                  (consult-gh--justify-left (propertize visibility 'face 'consult-gh-visibility-face) repo (frame-width))
+                  (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
+                  (propertize description 'face 'consult-gh-description-face)))
+         (str (propertize str :repo repo :user user :package package :description description :visibility visibility :date date :query query))
+         )
+    (if (and consult-gh-highlight-matches highlight)
+        (cond
+         ((listp match-str)
+         (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+         ((stringp match-str)
+          (setq str (consult-gh--highlight-match match-str str t))))
+      str)
+    (cons str (list :repo repo :user user :package package :date date :description description :visibility visibility :query query))))
+
 (defun consult-gh--repo-lookup ()
+"Lookup function for repo candidates in consult-gh (e.g. in `consult-gh-search-repos').
+This is passed as LOOKUP to `consult--read' on repo candidates and is used to format the output when a candidate is selected."
   (lambda (sel cands &rest args)
     (let* ((info (cdr (assoc sel cands)))
            (repo (plist-get info :repo)))
     (cons (format "%s" repo) info))))
 
 (defun consult-gh--repo-state ()
+"State function for repo candidates in consult-gh (e.g. in `consult-gh-search-repos').
+This is passed as STATE to `consult--read' on repo candidates and is used to preview or do other actions on the repo."
   (lambda (action cand)
     (let* ((preview (consult--buffer-preview))
            )
@@ -863,45 +941,17 @@ Output is the buffer visiting the file."
              )))
       )
 
-(defun consult-gh--repo-format (string input highlight)
-  (let* ((parts (string-split string "\t"))
-         (repo (car parts))
-         (user (consult-gh--get-username repo))
-         (package (consult-gh--get-package repo))
-         (description (cadr parts))
-         (visibility (cadr (cdr parts)))
-         (date (substring (cadr (cdr (cdr parts))) 0 10))
-         (query input)
-         (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
-         (w (string-width repo))
-         (s (string-width visibility))
-         (str (format "%s\s\s%s\s\s%s\s\s%s"
-                  (concat
-                   (propertize user 'face 'consult-gh-user-face )
-                   "/"
-                   (propertize package 'face 'consult-gh-package-face))
-                  (consult-gh--justify-left (propertize visibility 'face 'consult-gh-visibility-face) repo (frame-width))
-                  (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
-                  (propertize description 'face 'consult-gh-description-face)))
-         (str (propertize str :repo repo :user user :package package :description description :visibility visibility :date date :query query))
-         )
-    (if (and consult-gh-highlight-matches highlight)
-        (cond
-         ((listp match-str)
-         (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
-         ((stringp match-str)
-          (setq str (consult-gh--highlight-match match-str str t))))
-      str)
-    (cons str (list :repo repo :user user :package package :date date :description description :visibility visibility :query query))))
-
 (defun consult-gh--repo-group (cand transform)
-  "Grouping function for the list of items in `consult-gh-issue-list'. It groups issues by the status of the issue e.g. \"Open\"."
+  "Group function for repo candidates in minibuffer for consult-gh (e.g. in `consult-gh-search-repos').
+This is passed as GROUP to `consult--read' on file candidates and is used to group repos by usr\owner's names."
   (let ((name (car (string-split (replace-regexp-in-string " " "" (format "%s" (car (remove " " (remove "" (string-split (substring-no-properties cand) "\s")))) "/")) "/")))
         )
     (if transform (substring cand) name)))
 
 (defun consult-gh--repo-browse-url-action (cand)
-"The action function that gets a repo candidate for example from `consult-gh-search-repos' and opens the url of the repo on github in a browser. To use this as the default action in `consult-gh-search-repos', set `consult-gh-repo-action' to #'consult-gh--repo-browse-url-action."
+"Browses the url for a repo candidate, CAND, from consult-gh.
+
+This is an internal action function that gets a candidate, CAND, for example from `consult-gh-search-repos' and opens the url of the repo in an external browser. To use this as the default action for repos, set `consult-gh-repo-action' to #'consult-gh--repo-browse-url-action."
   (let* ((response (consult-gh--call-process "browse" "--repo" (substring-no-properties cand) "--no-browser"))
         (url (string-trim (cadr response))))
     (if (eq (car response) 0)
@@ -910,9 +960,13 @@ Output is the buffer visiting the file."
 ))
 
 (defun consult-gh--repo-view (repo &optional buffer)
-  "This function accepts a repo name and an optional buffer as input arguments and shows the preview of the repo (a.k.a. the README file) in that buffer. It fethces the preview from Github by `gh repo view name-or-repo` using `consult-gh--call-process'. Then puts the response as raw text in the buffer defined by optional input arg `buffer` or in the buffer by `consult-gh-preview-buffer-name'. If `consult-gh-preview-buffer-mode' is set to either 'markdown-mode or 'org-mode, it sets the major mode of the buffer accordingly otherwise it shows the raw text in fundamental-mode.
-repo is the name of the repository to be previewed.
-buffer is an optional buffer the preview should be shown in.
+  "Opens REPO's readme in an emacs buffer, BUFFER.
+
+This is an internal function that gets takes  REPO, the name of a github repository for example \"armindarvish\consult-gh\" and shows the README of that repo in an emacs buffer. It fethces the preview from Github by `gh repo view REPO` and puts the response as raw text in the buffer defined by optional input arg BUFFER or in if BUFFER is nil, in a  buffer named by `consult-gh-preview-buffer-name'. If `consult-gh-preview-buffer-mode' is set to either 'markdown-mode or 'org-mode, it sets the major mode of the buffer accordingly otherwise it shows the raw text in fundamental-mode.
+
+REPO is the name of the repository to be previewed.
+BUFFER is an optional buffer the preview should be shown in.
+
 "
 (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
         (text (cadr (consult-gh--call-process "repo" "view" repo))))
@@ -937,7 +991,12 @@ buffer is an optional buffer the preview should be shown in.
     ))
 
 (defun consult-gh--repo-view-action (cand)
-  "The action function that gets a repo candidate for example from `consult-gh-search-repos' and opens a preview in an emacs buffer using `consult-gh--repo-view'."
+"Opens the preview of a repo candidate, CAND, from consult-gh in an emacs buffer.
+
+This is a wrapper function around `consult-gh--repo-view'. It parses CAND to extract relevant values (e.g. repository's name) and passes them to `consult-gh--repo-view'.
+
+To use this as the default action for consult-gh's repos, set `consult-gh-repo-action' to #'consult-gh--repo-view-action."
+
     (let* ((repo (substring-no-properties cand))
           (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "*")))
       (consult-gh--repo-view repo)
@@ -946,7 +1005,13 @@ buffer is an optional buffer the preview should be shown in.
       ))
 
 (defun consult-gh--repo-browse-files-action (cand)
-  "The action function that gets a repo candidate for example from `consult-gh-search-repos' and opens the file contents by runing `consult-gh-find-file'."
+  "Browse file tree of a repo candidate, CAND, from consult-gh.
+
+Opens the preview of a repo candidate, CAND, from consult-gh in an emacs buffer.
+
+This is a wrapper function around `consult-gh-find-file'. It parses CAND to extract relevant values (e.g. repository's name) and passes them to `consult-gh-find-file'.
+
+To use this as the default action for consult-gh's repos, set `consult-gh-repo-action' to #'consult-gh--repo-browse-files-action."
     (let* ((repo (plist-get (cdr cand) :repo)))
       (consult-gh-find-file repo)
       ))
@@ -956,7 +1021,8 @@ buffer is an optional buffer the preview should be shown in.
 Full path of the cloned repo is passed to these functions as input arg.")
 
 (defun consult-gh--repo-clone (repo name targetdir &rest args)
-"This is an internal function for non-interactive use. For interactive use see `consult-gh-repo-clone'. It clones the repository defined by `repo` to targetdir/name path by runing `gh clone repo ...`."
+"Clones REPO to the path TARGETDIR/NAME.
+This is an internal function for non-interactive use. For interactive use see `consult-gh-repo-clone'. It calls \"gh\" in the commandline and runs `gh clone REPO TARGETDIR/NAME`."
   (consult-gh--command-to-string "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
   (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name name targetdir))
    (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face)))
@@ -965,7 +1031,14 @@ Full path of the cloned repo is passed to these functions as input arg.")
   )
 
 (defun consult-gh--repo-clone-action (cand)
-"The action function that gets a repo candidate for example from `consult-gh-search-repos' and clones the repository using `consult-gh-repo-clone'. If `consult-gh-confirm-before-clone' is nil it runs the internal non-interacctive function `consult-gh--repo-clone' that clones the directory in `consult-gh-default-clone-directory'."
+"Clones a repo candidate, CAND, from consult-gh.
+
+This is a wrapper function around `consult-gh--repo-clone'. It parses CAND to extract relevant values (e.g. repository's name) and passes them to `consult-gh--repo-clone'.
+
+To use this as the default action for consult-gh's repos, set `consult-gh-repo-action' to #'consult-gh--repo-clone-action.
+
+If `consult-gh-confirm-before-clone' is nil it clones the repo under `consult-gh-default-clone-directory' and uses the the package name from REPO as the default name for the cloned folder."
+
 (let* ((reponame (plist-get (cdr cand) :repo))
        (package (car (last (split-string reponame "\/")))))
     (if consult-gh-confirm-before-clone
@@ -980,7 +1053,8 @@ Full path of the cloned repo is passed to these functions as input arg.")
 Full name of the forked repo e.g. \"armindarvish/consult-gh\" is passed to these functions as input arg.")
 
 (defun consult-gh--repo-fork (repo &optional name)
-"This is an internal function for non-interactive use. For interactive uses see `consult-gh-repo-fork'. It forks the repository defined by `repo` to the current user account logged in with `gh` command line tool."
+"Forks REPO as NAME.
+This is an internal function for non-interactive use. For interactive use see `consult-gh-repo-fork'. It call gh in the command line and runs `gh fork REPO --fork-name NAME`."
 (let* ((package (car (last (split-string repo "\/"))))
       (name (or name package))
       (forkrepo (concat (consult-gh--get-current-username) "/" name)))
@@ -993,51 +1067,20 @@ Full name of the forked repo e.g. \"armindarvish/consult-gh\" is passed to these
 
 
 (defun consult-gh--repo-fork-action (cand)
-"The action function that gets a repo candidate for example from `consult-gh-search-repos' and forks the repository to current user's github account (the account logged in with `gh` command line tool)."
+"Forks a repo candidate, CAND, from consult-gh.
+
+This is a wrapper function around `consult-gh--repo-fork. It parses CAND to extract relevant values (e.g. repository's name) and passes them to `consult-gh--repo-fork'.
+
+To use this as the default action for consult-gh's repos, set `consult-gh-repo-action' to #'consult-gh--repo-fork-action."
      (let* ((reponame (plist-get (cdr cand) :repo)))
       (consult-gh--repo-fork reponame)
     ))
 
-(defun consult-gh--issue-lookup ()
-  (lambda (sel cands &rest args)
-    (let* ((info (cdr (assoc sel cands)))
-           (title (plist-get info :title))
-           (issue (plist-get info :issue)))
-    (cons (format "%s:%s" issue title) info))))
-
-(defun consult-gh--issue-state ()
-  (lambda (action cand)
-    (let* ((preview (consult--buffer-preview))
-           )
-          (pcase action
-            ('preview
-             (if cand
-                 (when-let ((repo (plist-get (cdr cand) :repo))
-                            (query (plist-get (cdr cand) :query))
-                            (issue (plist-get (cdr cand) :issue))
-                            (match-str (consult--build-args query))
-                   (buffer (get-buffer-create consult-gh-preview-buffer-name)))
-               (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (consult-gh--issue-view (format "%s" repo) (format "%s" issue) buffer)
-               (with-current-buffer buffer
-                 (if consult-gh-highlight-matches
-                 (cond
-                      ((listp match-str)
-                       (mapcar (lambda (item)
-                                 (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
-                      ((stringp match-str)
-                        (highlight-regexp match-str 'consult-gh-preview-match-face))
-                      )))
-               (funcall preview action
-                         buffer
-                        ))
-             ))
-            ('return
-             cand)
-             )))
-      )
-
 (defun consult-gh--issue-list-format (string input highlight)
+"Formats minibuffer candidates for issues (e.g. specifically for `consult-gh-issue-list').
+STRING is the return of a \"gh\" call (e.g. \"gh issue list ...\"). INPUT is the query from the user (a.k.a. command line argument passed to the gh call).
+if HIGHLIGHT is t, input is highlighted with `consult-gh-highlight-match-face' in the minibuffer."
+
   (let* ((parts (string-split string "\t"))
          (repo input)
          (user (consult-gh--get-username repo))
@@ -1073,6 +1116,9 @@ Full name of the forked repo e.g. \"armindarvish/consult-gh\" is passed to these
     (cons str (list :repo repo :user user :package package :issue issue :state state :title title :tags tags :date date :query query))))
 
 (defun consult-gh--search-issues-format (string input highlight)
+"Formats minibuffer candidates for issues (e.g. specifically for `consult-gh-search-issues').
+STRING is the return of a \"gh\" call (e.g. \"gh search issues ...\"). INPUT is the query from the user (a.k.a. command line argument passed to the gh call).
+if HIGHLIGHT is t, input is highlighted with `consult-gh-highlight-match-face' in the minibuffer."
   (let* ((parts (string-split string "\t"))
          (repo (car parts))
          (user (consult-gh--get-username repo))
@@ -1107,28 +1153,79 @@ Full name of the forked repo e.g. \"armindarvish/consult-gh\" is passed to these
       str)
     (cons str  (list :repo repo :user user :issue issue :state state :title title :tags tags :date date :query query))))
 
+(defun consult-gh--issue-lookup ()
+"Lookup function for issue candidates in `consult-gh' (e.g. in `consult-gh-search-issues').
+This is passed as LOOKUP to `consult--read' on issue candidates and is used to format the output when a candidate is selected."
+  (lambda (sel cands &rest args)
+    (let* ((info (cdr (assoc sel cands)))
+           (title (plist-get info :title))
+           (issue (plist-get info :issue)))
+    (cons (format "%s:%s" issue title) info))))
+
+(defun consult-gh--issue-state ()
+"State function for issue candidates in consult-gh (e.g. in `consult-gh-search-issues').
+This is passed as STATE to `consult--read' on issue candidates and is used to preview or do other actions on the issue."
+  (lambda (action cand)
+    (let* ((preview (consult--buffer-preview))
+           )
+          (pcase action
+            ('preview
+             (if cand
+                 (when-let ((repo (plist-get (cdr cand) :repo))
+                            (query (plist-get (cdr cand) :query))
+                            (issue (plist-get (cdr cand) :issue))
+                            (match-str (consult--build-args query))
+                   (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
+               (consult-gh--issue-view (format "%s" repo) (format "%s" issue) buffer)
+               (with-current-buffer buffer
+                 (if consult-gh-highlight-matches
+                 (cond
+                      ((listp match-str)
+                       (mapcar (lambda (item)
+                                 (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
+                      ((stringp match-str)
+                        (highlight-regexp match-str 'consult-gh-preview-match-face))
+                      )))
+               (funcall preview action
+                         buffer
+                        ))
+             ))
+            ('return
+             cand)
+             )))
+      )
+
 (defun consult-gh--issue-group-by-state (cand transform)
-"Grouping function for the list of items in `consult-gh-issue-list'. It groups issues by the status of the issue e.g. \"Open\"."
+"Group function for issue candidates in minibuffer for consult-gh (e.g. `consult-gh-issue-list').
+This is passed as GROUP to `consult--read' on issue candidates and is used to group issues by their state e.g. \"OPEN\" or \"CLOSED\"."
 (let ((name (replace-regexp-in-string " " "" (format "%s" (cadr (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s"))))))))
   (if transform (substring cand) name)))
 
 (defun consult-gh--issue-group-by-repo (cand transform)
-"Grouping function for the list of items in `consult-gh-issue-list'. It groups issues by the status of the issue e.g. \"Open\"."
+"Group function for issue candidates in minibuffer for consult-gh (e.g. `consult-gh-issue-list').
+This is passed as GROUP to `consult--read' on issue candidates and is used to group issues by repository names."
 (let ((name (car (last (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s")))))))
   (if transform (substring cand) name)))
 
 (defun consult-gh--issue-browse-url-action (cand)
-"The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens the url of the issue on github in a browser. To use this as the default action in `consult-gh-issue-list', set `consult-gh-issue-action' to #'consult-gh--issue-browse-url-action."
+"Browses the url for an issue candidate, CAND, from consult-gh.
+This is an internal action function that gets a candidate, CAND, for example from `consult-gh-search-issues' and opens the url of the issue in an external browser. To use this as the default action for issues, set `consult-gh-issue-action' to #'consult-gh--issue-browse-url-action."
 (let* ((info (cdr cand))
       (repo (substring-no-properties (plist-get info :repo)))
       (issue (substring-no-properties (plist-get info :issue))))
 (consult-gh--call-process "issue" "view" "--repo" repo  "--web" issue)))
 
 (defun consult-gh--issue-view (repo issue &optional buffer)
-  "This function accepts a repo name and an issue number plus an optional buffer as input arguments and shows the preview of the issue (title and description) in that buffer. It fethces the preview from Github by `gh issue view --repo name-or-repo view --issue-number` using `consult-gh--call-process'. Then puts the response as raw text in the buffer defined by optional input arg `buffer` or in the buffer by `consult-gh-preview-buffer-name'. If `consult-gh-preview-buffer-mode' is set to either 'markdown-mode or 'org-mode, it sets the major mode of the buffer accordingly otherwise it shows the raw text in fundamental-mode.
-repo is the name of the repository where the issue belongs.
-issue is the issue number
-buffer is an optional buffer the preview should be shown in.
+  "Opens ISSUE of REPO in an emacs buffer, BUFFER.
+
+This is an internal function that takes  REPO, the name of a github repository for example \"armindarvish\consult-gh\" and ISSUE, a github issue number of that repository, and shows the contents of the issue in an emacs buffer. It fethces the preview of the ISSUE from Github by `gh issue view ISSUE --repo REPO` and puts the response as raw text in the buffer defined by the optional input arg BUFFER or if BUFFER is nil, in a buffer named appropriately from `consult-gh-preview-buffer-name'. If `consult-gh-preview-buffer-mode' is set to either 'markdown-mode or 'org-mode, it sets the major mode of the buffer accordingly otherwise it shows the raw text in fundamental-mode.
+
+REPO is the name of the repository to be previewed.
+ISSUE is the issue number
+BUFFER is an optional buffer the preview should be shown in.
+
+To use this as the default action for repos, see `consult-gh--issue-view-action'.
 "
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
         (text-main (cadr (consult-gh--call-process "issue" "view" issue "--repo" repo)))
@@ -1155,7 +1252,11 @@ buffer is an optional buffer the preview should be shown in.
     ))
 
 (defun consult-gh--issue-view-action (cand)
-   "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens a preview in an emacs buffer using `consult-gh--issue-view'."
+"Opens the preview of an issue candidate, CAND, from consult-gh in an emacs buffer.
+
+This is a wrapper function around `consult-gh--issue-view'. It parses CAND to extract relevant values (e.g. repository's name and issue number) and passes them to `consult-gh--issue-view'.
+
+To use this as the default action for consult-gh's issues, set `consult-gh-issue-action' to #'consult-gh--issue-view-action."
     (let* ((info (cdr cand))
            (repo (substring-no-properties (plist-get info :repo)))
            (issue (substring-no-properties (format "%s" (plist-get info :issue))))
@@ -1165,48 +1266,10 @@ buffer is an optional buffer the preview should be shown in.
       (rename-buffer buffername t)
       ))
 
-(defun consult-gh--pr-lookup ()
-  (lambda (sel cands &rest args)
-    (let* ((info (cdr (assoc sel cands)))
-           (title (plist-get info :title))
-           (pr (plist-get info :pr)))
-    (cons (format "%s:%s" pr title) info))))
-
-(defun consult-gh--pr-state ()
-  (lambda (action cand)
-    (let* ((preview (consult--buffer-preview))
-           )
-      (if cand
-          (pcase action
-            ('preview
-             (if cand
-                 (when-let ((repo (plist-get (cdr cand) :repo))
-                            (pr (plist-get (cdr cand) :pr))
-                            (query (plist-get (cdr cand) :query))
-                            (match-str (consult--build-args query))
-                   (buffer (get-buffer-create consult-gh-preview-buffer-name)))
-               (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (consult-gh--pr-view repo pr buffer)
-               (with-current-buffer buffer
-                 (if consult-gh-highlight-matches
-                     (cond
-                      ((listp match-str)
-                       (mapcar (lambda (item)
-                                 (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
-                      ((stringp match-str)
-                        (highlight-regexp match-str 'consult-gh-preview-match-face))
-                      )))
-               (funcall preview action
-                         buffer
-                        ))
-             )
-             )
-            ('return
-             cand)
-             )))
-      ))
-
 (defun consult-gh--pr-list-format (string input highlight)
+"Formats minibuffer candidates for pull requests (e.g. specifically for `consult-gh-pr-list').
+STRING is the return of a \"gh\" call (e.g. \"gh pr list ...\"). INPUT is the query from the user (a.k.a. command line argument passed to the gh call).
+if HIGHLIGHT is t, input is highlighted with `consult-gh-highlight-match-face' in the minibuffer."
   (let* ((parts (string-split string "\t"))
          (repo input)
          (user (consult-gh--get-username repo))
@@ -1242,6 +1305,10 @@ buffer is an optional buffer the preview should be shown in.
     (cons str (list :repo repo :user user :package package :pr pr :state state :title title :branch branch :date date :query query))))
 
 (defun consult-gh--search-prs-format (string input highlight)
+"Formats minibuffer candidates for pull requests (e.g. specifically for `consult-gh-search-prs').
+STRING is the return of a \"gh\" call (e.g. \"gh search prs ...\"). INPUT is the query from the user (a.k.a. command line argument passed to the gh call).
+if HIGHLIGHT is t, input is highlighted with `consult-gh-highlight-match-face' in the minibuffer."
+
   (let* ((parts (string-split string "\t"))
          (repo (car parts))
          (user (consult-gh--get-username repo))
@@ -1276,28 +1343,81 @@ buffer is an optional buffer the preview should be shown in.
       str)
     (cons str  (list :repo repo :user user :pr pr :state state :title title :tags tags :date date :query query))))
 
+(defun consult-gh--pr-lookup ()
+"Lookup function for pr candidates in `consult-gh' (e.g. in `consult-gh-search-prs').
+This is passed as LOOKUP to `consult--read' on pr candidates and is used to format the output when a candidate is selected."
+  (lambda (sel cands &rest args)
+    (let* ((info (cdr (assoc sel cands)))
+           (title (plist-get info :title))
+           (pr (plist-get info :pr)))
+    (cons (format "%s:%s" pr title) info))))
+
+(defun consult-gh--pr-state ()
+"State function for pull request candidates in consult-gh (e.g. in `consult-gh-search-prs').
+This is passed as STATE to `consult--read' on pr candidates and is used to preview or do other actions on the pr."
+  (lambda (action cand)
+    (let* ((preview (consult--buffer-preview))
+           )
+      (if cand
+          (pcase action
+            ('preview
+             (if cand
+                 (when-let ((repo (plist-get (cdr cand) :repo))
+                            (pr (plist-get (cdr cand) :pr))
+                            (query (plist-get (cdr cand) :query))
+                            (match-str (consult--build-args query))
+                   (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
+               (consult-gh--pr-view repo pr buffer)
+               (with-current-buffer buffer
+                 (if consult-gh-highlight-matches
+                     (cond
+                      ((listp match-str)
+                       (mapcar (lambda (item)
+                                 (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
+                      ((stringp match-str)
+                        (highlight-regexp match-str 'consult-gh-preview-match-face))
+                      )))
+               (funcall preview action
+                         buffer
+                        ))
+             )
+             )
+            ('return
+             cand)
+             )))
+      ))
+
 (defun consult-gh--pr-group-by-state (cand transform)
-"Grouping function for the list of items in `consult-gh-issue-list'. It groups issues by the status of the issue e.g. \"Open\"."
+"Group function for pull request candidates in minibuffer for consult-gh (e.g. `consult-gh-pr-list').
+This is passed as GROUP to `consult--read' on pr candidates and is used to group prs by their state e.g. \"OPEN\", \"MERGED\", or \"CLOSED\"."
 (let ((name (replace-regexp-in-string " " "" (format "%s" (cadr (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s"))))))))
   (if transform (substring cand) name)))
 
 (defun consult-gh--pr-group-by-repo (cand transform)
-"Grouping function for the list of items in `consult-gh-issue-list'. It groups issues by the status of the issue e.g. \"Open\"."
+"Group function for pull request candidates in minibuffer for consult-gh (e.g. `consult-gh-issue-list').
+This is passed as GROUP to `consult--read' on pr candidates and is used to group prs by repository names."
 (let ((name (car (last (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s")))))))
   (if transform (substring cand) name)))
 
 (defun consult-gh--pr-browse-url-action (cand)
-"The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens the url of the issue on github in a browser. To use this as the default action in `consult-gh-issue-list', set `consult-gh-issue-action' to #'consult-gh--issue-browse-url-action."
+"Browses the url for a pull request candidate, CAND, from consult-gh.
+This is an internal action function that gets a candidate, CAND, for example from `consult-gh-search-prs' and opens the url of the pr in an external browser. To use this as the default action for prs, set `consult-gh-pr-action' to #'consult-gh--pr-browse-url-action."
 (let* ((info (cdr cand))
       (repo (substring-no-properties (plist-get info :repo)))
       (pr (substring-no-properties (plist-get info :pr))))
 (consult-gh--call-process "pr" "view" "--repo" repo  "--web" pr)))
 
 (defun consult-gh--pr-view (repo pr &optional buffer)
-  "This function accepts a repo name and an issue number plus an optional buffer as input arguments and shows the preview of the issue (title and description) in that buffer. It fethces the preview from Github by `gh issue view --repo name-or-repo view --issue-number` using `consult-gh--call-process'. Then puts the response as raw text in the buffer defined by optional input arg `buffer` or in the buffer by `consult-gh-preview-buffer-name'. If `consult-gh-preview-buffer-mode' is set to either 'markdown-mode or 'org-mode, it sets the major mode of the buffer accordingly otherwise it shows the raw text in fundamental-mode.
-repo is the name of the repository where the issue belongs.
-issue is the issue number
-buffer is an optional buffer the preview should be shown in.
+"Opens pull request, PR of REPO in an emacs buffer, BUFFER.
+
+This is an internal function that takes REPO, the name of a github repository for example \"armindarvish\consult-gh\" and ISSUE, a pr number, and shows the contents of the pr in an emacs buffer. It fethces the preview of the PR from GitHub by `gh or view PR --repo REPO` and puts the response as raw text in the buffer defined by the optional input arg BUFFER, or if BUFFER is nil, in a buffer named appropriately from `consult-gh-preview-buffer-name'. If `consult-gh-preview-buffer-mode' is set to either 'markdown-mode or 'org-mode, it sets the major mode of the buffer accordingly otherwise it shows the raw text in fundamental-mode.
+
+REPO is the name of the repository to be previewed.
+PR is the pull request number
+BUFFER is an optional buffer the preview should be shown in.
+
+To use this as the default action for prs, see `consult-gh--pr-view-action'.
 "
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
         (text-main (cadr (consult-gh--call-process "pr" "view" pr "--repo" repo)))
@@ -1324,7 +1444,11 @@ buffer is an optional buffer the preview should be shown in.
     ))
 
 (defun consult-gh--pr-view-action (cand)
-   "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens a preview in an emacs buffer using `consult-gh--issue-view'."
+   "Opens the preview of a pull request candidate, CAND, from consult-gh in an emacs buffer.
+
+This is a wrapper function around `consult-gh--pr-view'. It parses CAND to extract relevant values (e.g. repository's name and pull request number) and passes them to `consult-gh--pr-view'.
+
+To use this as the default action for consult-gh's prs, set `consult-gh-pr-action' to #'consult-gh--pr-view-action."
     (let* ((info (cdr cand))
            (repo (substring-no-properties (plist-get info :repo)))
            (pr (substring-no-properties (format "%s" (plist-get info :pr))))
@@ -1334,7 +1458,39 @@ buffer is an optional buffer the preview should be shown in.
       (rename-buffer buffername t)
       ))
 
+(defun consult-gh--search-code-format (string input highlight)
+"Formats minibuffer candidates for code (e.g. for `consult-gh-search-code').
+STRING is the return of a \"gh\" call (e.g. \"gh search code ...\"). INPUT is the query from the user (a.k.a. command line argument passed to the gh call).
+if HIGHLIGHT is t, input is highlighted with `consult-gh-highlight-match-face' in the minibuffer."
+  (let* ((parts (string-split string ":"))
+         (repo (car parts))
+         (user (consult-gh--get-username repo))
+         (package (consult-gh--get-package repo))
+         (path (format "%s" (cadr parts)))
+         (url (format "repos/%s/contents/%s" repo path))
+         (path (concat "./" path))
+         (code (mapcar (lambda (x) (replace-regexp-in-string "\t" "\s\s" (replace-regexp-in-string "\n" "\\n" (format "%s" x)))) (cdr (cdr parts))))
+         (code (string-join code ":"))
+         (query input)
+         (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
+         (str (format "%s\t%s\t%s"
+                      (consult-gh--set-string-width (propertize code 'face  'consult-gh-code-face) 100)
+                      (propertize path 'face 'consult-gh-url-face)
+                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40)))
+         (str (propertize str ':repo repo ':user user ':package package ':code code ':path path ':url url ':query query))
+         )
+    (if (and consult-gh-highlight-matches highlight)
+        (cond
+         ((listp match-str)
+          (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+         ((stringp match-str)
+          (setq str (consult-gh--highlight-match match-str str t))))
+      str)
+    (cons str  (list :repo repo :user user :package package :code code :path path :url url :query query))))
+
 (defun consult-gh--code-lookup ()
+"Lookup function for code candidates in `consult-gh' (e.g. in `consult-gh-search-code').
+This is passed as LOOKUP to `consult--read' on code candidates and is used to format the output when a candidate is selected."
   (lambda (sel cands &rest args)
     (let* ((info (cdr (assoc sel cands)))
            (repo (plist-get info :repo))
@@ -1342,6 +1498,8 @@ buffer is an optional buffer the preview should be shown in.
     (cons (format "%s:%s" repo path) info))))
 
 (defun consult-gh--code-state ()
+"State function for code candidates in consult-gh (e.g. in `consult-gh-search-code').
+This is passed as STATE to `consult--read' on code candidates and is used to preview or do other actions on the code."
   (lambda (action cand)
     (let* ((preview (consult--buffer-preview))
            )
@@ -1385,41 +1543,16 @@ buffer is an optional buffer the preview should be shown in.
              )))
       ))
 
-(defun consult-gh--search-code-format (string input highlight)
-  (let* ((parts (string-split string ":"))
-         (repo (car parts))
-         (user (consult-gh--get-username repo))
-         (package (consult-gh--get-package repo))
-         (path (format "%s" (cadr parts)))
-         (url (format "repos/%s/contents/%s" repo path))
-         (path (concat "./" path))
-         (code (mapcar (lambda (x) (replace-regexp-in-string "\t" "\s\s" (replace-regexp-in-string "\n" "\\n" (format "%s" x)))) (cdr (cdr parts))))
-         (code (string-join code ":"))
-         (query input)
-         (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
-         (str (format "%s\t%s\t%s"
-                      (consult-gh--set-string-width (propertize code 'face  'consult-gh-code-face) 100)
-                      (propertize path 'face 'consult-gh-url-face)
-                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40)))
-         (str (propertize str ':repo repo ':user user ':package package ':code code ':path path ':url url ':query query))
-         )
-    (if (and consult-gh-highlight-matches highlight)
-        (cond
-         ((listp match-str)
-          (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
-         ((stringp match-str)
-          (setq str (consult-gh--highlight-match match-str str t))))
-      str)
-    (cons str  (list :repo repo :user user :package package :code code :path path :url url :query query))))
-
 (defun consult-gh--code-group (cand transform)
-"Grouping function for the list of items in `consult-gh-issue-list'. It groups issues by the status of the issue e.g. \"Open\"."
+  "Group function for code candidates in minibuffer for consult-gh (e.g. in `consult-gh-search-code').
+This is passed as GROUP to `consult--read' on code candidates and is used to group code results by repository names."
 (let ((repo (car (last (remove "" (string-split (substring-no-properties cand) "\t" t "\s*")))))
       (path (replace-regexp-in-string "\t" "" (format "%s" (cadr (remove "\t" (remove "" (string-split (substring-no-properties cand) "\t" t "\s"))))))))
   (if transform (substring cand) (format "%s -- %s" repo path))))
 
 (defun consult-gh--code-browse-url-action (cand)
-"The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens the url of the issue on github in a browser. To use this as the default action in `consult-gh-issue-list', set `consult-gh-issue-action' to #'consult-gh--issue-browse-url-action."
+"Browses the url for a code candidate, CAND, from consult-gh.
+This is an internal action function that gets a candidate, CAND, for example from `consult-gh-search-code' and opens the url of the file containing the code in an external browser. To use this as the default action for code, set `consult-gh-code-action' to #'consult-gh--code-browse-url-action."
 (let* ((info (cdr cand))
       (repo (substring-no-properties (plist-get info :repo)))
       (path (substring-no-properties (plist-get info :path)))
@@ -1427,7 +1560,11 @@ buffer is an optional buffer the preview should be shown in.
 (browse-url url)))
 
 (defun consult-gh--code-view-action (cand)
-  "Default action to run on selected item in `consult-gh'."
+  "Opens code candidate, CAND, from consult-gh in an emacs buffer.
+
+This is a wrapper function around `consult-gh--files-view'. It parses CAND to extract relevant values (e.g. repository, file path, url, ...) and passes them to `consult-gh--files-view'.
+
+To use this as the default action on consult-gh's code candidates, set `consult-gh-code-action' to #'consult-gh--code-view-action."
     (let* ((info (cdr cand))
            (repo (plist-get info :repo))
            (branch (or (plist-get info :branch) "HEAD"))
@@ -1439,102 +1576,11 @@ buffer is an optional buffer the preview should be shown in.
       (consult-gh--files-view repo path url nil nil code)
       ))
 
-(defun consult-gh--async-lookup ()
-  (lambda (sel cands &rest args)
-    (assoc sel cands)))
-
-(defun consult-gh--async-state ()
-  (lambda (action cand)
-    (let* ((preview (consult--buffer-preview))
-           )
-      (if cand
-          (pcase action
-            ('preview
-             )
-            ('return
-             cand)
-             )))
-      ))
-
-(defun consult-gh--async-format (string input)
-  (let* ((string (format "%s" string))
-         (str (consult-gh--highlight-match input string t))
-         )
-    (cons str (list))))
-
-(defun consult-gh--async-transform (async builder)
-  "Return ASYNC function highlighting grep match results.
-BUILDER is the command line builder function."
-  (let (input)
-    `(lambda (action)
-      (cond
-       ((stringp action)
-        (setq input action)
-        (funcall ,async action))
-       (t (mapcar (lambda (string)
-          (consult-gh--async-format string input))
-        (funcall ,async action)))
-       ))))
-
-(defun consult-gh--async-group (cand transform)
-"Grouping function for the list of items in `consult-gh-issue-list'. It groups issues by the status of the issue e.g. \"Open\"."
-(let ((name (replace-regexp-in-string " " "" (format "%s" (car (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s"))))))))
-  (if transform (substring cand) name)))
-
-(defun consult-gh--async-builder (input)
-  (pcase-let*
-      ((cmd (consult--build-args consult-gh-args))
-       (`(,arg \, opts) (consult--command-split input))
-       (flags (append cmd opts)))
-    (unless (or (member "-L" flags) (member "--limit" flags))
-      (cond
-       ((and (member "search" flags) (member "repos" flags))
-        (setq opts
-              (append opts
-                      (list "-L" (format "%s" consult-gh-repo-maxnum)))))
-       ((and (member "search" flags) (member "issues" flags))
-        (setq opts
-              (append opts
-                      (list "-L" (format "%s" consult-gh-issue-maxnum)))))))
-    (pcase-let*
-        ((`(,re \, hl) (funcall consult--regexp-compiler arg 'emacs t)))
-      (when re
-        (cons
-         (append cmd (list (consult--join-regexps re 'emacs)) opts) hl)))))
-
-(defun consult-gh--async (prompt builder initial category)
-  (consult--read
-   (consult--async-command builder
-     (consult-gh--async-transform builder)
-     ;; (consult--async-highlight builder)
-     ;; (consult--async-map (lambda (x) (consult-gh--async-highlight-match x)))
-     ;;(consult--async-map (lambda (x) (consult-gh--async-format-repo x)))
-     ;; ;;(consult--grep-format builder)
-     ;;(consult--async-transform consult-gh--async-format-repo)
-     )
-   :prompt prompt
-   ;;:lookup (consult-gh--async-lookup)
-   ;;:state (funcall #'consult-gh--async-state)
-   :initial (consult--async-split-initial initial)
-   ;;:group #'consult-gh--repo-group
-   :add-history (consult--async-split-thingatpt 'symbol)
-   :require-match t
-   :category (make-symbol (concat "consult-gh-" category))
-   :sort nil))
-
-(defun consult-gh-async (&optional arg1 arg2 initial &rest args)
-  (interactive)
-   (let* ((arg1 (or arg1 (completing-read "Select Action: " '("repo" "issues" "search"))))
-         (arg2 (or arg2 (if (equal arg1 "search") (completing-read "Select Target: " '("repos" "issues")) nil)))
-         ;; (rest_args (if rest_args (if (listp rest_args) rest_args (list rest_args)) nil))
-         (consult-gh-args (append consult-gh-args (list arg1 arg2)))
-         )
-     (consult-gh--async "Search Repo:  " #'consult-gh--async-builder initial arg2))
-  )
-
 (defun consult-gh--repo-list-transform (async builder)
-  "Return ASYNC function highlighting grep match results.
-BUILDER is the command line builder function."
+  "Adds annotation to minibuffer candiates for `consult-gh-repo-list'.
+
+Returns ASYNC function after formating results with `consult-gh--repo-format'.
+BUILDER is the command line builder function (e.g. `consult-gh--repo-list-builder')."
   (let (input)
     `(lambda (action)
       (cond
@@ -1547,7 +1593,10 @@ BUILDER is the command line builder function."
        ))))
 
 (defun consult-gh--repo-list-builder (input)
-  "Build gh command line for searching issues from the input string"
+  "Build gh command line for listing repositories of a GitHub user, INPUT (e.g. `gh repo list INPUT)`.
+
+INPUT must be the name of a github user as a string e.g. \"armindarvish\"."
+
   (pcase-let* ((consult-gh-args (append consult-gh-args'("repo" "list")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
@@ -1562,9 +1611,11 @@ BUILDER is the command line builder function."
               hl)))))
 
 (defun consult-gh--repo-list (org)
-"Get a list of repos of \"organization\" org and format each as a text with properties to pass to consult. It fetches a list of repos by runing \"gh repo list org\" and returns a list of propertized strings containing name of repos and their information such as visibility date updated, etc.
+"Lists repos of ORG synchronously.
 
-org is the name of a github account in string format e.g. \"armindarvish\"."
+This runs the command line `gh repo list ORG` to get a list of all repositories belonging to the GitHub user, ORG, and returns the reults in a list. Each candidate is formatted by `consult-gh--repo-format'.
+
+ORG must be the name of a github account as a string e.g. \"armindarvish\"."
   (let* ((maxnum (format "%s" consult-gh-repo-maxnum))
          (repolist  (or (consult-gh--command-to-string "repo" "list" org "--limit" maxnum) ""))
          (repos (split-string repolist "\n"))
@@ -1573,6 +1624,16 @@ org is the name of a github account in string format e.g. \"armindarvish\"."
     )
 
 (defun consult-gh--async-repo-list (prompt builder &optional initial)
+"Lists repos of GitHub users/organizations Asynchronously.
+
+This is a non-interactive internal function. For the interactive version see `consult-gh-repo-list'.
+
+It runs the command line from `consult-gh--repo-list-builder' in an async process and returns the results (list of repos of a user) as a completion tabe in minibuffer that will be passed to `consult--read'. The completion table gets dynamically updated as the user types in the minibuffer. Each candidate in the minibuffer is formatted by `consult-gh--repo-list-transform' to add annotation and otther info to the candidate.
+
+PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
+BUILDER is an async builder function passed to `consult--async-command'.
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
+"
   (let ((candidates (consult--async-command builder
                       (consult-gh--repo-list-transform builder)
                       )))
@@ -1592,9 +1653,27 @@ org is the name of a github account in string format e.g. \"armindarvish\"."
                    :sort nil)))
 
 (defun consult-gh-repo-list (&optional initial noaction)
-  "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
-The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
-It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
+  "Interactive minibuffer query to list repos of GitHub users/organizations Asynchronously.
+
+This is an interactive wrapper function around `consult-gh--async-repo-list'.
+
+It queries the user to enter the name of a GitHub organizaton/username in the minibuffer, then fetches a list of repositories for the entered username and present them as a minibuffer completion table for selection. The list of candidates in the completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - the candidate is returned if NOACTION is non-nil
+ or
+ - the candidate is passed to `consult-gh-repo-action' if NOACTION is nil.
+
+Additional commandline arguments can be passed in the minibuffer entry by typing `--` followed by command line arguments. For example the user can enter the following in the minibuffer:
+armindarvish -- -L 100
+and the async process will run `gh repo list armindarvish -L 100` which changes the limit for the maximum number of results to fetch to 100.
+
+User selection is tracked in `consult-gh--known-orgs-list' for quick access (added to future history list) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult-gh--async-repo-list').
+
+For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult.
+"
   (interactive)
   (let ((sel
     (if current-prefix-arg
@@ -1613,8 +1692,10 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
       (funcall consult-gh-repo-action sel))))
 
 (defun consult-gh--search-repos-transform (async builder)
-  "Return ASYNC function highlighting grep match results.
-BUILDER is the command line builder function."
+"Adds annotation to minibuffer candiates for `consult-gh-search-repos'.
+
+Returns ASYNC function after formating results with `consult-gh--repo-format'.
+BUILDER is the command line builder function (e.g. `consult-gh--search-repos-builder')."
   (let (input)
     `(lambda (action)
       (cond
@@ -1627,7 +1708,8 @@ BUILDER is the command line builder function."
        ))))
 
 (defun consult-gh--search-repos-builder (input)
-  "Build gh command line for searching issues from the input string"
+"Builds gh command line for searching repositories with the query INPUT (e.g. `gh search repos INPUT`)."
+
   (pcase-let* ((consult-gh-args (append consult-gh-args '("search" "repos")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
@@ -1642,6 +1724,17 @@ BUILDER is the command line builder function."
               hl)))))
 
 (defun consult-gh--async-search-repos (prompt builder &optional initial)
+"Interactive minibuffer query to list results of `gh search repos ...` Asynchronously.
+
+This is a non-interactive internal function. For the interactive version see `consult-gh-search-repos'.
+
+It runs the command line from `consult-gh--search-repos-builder' in an async process and returns the results (list of search results for the entry) as a completion tabe in minibuffer that will be passed to `consult--read'. The completion table gets dynamically updated as the user types in the minibuffer. Each candidate in the minibuffer is formatted by `consult-gh--search-repos-transform' to add annotation and other info to the candidate.
+
+PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
+BUILDER is an async builder function passed to `consult--async-command'.
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
+"
+
   (consult--read
    (consult--async-command builder
      (consult-gh--search-repos-transform builder)
@@ -1661,9 +1754,25 @@ BUILDER is the command line builder function."
    :sort nil))
 
 (defun consult-gh-search-repos (&optional initial noaction)
-  "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
-The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
-It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
+    "Lists results of `gh search repos` Asynchronously.
+
+This is an interactive wrapper function around `consult-gh--async-search-repos'. It queries the user to enter the name of a GitHub organizaton/username in the minibuffer, then fetches a list of repositories for the entered username and present them as a minibuffer completion table for selection. The list of candidates in the completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - the candidate is returned if NOACTION is non-nil
+ or
+ - the candidate is passed to `consult-gh-repo-action' if NOACTION is nil.
+
+Additional commandline arguments can be passed in the minibuffer entry by typing `--` followed by command line arguments. For example the user can enter the following in the minibuffer:
+consult-gh -- -L 100
+and the async process will run `gh search repos -L 100` which changes the limit for the maximum number of results to fetch to 100.
+
+User selection is tracked in `consult-gh--known-orgs-list' for quick access (added to future history list) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult-gh--async-repo-list').
+
+For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult.
+"
   (interactive)
   (let ((sel
          (consult-gh--async-search-repos "Search Repos:  " #'consult-gh--search-repos-builder initial)))
@@ -1681,9 +1790,8 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
         sel))))
 
 (defun consult-gh-orgs (&optional orgs)
-"Runs the interactive command in the minibuffer that queries the user for name of organizations (a.k.a. GitHub usernames) and returns a list of repositories of those organizations for further actions.
-The user can provide multiple orgs by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh repo list name-of-the-org`) to fetch the list of repositories of those accounts and show them back to the user.
-It uses `consult-gh--make-source-from-org' to create the list of items for consult and saves the history in `consult-gh--repos-history'. It also keep tracks of previously selected orgs by the user in `consult-gh--known-orgs-list' and offers them as possible entries in future runs of `consult-gh-orgs'."
+"List repositories of ORGS.
+This is a wrapper fucntion around `consult-gh--repo-list'. If ORGS is nil, this simply calls `consult-gh--repo-list'. If ORGS is a list, then it runs `consult-gh--repo-list' on every member of ORGS and returns the results (repositories of all ORGS) to `consult--read'."
   (interactive)
   (if (not orgs)
       (consult-gh-repo-list)
@@ -1700,25 +1808,31 @@ It uses `consult-gh--make-source-from-org' to create the list of items for consu
                     ))))
 
 (defun consult-gh-default-repos ()
-"Runs the interactive command consult `consult-gh-orgs' with the list of organizations (a.k.a. Github usernames) stored in `consult-gh-default-orgs-list'. This is a useful command for quickly fetching a list of personal Github Repositories or any other favorite accounts whose repositories are frequently visited."
+  "List repositories of default orgs (a.k.a. `consult-gh-default-orgs-list').
+
+This simply passes `consult-gh-default-orgs-list' to `consult-gh-orgs', a useful command for quickly fetching a list of personal Github Repositories or any other favorite accounts whose repositories are frequently visited."
   (interactive)
-(consult-gh-orgs consult-gh-default-orgs-list))
+  (consult-gh-orgs consult-gh-default-orgs-list))
 
 (defun consult-gh-repo-fork (&optional repos)
-"Interactively forks the repository defined by `repo` to the current user account logged in with `gh` command line tool after confirming name. It uses `gh fork repo ...`."
+  "Interactively fork REPOS.
+ It uses `gh fork repo ...` to fork a repository.
+It uses the internal function `consult-gh--repo-fork' which in turn runs `gh fork repo ...`.
+If REPOS not supplied, interactively asks user for those values."
   (interactive)
   (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
          (repos (or repos (substring-no-properties (car (consult-gh-search-repos nil t))))))
     (if (stringp repos)
-         (setq repos (list repos)))
+        (setq repos (list repos)))
     (mapcar (lambda (repo)
               (let* ((package (car (last (split-string repo "\/"))))
                      (name (if consult-gh-confirm-name-before-fork (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
-  (consult-gh--repo-fork repo name))) repos)
+                (consult-gh--repo-fork repo name))) repos)
     ))
 
 (defun consult-gh-repo-clone (&optional repos targetdir)
-"Interactively clones the repo to targetdir directory. It uses the internal function `consult-gh--repo-clone' which in turn runs `gh clone repo ...`.
+"Interactively clone REPOS to TARGETDIR.
+It uses the internal function `consult-gh--repo-clone' which in turn runs `gh clone repo ...`.
 If repo or targetdir are not supplied, interactively asks user for those values."
   (interactive)
   (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
@@ -1748,7 +1862,9 @@ BUILDER is the command line builder function."
        ))))
 
 (defun consult-gh--issue-list-builder (input)
-  "Build gh command line for searching issues from the input string"
+  "Builds gh command line for listing issues of a GitHub repository, INPUT (e.g. `gh issue list --repo INPUT`).
+
+INPUT must be the full name of a github repository as a string e.g. \"armindarvish\consult-gh\"."
   (pcase-let* ((consult-gh-args (append consult-gh-args '("issue" "list" "--repo")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
@@ -1765,6 +1881,16 @@ BUILDER is the command line builder function."
               hl)))))
 
 (defun consult-gh--async-issue-list (prompt builder &optional initial)
+"Lists issues GitHub repos Asynchronously.
+
+This is a non-interactive internal function. For the interactive version see `consult-gh-issue-list'.
+
+This runs the command line from `consult-gh--repo-list-builder' in an async process and returns the results (list of issues for a repository) as a completion tabe in minibuffer that will be passed to `consult--read'. The completion table gets dynamicaly updated as the user types in the minibuffer to change the entry. Each candidate in the minibuffer is formatted by `consult-gh--issue-list-transform' to add annotation and otther info to the candidate.
+
+PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
+BUILDER is an async builder function passed to `consult--async-command'.
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
+"
   (consult--read
    (consult--async-command builder
      (consult-gh--issue-list-transform builder)
@@ -1784,9 +1910,27 @@ BUILDER is the command line builder function."
    :sort nil))
 
 (defun consult-gh-issue-list (&optional initial noaction)
-  "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
-The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
-It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
+  "Lists issues of GitHub repository Asynchronously.
+With prefix ARG, first search for a repo using `consult-gh-search-repos', then list issues of that selected repo with `consult-gh--async-issue-list'.
+
+This is an interactive wrapper function around `consult-gh--async-issue-list'.
+
+It queries the user to enter the full name of a GitHub repository in the minibuffer (expected format is `OWNER/REPO`), then fetches the list of issues of that repository and present them as a minibuffer completion table for selection. The list of candidates in the completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - the candidate is returned if NOACTION is non-nil
+ or
+ - the candidate is passed to `consult-gh-issue-action' if NOACTION is nil.
+
+Additional commandline arguments can be passed in the minibuffer entry by typing `--` followed by command line arguments. For example the user can enter the following in the minibuffer:
+armindarvish/consult-gh -- -L 100
+and the async process will run `gh issue list --repo armindarvish/consult-gh -L 100` which changes the limit for the maximum number of results to fetch to 100.
+
+User selection is tracked in `consult-gh--known-repos-list' for quick access (added to future history list) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult-gh--async-issue-list').
+
+For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
   (let ((sel
          (if current-prefix-arg
@@ -1803,8 +1947,10 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
     (funcall consult-gh-issue-action sel))))
 
 (defun consult-gh--search-issues-transform (async builder)
-  "Return ASYNC function highlighting grep match results.
-BUILDER is the command line builder function."
+  "Adds annotation to minibuffer candiates for `consult-gh-search-issues'.
+
+Returns ASYNC function after formating results with `consult-gh--search-issues-format'.
+BUILDER is the command line builder function (e.g. `consult-gh--search-issues-builder')."
   (let (input)
     `(lambda (action)
       (cond
@@ -1817,8 +1963,8 @@ BUILDER is the command line builder function."
        ))))
 
 (defun consult-gh--search-issues-builder (input)
-  "Build gh command line for searching issues from the input string"
-  (pcase-let* ((consult-gh-args (append consult-gh-args'("search" "issues")))
+"Builds gh command line for searching issues with the query INPUT (e.g. `gh search issues INPUT`)."
+  (pcase-let* ((consult-gh-args (append consult-gh-args '("search" "issues")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
                (flags (append cmd opts)))
@@ -1832,6 +1978,16 @@ BUILDER is the command line builder function."
               hl)))))
 
 (defun consult-gh--async-search-issues (prompt builder &optional initial)
+  "Lists results of `gh search issues ...` Asynchronously.
+
+This is a non-interactive internal function. For the interactive version see `consult-gh-search-issues'.
+
+This runs the command line from `consult-gh--search-issues-builder' in an async process and returns the results (list of search results for the entry) as a completion tabe in minibuffer that will be passed to `consult--read'. The completion table gets dynamically updated as the user types in the minibuffer. Each candidate in the minibuffer is formatted by `consult-gh--search-issues-transform' to add annotation and other info to the candidate.
+
+PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
+BUILDER is an async builder function passed to `consult--async-command'.
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
+"
   (consult--read
    (consult--async-command builder
      (consult-gh--search-issues-transform builder)
@@ -1844,22 +2000,36 @@ BUILDER is the command line builder function."
    :require-match t
    :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
                         consult-gh--known-repos-list
-                                  )
+                        )
    :history '(:input consult-gh--search-issues-history)
    :category 'consult-gh-issues
    :preview-key consult-gh-preview-key
    :sort nil))
 
 (defun consult-gh-search-issues (&optional initial repo noaction)
-  "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
-The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
-It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
+  "Lists results of `gh search issues ...` Asynchronously.
+With prefix ARG, first search for a repo using `consult-gh-search-repos', then search issues of only that selected repo.
+
+This is an interactive wrapper function around `consult-gh--async-search-issues'. It queries the user for a search term in the minibuffer, then fetches the list of possible GitHub issue candidates for the entered query and presents them as a minibuffer completion table for selection. The list of candidates in the completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - the candidate is returned if NOACTION is non-nil
+ or
+ - the candidate is passed to `consult-gh-issue-action' if NOACTION is nil.
+
+Additional commandline arguments can be passed in the minibuffer entry by typing `--` followed by command line arguments. For example the user can enter the following in the minibuffer:
+consult-gh -- -L 100
+and the async process will run `gh search issues consult-gh -L 100` which changes the limit for the maximum number of results to fetch to 100.
+
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult-gh--async-repo-list').
+
+For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
   (let ((sel
   (if current-prefix-arg
-    (let ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
-      (consult-gh-issue-list (concat repo (consult--async-split-initial initial)))
-      )
+    (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
+      (consult-gh-args (append consult-gh-args '("--repo " (format "%s" repo)))))
+      (consult-gh--async-search-issues "Search Issues:  " #'consult-gh--search-issues-builder initial))
   (consult-gh--async-search-issues "Search Issues:  " #'consult-gh--search-issues-builder initial))))
     ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
@@ -1886,7 +2056,9 @@ BUILDER is the command line builder function."
        ))))
 
 (defun consult-gh--pr-list-builder (input)
-  "Build gh command line for searching issues from the input string"
+"Builds gh command line for listing pull requests of a GitHub repository, INPUT (e.g. `gh pr list --repo INPUT`).
+
+INPUT must be the full name of a github repository as a string e.g. \"armindarvish\consult-gh\"."
   (pcase-let* ((consult-gh-args (append consult-gh-args '("pr" "list" "--repo")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
@@ -1903,6 +2075,16 @@ BUILDER is the command line builder function."
               hl)))))
 
 (defun consult-gh--async-pr-list (prompt builder &optional initial)
+"Lists pull requests of GitHub repos Asynchronously.
+
+This is a non-interactive internal function. For the interactive version see `consult-gh-pr-list'.
+
+This runs the command line from `consult-gh--pr-list-builder' in an async process and returns the results (list of issues for a repository) as a completion tabe in minibuffer that will be passed to `consult--read'. The completion table gets dynamicaly updated as the user types in the minibuffer to change the entry. Each candidate in the minibuffer is formatted by `consult-gh--pr-list-transform' to add annotation and other relevant info to the candidate.
+
+PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
+BUILDER is an async builder function passed to `consult--async-command'.
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
+"
   (consult--read
    (consult--async-command builder
      (consult-gh--pr-list-transform builder)
@@ -1922,9 +2104,27 @@ BUILDER is the command line builder function."
    :sort nil))
 
 (defun consult-gh-pr-list (&optional initial noaction)
-  "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
-The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
-It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
+  "Lists pull requests of GitHub repository Asynchronously.
+With prefix ARG, first search for a repo using `consult-gh-search-repos', then list prs of that selected repo with `consult-gh--async-pr-list'.
+
+This is an interactive wrapper function around `consult-gh--async-pr-list'.
+
+It queries the user to enter the full name of a GitHub repository in the minibuffer (expected format is `OWNER/REPO`), then fetches the list of pull requests for that repository and presents them as a minibuffer completion table for selection. The list of candidates in the completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - the candidate is returned if NOACTION is non-nil
+ or
+ - the candidate is passed to `consult-gh-pr-action' if NOACTION is nil.
+
+Additional commandline arguments can be passed in the minibuffer entry by typing `--` followed by command line arguments. For example the user can enter the following in the minibuffer:
+armindarvish/consult-gh -- -L 100
+and the async process will run `gh pr list --repo armindarvish/consult-gh -L 100` which changes the limit for the maximum number of results to fetch to 100.
+
+User selection is tracked in `consult-gh--known-repos-list' for quick access (added to future history list) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult-gh--async-issue-list').
+
+For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
   (let ((sel
          (if current-prefix-arg
@@ -1941,8 +2141,10 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
       (funcall consult-gh-pr-action sel))))
 
 (defun consult-gh--search-prs-transform (async builder)
-  "Return ASYNC function highlighting grep match results.
-BUILDER is the command line builder function."
+  "Adds annotation to minibuffer candiates for `consult-gh-search-prs'.
+
+Returns ASYNC function after formating results with `consult-gh--search-prs-format'.
+BUILDER is the command line builder function (e.g. `consult-gh--search-prs-builder')."
   (let (input)
     `(lambda (action)
       (cond
@@ -1955,7 +2157,7 @@ BUILDER is the command line builder function."
        ))))
 
 (defun consult-gh--search-prs-builder (input)
-  "Build gh command line for searching issues from the input string"
+"Builds gh command line for searching pull requests with the query INPUT (e.g. `gh search prs INPUT`)."
   (pcase-let* ((consult-gh-args (append consult-gh-args '("search" "prs")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
@@ -1970,6 +2172,16 @@ BUILDER is the command line builder function."
               hl)))))
 
 (defun consult-gh--async-search-prs (prompt builder &optional initial)
+"Lists results of `gh search prs ...` Asynchronously.
+
+This is a non-interactive internal function. For the interactive version see `consult-gh-search-prs'.
+
+This runs the command line from `consult-gh--search-prs-builder' in an async process and returns the results (list of search results for the entry) as a completion tabe in minibuffer that will be passed to `consult--read'. The completion table gets dynamically updated as the user types in the minibuffer. Each candidate in the minibuffer is formatted by `consult-gh--search-prs-transform' to add annotation and other info to the candidate.
+
+PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
+BUILDER is an async builder function passed to `consult--async-command'.
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
+"
   (consult--read
    (consult--async-command builder
      (consult-gh--search-prs-transform builder)
@@ -1987,17 +2199,31 @@ BUILDER is the command line builder function."
    :sort nil))
 
 (defun consult-gh-search-prs (&optional initial repo noaction)
-  "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
-The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
-It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
+  "Lists results of `gh search prs ...` Asynchronously.
+With prefix ARG, first search for a repo using `consult-gh-search-repos', then search prs of only that selected repo.
+
+This is an interactive wrapper function around `consult-gh--async-search-prs'. It queries the user for a search term in the minibuffer, then fetches the list of possible GitHub pr candidates for the entered query and presents them as a minibuffer completion table for selection. The list of candidates in the completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - the candidate is returned if NOACTION is non-nil
+ or
+ - the candidate is passed to `consult-gh-pr-action' if NOACTION is nil.
+
+Additional commandline arguments can be passed in the minibuffer entry by typing `--` followed by command line arguments. For example the user can enter the following in the minibuffer:
+consult-gh -- -L 100
+and the async process will run `gh search prs consult-gh -L 100` which changes the limit for the maximum number of results to fetch to 100.
+
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult-gh--async-repo-list').
+
+For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
   (let ((sel
          (if current-prefix-arg
-             (let ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
-               (consult-gh-pr-list (concat repo (consult--async-split-initial initial)))
-               )
+             (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
+                    (consult-gh-args (append consult-gh-args '("--repo " (format "%s" repo)))))
+               (consult-gh--async-search-prs "Search Pull-Requests:  " #'consult-gh--search-prs-builder initial))
            (consult-gh--async-search-prs "Search Pull-Requests:  " #'consult-gh--search-prs-builder initial))))
-     ;;add org and repo to known lists
+    ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
     (when-let ((username (plist-get (cdr sel) :user)))
@@ -2008,8 +2234,10 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
       )))
 
 (defun consult-gh--search-code-transform (async builder)
-  "Return ASYNC function highlighting grep match results.
-BUILDER is the command line builder function."
+  "Adds annotation to minibuffer candiates for `consult-gh-search-code'.
+
+Returns ASYNC function after formating results with `consult-gh--search-code-format'.
+BUILDER is the command line builder function (e.g. `consult-gh--search-code-builder')."
   (let (input)
     `(lambda (action)
       (cond
@@ -2022,7 +2250,7 @@ BUILDER is the command line builder function."
        ))))
 
 (defun consult-gh--search-code-builder (input)
-  "Build gh command line for searching issues from the input string"
+"Builds gh command line for searching code with the query INPUT (e.g. `gh search code INPUT`)."
   (pcase-let* ((consult-gh-args (append consult-gh-args '("search" "code")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
@@ -2037,6 +2265,15 @@ BUILDER is the command line builder function."
               hl)))))
 
 (defun consult-gh--async-search-code (prompt builder &optional initial)
+  "Lists results of `gh search code ...` Asynchronously.
+
+This is a non-interactive internal function. For the interactive version see `consult-gh-search-code'.
+
+This runs the command line from `consult-gh--search-code-builder' in an async process and returns the results (list of search results for the entry) as a completion tabe in minibuffer that will be passed to `consult--read'. The completion table gets dynamically updated as the user types in the minibuffer. Each candidate in the minibuffer is formatted by `consult-gh--search-code-transform' to add annotation and other info to the candidate.
+
+PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
+BUILDER is an async builder function passed to `consult--async-command'.
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)"
   (consult--read
    (consult--async-command builder
      (consult-gh--search-code-transform builder)
@@ -2054,16 +2291,31 @@ BUILDER is the command line builder function."
    :sort nil))
 
 (defun consult-gh-search-code (&optional initial repo noaction)
-  "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
-The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
-It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
+  "Lists results of `gh search code ...` Asynchronously.
+With prefix ARG, first search for a repo using `consult-gh-search-repos', then search for code only on that selected repo.
+
+This is an interactive wrapper function around `consult-gh--async-search-code'. It queries the user for a search term in the minibuffer, then fetches the list of possible GitHub code candidates for the entered query and presents them as a minibuffer completion table for selection. The list of candidates in the completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - the candidate is returned if NOACTION is non-nil
+ or
+ - the candidate is passed to `consult-gh-pr-action' if NOACTION is nil.
+
+Additional commandline arguments can be passed in the minibuffer entry by typing `--` followed by command line arguments. For example the user can enter the following in the minibuffer:
+react -- -L 100
+and the async process will run `gh search code react -L 100` which changes the limit for the maximum number of results to fetch to 100.
+
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult-gh--async-search-code').
+
+For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
   (let ((sel
          (if current-prefix-arg
-             (let ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
-               )
+             (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
+                    (consult-gh-args (append consult-gh-args '("--repo " (format "%s" repo)))))
+               (consult-gh--async-search-code "Search Code:  " #'consult-gh--search-code-builder initial))
            (consult-gh--async-search-code "Search Code:  " #'consult-gh--search-code-builder initial))))
-     ;;add org and repo to known lists
+    ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
     (when-let ((username (plist-get (cdr sel) :user)))
@@ -2073,10 +2325,17 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
       (funcall consult-gh-code-action sel)
       )))
 
-(defun consult-gh-find-file (&optional repo branch noaction)
-  "Runs the interactive command in the minibuffer that queries the user for name of repos in the format `OWNER/REPO` e.g. armindarvish/consult-gh as well as a string as search term and returns the list of searhc matches for the string in issues of thae repos for further actions such as viewing in emacs or the browser.
-The user can provide multiple repos by using the `consult-gh-crm-separator' similar to how `crm-separator' works in `completing-read-multiple'. Under the hood this command is using `consult' and particularly `consult--multi', which in turn runs macros of `completing-read' and passes the results to the GitHub command-line tool `gh` (e.g. by runing `gh search issues string --repo name-of-the-repo`) to search the issues for particular repositories and shows them back to the user.
-It uses `consult-gh--make-source-from-search-issues' to create the list of items for consult and saves the history in `consult-gh--issues-history'. It also keep tracks of previously selected repos by the user in `consult-gh--known-repos-list' and offers them as possible entries in future runs of `consult-gh-search-issues'."
+(defun consult-gh-find-file (&optional repo branch initial noaction)
+  "Interactively find files of a REPO in BRANCH.
+
+Queries the user for name of a REPO (expected format `OWNER/REPO` e.g. armindarvish/consult-gh), then fetches all the branches on that repo and asks the user to select one BRANCH. Then presents the file contents of the REPO and BRANCH for selection.
+
+Upon selection of a candidate either
+ - the candidate is returned if NOACTION is non-nil
+ or
+ - the candidate is passed to `consult-gh-file-action' if NOACTION is nil.
+
+INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult-read')"
   (interactive)
   (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
          (branch (or branch (format "%s" (cdr (consult-gh--read-branch repo)))))
@@ -2093,6 +2352,7 @@ It uses `consult-gh--make-source-from-search-issues' to create the list of items
                              :history 'consult-gh--files-history
                              :category 'consult-gh-files
                              :preview-key consult-gh-preview-key
+                             :initial initial
                              )))
 
     ;;add org and repo to known lists
