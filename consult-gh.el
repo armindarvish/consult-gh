@@ -15,6 +15,7 @@
 ;;; Code:
 
 ;;; Requirements
+
 (eval-when-compile
 (require 'consult)
 (require 'json)
@@ -23,6 +24,7 @@
 (require 'crm)
 
 ;;; Group
+
 (defgroup consult-gh nil
   "Consulting GitHub CLI"
   :group 'convenience
