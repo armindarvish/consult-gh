@@ -575,7 +575,7 @@ If there are erros passes them to *Messages*."
 "Splits repository's string to get username and packagename.
 Returns a list where CAR is the user's name and CADR is the package name."
   (let ((separators (or separators "\/")))
-  (string-split repo "\/")))
+  (string-split repo separators)))
 
 (defun consult-gh--get-username (repo)
 "Returns the user name of REPO
@@ -1597,7 +1597,7 @@ BUILDER is the command line builder function (e.g. `consult-gh--repo-list-builde
 
 INPUT must be the name of a github user as a string e.g. \"armindarvish\"."
 
-  (pcase-let* ((consult-gh-args (append consult-gh-args'("repo" "list")))
+  (pcase-let* ((consult-gh-args (append consult-gh-args '("repo" "list")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
                (flags (append cmd opts)))
