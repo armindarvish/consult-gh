@@ -1,8 +1,12 @@
 # Compiled
 *.elc
 
+#Autoloads
+*-autoloads.el
+
 # Packaging
 .cask
+*-pkg.el
 
 # Backup files
 *~
