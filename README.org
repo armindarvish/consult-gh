@@ -358,6 +358,9 @@ Pull requests can be searched similary by using =consult-gh-search-prs=.
 ** Searching for code
 In the screenshot below, I use =consult-gh-search-code= to search for some code on github. For example I search for =deque=, then I add some command line arguments to limit the search to python files only (e.g. =deque -- --language==python=). When a preview is opened, consult-gh open the file containing the code and tries to find the region where the code is. This enables the user to interactively use the github code search, find relevant files and jump right to where the relevant code is used in the file.
 
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-code.gif]]
 
 
@@ -369,6 +372,9 @@ Consult-GH also provides embark integration defined in =consult-gh-embark.el= If
 ** Magit/Forge Integration
 If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub repositories, you can use the =consult-gh-forge= to directly open issues in a magit/forge buffer. In addition, you can edit issues in a forge buffer as you would normally do by =forge-edit-post=, =forge-create-post=, etc. Here it is in action:
 
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-forge.gif]]
 
 *** Set Up and Customization of Forge Integration
@@ -403,7 +409,7 @@ This variable sets the maximum time in *seconds* that =consult-gh-forge= tries t
 
 
 ** Transient Menu
-After the major update on October 2023, consult-gh now has a transient menu. It can be accessed by running =M-x consult-gh= after loading consult-gh-transient module. Just make sure that the transient package is installed beofre loading consult-gh-transient.
+After the major update on October 2023, consult-gh now has a transient menu. It can be accessed by running =M-x consult-gh= after loading consult-gh-transient module. Just make sure that the transient package is installed before loading consult-gh-transient.
 
 #+begin_src emacs-lisp
 (use-package consult-gh
@@ -411,15 +417,15 @@ After the major update on October 2023, consult-gh now has a transient menu. It 
   :after forge transient
   :config
   (require 'consult-gh-embark)
-  (require 'consult-gh-forge)
   (require 'consult-gh-transient)
-  (setq consult-gh-preview-key "M-o")
-  (setq consult-gh-repo-action #'consult-gh--repo-browse-files-action)
-  (setq consult-gh-file-action #'consult-gh--files-view-action)
-  (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action) ;;this enables opening issues in magit/forge buffer
-  (setq consult-gh-forge-timeout-seconds 20) ;;maximum time inseconds for consult-gh to try opening issuers in forge, and then reverts back to opening in normal emacs buffer with consult-gh-issue--view.
 )
 #+end_src
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-transient.gif]]
+
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]] and see if there is an existing solution or add relevant comments and discussion under the same issue. If not file a new issue following these steps:
 
