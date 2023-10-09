@@ -401,6 +401,25 @@ With =consult-gh-forge=, you get one more "customization" variable as well:
 **** =consult-gh-forge-timeout-seconds=
 This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before the reaching the timeout time!
 
+
+** Transient Menu
+After the major update on October 2023, consult-gh now has a transient menu. It can be accessed by running =M-x consult-gh= after loading consult-gh-transient module. Just make sure that the transient package is installed beofre loading consult-gh-transient.
+
+#+begin_src emacs-lisp
+(use-package consult-gh
+  :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+  :after forge transient
+  :config
+  (require 'consult-gh-embark)
+  (require 'consult-gh-forge)
+  (require 'consult-gh-transient)
+  (setq consult-gh-preview-key "M-o")
+  (setq consult-gh-repo-action #'consult-gh--repo-browse-files-action)
+  (setq consult-gh-file-action #'consult-gh--files-view-action)
+  (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action) ;;this enables opening issues in magit/forge buffer
+  (setq consult-gh-forge-timeout-seconds 20) ;;maximum time inseconds for consult-gh to try opening issuers in forge, and then reverts back to opening in normal emacs buffer with consult-gh-issue--view.
+)
+#+end_src
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]] and see if there is an existing solution or add relevant comments and discussion under the same issue. If not file a new issue following these steps:
 
