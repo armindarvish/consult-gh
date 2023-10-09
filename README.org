@@ -351,7 +351,7 @@ In the screenshot below, I use =consult-gh-search-issues= to search for issues a
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
-[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-issues.gif]]
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-issues.gif
 
 Pull requests can be searched similary by using =consult-gh-search-prs=.
 
