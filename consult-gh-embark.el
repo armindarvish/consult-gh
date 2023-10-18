@@ -62,7 +62,8 @@
   (let* ((repo (get-text-property 0 :repo cand))
          (issue (or (get-text-property 0 :issue cand) nil))
          (pr (or (get-text-property 0 :pr cand) nil))
-         (path (or (get-text-property 0 :path cand) nil)))
+         (path (or (get-text-property 0 :path cand) nil))
+         )
     (cond
      (issue
         (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties issue)))
@@ -73,6 +74,33 @@
      (t
         (consult-gh--call-process "repo" "view" "--web" (substring repo))))
     ))
+
+(defun consult-gh-embark-default-action (cand)
+  "Open the link in an emacs buffer"
+  (let* ((repo (get-text-property 0 :repo cand))
+         (user (get-text-property 0 :user cand))
+         (package (get-text-property 0 :package cand))
+         (url (or (get-text-property 0 :url cand) nil))
+         (issue (or (get-text-property 0 :issue cand) nil))
+         (pr (or (get-text-property 0 :pr cand) nil))
+         (path (or (get-text-property 0 :path cand) nil))
+         (branch (or (get-text-property 0 :branch cand) nil))
+         (code (or (get-text-property 0 :code cand) nil))
+         (newcand (cons cand `(:repo ,repo :user ,user :package ,package :url ,url :path ,path :branch ,branch :issue ,issue :pr ,pr :code ,code)))
+         )
+    (cond
+     (code
+        (funcall consult-gh-code-action newcand))
+     (issue
+        (funcall consult-gh-issue-action newcand))
+     (pr
+      (funcall consult-gh-pr-action newcand))
+     (path
+          (funcall consult-gh-file-action newcand))
+     (t
+        (funcall consult-gh-repo-action newcand)))
+    ))
+
 
 (defun consult-gh-embark-get-ssh-link (cand)
   "Copy the ssh based link of the repo to `kill-ring'."
@@ -153,7 +181,6 @@
          (size (get-text-property 0 :size cand)))
   (funcall #'consult-gh--files-save-file-action (cons path `(:repo ,repo :path ,path :url ,url :size ,size)))))
 
-
 ;;; Define Embark Keymaps
 
 (defvar-keymap consult-gh-embark-general-actions-map
@@ -215,6 +242,19 @@
   )
 
 (add-to-list 'embark-keymap-alist '(consult-gh-prs . consult-gh-embark-prs-actions-map))
+
+(defvar-keymap consult-gh-embark-codes-actions-map
+  :doc "Keymap for consult-gh-embark-codes"
+  :parent consult-gh-embark-general-actions-map
+  )
+
+(add-to-list 'embark-keymap-alist '(consult-gh-codes . consult-gh-embark-codes-actions-map))
+
+(add-to-list 'embark-default-action-overrides '(consult-gh-repos . consult-gh-embark-default-action))
+(add-to-list 'embark-default-action-overrides '(consult-gh-issues . consult-gh-embark-default-action))
+(add-to-list 'embark-default-action-overrides '(consult-gh-prs . consult-gh-embark-default-action))
+(add-to-list 'embark-default-action-overrides '(consult-gh-files . consult-gh-embark-default-action))
+(add-to-list 'embark-default-action-overrides '(consult-gh-codes . consult-gh-embark-default-action))
 
 ;;; Provide `consul-gh-embark' module
 
