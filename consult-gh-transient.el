@@ -33,6 +33,13 @@
    ""]
 
   [:description "--Actions--"
+                ["Search"
+                 (consult-gh-transient--suffix-search-issues)
+                 (consult-gh-transient--suffix-search-repos)
+                 (consult-gh-transient--suffix-search-prs)
+                 (consult-gh-transient--suffix-search-code)
+                 ]
+
                 ["Repos"
                  (consult-gh-transient--suffix-repo-list)
                  (consult-gh-transient--suffix-repo-clone)
@@ -46,19 +53,15 @@
                 ["Pull Requests"
                  (consult-gh-transient--suffix-pr-list)
                  ]
-
-                ["Search"
-                 (consult-gh-transient--suffix-search-issues)
-                 (consult-gh-transient--suffix-search-repos)
-                 (consult-gh-transient--suffix-search-prs)
-                 (consult-gh-transient--suffix-search-code)
-                 ]]
+                ]
 
   [:description
    "--Settings--"
    ["Limits"
     (consult-gh-transient--infix-repo-maxnum)
-    (consult-gh-transient--infix-issue-maxnum)]
+    (consult-gh-transient--infix-issue-maxnum)
+    (consult-gh-transient--infix-pr-maxnum)
+    (consult-gh-transient--infix-code-maxnum)]
 
    ["States"
     (consult-gh-transient--infix-issue-state)
@@ -110,6 +113,22 @@
   :class 'transient-lisp-variable
   :variable 'consult-gh-issue-maxnum
   :key "i -L"
+  :reader 'consult-gh--transient-read-variable)
+
+(transient-define-infix consult-gh-transient--infix-pr-maxnum ()
+  "AI Model for Chat."
+  :description "Max Number of PRs: "
+  :class 'transient-lisp-variable
+  :variable 'consult-gh-pr-maxnum
+  :key "p -L"
+  :reader 'consult-gh--transient-read-variable)
+
+(transient-define-infix consult-gh-transient--infix-code-maxnum ()
+  "AI Model for Chat."
+  :description "Max Number of Codes: "
+  :class 'transient-lisp-variable
+  :variable 'consult-gh-code-maxnum
+  :key "c -L"
   :reader 'consult-gh--transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-issue-state ()
