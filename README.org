@@ -127,7 +127,7 @@ Consult-GH is built with the idea that the user should be able to customize ever
   (add-to-list 'consult-gh-default-orgs-list "armindarvish")
 
   ;;use "gh org list" to get a list of all your organizations and adds them to default list
-  (setq consult-gh-default-orgs-list (append consult-gh-default-orgs-list (remove "" (split-string (consult-gh--command-to-string "org" "list") "\n"))))
+  (setq consult-gh-default-orgs-list (append consult-gh-default-orgs-list (remove "" (split-string (or (consult-gh--command-to-string "org" "list") "") "\n"))))
 
   ;; set the default folder for cloning repositories, By default Consult-GH will confirm this before cloning
   (setq consult-gh-default-clone-directory "~/")
