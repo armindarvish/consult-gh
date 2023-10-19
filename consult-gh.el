@@ -38,91 +38,139 @@
 
 (defcustom consult-gh-args '("gh")
   "Command line arguments to call GitHub CLI used in async calls.
-The dynamically computed arguments are appended.
-Can be either a string, or a list of strings or expressions."
+
+The dynamically computed arguments are appended.  Can be either a
+string, or a list of strings or expressions."
   :group 'consult-gh
   :type '(choice string (repeat (choice string sexp))))
 
 (defcustom consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory)
-  "Temporary file directory for the `consult-gh' package. This directory is used for storing temporary files when pulling files for viewing"
+  "Temporary file directory for the `consult-gh' package.
+
+ This directory is used for storing temporary files when pulling
+ files for viewing"
   :group 'consult-gh
-  :type 'string
-  )
+  :type 'directory)
 
 (defcustom consult-gh-crm-separator crm-separator
-  "Separator for multiple selections with completing-read-multiple. for more info see `crm-separator'. Uses crm-separator for default."
+  "Separator for multiple selections with `completing-read-multiple'.
+
+See `crm-separator' (used as default)."
   :group 'consult-gh
-  :type 'string)
+  :type 'regexp)
 
 (defcustom consult-gh-repo-maxnum 30
-  "Maximum number of output for showing repos with gh list and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
+  "Maximum number of repos to output in list and search operations.
+
+This is the value passed to the \"--limit\" option.  The
+default (30) is based on that of the gh command."
   :group 'consult-gh
   :type 'integer)
 
 (defcustom consult-gh-issue-maxnum 30
-  "Maximum number of output for `gh issue list` and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
+  "Maximum number of issues to show in list and search operations.
+
+See also `consult-gh-repo-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
 (defcustom consult-gh-pr-maxnum 30
-  "Maximum number of output for `gh pr list` and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
+  "Maximum number of PRs to show in list and search opperations.
+
+See also `consult-gh-repo-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
 (defcustom consult-gh-code-maxnum 30
-  "Maximum number of output for `gh search code` normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
+  "Maximum number of code search results to show.
+
+See also `consult-gh-repo-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
 (defcustom consult-gh-issues-state-to-show "open"
-  "The state of issues that will be listed by `consult-gh-issue-list' functions. This is what is passed to \"--state\" argument in the command line when runing `gh issue list`. The possible options are \"open\", \"closed\" or\"all\". The default value is, \"open\", the same s `gh` default value."
+  "Which state of issues will be listed by `consult-gh-issue-list'.
+
+This is passed to the \"--state\" option of the gh command.
+Possible options are \"open\" (default), \"closed\", or \"all\"."
   :group 'consult-gh
   :type '(choice "open" "closed" "all"))
 
 (defcustom consult-gh-prs-state-to-show "open"
-  "The state of issues that will be listed by `consult-gh-issue-list' functions. This is what is passed to \"--state\" argument in the command line when runing `gh issue list`. The possible options are \"open\", \"closed\" or\"all\". The default value is, \"open\", the same s `gh` default value."
+  "Which state of PRs will be listed by `consult-gh-pr-list'.
+
+This is passed to the \"--state\" option of the gh command (like
+`consult-gh-issues-state-to-show').  Possible options are
+\"open\" (default), \"closed\", \"merged\", or \"all\"."
   :group 'consult-gh
   :type '(choice "open" "closed" "merged" "all"))
 
 (defcustom consult-gh-large-file-warning-threshold large-file-warning-threshold
-  "Maximum size of file above which `consult-gh' requests a confirmation for previewing, opening or saving the file. Default value is set by `large-file-warning-threshold'."
+  "Size of file to require confirmation for preview/open/save.
+
+Default is `large-file-warning threshold'; if nil, do not require
+confirmation."
   :group 'consult-gh
   :type '(choice integer (const :tag "Never request confirmation" nil)))
 
 (defcustom consult-gh-prioritize-local-folder 'suggest
-  "This varibale defines how `gh` selects repositories and it can either be the symbol 'suggest or a boolean.
+  "How are repositories selected?
 
-If 'suggest, consult-gh adds the git repository from the local folder (a.k.a. `default-directory'), to the history list so it can quickly be accessed by navigating history lists (i.e. `next-history-element' (default keybinding `M-n`)) when running commands such as `consult-gh-issue-list' or `consult-gh-find-file'.
+There are three options, the symbol `suggest' (default), nil or t.
 
-If t, `consult-gh' uses the git repository from the local folder (a.k.a. `default-directory') as initial-input value for commands such as `consult-gh-issue-list' or `consult-gh-find-file'. The user can still change the entry. If there is no GitHub repository in the current folder, it falls back on no initial-value.
+When set to `suggest', the git repository from the local
+directory (i.e., `default-directory') is added to the history
+list so it can be accessed quickly when running commands like
+`consult-gh-issue-list' or `consult-gh-find-file'.
 
-If nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `default-directory') (default keybinding `M-n`)."
+When set to nil, the current repository is ignored, and no
+initial input is provided.
+
+When set to t, the local folder is used as the initial input
+value for commands like `consult-gh-issue-list' and
+`consult-gh-find-file'.  The entry can still be changed, and if
+there is no GitHub repository in the current folder, it falls
+back to no initial input."
 
   :group 'consult-gh
-  :type '(choice boolean (symbol 'suggest)))
+  :type '(choice (const :tag "Current repository is in history" suggest)
+                 (const :tag "Current repository is default input" t)
+                 (const :tag "Current repository is ignored" nil)))
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
-  "Major mode to show README of repositories in preview. choices are 'markdown-mode or 'org-mode"
+  "Default mode to preview repository READMEs in.
+
+Common choices include `markdown-mode' and `org-mode'."
   :group 'consult-gh
-  :type 'symbol)
+  :type '(choice (const :tag "Markdown Mode" markdown-mode)
+                 (const :tag "Org Mode" org-mode)
+                 (function :tag "Custom Mode" text-mode)))
 
 (defcustom consult-gh-default-orgs-list (list)
-  "List of default github orgs. A good choice would be to add personal accounts or frequently visited github accounts to this list"
+  "List of default GitHub organizations.
+
+It's generally useful to add personal accounts or frequently
+visited organizations."
   :group 'consult-gh
-  :type 'list)
+  :type '(repeat (string :tag "Organization")))
 
 (defcustom consult-gh-preview-buffer-name "*consult-gh-preview*"
-  "Default name to use for preview buffers showing repo readmes retrieved by \"gh repo view\"."
+  "Default name for repository preview buffers."
   :group 'consult-gh
   :type 'string)
 
 (defcustom consult-gh-show-preview nil
-  "This variable determines whether `consult-gh' shows previews. It turns previews on/off globally for all categories: repos, issues, files."
+  "Should `consult-gh' show previews?
+
+This contros previews for all categories (repos, issues, files)."
   :group 'consult-gh
   :type 'boolean)
 
 (defcustom consult-gh-preview-key consult-preview-key
-  "Preview key for consult-gh. This is similar `consult-preview-key' but explicitly for consult-gh and it is used by all categories: repos, issues, files in consult-gh. Commands that use this include `consult-gh-orgs', `consult-gh-search-repos', `consult-gh-issue-list',`consult-gh-find-file', and etc."
+  "What key is uesd to preview in `consult-gh' commands.
+
+This is similar to `consult-preview-key' (the default), and is
+used for all categories (repos, issues, files)."
   :type '(choice (const :tag "Any key" any)
                  (list :tag "Debounced"
                        (const :debounce)
@@ -133,68 +181,132 @@ If nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `
                  (repeat :tag "List of keys" key)))
 
 (defcustom consult-gh-default-clone-directory "~/"
-  "Default directory to clone github repos used by `consult-gh-repo-clone' and `consult-gh--repo-clone-action'."
+  "Where should repositories be cloned to by default?"
   :group 'consult-gh
-  :type 'string)
+  :type 'directory)
 
 (defcustom consult-gh-default-save-directory "~/Downloads/"
-  "Default directory to save files pulled from github (for single files and not cloning repositories) used by `consult-gh--files-save-file-action'."
+  "Where should single files be saved to by default?
+
+This is used when saving files with
+`consult-gh--files-save-file-action'."
   :group 'consult-gh
-  :type 'string)
+  :type 'directory)
 
 (defcustom consult-gh-confirm-before-clone t
-  "This variable defines whether `consult-gh' queries the user for a path and a name before cloning a repo or uses the default directory and package name. It's useful to set this to nil when cloning multiple repos all at once frequently."
+  "Should confirmation of path and name be requested before clone?
+
+If nil, the default directory
+`consult-gh-default-clone-directory' and package name are used
+without confirmation."
   :group 'consult-gh
   :type 'boolean)
 
 (defcustom consult-gh-confirm-name-before-fork nil
-  "This variable defines whether `consult-gh' queries the user for a name before forking a repo or uses the default repo name. By default it is set to nil."
+  "Should the new repository name be confirmed when forking a repository?
+
+If nil, the default repo name will be used, otherwise request a name."
   :group 'consult-gh
   :type 'boolean)
 
 (defcustom consult-gh-ask-for-path-before-save t
-  "This variable defines whether `consult-gh' queries the user for a path before saving a file or uses the default directory and `buffer-file-name'. It may be useful to set this to nil if saving multiple files all at once frequently."
+  "Should the user be queried for file save path?
+
+If nil, the default
+directory (`consult-gh-default-save-directory') and the buffer
+file name (variable `buffer-file-name') are used."
   :group 'consult-gh
   :type 'boolean)
 
 (defcustom consult-gh-default-branch-to-load "ask"
-  "This determines how `consult-gh' loads repository branches. Possible Values are:
+  "How are repository branches loaded?
 
-\"confirm\": Ask for confirmation if \"HEAD\" branch should be loaded. If the answer is no, then the user gets to chose a different branch.
-\"ask\": Asks the user to select a branch.
-'nil: loads the \"HEAD\" branch
-A STRING: loads the branch STRING.
-*Note that setting this to a STRING would mean that this STRING is used for any repository that is fetched with `consult-gh' and if the branch does not exist, it will cause an error. Therefore using a STRING is not recommended as a general case but in temporary settings where one is sure the branch exists on the repositories being fetched.*"
+Possible values are:
+
+ - \"confirm\": ask for confirmation if \"HEAD\" branch should be
+   loaded, if not, the user can choose a different branch.
+ - \"ask\": asks the user to select a branch no matter what.
+ - a string: Load the branch named in this variable.
+ - nil: load the \"HEAD\" branch, no questions asked."
   :group 'consult-gh
-  :type '(choice "confirm" "ask" string (const nil)))
+  :type '(choice (const :tag "Confirm if HEAD, otherwise prompt for branch." "confirm")
+                 (const :tag "Always prompt for branch." "ask")
+                 (string :tag "Specific branch")
+                 (const :tag "HEAD branch, no confirmation." nil)))
 
 (defcustom consult-gh-repo-action #'consult-gh--repo-browse-url-action
-  "This variable defines the function that is used when selecting a repo. By default it is bound to `consult-gh--repo-browse-url-action', but can be changed to other actions such as `Consult-gh--repo-browse-files-action', `consult-gh--repo-view-action' `consult-gh--repo-clone-action', `consult-gh--repo-fork-action' or any other user-defined function that follows patterns similar to those."
+  "What function is used when selecting a repository?
+
+Common options include:
+
+ - `consult-gh--repo-browse-url-action' (default)
+ - `consult-gh--repo-browse-files-action'
+ - `consult-gh--repo-view-action'
+ - `consult-gh--repo-clone-action'
+ - `consult-gh--repo-fork-action'
+ - A custom function which takes a repo action."
   :group 'consult-gh
-  :type 'function)
+  :type '(choice (const :tag "Browse Repository URL" consult-gh--repo-browse-url-action)
+                 (const :tag "Browse Repository Files" consult-gh--repo-browse-files-action)
+                 (const :tag "View Repository Information" consult-gh--repo-view-action)
+                 (const :tag "Clone Repository" consult-gh--repo-clone-action)
+                 (const :tag "Fork Repository" consult-gh--repo-fork-action)
+                 (function :tag "Custom Function")))
 
 (defcustom consult-gh-issue-action #'consult-gh--issue-browse-url-action
-  "This variable defines the function that is used when selecting an issue. By default it is bound to `consult-gh--issue-browse-url-action', but can be changed to other actions such as `consult-gh--issue-view-action' or similar user-defined custom actions."
+  "What function should be used when selecting an issue?
+
+Common options include:
+
+ - `consult-gh--issue-browse-url-action' (default)
+ - `consult-gh--issue-view-action'
+ - A custom function which takes an issue candidate."
   :group 'consult-gh
-  :type 'function)
+  :type '(choice (const :tag "Browse Issue URL" consult-gh--issue-browse-url-action)
+                 (const :tag "View Issue" consult-gh--issue-view-action)
+                 (function :tag "Custom Function")))
 
 (defcustom consult-gh-pr-action #'consult-gh--pr-browse-url-action
-  "This variable defines the function that is used when selecting a pr. By default it is bound to `consult-gh--pr-browse-url-action', but can be changed to other actions such as `consult-gh--pr-view-action' or similar user-defined custom actions."
+  "What function should be used when selecting a PR?
+
+Common options include:
+
+ - `consult-gh--pr-browse-url-action' (default)
+ - `consult-gh--pr-view-action'
+ - A custom function which takes a PR candidate."
   :group 'consult-gh
-  :type 'function)
+  :type '(choice (const :tag "Browse PR URL" consult-gh--pr-browse-url-action)
+                 (const :tag "View PR" consult-gh--pr-view-action)
+                 (function :tag "Custom Function")))
 
 (defcustom consult-gh-code-action #'consult-gh--code-browse-url-action
-  "This variable defines the function that is used when selecting a code search result. By default it is bound to `consult-gh--code-browse-url-action',but can be changed to other actions such as `consult-gh--code-view-action', or similar user-defined custom actions"
+  "What function should be used when selecting code from a code search?
+
+Common options include:
+
+ - `consult-gh--code-browse-url-action' (default)
+ - `consult-gh--code-view-action'
+ - A custom function which takes a code candidate."
   :group 'consult-gh
-  :type 'function)
+  :type '(choice (const :tag "Browse code URL" consult-gh--code-browse-url-action)
+                 (const :tag "View code" consult-gh--code-view-action)
+                 (function :tag "Custom Function")))
 
 (defcustom consult-gh-file-action #'consult-gh--files-browse-url-action
-  "This variable defines the function that is used when selecting a file. By default it is bound to `consult-gh--browse-files-url-action',but can be changed to other actions such as `consult-gh--files-view-action', `consult-gh--files-save-file-action', or similar user-defined custom actions"
+  "What function should be used when selecting a file?
+
+Common options include:
+
+ - `consult-gh--files-browse-url-action' (default)
+ - `consult-gh--files-save-file-action'
+ - A custom function which takes a file candidate."
   :group 'consult-gh
-  :type 'function)
+  :type '(choice (const :tag "Browse File URL" consult-gh--files-browse-url-action)
+                 (const :tag "Save File" consult-gh--files-view-action)
+                 (function :tag "Custom Function")))
 
 (defcustom consult-gh-highlight-matches t
-  "This variable defines whether `consult-gh' highlights search queries (or code snippets) in preview buffers to visually guide the user see the most relevant content in afile."
+  "Should queries or code snippets be highlighted in preview buffers?"
   :group 'consult-gh
   :type 'boolean)
 
