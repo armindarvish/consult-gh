@@ -2746,7 +2746,7 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 #+end_src
 ** Footer
 #+begin_src emacs-lisp
-;;; filename ends here
+  ;;; consult-gh.el ends here
 #+end_src
 * Consult-GH-Embark.el
 :PROPERTIES:

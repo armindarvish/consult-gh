@@ -2373,4 +2373,4 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 
 (provide 'consult-gh)
 
-;;; filename ends here
+;;; consult-gh.el ends here
