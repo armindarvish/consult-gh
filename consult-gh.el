@@ -26,12 +26,13 @@
 ;;; Group
 
 (defgroup consult-gh nil
-  "Consulting GitHub CLI"
+  "Consult-based interface to GitHub CLI."
   :group 'convenience
   :group 'minibuffer
   :group 'consult
   :group 'magit
-  :prefix "consult-gh-")
+  :prefix "consult-gh-"
+  :link '(url-link :tag "GitHub" "https://github.com/armindarvish/consult-gh"))
 
 ;;; Customization Variables
 
