@@ -24,10 +24,11 @@
 ;;; Customization Variables
 
 (defcustom consult-gh-forge-timeout-seconds 10
-  "Timeout in seconds for forge-visit to load the issue, otherwise revert back to normal viewing in consult-gh."
+  "Timeout in seconds for `forge-visit' to load the issue.
+
+If this passes, revert back to normal viewing in consult-gh."
   :group 'consult-gh
-  :type 'integer
-  )
+  :type 'integer)
 
 ;;; Other Variables
 
