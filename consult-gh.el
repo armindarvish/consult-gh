@@ -1489,13 +1489,14 @@ if HIGHLIGHT is t, input is highlighted with `consult-gh-highlight-match-face' i
     (cons str  (list :repo repo :user user :package package :code code :path path :url url :query query))))
 
 (defun consult-gh--code-lookup ()
-"Lookup function for code candidates in `consult-gh' (e.g. in `consult-gh-search-code').
+  "Lookup function for code candidates in `consult-gh' (e.g. in `consult-gh-search-code').
 This is passed as LOOKUP to `consult--read' on code candidates and is used to format the output when a candidate is selected."
   (lambda (sel cands &rest args)
-    (let* ((info (cdr (assoc sel cands)))
-           (repo (plist-get info :repo))
-           (path (plist-get info :path)))
-    (cons (format "%s:%s" repo path) info))))
+    (if-let* ((info (cdr (assoc sel cands)))
+              (repo (plist-get info :repo))
+              (path (plist-get info :path)))
+        (cons (format "%s:%s" repo path) info)
+      nil)))
 
 (defun consult-gh--code-state ()
 "State function for code candidates in consult-gh (e.g. in `consult-gh-search-code').
@@ -1529,13 +1530,12 @@ This is passed as STATE to `consult--read' on code candidates and is used to pre
                                    (highlight-regexp (string-trim code) 'consult-gh-preview-match-face))
                       (goto-char (point-min))
                       (search-forward code nil t)
-                                 ))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
                (funcall preview action
-                        buffer
+                         buffer
                          )
-               (with-current-buffer buffer
-                   (consult-gh-recenter 'middle) nil)
+               (consult-gh-recenter 'middle))
+               )
                )
              ))
             ('return
