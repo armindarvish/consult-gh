@@ -3198,7 +3198,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
 (defun consult-gh-forge--topic-setup-buffer (topic)
 "Reimplements `forge-setup-buffer' in order to avoid making changes to magit settings for the repository in the current working directory."
   (let* ((repo  (forge-get-repository topic))
-         (ident (concat (forge--topic-type-prefix topic)
+         (ident (concat "#"
                         (number-to-string (oref topic number))))
          (owner (oref repo owner))
          (name (oref repo name))
@@ -3207,7 +3207,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
          (magit-generate-buffer-name-function (lambda (_mode _value) buffname))
          (default-directory (or (oref repo worktree)
                                 tempdir)))
-    (consult-gh-forge--magit-setup-buffer #'forge-topic-mode t
+    (consult-gh-forge--magit-setup-buffer (if (functionp 'forge-issue-mode) (if (forge-issue-p topic) #'forge-issue-mode #'forge-pullreq-mode) #'forge-topic-mode) t
       (forge-buffer-topic topic)
       (forge-buffer-topic-ident ident)))
   )
