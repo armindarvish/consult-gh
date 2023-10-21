@@ -489,7 +489,7 @@ if IGNORE-CASE is non-nil.
                (replace-match "=\\3="))
 
               ((pred (lambda (el) (string-match-p "```.*\n[[:ascii:][:nonascii:]]*```" el)))
-               (replace-match "#+begin_src \\4\n\\5\\6\n#+end_src\n")))))))
+               (replace-match "#+begin_src \\4\n\\5\n#+end_src\n")))))))
     nil))
 #+end_src
 ***** convert links
