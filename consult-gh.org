@@ -2348,7 +2348,7 @@ For more details on consult--async functionalities, see `consult-grep' and the o
   (let ((sel
   (if current-prefix-arg
     (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
-      (consult-gh-args (append consult-gh-args '("--repo " (format "%s" repo)))))
+      (consult-gh-args (append consult-gh-args `("--repo " ,(format "%s" repo)))))
       (consult-gh--async-search-issues "Search Issues:  " #'consult-gh--search-issues-builder initial))
   (consult-gh--async-search-issues "Search Issues:  " #'consult-gh--search-issues-builder initial))))
     ;;add org and repo to known lists
@@ -2572,7 +2572,7 @@ For more details on consult--async functionalities, see `consult-grep' and the o
   (let ((sel
          (if current-prefix-arg
              (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
-                    (consult-gh-args (append consult-gh-args '("--repo " (format "%s" repo)))))
+                    (consult-gh-args (append consult-gh-args `("--repo " ,(format "%s" repo)))))
                (consult-gh--async-search-prs "Search Pull-Requests:  " #'consult-gh--search-prs-builder initial))
            (consult-gh--async-search-prs "Search Pull-Requests:  " #'consult-gh--search-prs-builder initial))))
     ;;add org and repo to known lists
@@ -2678,7 +2678,7 @@ For more details on consult--async functionalities, see `consult-grep' and the o
   (let ((sel
          (if current-prefix-arg
              (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
-                    (consult-gh-args (append consult-gh-args '("--repo " (format "%s" repo)))))
+                    (consult-gh-args (append consult-gh-args `("--repo " ,(format "%s" repo)))))
                (consult-gh--async-search-code "Search Code:  " #'consult-gh--search-code-builder initial))
            (consult-gh--async-search-code "Search Code:  " #'consult-gh--search-code-builder initial))))
     ;;add org and repo to known lists
