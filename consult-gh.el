@@ -446,7 +446,7 @@ if IGNORE-CASE is non-nil.
                (replace-match "=\\3="))
 
               ((pred (lambda (el) (string-match-p "```.*\n[[:ascii:][:nonascii:]]*```" el)))
-               (replace-match "#+begin_src \\4\n\\5\\6\n#+end_src\n")))))))
+               (replace-match "#+begin_src \\4\n\\5\n#+end_src\n")))))))
     nil))
 
 (defun consult-gh--markdown-to-org-links (&optional buffer)
@@ -1792,22 +1792,29 @@ For more details on consult--async functionalities, see `consult-grep' and the o
         (funcall consult-gh-repo-action sel)
         sel))))
 
-(defun consult-gh-orgs (&optional orgs)
+(defun consult-gh-orgs (&optional orgs noaction)
 "List repositories of ORGS.
 This is a wrapper function around `consult-gh--repo-list'. If ORGS is nil, this simply calls `consult-gh--repo-list'. If ORGS is a list, then it runs `consult-gh--repo-list' on every member of ORGS and returns the results (repositories of all ORGS) to `consult--read'."
   (if (not orgs)
-      (consult-gh-repo-list)
-    (let* (
-        (candidates (consult--slow-operation "Collecting Repos ..."  (apply #'append (mapcar (lambda (org) (consult-gh--repo-list org)) orgs)))))
-        (consult--read candidates
+      (consult-gh-repo-list nil noaction))
+    (let* ((candidates (consult--slow-operation "Collecting Repos ..."  (apply #'append (mapcar (lambda (org) (consult-gh--repo-list org)) orgs))))
+        (sel (consult--read candidates
                     :prompt "Select Repo: "
-                    :require-match t
-                    :sort t
+                    :lookup (consult-gh--repo-lookup)
+                    :state (funcall #'consult-gh--repo-state)
                     :group #'consult-gh--repo-group
+                    :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
+                        consult-gh--known-repos-list
+                                  )
                     :history 'consult-gh--repos-history
+                    :require-match t
                     :category 'consult-gh-repos
                     :preview-key consult-gh-preview-key
-                    ))))
+                    :sort t
+                    )))
+    (if noaction
+        sel
+      (funcall consult-gh-repo-action sel))))
 
 (defun consult-gh-default-repos ()
   "List repositories of default orgs (a.k.a. `consult-gh-default-orgs-list').
