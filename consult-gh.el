@@ -1634,10 +1634,12 @@ PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
 BUILDER is an async builder function passed to `consult--async-command'.
 INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
 "
-  (let ((candidates (consult--async-command builder
+  (let* ((candidates (consult--async-command builder
                       (consult-gh--repo-list-transform builder)
                       ))
-        (current-repo (consult-gh--get-repo-from-directory)))
+        (current-repo (consult-gh--get-repo-from-directory))
+        (initial (or initial
+  (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-username current-repo)))))
     (consult--read candidates
                    :prompt prompt
                    :lookup (consult-gh--repo-lookup)
@@ -1737,7 +1739,8 @@ PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
 BUILDER is an async builder function passed to `consult--async-command'.
 INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
 "
-
+(let* ((initial (or initial
+  (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-repo-from-directory) nil))))
   (consult--read
    (consult--async-command builder
      (consult-gh--search-repos-transform builder)
@@ -1754,7 +1757,7 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
    :require-match t
    :category 'consult-gh-repos
    :preview-key consult-gh-preview-key
-   :sort nil))
+   :sort nil)))
 
 (defun consult-gh-search-repos (&optional initial noaction)
     "Lists results of `gh search repos` Asynchronously.
@@ -1874,6 +1877,8 @@ BUILDER is the command line builder function."
   "Builds gh command line for listing issues of a GitHub repository, INPUT (e.g. `gh issue list --repo INPUT`).
 
 INPUT must be the full name of a github repository as a string e.g. \"armindarvish\consult-gh\"."
+
+
   (pcase-let* ((consult-gh-args (append consult-gh-args '("issue" "list" "--repo")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
@@ -1900,6 +1905,8 @@ PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
 BUILDER is an async builder function passed to `consult--async-command'.
 INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
 "
+(let* ((initial (or initial
+  (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-repo-from-directory) nil))))
   (consult--read
    (consult--async-command builder
      (consult-gh--issue-list-transform builder)
@@ -1916,7 +1923,7 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
                                   )
    :history '(:input consult-gh--repos-history)
    :preview-key consult-gh-preview-key
-   :sort nil))
+   :sort nil)))
 
 (defun consult-gh-issue-list (&optional initial noaction)
   "Lists issues of GitHub repository Asynchronously.
@@ -2094,6 +2101,8 @@ PROMPT is the prompt in the minibuffer (passed as PROMPT to `consult--red'.)
 BUILDER is an async builder function passed to `consult--async-command'.
 INITIAL is an optional arg for the initial input in the minibuffer. (passed as INITITAL to `consult--read'.)
 "
+(let* ((initial (or initial
+  (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-repo-from-directory) nil))))
   (consult--read
    (consult--async-command builder
      (consult-gh--pr-list-transform builder)
@@ -2110,7 +2119,7 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
                                   )
    :history '(:input consult-gh--repos-history)
    :preview-key consult-gh-preview-key
-   :sort nil))
+   :sort nil)))
 
 (defun consult-gh-pr-list (&optional initial noaction)
   "Lists pull requests of GitHub repository Asynchronously.
@@ -2260,6 +2269,7 @@ BUILDER is the command line builder function (e.g. `consult-gh--search-code-buil
 
 (defun consult-gh--search-code-builder (input)
 "Builds gh command line for searching code with the query INPUT (e.g. `gh search code INPUT`)."
+
   (pcase-let* ((consult-gh-args (append consult-gh-args '("search" "code")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
