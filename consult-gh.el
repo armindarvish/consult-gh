@@ -32,7 +32,7 @@
   :group 'consult
   :group 'magit
   :prefix "consult-gh-"
-  :link '(url-link :tag "GitHub" "https://github.com/armindarvish/consult-gh")
+  :link '(url-link :tag "GitHub" "https://github.com/armindarvish/consult-gh"))
 
 ;;; Customization Variables
 
