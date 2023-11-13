@@ -1,4 +1,4 @@
-;;; consult-gh-embark.el --- Emabrk Actions for consult-gh -*- lexical-binding: t -*-
+;;; consult-gh-transient.el --- Emabrk Actions for consult-gh -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2021-2023 Free Software Foundation, Inc.
 
@@ -19,8 +19,7 @@
 
 ;; Prefixes
 (transient-define-prefix consult-gh ()
-  "Change parameters of prompt to send ChatGPT."
-  ;; :incompatible '(("-m" "-n" "-k" "-e"))
+  "Main transient menu for consult-gh"
   [:description
    (lambda ()
      (let ((username (consult-gh--get-current-username))
@@ -70,12 +69,13 @@
 
 
 (defun consult-gh--transient-read-variable (prompt initial-input history)
-  "Read value from minibuffer and interpret the result as a Lisp object."
+  "Read value from minibuffer for `consult-gh' transient menu."
   (read-from-minibuffer prompt initial-input read-expression-map t history))
 
 
 ;; Prefixes
 (transient-define-prefix consult-gh--transient-repos ()
+  "Repo section for `consult-gh' transient menu."
   [:description "Repos"]
   [["Actions"
     (consult-gh-transient--suffix-search-repos)
@@ -88,6 +88,7 @@
   )
 
 (transient-define-prefix consult-gh--transient-issues ()
+  "Issue section for `consult-gh' transient menu."
   [:description "Issues"]
   [["Actions"
     (consult-gh-transient--suffix-search-issues)
@@ -100,7 +101,7 @@
 
 ;; Infixes
 (transient-define-infix consult-gh-transient--infix-repo-maxnum ()
-  "AI Model for Chat."
+  "Set `consult-gh-repo-maxnum' in `consult-gh' transient menu."
   :description "Max Number of Repos: "
   :class 'transient-lisp-variable
   :variable 'consult-gh-repo-maxnum
@@ -108,7 +109,7 @@
   :reader 'consult-gh--transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-issue-maxnum ()
-  "AI Model for Chat."
+  "Set `consult-gh-issue-maxnum' in `consult-gh' transient menu."
   :description "Max Number of Issues: "
   :class 'transient-lisp-variable
   :variable 'consult-gh-issue-maxnum
@@ -116,7 +117,7 @@
   :reader 'consult-gh--transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-pr-maxnum ()
-  "AI Model for Chat."
+  "Set `consult-gh-pr-maxnum' in `consult-gh' transient menu."
   :description "Max Number of PRs: "
   :class 'transient-lisp-variable
   :variable 'consult-gh-pr-maxnum
@@ -124,7 +125,7 @@
   :reader 'consult-gh--transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-code-maxnum ()
-  "AI Model for Chat."
+  "Set `consult-gh-code-maxnum' in `consult-gh' transient menu."
   :description "Max Number of Codes: "
   :class 'transient-lisp-variable
   :variable 'consult-gh-code-maxnum
@@ -132,7 +133,7 @@
   :reader 'consult-gh--transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-issue-state ()
-  "AI Model for Chat."
+  "Set `consult-gh-issues-state-to-show' in `consult-gh' transient menu."
   :description "State of Issues to Show "
   :class 'transient-lisp-variable
   :variable 'consult-gh-issues-state-to-show
@@ -145,7 +146,7 @@
 
 
 (transient-define-infix consult-gh-transient--infix-prs-state ()
-  "AI Model for Chat."
+  "Set `consult-gh-prs-state-to-show' in `consult-gh' transient menu."
   :description "State of PRs to Show: "
   :class 'transient-lisp-variable
   :variable 'consult-gh-prs-state-to-show
@@ -159,6 +160,7 @@
 ;; Suffixes
 
 (transient-define-suffix consult-gh-transient--suffix-repo-clone ()
+  "Call `consult-gh-repo-clone' in `consult-gh' transient menu."
   :transient nil
   :description "clone a repo"
   :key "r c"
@@ -166,6 +168,7 @@
   (consult-gh-repo-clone))
 
 (transient-define-suffix consult-gh-transient--suffix-repo-fork ()
+  "Call `consult-gh-repo-fork' in `consult-gh' transient menu."
   :transient nil
   :description "fork a repo"
   :key "r f"
@@ -173,6 +176,7 @@
   (consult-gh-repo-fork))
 
 (transient-define-suffix consult-gh-transient--suffix-repo-list ()
+  "Call `consult-gh-repo-list' in `consult-gh' transient menu."
   :transient nil
   :description "list repos of a user"
   :key "r l"
@@ -180,6 +184,7 @@
   (consult-gh-repo-list))
 
 (transient-define-suffix consult-gh-transient--suffix-issue-list ()
+  "Call `consult-gh-issue-list' in `consult-gh' transient menu."
   :transient nil
   :description "list issues of a repo"
   :key "i l"
@@ -187,6 +192,7 @@
   (consult-gh-issue-list))
 
 (transient-define-suffix consult-gh-transient--suffix-pr-list ()
+  "Call `consult-gh-pr-list' in `consult-gh' transient menu."
   :transient nil
   :description "list prs of a repo"
   :key "p l"
@@ -194,6 +200,7 @@
   (consult-gh-pr-list))
 
 (transient-define-suffix consult-gh-transient--suffix-search-repos ()
+  "Call `consult-gh-search-repos' in `consult-gh' transient menu."
   :transient nil
   :description "search repos"
   :key "s r"
@@ -201,6 +208,7 @@
   (consult-gh-search-repos))
 
 (transient-define-suffix consult-gh-transient--suffix-search-issues ()
+  "Call `consult-gh-search-issues' in `consult-gh' transient menu."
   :transient nil
   :description "search issues"
   :key "s i"
@@ -208,6 +216,7 @@
   (consult-gh-search-issues))
 
 (transient-define-suffix consult-gh-transient--suffix-search-prs ()
+  "Call `consult-gh-search-prs' in `consult-gh' transient menu."
   :transient nil
   :description "search pull requests"
   :key "s p"
@@ -215,22 +224,15 @@
   (consult-gh-search-prs))
 
 (transient-define-suffix consult-gh-transient--suffix-search-code ()
+  "Call `consult-gh-search-code' in `consult-gh' transient menu."
   :transient nil
   :description "search code"
   :key "s c"
   (interactive)
   (consult-gh-search-code))
 
-(transient-define-suffix consult-gh-transient--suffix-test ()
-  :transient nil
-  :description "test"
-  :key "t"
-  (interactive)
-  (message "%s" (transient-args transient-current-suffixes))
-  )
-
 ;;; Provide `consul-gh-transient' module
 
 (provide 'consult-gh-transient)
 
-
+;;; consult-gh-transient.el ends here
