@@ -1,4 +1,4 @@
-;;; consult-gh-embark.el --- Emabrk Actions for consult-gh -*- lexical-binding: t -*-
+;;; consult-gh-embark.el --- Embark Actions for consult-gh -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2021-2023 Free Software Foundation, Inc.
 
@@ -76,7 +76,7 @@
     ))
 
 (defun consult-gh-embark-default-action (cand)
-  "Open the link in an emacs buffer"
+  "Open the link in an Emacs buffer"
   (let* ((repo (get-text-property 0 :repo cand))
          (user (get-text-property 0 :user cand))
          (package (get-text-property 0 :package cand))
@@ -140,11 +140,11 @@
   (let* ((repo (get-text-property 0 :repo cand))
          (package (car (last (split-string repo "\/"))))
          )
-    (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo  "\")\n)"))))
+    (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo "\")\n)"))))
 
 (defun consult-gh-embark-get-other-repos-by-same-user (cand)
   "List other repos by the same user/organization as the repo at point."
-  (let* ((repo  (get-text-property 0 :repo cand))
+  (let* ((repo (get-text-property 0 :repo cand))
          (user (car (split-string repo "\/"))))
     (consult-gh-repo-list user)))
 
@@ -259,3 +259,5 @@
 ;;; Provide `consul-gh-embark' module
 
 (provide 'consult-gh-embark)
+
+;;; consult-gh-embark.el ends here

@@ -24,7 +24,7 @@
 ;;; Customization Variables
 
 (defcustom consult-gh-forge-timeout-seconds 10
-  "Timeout in seconds for forge-visit to load the issue, otherwise revert back to normal viewing in consult-gh."
+  "Timeout in seconds for forge-visit to load the issue, otherwise revert to normal viewing in consult-gh."
   :group 'consult-gh
   :type 'integer
   )
@@ -45,7 +45,7 @@
 
 (defun consult-gh-forge--add-repository (url)
   "Add a repository to the forge database and only
-pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
+pull individual topics when the user invokes `forge-pull-topic'. See forge documentation for `forge-add-repository'."
   (if (forge-get-repository url nil 'full)
       nil
     (progn
@@ -77,7 +77,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
     (mapcar #'consult-gh-forge--remove-repository-by-url urls)))
 
 (defun consult-gh-forge-remove-repository (&optional urls)
-"Interactively queries the user the select forge(s) from `consult-gh-forge--added-repositories' list and removes the selecte dones from `forge-database'"
+"Interactively queries the user the select forge(s) from `consult-gh-forge--added-repositories' list and removes the selected ones from `forge-database'"
   (interactive)
   (let* ((list (mapcar (lambda (url) (let* ((url-parse (forge--split-url url))
                                             (repo (string-join (cdr url-parse) "/"))
@@ -97,7 +97,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
             urls)))
 
 (defun consult-gh-forge--pull-topic (url topic)
-  "Pull the topic from repository at url using `forge-pull-topic'. see forge documentation for `forge-pull-topic'."
+  "Pull the topic from repository at url using `forge-pull-topic'. See forge documentation for `forge-pull-topic'."
   (let ((repo (forge-get-repository url)))
     (forge--zap-repository-cache repo)
     (forge--pull-topic repo
@@ -107,7 +107,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
 
 (defun consult-gh-forge--add-topic (url topic)
   "Add a repository to the forge database and only
-pull individual topics when the user invokes `forge-pull-topic'. see forge documentation for `forge-add-repository'."
+pull individual topics when the user invokes `forge-pull-topic'. See forge documentation for `forge-add-repository'."
   (cl-letf (((symbol-function #'magit-toplevel)
              (lambda () (consult-gh--make-tempdir (string-join (cdr (forge--split-url url)) "/")))
              ))
@@ -185,7 +185,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
 ;;; Define Functions and Interactive Commands for `consult-gh-forge'
 
 (defun consult-gh-forge--issue-view (repo issue &optional timeout)
-  "Adds the repo and issue to forge database by using `consult-gh-forge--add-topic' and Tries to load the issue in forge by `consult-gh-forge--visit-topic' within the timeout limit (in seconds), otherwise reverts back to using `consult-gh--issue-view-action' to open the issue."
+  "Adds the repo and issue to forge database by using `consult-gh-forge--add-topic' and Tries to load the issue in forge by `consult-gh-forge--visit-topic' within the timeout limit (in seconds), otherwise reverts to using `consult-gh--issue-view-action' to open the issue."
   (let* ((repo (string-trim repo))
          (tempdir (consult-gh-forge--make-tempdir repo))
          (default-directory (file-name-parent-directory tempdir))
@@ -220,7 +220,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
       ))
 
 (defun consult-gh-forge--pr-view (repo pr &optional timeout)
-  "Adds the repo and issue to forge database by using `consult-gh-forge--add-topic' and Tries to load the issue in forge by `consult-gh-forge--visit-topic' within the timeout limit (in seconds), otherwise reverts back to using `consult-gh--issue-view-action' to open the issue."
+  "Adds the repo and issue to forge database by using `consult-gh-forge--add-topic' and Tries to load the issue in forge by `consult-gh-forge--visit-topic' within the timeout limit (in seconds), otherwise reverts to using `consult-gh--issue-view-action' to open the issue."
   (let* ((repo (string-trim repo))
          (tempdir (consult-gh-forge--make-tempdir repo))
          (default-directory tempdir)
@@ -256,3 +256,5 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
 ;;; Provide `consult-gh-forge' module
 
 (provide 'consult-gh-forge)
+
+;;; consult-gh-forge.el ends here
