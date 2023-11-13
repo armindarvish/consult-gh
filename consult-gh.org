@@ -12,7 +12,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 0.12
+;; Version: 1.0.0
 ;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: convenience, matching, tools, vc
@@ -2778,7 +2778,7 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 0.12
+;; Version: 1.0.0
 ;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
@@ -3052,7 +3052,7 @@ This section includes additional useful embark actions as well as possible keyma
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 0.12
+;; Version: 1.0.0
 ;; Package-Requires: ((emacs "27.1") (consult "0.34") (forge "0.3.3") (gh "2.29"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
@@ -3325,7 +3325,7 @@ pull individual topics when the user invokes `forge-pull-topic'. see forge docum
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 0.1
+;; Version: 1.0.0
 ;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
