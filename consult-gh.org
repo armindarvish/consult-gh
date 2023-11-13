@@ -141,17 +141,17 @@ When set to t, the git repository from the local folder is used as initial-input
 When set to nil, the git repository from the local folder is ignored and no initial input is provided."
 
   :group 'consult-gh
-  :type '(choice (const :tag "Current repository is in future history" suggest)
+  :type '(choice (const :tag "Current repository is in future history" 'suggest)
                  (const :tag "Current repository is default input" t)
                  (const :tag "Current repository is ignored" nil)))
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to preview repository's READMEs.
 
-Choices are 'markdown-mode or 'org-mode".
+Choices are 'markdown-mode or 'org-mode."
   :group 'consult-gh
-  :type '(choice (const :tag "Use default Markdown Style" markdown-mode)
-                 (const :tag "Covert Markdown to Org-mode" org-mode)))
+  :type '(choice (const :tag "Use default Markdown Style" 'markdown-mode)
+                 (const :tag "Covert Markdown to Org-mode" 'org-mode)))
 
 (defcustom consult-gh-default-orgs-list (list)
   "List of default GitHub orgs.
