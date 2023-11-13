@@ -121,17 +121,17 @@ When set to t, the git repository from the local folder is used as initial-input
 When set to nil, the git repository from the local folder is ignored and no initial input is provided."
 
   :group 'consult-gh
-  :type '(choice (const :tag "Current repository is in future history" suggest)
+  :type '(choice (const :tag "Current repository is in future history" 'suggest)
                  (const :tag "Current repository is default input" t)
                  (const :tag "Current repository is ignored" nil)))
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to preview repository's READMEs.
 
-Choices are 'markdown-mode or 'org-mode".
+Choices are 'markdown-mode or 'org-mode."
   :group 'consult-gh
-  :type '(choice (const :tag "Use default Markdown Style" markdown-mode)
-                 (const :tag "Covert Markdown to Org-mode" org-mode)))
+  :type '(choice (const :tag "Use default Markdown Style" 'markdown-mode)
+                 (const :tag "Covert Markdown to Org-mode" 'org-mode)))
 
 (defcustom consult-gh-default-orgs-list (list)
   "List of default GitHub orgs.
@@ -249,13 +249,18 @@ Common options include:
 Common options include:
  - `consult-gh--issue-browse-url-action' (default): browses the issue url in default browser
  - `consult-gh--issue-view-action': Open issue in Emacs (Downloads issue's info from GitHub)
+ - `consult-gh-forge--issue-view-action' (when `consult-gh-forge' module is loaded): Open issue in a 'forge-topic-mode' buffer.
  - A custom function: The function must take only 1 input argument, the issue candidate."
   :group 'consult-gh
-  :type '(choice (const :tag "Open the Issue URL in default browser" #'consult-gh--issue-browse-url-action)
+  :type (if (featurep 'consult-gh-forge) '(choice (const :tag "Browse the Issue URL in default browser" #'consult-gh--issue-browse-url-action)
                  (const :tag "Open the Issue in an Emacs buffer" #'consult-gh--issue-view-action)
                  (const :tag "Open the Issue in a Magit/Forge buffer" #'consult-gh-forge--issue-view-action)
                  (function :tag "Custom Function"))
-          )
+          '(choice (const :tag "Open the Issue URL in default browser" #'consult-gh--issue-browse-url-action)
+                 (const :tag "Open the Issue in an Emacs buffer" #'consult-gh--issue-view-action)
+                 (const :tag "Open the Issue in a Magit/Forge buffer" #'consult-gh-forge--issue-view-action)
+                 (function :tag "Custom Function"))
+          ))
 
 (defcustom consult-gh-pr-action #'consult-gh--pr-browse-url-action
   "What function to call when a PR is selected?
@@ -263,13 +268,17 @@ Common options include:
 Common options include:
  - `consult-gh--pr-browse-url-action' (default): browses the PR url in default browser
  - `consult-gh--pr-view-action': Open PR in Emacs (Downloads PR's info from GitHub)
+ - `consult-gh-forge--pr-view-action' (when `consult-gh-forge' module is loaded): Open PR in a 'forge-topic-mode' buffer.
  - A custom function: The function must take only 1 input argument, the PR candidate."
   :group 'consult-gh
-  :type
+  :type (if (featurep 'consult-gh-forge) '(choice (const :tag "Browse the PR URL in default browser" #'consult-gh--pr-browse-url-action)
+                 (const :tag "Open the PR in an Emacs buffer" #'consult-gh--pr-view-action)
+                 (const :tag "Open the PR in a Magit/Forge buffer" #'consult-gh-forge--pr-view-action)
+                 (function :tag "Custom Function"))
           '(choice (const :tag "Open the PR URL in default browser" #'consult-gh--pr-browse-url-action)
                  (const :tag "Open the PR in an Emacs buffer" #'consult-gh--pr-view-action)
                  (function :tag "Custom Function"))
-          )
+          ))
 
 (defcustom consult-gh-code-action #'consult-gh--code-browse-url-action
   "What function to call when a code is selected?
