@@ -49,14 +49,16 @@ Can be either a string, or a list of strings or expressions."
 
 This directory is used for storing temporary files when pulling files for viewing."
   :group 'consult-gh
-  :type 'string
+  :type 'directory
   )
 
 (defcustom consult-gh-crm-separator crm-separator
   "Separator for multiple selections with completing-read-multiple.
-For more info, see `crm-separator'. Uses crm-separator for default."
+For more info, see `crm-separator'. Uses crm-separator for default.
+This is obsolete in version>=1.0.0.
+"
   :group 'consult-gh
-  :type 'string)
+  :type 'regexp)
 
 (defcustom consult-gh-repo-maxnum 30
   "Maximum number of output for showing repos with gh list and search operations normally passed to \"--limit\" in the command line. The default is set to gh's default number which is 30"
@@ -103,12 +105,15 @@ If t, `consult-gh' uses the git repository from the local folder (a.k.a. `defaul
 If nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `default-directory') (default keybinding `M-n`)."
 
   :group 'consult-gh
-  :type '(choice boolean (symbol 'suggest)))
+  :type '(choice (const :tag "Current repository is in future history" suggest)
+                 (const :tag "Current repository is default input" t)
+                 (const :tag "Current repository is ignored" nil)))
 
 (defcustom consult-gh-preview-buffer-mode 'markdown-mode
   "Major mode to show README of repositories in preview. Choices are 'markdown-mode or 'org-mode"
   :group 'consult-gh
-  :type 'symbol)
+  :type '(choice (const :tag "Use default Markdown Style" markdown-mode)
+                 (const :tag "Covert Markdown to Org-mode" org-mode)))
 
 (defcustom consult-gh-default-orgs-list (list)
   "List of default GitHub orgs. A good choice would be to add personal accounts or frequently visited GitHub accounts to this list"
@@ -139,12 +144,12 @@ If nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `
 (defcustom consult-gh-default-clone-directory "~/"
   "Default directory to clone GitHub repos used by `consult-gh-repo-clone' and `consult-gh--repo-clone-action'."
   :group 'consult-gh
-  :type 'string)
+  :type 'directory)
 
 (defcustom consult-gh-default-save-directory "~/Downloads/"
   "Default directory to save files pulled from GitHub (for single files and not cloning repositories) used by `consult-gh--files-save-file-action'."
   :group 'consult-gh
-  :type 'string)
+  :type 'directory)
 
 (defcustom consult-gh-confirm-before-clone t
   "This variable defines whether `consult-gh' queries the user for a path and a name before cloning a repo or uses the default directory and package name. It's useful to set this to nil when cloning multiple repos all at once frequently."
@@ -161,7 +166,7 @@ If nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `
   :group 'consult-gh
   :type 'boolean)
 
-(defcustom consult-gh-default-branch-to-load "ask"
+(defcustom consult-gh-default-branch-to-load 'ask
   "This determines how `consult-gh' loads repository branches. Possible Values are:
 
 \"confirm\": Ask for confirmation if \"HEAD\" branch should be loaded. If the answer is no, then the user gets to choose a different branch.
@@ -170,12 +175,22 @@ If nil, consult-gh ignores the GitHub repository from the local folder (a.k.a. `
 A STRING: loads the branch STRING.
 *Note that setting this to a STRING would mean that this STRING is used for any repository that is fetched with `consult-gh' and if the branch does not exist, it will cause an error. Therefore, using a STRING is not recommended as a general case but in temporary settings where one is sure the branch exists on the repositories being fetched.*"
   :group 'consult-gh
-  :type '(choice "confirm" "ask" string (const nil)))
+  :type '(choice (const :tag "Ask for a branch name" ask)
+                 (const :tag "Ask user to confirm loading HEAD, and if no ask for a branch name" confirm)
+                 (const :tag "Loads the HEAD Branch, without confirmation"
+                 nil)
+                 (string :tag "Uses STRING as branch name, no question asked")
+                 ))
 
 (defcustom consult-gh-repo-action #'consult-gh--repo-browse-url-action
   "This variable defines the function that is used when selecting a repo. By default, it is bound to `consult-gh--repo-browse-url-action', but can be changed to other actions such as `Consult-gh--repo-browse-files-action', `consult-gh--repo-view-action' `consult-gh--repo-clone-action', `consult-gh--repo-fork-action' or any other user-defined function that follows patterns similar to those."
   :group 'consult-gh
-  :type 'function)
+  :type '(choice (function :tage "open the link in external default browser" #'consult-gh--repo-browse-url-action)
+                 (function :tage "open README in an emacs buffer" #'consult-gh--repo-view-action)
+                 (function :tage "Browse brahces and files inside" #'consult-gh--repo-browse-files-action)
+                 (function :tage "Clone the repository to local folder" #'consult-gh--repo-clone-action)
+                 (function :tage "Fork the repository" #'consult-gh--repo-fork-action)
+  (function)))
 
 (defcustom consult-gh-issue-action #'consult-gh--issue-browse-url-action
   "This variable defines the function that is used when selecting an issue. By default, it is bound to `consult-gh--issue-browse-url-action', but can be changed to other actions such as `consult-gh--issue-view-action' or similar user-defined custom actions."
@@ -631,11 +646,11 @@ TABLE can for example be obtained by converting the json object from `consult-gh
 (defun consult-gh--read-branch (repo)
 "Queries the user to select a branch name from the list of all branches of REPO (a Github repository name in a string like \"armindarvish/consult-gh\"."
   (pcase consult-gh-default-branch-to-load
-    ("confirm"
+    ('confirm
      (if (y-or-n-p "Load Default HEAD branch?")
          (cons repo "HEAD")
        (cons repo (completing-read (concat "Select Branch for " (propertize (format "\"%s\"" repo) 'face 'consult-gh-default-face) ": ") (consult-gh--files-branches-list-items repo)))))
-    ("ask"
+    ('ask
      (cons repo (completing-read (concat "Select Branch for " (propertize (format "\"%s\"" repo) 'face 'consult-gh-default-face) ": ") (consult-gh--files-branches-list-items repo))))
     ('nil
      (cons repo "HEAD"))
