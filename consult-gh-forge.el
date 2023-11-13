@@ -24,7 +24,9 @@
 ;;; Customization Variables
 
 (defcustom consult-gh-forge-timeout-seconds 10
-  "Timeout in seconds for forge-visit to load the issue, otherwise revert to normal viewing in consult-gh."
+  "How long in seconds to wait for forge-visit to load the issue?
+
+If the topic (i.e. issue or PR) cannot be loaded by `forge-visit-topic' within this time, `consult-gh--issue-view-action' or `consult-gh--pr-view-action' is used to load the topic instead."
   :group 'consult-gh
   :type 'integer
   )
@@ -37,15 +39,18 @@
 ;;; Define Backend Functions for `consult-gh-forge'
 
 (defun consult-gh-forge--make-tempdir (repo)
-"This function makes a temporary directory for repo in `consult-gh-tempdir' so that magit and forge can operate as intended."
+"Makes a temporary directory for REPO in `consult-gh-tempdir'.
+
+This is to ensure magit and forge can operate as intended."
   (let* ((tempdir (expand-file-name (concat repo "/" "forge/") consult-gh-tempdir))
          (gitdir (expand-file-name ".git/" tempdir))
          (_ (make-directory (file-name-directory gitdir) t)))
     tempdir))
 
 (defun consult-gh-forge--add-repository (url)
-  "Add a repository to the forge database and only
-pull individual topics when the user invokes `forge-pull-topic'. See forge documentation for `forge-add-repository'."
+  "Adds the repo at URL to the forge database.
+
+Note that this only pull individual topics when the user invokes `forge-pull-topic'. See forge documentation for `forge-add-repository'."
   (if (forge-get-repository url nil 'full)
       nil
     (progn
@@ -58,11 +63,11 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
 
 
 (defun consult-gh-forge--remove-repository (host owner name)
-"Removes the forge defined by host owner and name from `forge-database'."
+"Removes the forge defined by OWNER/HOST/NAME from `forge-database'."
   (closql-delete (forge-get-repository (list host owner name))))
 
 (defun consult-gh-forge--remove-repository-by-url (url)
-"Removes the forge defined by url from `forge-database'."
+"Removes the forge defined by URL from `forge-database'."
   (let* ((forge-repo (forge-get-repository url))
          (owner (oref forge-repo owner))
          (name (oref forge-repo name))
@@ -71,13 +76,17 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
     (setq consult-gh-forge--added-repositories (delete url consult-gh-forge--added-repositories))))
 
 (defun consult-gh-forge-remove-added-repositories (&optional urls)
-"Removes all the forge repositories added to `forge-database' by `consult-gh-forge--add-repository', which are stored in the list, `conuslt-gh-forge--aded-repositories'."
+"Removes all the forge repositories added by `consult-gh-forge--add-repository'.
+
+The repos are stored in `conuslt-gh-forge--aded-repositories'."
   (interactive)
   (let ((urls (or urls consult-gh-forge--added-repositories)))
     (mapcar #'consult-gh-forge--remove-repository-by-url urls)))
 
 (defun consult-gh-forge-remove-repository (&optional urls)
-"Interactively queries the user the select forge(s) from `consult-gh-forge--added-repositories' list and removes the selected ones from `forge-database'"
+"Asks the user to select forge(s) to be removed from `forge-database'.
+
+Only lists the repositories added by consult-gh (stored in `consult-gh-forge--added-repositories')."
   (interactive)
   (let* ((list (mapcar (lambda (url) (let* ((url-parse (forge--split-url url))
                                             (repo (string-join (cdr url-parse) "/"))
@@ -97,7 +106,9 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
             urls)))
 
 (defun consult-gh-forge--pull-topic (url topic)
-  "Pull the topic from repository at url using `forge-pull-topic'. See forge documentation for `forge-pull-topic'."
+  "Pulls the TOPIC from repository at URL using `forge-pull-topic'.
+
+See forge documentation for `forge-pull-topic'."
   (let ((repo (forge-get-repository url)))
     (forge--zap-repository-cache repo)
     (forge--pull-topic repo
@@ -106,8 +117,9 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
     ))
 
 (defun consult-gh-forge--add-topic (url topic)
-  "Add a repository to the forge database and only
-pull individual topics when the user invokes `forge-pull-topic'. See forge documentation for `forge-add-repository'."
+  "Adds the TOPIC of URL to the forge database.
+
+See forge documentation for `forge-add-repository'."
   (cl-letf (((symbol-function #'magit-toplevel)
              (lambda () (consult-gh--make-tempdir (string-join (cdr (forge--split-url url)) "/")))
              ))
@@ -122,7 +134,9 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
 
 
 (defun consult-gh-forge--magit-setup-buffer-internal (mode locked bindings)
-"Reimplements `magit-setup-buffer-intenral' in order to avoid making changes to magit settings for the repository in the current working directory."
+"Reimplements `magit-setup-buffer-intenral'.
+
+This is to avoid making changes to magit settings for the repository in the current working directory."
   (let* ((value (and locked
                      (with-temp-buffer
                        (pcase-dolist (`(,var ,val) bindings)
@@ -152,7 +166,9 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
   )
 
 (defmacro consult-gh-forge--magit-setup-buffer (mode &optional locked &rest bindings)
-"Reimplements `magit-setup-buffer' in order to avoid making changes to magit settings for the repository in the current working directory."
+"Reimplements `magit-setup-buffer'.
+
+This is  to avoid making changes to magit settings for the repository in the current working directory."
   (declare (indent 2))
   `(consult-gh-forge--magit-setup-buffer-internal
     ,mode ,locked
@@ -161,7 +177,9 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
                          bindings))))
 
 (defun consult-gh-forge--topic-setup-buffer (topic)
-"Reimplements `forge-setup-buffer' in order to avoid making changes to magit settings for the repository in the current working directory."
+"Reimplements `forge-setup-buffer'.
+
+This is to avoid making changes to magit settings for the repository in the current working directory."
   (let* ((repo  (forge-get-repository topic))
          (ident (concat "#"
                         (number-to-string (oref topic number))))
@@ -178,14 +196,18 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
   )
 
 (defun consult-gh-forge--visit-topic (topic)
-"Reimplements `forge-visit-topic' in order to avoid making changes to magit settings for the repository in the current working directory."
+"Reimplements `forge-visit-topic'.
+
+This is to avoid making changes to magit settings for the repository in the current working directory."
   (consult-gh-forge--topic-setup-buffer topic))
 
 
 ;;; Define Functions and Interactive Commands for `consult-gh-forge'
 
 (defun consult-gh-forge--issue-view (repo issue &optional timeout)
-  "Adds the repo and issue to forge database by using `consult-gh-forge--add-topic' and Tries to load the issue in forge by `consult-gh-forge--visit-topic' within the timeout limit (in seconds), otherwise reverts to using `consult-gh--issue-view-action' to open the issue."
+  "Adds the REPO and ISSUE to forge database.
+
+ Uses `consult-gh-forge--add-topic' and tries to load the issue in forge by `consult-gh-forge--visit-topic' within the TIMEOUT limit (in seconds), otherwise reverts to using `consult-gh--issue-view-action' to open the ISSUE."
   (let* ((repo (string-trim repo))
          (tempdir (consult-gh-forge--make-tempdir repo))
          (default-directory (file-name-parent-directory tempdir))
@@ -212,7 +234,9 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
         ))))
 
 (defun consult-gh-forge--issue-view-action (cand)
-  "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens a preview in `forge' using `consult-gh-forge--issue-view'."
+  "Opens preview of an issue candidate, CAND, in `forge'
+
+This is a wrapper function arround `consult-gh-forge--issue-view'."
     (let* ((info (cdr cand))
            (repo (substring-no-properties (plist-get info :repo)))
            (issue (substring-no-properties (format "%s" (plist-get info :issue)))))
@@ -220,7 +244,9 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
       ))
 
 (defun consult-gh-forge--pr-view (repo pr &optional timeout)
-  "Adds the repo and issue to forge database by using `consult-gh-forge--add-topic' and Tries to load the issue in forge by `consult-gh-forge--visit-topic' within the timeout limit (in seconds), otherwise reverts to using `consult-gh--issue-view-action' to open the issue."
+  "Adds the REPO and PR to forge database.
+
+ Uses `consult-gh-forge--add-topic' and tries to load the issue in forge by `consult-gh-forge--visit-topic' within the TIMEOUT limit (in seconds), otherwise reverts to using `consult-gh--pr-view-action' to open the PR."
   (let* ((repo (string-trim repo))
          (tempdir (consult-gh-forge--make-tempdir repo))
          (default-directory tempdir)
@@ -246,7 +272,9 @@ pull individual topics when the user invokes `forge-pull-topic'. See forge docum
         ))))
 
 (defun consult-gh-forge--pr-view-action (cand)
-  "The action function that gets an issue candidate for example from `consult-gh-issue-list' and opens a preview in `forge' using `consult-gh-forge--issue-view'."
+  "Opens preview of a pr candidate, CAND, in `forge'
+
+This is a wrapper function arround `consult-gh-forge--pr-view'."
     (let* ((info (cdr cand))
            (repo (substring-no-properties (plist-get info :repo)))
            (pr (substring-no-properties (format "%s" (plist-get info :pr)))))
