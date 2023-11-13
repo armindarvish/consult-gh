@@ -708,7 +708,7 @@ This is passed as STATE to `consult--read' on file candidates and is used to pre
            )
     (pcase action
             ('preview
-             (if cand
+             (if (and consult-gh-show-preview cand)
              (let* ((repo (plist-get (cdr cand) :repo))
                     (path (plist-get (cdr cand) :path))
                     (branch (or (plist-get (cdr cand) :branch) "HEAD"))
@@ -914,7 +914,7 @@ This is passed as STATE to `consult--read' on repo candidates and is used to pre
            )
       (pcase action
             ('preview
-             (if cand
+             (if (and consult-gh-show-preview cand)
                  (when-let ((repo (plist-get (cdr cand) :repo))
                             (query (plist-get (cdr cand) :query))
                             (match-str (consult--build-args query))
@@ -1170,7 +1170,7 @@ This is passed as STATE to `consult--read' on issue candidates and is used to pr
            )
           (pcase action
             ('preview
-             (if cand
+             (if (and consult-gh-show-preview cand)
                  (when-let ((repo (plist-get (cdr cand) :repo))
                             (query (plist-get (cdr cand) :query))
                             (issue (plist-get (cdr cand) :issue))
@@ -1361,7 +1361,7 @@ This is passed as STATE to `consult--read' on pr candidates and is used to previ
       (if cand
           (pcase action
             ('preview
-             (if cand
+             (if (and consult-gh-show-preview cand)
                  (when-let ((repo (plist-get (cdr cand) :repo))
                             (pr (plist-get (cdr cand) :pr))
                             (query (plist-get (cdr cand) :query))
@@ -1507,7 +1507,7 @@ This is passed as STATE to `consult--read' on code candidates and is used to pre
       (if cand
           (pcase action
             ('preview
-             (if cand
+             (if (and consult-gh-show-preview cand)
                  (let* ((repo (plist-get (cdr cand) :repo))
                     (path (plist-get (cdr cand) :path))
                     (branch (or (plist-get (cdr cand) :branch) "HEAD"))
