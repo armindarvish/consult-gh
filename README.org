@@ -76,7 +76,7 @@ While there are other Emacs packages to interact with GitHub API, we use "gh" co
 **** [[https://github.com/minad/consult][Consult]]
 To install consult follow the official instructions here: [[https://github.com/minad/consult#configuration][Configuration of Consult.]]
 
-Also, make sure you review Consult's README since it recommends some other packages and useful configurations for different settings. Some of those may improve your experience of Consult-GH as well.
+Also, make sure you review Consult's README since it recommends some other packages and useful configurations for different settings. Some of those may improve your experience of Consult-GH as well. In particular the section about [[https://github.com/minad/consult#asynchronous-search][asynchronous search]] is important for learning how to use inputs to search for result and narrow down in minibuffer.
 
 **** [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Parsing-JSON.html][json library]] in Emacs
 As of Emacs 27, json is available as built-in *if Emacs is compiled with json.* You can run the command =json-available-p= to see if it is available in your version of Emacs. If json is not available you may still be able to use Consult-GH with limited functionality (for example you cannot view file contents).
