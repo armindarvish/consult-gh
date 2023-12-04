@@ -2894,7 +2894,7 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 1.0.0
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
+;; Package-Requires: ((emacs "27.1") (consult "0.34"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -3172,7 +3172,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 1.0.0
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (forge "0.3.3") (gh "2.29"))
+;; Package-Requires: ((emacs "27.1") (consult "0.34") (forge "0.3.3"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -3474,7 +3474,7 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 1.0.0
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
+;; Package-Requires: ((emacs "27.1") (consult "0.34"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
