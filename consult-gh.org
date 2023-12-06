@@ -1291,11 +1291,12 @@ Full path of the cloned repo is passed to these functions as input arg.")
 (defun consult-gh--repo-clone (repo name targetdir &rest args)
 "Clones REPO to the path TARGETDIR/NAME.
 This is an internal function for non-interactive use. For interactive use see `consult-gh-repo-clone'. It calls \"gh\" in the command line and runs `gh clone REPO TARGETDIR/NAME`."
-  (consult-gh--command-to-string "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
-  (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name name targetdir))
-   (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face)))
-   (let ((inhibit-message t))
-   (expand-file-name name targetdir))
+  (if (consult-gh--command-to-string "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
+      (progn
+        (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name name targetdir))
+        (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face)))))
+  (let ((inhibit-message t))
+          (expand-file-name name targetdir))
   )
 
 (defun consult-gh--repo-clone-action (cand)
@@ -1312,7 +1313,7 @@ If `consult-gh-confirm-before-clone' is nil it clones the repo under `consult-gh
     (if consult-gh-confirm-before-clone
         (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or consult-gh-default-clone-directory default-directory) default-directory))
         (name (read-string "name: " package)))
-          (consult-gh--repo-clone reponame package targetdir))
+          (consult-gh--repo-clone reponame name targetdir))
       (consult-gh--repo-clone reponame package consult-gh-default-clone-directory))
     ))
 #+end_src
