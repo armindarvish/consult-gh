@@ -13,3 +13,9 @@
 
 # Undo-tree save-files
 *.~undo-tree
+
+
+#test files
+test.org
+tests.org
+/tests
