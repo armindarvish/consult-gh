@@ -964,8 +964,8 @@ To use this as the default action on consult-gh's files, set `consult-gh-file-ac
            (file-size (and file-p (plist-get info :size)))
            (filename (and file-p (file-name-nondirectory path)))
            (targetpath (if consult-gh-ask-for-path-before-save
-                           (file-truename (read-file-name "Save As: " consult-gh-default-save-directory filename nil filename))
-                         consult-gh-default-save-directory))
+                           (file-truename (read-file-name "Save As: " consult-gh-default-save-directory nil nil filename))
+                         (expand-file-name filename consult-gh-default-save-directory)))
            (confirm t))
    (when (>= file-size consult-gh-large-file-warning-threshold)
      (if (yes-or-no-p (format "File is %s Bytes. Do you really want to load it?" file-size))
