@@ -6,7 +6,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 1.0.0
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (gh "2.29"))
+;; Package-Requires: ((emacs "27.1") (consult "0.34"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: convenience, matching, tools, vc
 
