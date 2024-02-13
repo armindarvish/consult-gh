@@ -2254,7 +2254,7 @@ If REPPOS or TARGETDIR are not supplied, interactively asks user for those value
   (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
          (repos (or repos (substring-no-properties (car (consult-gh-search-repos nil t)))))
          (targetdir (or targetdir consult-gh-default-clone-directory))
-         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir default-directory) targetdir)))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir) (or targetdir default-directory))))
     (if (stringp repos)
          (setq repos (list repos)))
     (mapcar (lambda (repo)
