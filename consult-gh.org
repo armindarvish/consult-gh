@@ -896,7 +896,7 @@ This list does not have directories. See `consult-gh--files-list-items' for gett
 "Formats minibuffer candidates for files (e.g. in `consult-gh-find-file').
 CONS is a list of files for example returned by `consult-gh--files-nodirectory-items'."
 (when-let* ((path (car cons))
-         (path (string-join (mapcar (lambda (x) x) (string-split path "/")) (propertize "/" 'face 'consult-gh-path-face)))
+         (path (string-join (mapcar (lambda (x) x) (string-split path "/")) (propertize "/" 'face 'consult-gh-default-face)))
          (info (cdr cons))
          (repo (plist-get info :repo))
          (user (consult-gh--get-username repo))
