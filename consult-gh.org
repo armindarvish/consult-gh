@@ -896,7 +896,7 @@ This list does not have directories. See `consult-gh--files-list-items' for gett
 "Formats minibuffer candidates for files (e.g. in `consult-gh-find-file').
 CONS is a list of files for example returned by `consult-gh--files-nodirectory-items'."
 (when-let* ((path (car cons))
-         (path (string-join (mapcar (lambda (x) x) (string-split path "/")) (propertize "/" 'face 'consult-gh-path-face)))
+         (path (string-join (mapcar (lambda (x) x) (string-split path "/")) (propertize "/" 'face 'consult-gh-default-face)))
          (info (cdr cons))
          (repo (plist-get info :repo))
          (user (consult-gh--get-username repo))
@@ -2054,21 +2054,18 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult.
 "
   (interactive)
-  (let ((sel
-    (if current-prefix-arg
-      (let* ((initial (or initial (format "%s" (car (string-split (car (consult-gh-search-repos initial t)) "/"))))))
-        (consult-gh--async-repo-list "Enter Org Name:  " #'consult-gh--repo-list-builder initial))
-      (consult-gh--async-repo-list "Enter Org Name:  " #'consult-gh--repo-list-builder initial))))
-
+  (if current-prefix-arg
+      (setq initial (or initial (format "%s" (car (string-split (car (consult-gh-search-repos initial t)) "/"))))))
+  (let ((sel (consult-gh--async-repo-list "Enter Org Name:  " #'consult-gh--repo-list-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
     (when-let ((username (plist-get (cdr sel) :user)))
       (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
-
     (if noaction
         sel
       (funcall consult-gh-repo-action sel))))
+
 #+end_src
 
 
@@ -2254,7 +2251,7 @@ If REPPOS or TARGETDIR are not supplied, interactively asks user for those value
   (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
          (repos (or repos (substring-no-properties (car (consult-gh-search-repos nil t)))))
          (targetdir (or targetdir consult-gh-default-clone-directory))
-         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir default-directory) targetdir)))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir) (or targetdir default-directory))))
     (if (stringp repos)
          (setq repos (list repos)))
     (mapcar (lambda (repo)
@@ -2367,11 +2364,11 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 
 For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
-  (let ((sel
-         (if current-prefix-arg
-             (let* ((initial (or initial (format "%s" (car (consult-gh-search-repos initial t))))))
-               (consult-gh--async-issue-list "Enter Repo Name:  " #'consult-gh--issue-list-builder initial))
-           (consult-gh--async-issue-list "Enter Repo Name:  " #'consult-gh--issue-list-builder initial))))
+
+  (if current-prefix-arg
+      (setq initial (or initial (format "%s" (car (consult-gh-search-repos initial t))))))
+
+  (let ((sel (consult-gh--async-issue-list "Enter Repo Name:  " #'consult-gh--issue-list-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
@@ -2379,7 +2376,7 @@ For more details on consult--async functionalities, see `consult-grep' and the o
       (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
     (if noaction
         sel
-    (funcall consult-gh-issue-action sel))))
+      (funcall consult-gh-issue-action sel))))
 #+end_src
 
 **** consult-gh-search-issues
@@ -2475,12 +2472,10 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 
 For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
-  (let ((sel
   (if current-prefix-arg
-    (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
-      (consult-gh-args (append consult-gh-args `("--repo " ,(format "%s" repo)))))
-      (consult-gh--async-search-issues "Search Issues:  " #'consult-gh--search-issues-builder initial))
-  (consult-gh--async-search-issues "Search Issues:  " #'consult-gh--search-issues-builder initial))))
+      (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
+  (let* ((consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
+        (sel (consult-gh--async-search-issues "Search Issues:  " #'consult-gh--search-issues-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
@@ -2490,6 +2485,7 @@ For more details on consult--async functionalities, see `consult-grep' and the o
         sel
     (funcall consult-gh-issue-action sel)
     )))
+
 #+end_src
 
 
@@ -2595,11 +2591,10 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 
 For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
-  (let ((sel
-         (if current-prefix-arg
-             (let* ((initial (or initial (format "%s" (car (consult-gh-search-repos initial t))))))
-               (consult-gh--async-pr-list "Enter Repo Name:  " #'consult-gh--pr-list-builder initial))
-           (consult-gh--async-pr-list "Enter Repo Name:  " #'consult-gh--pr-list-builder initial))))
+  (if current-prefix-arg
+      (setq initial (or initial (format "%s" (car (consult-gh-search-repos initial t))))))
+
+  (let ((sel (consult-gh--async-pr-list "Enter Repo Name:  " #'consult-gh--pr-list-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
@@ -2701,12 +2696,10 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 
 For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
-  (let ((sel
-         (if current-prefix-arg
-             (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
-                    (consult-gh-args (append consult-gh-args `("--repo " ,(format "%s" repo)))))
-               (consult-gh--async-search-prs "Search Pull-Requests:  " #'consult-gh--search-prs-builder initial))
-           (consult-gh--async-search-prs "Search Pull-Requests:  " #'consult-gh--search-prs-builder initial))))
+  (if current-prefix-arg
+      (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
+  (let* ((consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
+        (sel (consult-gh--async-search-prs "Search Pull-Requests:  " #'consult-gh--search-prs-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
@@ -2808,12 +2801,10 @@ INITIAL is an optional arg for the initial input in the minibuffer. (passed as I
 
 For more details on consult--async functionalities, see `consult-grep' and the official manual of consult, here: https://github.com/minad/consult."
   (interactive)
-  (let ((sel
-         (if current-prefix-arg
-             (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
-                    (consult-gh-args (append consult-gh-args `("--repo " ,(format "%s" repo)))))
-               (consult-gh--async-search-code "Search Code:  " #'consult-gh--search-code-builder initial))
-           (consult-gh--async-search-code "Search Code:  " #'consult-gh--search-code-builder initial))))
+  (if current-prefix-arg
+      (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
+  (let* ((consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
+        (sel (consult-gh--async-search-code "Search Code:  " #'consult-gh--search-code-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
