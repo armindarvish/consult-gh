@@ -17,10 +17,10 @@
 ;;; Requirements
 
 (eval-when-compile
-(require 'consult)
 (require 'json)
 )
 
+(require 'consult)
 (require 'crm)
 
 ;;; Group
