@@ -5,7 +5,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.0
+;; Version: 1.0.1
 ;; Package-Requires: ((emacs "27.1") (consult "0.34"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
@@ -22,48 +22,39 @@
 (defun consult-gh-embark-add-repo-to-known-repos (cand)
   "Adds repo to `consult-gh--known-repos-list'."
   (let* ((repo (get-text-property 0 :repo cand)))
-    (add-to-list 'consult-gh--known-repos-list repo))
-  )
+    (add-to-list 'consult-gh--known-repos-list repo)))
 
 (defun consult-gh-embark-remove-repo-from-known-repos (cand)
   "Removes repo from `consult-gh--known-repos-list'."
   (let* ((repo (get-text-property 0 :repo cand)))
-    (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list))
-    ))
+    (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list))))
 
 (defun consult-gh-embark-add-org-to-known-orgs (cand)
   "Adds org to `consult-gh--known-orgs-list'."
   (let* ((org (get-text-property 0 :user cand)))
-    (add-to-list 'consult-gh--known-orgs-list (format "%s" org)))
-  )
+    (add-to-list 'consult-gh--known-orgs-list (format "%s" org))))
 
 (defun consult-gh-embark-remove-org-from-known-orgs (cand)
   "Removes org from `consult-gh--known-orgs-list'."
   (let* ((org (get-text-property 0 :user cand)))
-    (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list))
-    )
-  )
+    (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list))))
 
 (defun consult-gh-embark-add-org-to-default-list (cand)
   "Adds org to `consult-gh--known-orgs-list'."
   (let* ((org (get-text-property 0 :user cand)))
-    (add-to-list 'consult-gh-default-orgs-list (format "%s" org)))
-  )
+    (add-to-list 'consult-gh-default-orgs-list (format "%s" org))))
 
 (defun consult-gh-embark-remove-org-from-default-list (cand)
   "Removes org from `consult-gh--known-orgs-list'."
   (let* ((org (get-text-property 0 :user cand)))
-    (setq consult-gh-default-orgs-list (delete org consult-gh-default-orgs-list))
-    )
-  )
+    (setq consult-gh-default-orgs-list (delete org consult-gh-default-orgs-list))))
 
 (defun consult-gh-embark-open-in-browser (cand)
-  "Opens the link in browser"
+  "Opens the link in browser."
   (let* ((repo (get-text-property 0 :repo cand))
          (issue (or (get-text-property 0 :issue cand) nil))
          (pr (or (get-text-property 0 :pr cand) nil))
-         (path (or (get-text-property 0 :path cand) nil))
-         )
+         (path (or (get-text-property 0 :path cand) nil)))
     (cond
      (issue
       (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties issue)))
@@ -72,11 +63,10 @@
      (pr
       (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties pr)))
      (t
-      (consult-gh--call-process "repo" "view" "--web" (substring repo))))
-    ))
+      (consult-gh--call-process "repo" "view" "--web" (substring repo))))))
 
 (defun consult-gh-embark-default-action (cand)
-  "Opens the link in an Emacs buffer"
+  "Opens the link in an Emacs buffer."
   (let* ((repo (get-text-property 0 :repo cand))
          (user (get-text-property 0 :user cand))
          (package (get-text-property 0 :package cand))
@@ -86,8 +76,7 @@
          (path (or (get-text-property 0 :path cand) nil))
          (branch (or (get-text-property 0 :branch cand) nil))
          (code (or (get-text-property 0 :code cand) nil))
-         (newcand (cons cand `(:repo ,repo :user ,user :package ,package :url ,url :path ,path :branch ,branch :issue ,issue :pr ,pr :code ,code)))
-         )
+         (newcand (cons cand `(:repo ,repo :user ,user :package ,package :url ,url :path ,path :branch ,branch :issue ,issue :pr ,pr :code ,code))))
     (cond
      (code
       (funcall consult-gh-code-action newcand))
@@ -98,8 +87,7 @@
      (path
       (funcall consult-gh-file-action newcand))
      (t
-      (funcall consult-gh-repo-action newcand)))
-    ))
+      (funcall consult-gh-repo-action newcand)))))
 
 
 (defun consult-gh-embark-get-ssh-link (cand)
@@ -127,8 +115,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
      (pr
       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" pr))))
      (t
-      (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))
-    ))
+      (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))
 
 (defun consult-gh-embark-get-org-link (cand)
   "Copy the org style link for the repo's url to `kill-ring'."
@@ -140,8 +127,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 (defun consult-gh-embark-get-straight-usepackage-link (cand)
   "Copys a drop-in straight use package setup of this repo to `kill-ring'."
   (let* ((repo (get-text-property 0 :repo cand))
-         (package (car (last (split-string repo "\/"))))
-         )
+         (package (car (last (split-string repo "\/")))))
     (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo "\")\n)"))))
 
 (defun consult-gh-embark-get-other-repos-by-same-user (cand)
@@ -205,8 +191,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   "r r" #'consult-gh-embark-get-other-repos-by-same-user
   "r i" #'consult-gh-embark-view-issues-of-repo
   "r p" #'consult-gh-embark-view-prs-of-repo
-  "o" #'consult-gh-embark-open-in-browser
-  )
+  "o" #'consult-gh-embark-open-in-browser)
 
 (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-general-actions-map))
 
@@ -218,8 +203,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
-  :parent consult-gh-embark-general-actions-map
-  )
+  :parent consult-gh-embark-general-actions-map)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-repos . consult-gh-embark-repos-actions-map))
 
@@ -233,22 +217,19 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 
 (defvar-keymap consult-gh-embark-issues-actions-map
   :doc "Keymap for consult-gh-embark-repos"
-  :parent consult-gh-embark-general-actions-map
-  )
+  :parent consult-gh-embark-general-actions-map)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-issues . consult-gh-embark-issues-actions-map))
 
 (defvar-keymap consult-gh-embark-prs-actions-map
   :doc "Keymap for consult-gh-embark-repos"
-  :parent consult-gh-embark-general-actions-map
-  )
+  :parent consult-gh-embark-general-actions-map)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-prs . consult-gh-embark-prs-actions-map))
 
 (defvar-keymap consult-gh-embark-codes-actions-map
   :doc "Keymap for consult-gh-embark-codes"
-  :parent consult-gh-embark-general-actions-map
-  )
+  :parent consult-gh-embark-general-actions-map)
 
 (add-to-list 'embark-keymap-alist '(consult-gh-codes . consult-gh-embark-codes-actions-map))
 
