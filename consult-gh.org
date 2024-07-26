@@ -720,7 +720,7 @@ If there are errors passes them to *Messages*."
 #+begin_src emacs-lisp
 (defun consult-gh--api-get-json (arg)
 "Makes a GitHub API call to get response in JSON format by passing the ARG (e.g. a GitHub API URL) to \"gh api -H Accept:application/vnd.github+json\" command."
-  (consult-gh--call-process "api" "-H" "Accept: application/vnd.github+json" arg))
+  (consult-gh--call-process "api" "-H" "Accept: application/vnd.github+json" "--paginate" arg))
 #+end_src
 ***** json to table conversion
 #+begin_src emacs-lisp
@@ -739,6 +739,36 @@ If there are errors passes them to *Messages*."
 (defun consult-gh--get-current-username ()
   "Gets the currently logged in user by running `gh api user` and returning the login field."
  (consult-gh--api-json-to-hashtable (cadr (consult-gh--api-get-json "user")) :login))
+#+end_src
+**** get orgs of current login user
+#+begin_src emacs-lisp
+(defun consult-gh--get-current-orgs ()
+  "Gets the organizations for currently logged in user by running `gh api user/orgs` and returning the login field."
+ (gethash :login (car (consult-gh--api-json-to-hashtable (cadr (consult-gh--api-get-json "user/orgs"))))))
+#+end_src
+**** get gitignore name list
+#+begin_src emacs-lisp
+(defun consult-gh--get-gitignore-template-list ()
+"Lists name of .gitignore templates"
+(string-split (string-trim (cadr (consult-gh--api-get-json "gitignore/templates")) "\\[" "\\]") "," t "\""))
+#+end_src
+**** get open-source license name list
+
+#+begin_src emacs-lisp
+(defun consult-gh--get-license-template-list ()
+"Lists name of open source license templates.
+
+Each item is a cons of (name . key) for a license."
+(mapcar (lambda (item) (cons (gethash :name item) (gethash :key item))) (consult-gh--api-json-to-hashtable (cadr (consult-gh--api-get-json "licenses")))))
+#+end_src
+**** get template repos of user
+#+begin_src emacs-lisp
+(defun consult-gh--get-user-template-repos (&optional user)
+"Lists template repository for authenticated user.
+
+If the optional argument USER is non-nil, gets repos of USer instead."
+(let ((endpoint (if user (format "users/%s/repos" user) "user/repos")))
+(delq nil (mapcar (lambda (item) (when (eq (gethash :is_template item) t) (gethash :full_name item))) (consult-gh--api-json-to-hashtable (cadr (consult-gh--api-get-json endpoint)))))))
 #+end_src
 **** get GitHub repo name in the current directory
 #+begin_src emacs-lisp
@@ -1296,8 +1326,7 @@ This is an internal function for non-interactive use. For interactive use see `c
         (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name name targetdir))
         (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face)))))
   (let ((inhibit-message t))
-          (expand-file-name name targetdir))
-  )
+          (expand-file-name name targetdir)))
 
 (defun consult-gh--repo-clone-action (cand)
 "Clones a repo candidate, CAND, from consult-gh.
@@ -1348,6 +1377,211 @@ To use this as the default action for consult-gh's repos, set `consult-gh-repo-a
      (let* ((reponame (plist-get (cdr cand) :repo)))
       (consult-gh--repo-fork reponame)
     ))
+#+end_src
+
+******* create
+
+******** create from scratch
+#+begin_src emacs-lisp
+(defun consult-gh--repo-create-scratch (&optional name owner description visibility make-readme gitignore-template license-key)
+"Creates a new repository on github from scratch
+
+Description of arguments:
+ NAME               name of repository
+ OWNER              user/organization owning the repo
+ DESCRIPTION        description for the repo
+ VISIBILITY         private|public|internal
+ MAKE-README        boolean, whether to make a readme file or not
+ GITIGNORE-TEMPLATE name of gitignore template
+ LICENSE-KEY        key for license template"
+(let* ((name (or name (read-string "Repository name: ")))
+       (owner (or owner (consult--read (list (consult-gh--get-current-username) (consult-gh--get-current-orgs))
+                             :prompt "Repository owner: "
+                             :initial nil
+                             :sort nil
+                             :require-match t)))
+       (targetrepo (concat (and owner (unless (string-empty-p owner) (concat owner "/"))) name))
+       (description (or description (read-string "Description: ")))
+       (description (and (stringp description)
+                         (not (string-empty-p description))
+                         description))
+       (visibility (or visibility (downcase (consult--read (list "Public" "Private" "Internal")
+                                  :prompt "Visibility: "
+                                  :sort nil
+                                  :require-match t))))
+       (readme (or make-readme (y-or-n-p "Would you like to add a README file?")))
+       (gitignore (if (not gitignore-template) (y-or-n-p "Would you like to add a .gitignore?") t))
+       (gitignore-template (or gitignore-template (and gitignore (string-trim (consult--read (consult-gh--get-gitignore-template-list)
+                                                        :prompt (format "Select template for %s" (propertize ".gitignore " 'face 'error))
+                                                        :sort nil
+                                                        :require-match t
+                                                        )))))
+       (license (if (not license-key) (y-or-n-p "Would you like to add a license?") t))
+       (license-key (or license-key (and license (consult--read (consult-gh--get-license-template-list)
+                                               :prompt (format "Select %s template" (propertize "license " 'face 'consult-gh-warning-face))
+                                               :lookup #'consult--lookup-cdr
+                                               :require-match t
+                                               :sort nil))))
+       (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub. Continue?" (propertize name 'face 'consult-gh-repo-face) (propertize visibility 'face 'warning))))
+       (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
+       (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
+       (default-directory (or clonedir default-directory))
+       (targetdir (expand-file-name name default-directory))
+       (args '("repo" "create"))
+       (out))
+
+(setq args (if (and targetrepo confirm visibility)
+               (delq nil (append args
+                       (list targetrepo)
+                       (list (concat "--" visibility))
+                       (and description (list "--description" description))
+                       (and readme (list "--add-readme"))
+                       (and gitignore-template (list "--gitignore" gitignore-template))
+                       (and license (list "--license" license-key))
+                       (and clone (list "--clone"))))))
+
+(setq out (apply #'consult-gh--call-process args))
+(if (eq (car out) 0)
+(when (and clone (file-exists-p targetdir))
+  (message (format "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face)))
+  (run-hook-with-args 'consult-gh-repo-post-clone-hook targetdir)
+    targetdir)
+(progn (message (cadr out))))))
+#+end_src
+
+******** create from template
+#+begin_src emacs-lisp
+(defun consult-gh--repo-create-template (&optional name owner description visibility template)
+"Creates a new repository on github from TEMPLATE repo
+
+Description of arguments:
+ NAME        name of repository
+ OWNER       user/organization owning the repo
+ DESCRIPTION description for the repo
+ VISIBILITY  private|public|internal
+ TEMPLATE    Full name of template repo (e.g. user/repo)"
+(let* ((name (or name (read-string "Repository name: ")))
+       (owner (or owner (consult--read (list (consult-gh--get-current-username) (consult-gh--get-current-orgs))
+                             :prompt "Repository owner: "
+                             :initial nil
+                             :sort nil
+                             :require-match t)))
+       (targetrepo (concat (and owner (unless (string-empty-p owner) (concat owner "/"))) name))
+       (description (or description (read-string "Description: ")))
+       (description (and (stringp description)
+                         (not (string-empty-p description))
+                         description))
+       (visibility (or visibility (downcase (consult--read (list "Public" "Private" "Internal")
+                                  :prompt "Visibility: "
+                                  :sort nil
+                                  :require-match t))))
+       (templates (consult-gh--get-user-template-repos))
+       (template (or template (and templates (consult--read templates
+                                             :prompt "Select template repository: "
+                                             :sort nil
+                                             :require-match t))))
+       (template (and (stringp template) (not (string-empty-p template)) template))
+       (use-scratch (if (not template) (y-or-n-p "No template selected. Would you like to make the repo without template?"))))
+  (cond
+   (template
+      (let* ((confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub. Continue?" (propertize name 'face 'consult-gh-repo-face) (propertize visibility 'face 'warning))))
+             (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
+             (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
+             (default-directory (or clonedir default-directory))
+             (targetdir (expand-file-name name default-directory))
+             (args '("repo" "create"))
+             (out))
+
+        (setq args (if (and targetrepo confirm visibility)
+               (delq nil (append args
+                       (list targetrepo)
+                       (list (concat "--" visibility))
+                       (list "--template" template)
+                       (and description (list "--description" description))
+                       (and clone (list "--clone"))))))
+
+(setq out (apply #'consult-gh--call-process args))
+(if (eq (car out) 0)
+(when (and clone (file-exists-p targetdir))
+  (message (format "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face)))
+  (run-hook-with-args 'consult-gh-repo-post-clone-hook targetdir)
+    targetdir)
+(progn (message (cadr out)))
+)))
+      (use-scratch
+       (consult-gh--repo-create-scratch name owner description visibility))
+      (t
+       (message "aborted without making repository")))))
+#+end_src
+******** push existing
+#+begin_src emacs-lisp
+(defun consult-gh--repo-create-push-existing (&optional directory name owner description visibility)
+  "Creates a new repository on github from local repo in DIRECTORY
+
+Description of arguments:
+ DIRECTORY   Path to local directory of git repository
+ NAME        name of repository
+ OWNER       user/organization owning the repo
+ DESCRIPTION description for the repo
+ VISIBILITY  private|public|internal"
+  (let* ((directory (or directory (read-directory-name "Path to local repository: " default-directory)))
+         (directory (and (stringp directory) (f-directory-p directory) (file-expand-wildcards (expand-file-name ".git" directory)) directory))
+         (use-scratch (if (not directory) (y-or-n-p "No git directory selected. Would you like to make the repo from scratch instead?"))))
+    (cond
+     (directory
+      (let* ((name (or name (read-string "Repository name: " (file-name-nondirectory (string-trim-right directory "/")))))
+             (owner (or owner (consult--read (list (consult-gh--get-current-username) (consult-gh--get-current-orgs))
+                                             :prompt "Repository owner: "
+                                             :initial nil
+                                             :sort nil
+                                             :require-match t)))
+             (targetrepo (concat (and owner (unless (string-empty-p owner) (concat owner "/"))) name))
+             (description (or description (read-string "Description: ")))
+             (description (and (stringp description)
+                               (not (string-empty-p description))
+                               description))
+             (visibility (or visibility (downcase (consult--read (list "Public" "Private" "Internal")
+                                                                 :prompt "Visibility: "
+                                                                 :sort nil
+                                                                 :require-match t))))
+             (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub. Continue?" (propertize name 'face 'consult-gh-repo-face) (propertize visibility 'face 'warning))))
+             (remote (and confirm (y-or-n-p "Add a remote?") (read-string "What should the new remote be called? " "origin")))
+             (remote (and (stringp remote) (not (string-empty-p remote)) remote))
+             (args '("repo" "create"))
+             (out))
+
+        (setq args (if (and targetrepo confirm visibility)
+                       (delq nil (append args
+                                         (list targetrepo)
+                                         (list (concat "--" visibility))
+                                         (list "--source" (file-truename directory))
+                                         (and description (list "--description" description))
+                                         (and remote (list "--remote" remote))))))
+        (setq out (apply #'consult-gh--call-process args))
+        (message (cadr out))))
+     (use-scratch
+      (consult-gh--repo-create-scratch name owner description visibility))
+     (t
+      (message "aborted without making repository")))))
+#+end_src
+******** create new
+#+begin_src emacs-lisp
+(defun consult-gh-repo-create-new (&optional name owner description visibility make-readme gitignore-template license-key template local-repo)
+"Creates a new repo, CAND, on GitHub.
+
+This mimicks the same interactive repo creation
+from “gh repo create” in the command line."
+(interactive "P")
+(let ((answer (consult--read (list (cons "Create a new repository on GitHub from scratch" :scratch)
+                                (cons "Create a new repository on GitHub from a template repository" :template)
+                                (cons "Push an existing local repository to GitHub" :existing))
+                           :prompt "What would you like to do?"
+                           :lookup #'consult--lookup-cdr
+                           :sort nil)))
+(pcase answer
+  (':scratch (consult-gh--repo-create-scratch name owner description visibility make-readme gitignore-template license-key))
+  (':template (consult-gh--repo-create-template name owner description visibility template))
+  (':existing (consult-gh--repo-create-push-existing local-repo name owner description visibility)))))
 #+end_src
 
 **** issues
