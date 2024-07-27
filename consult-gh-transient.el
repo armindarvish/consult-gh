@@ -64,9 +64,6 @@
     (consult-gh-transient--infix-issue-state)
     (consult-gh-transient--infix-prs-state)]])
 
-(defalias consult-gh #'consult-gh-transient
-"Use transient menu as consult-gh entry.")
-
 (defun consult-gh-transient-read-variable (prompt initial-input history)
   "Read value from minibuffer for `consult-gh' transient menu.
 

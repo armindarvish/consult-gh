@@ -379,6 +379,14 @@ Common options include:
   :group 'consult-gh
   :type 'boolean)
 
+(defcustom consult-gh-default-interactive-command #'consult-gh-search-repos
+  "Which command should `consult-gh' call?"
+  :group 'consult-gh
+  :type '(choice (function :tag "(Default) Search Rpositories"  consult-gh-search-repos)
+                 (function :tag "List default repos of user" consult-gh-default-repos)
+                 (function :tag "Open transient menu" consult-gh-transient)
+                 (function :tag "Other custom interactive command")))
+
 ;;; Other Variables
 (defvar consult-gh-category 'consult-gh
   "Category symbol for the `consult-gh' package.")
@@ -3254,6 +3262,14 @@ INITIAL is an optional arg for the initial input in the minibuffer
     (if noaction
         sel
       (funcall consult-gh-file-action sel))))
+
+(defun consult-gh (&rest args)
+  "Convinient wrapper function for favorite interactive command.
+
+Calls the function in `consult-gh-default-interactive-command'
+and passes ARGS to it."
+  (interactive)
+  (apply consult-omni-default-interactive-command args))
 
 ;;; provide `consult-gh' module
 

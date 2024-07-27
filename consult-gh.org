@@ -399,6 +399,14 @@ Common options include:
   :group 'consult-gh
   :type 'boolean)
 
+(defcustom consult-gh-default-interactive-command #'consult-gh-search-repos
+  "Which command should `consult-gh' call?"
+  :group 'consult-gh
+  :type '(choice (function :tag "(Default) Search Rpositories"  consult-gh-search-repos)
+                 (function :tag "List default repos of user" consult-gh-default-repos)
+                 (function :tag "Open transient menu" consult-gh-transient)
+                 (function :tag "Other custom interactive command")))
+
 #+end_src
 
 *** Other Variables
@@ -3644,6 +3652,16 @@ INITIAL is an optional arg for the initial input in the minibuffer
         sel
       (funcall consult-gh-file-action sel))))
 #+end_src
+**** consult-gh
+#+begin_src emacs-lisp
+(defun consult-gh (&rest args)
+  "Convinient wrapper function for favorite interactive command.
+
+Calls the function in `consult-gh-default-interactive-command'
+and passes ARGS to it."
+  (interactive)
+  (apply consult-omni-default-interactive-command args))
+#+end_src
 ** Provide
 #+begin_src emacs-lisp
 ;;; provide `consult-gh' module
@@ -4306,9 +4324,6 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
    ["States"
     (consult-gh-transient--infix-issue-state)
     (consult-gh-transient--infix-prs-state)]])
-
-(defalias consult-gh #'consult-gh-transient
-"Use transient menu as consult-gh entry.")
 
 (defun consult-gh-transient-read-variable (prompt initial-input history)
   "Read value from minibuffer for `consult-gh' transient menu.
