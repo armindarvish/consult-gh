@@ -620,7 +620,7 @@ if IGNORE-CASE is non-nil.
   str)
 
 (defun consult-gh--markdown-to-org-footnotes (&optional buffer)
-  "Convert Markdown style footnotes to org-mode style footnotes in BUFFER.
+  "Convert Markdown style footnotes to \='org-mode style footnotes in BUFFER.
 
 Uses simple regexp replacements."
   (let ((buffer (or buffer (current-buffer))))
@@ -634,7 +634,7 @@ Uses simple regexp replacements."
     nil))
 
 (defun consult-gh--markdown-to-org-emphasis (&optional buffer)
-  "Convert markdown style emphasis to org-mode style emphasis in BUFFER.
+  "Convert markdown style emphasis to \='org-mode style emphasis in BUFFER.
 
 Uses simple regexp replacements."
   (let ((buffer (or buffer (current-buffer))))
@@ -673,7 +673,7 @@ Uses simple regexp replacements."
     nil))
 
 (defun consult-gh--markdown-to-org-links (&optional buffer)
-  "Convert arkdown links to org-mode links in BUFFER.
+  "Convert arkdown links to \='org-mode links in BUFFER.
 
 Uses simple regexp replacements."
   (let ((buffer (or buffer (current-buffer))))
@@ -709,7 +709,7 @@ Uses simple regexp replacements."
     nil))
 
 (defun consult-gh--markdown-to-org (&optional buffer)
-  "Convert from markdown format to org-mode format in BUFFER.
+  "Convert from markdown format to \='org-mode format in BUFFER.
 
 This is used for viewing repos \(a.k.a. fetching README file of repos\)
 if `consult-gh-preview-buffer-mode' is set to \='org-mode."
