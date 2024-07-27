@@ -12,8 +12,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.1
-;; Package-Requires: ((emacs "27.1") (consult "0.34"))
+;; Version: 1.0
+;; Package-Requires: ((emacs "29.1") (consult "0.34"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
@@ -35,7 +35,7 @@
 (eval-when-compile
   (require 'json))
 
-(require 'consult)
+(require 'consult) ;; core dependency
 (require 'crm)
 
 #+end_src
@@ -334,8 +334,7 @@ Common options include:
           '(choice (const :tag "Open the Issue URL in default browser" #'consult-gh--issue-browse-url-action)
                    (const :tag "Open the Issue in an Emacs buffer" #'consult-gh--issue-view-action)
                    (const :tag "Open the Issue in a Magit/Forge buffer" #'consult-gh-forge--issue-view-action)
-                   (function :tag "Custom Function"))
-          ))
+                   (function :tag "Custom Function"))))
 
 (defcustom consult-gh-pr-action #'consult-gh--pr-browse-url-action
   "What function to call when a PR is selected?
@@ -359,8 +358,7 @@ Common options include:
                                                   (function :tag "Custom Function"))
           '(choice (const :tag "Open the PR URL in default browser" #'consult-gh--pr-browse-url-action)
                    (const :tag "Open the PR in an Emacs buffer" #'consult-gh--pr-view-action)
-                   (function :tag "Custom Function"))
-          ))
+                   (function :tag "Custom Function"))))
 
 (defcustom consult-gh-code-action #'consult-gh--code-browse-url-action
   "What function to call when a code is selected?
@@ -635,8 +633,7 @@ within MAXWIDTH or a fraction of MAXWIDTH.  This is used for aligning
            (consult-gh--set-string-width string (- (floor (/ maxwidth 1.2)) w) t))
           ((< (+ s w) maxwidth)
            (consult-gh--set-string-width string (- maxwidth w) t))
-          (t string)
-          )))
+          (t string))))
 
 (defun consult-gh--highlight-match (regexp str ignore-case)
   "Highlight REGEXP in STR.
@@ -1701,8 +1698,7 @@ Description of Arguments:
          (gitignore-template (or gitignore-template (and gitignore (string-trim (consult--read (consult-gh--get-gitignore-template-list)
                                                                                                :prompt (format "Select template for %s" (propertize ".gitignore " 'face 'error))
                                                                                                :sort nil
-                                                                                               :require-match t
-                                                                                               )))))
+                                                                                               :require-match t)))))
          (license (if (not license-key) (y-or-n-p "Would you like to add a license?") t))
          (license-key (or license-key (and license (consult--read (consult-gh--get-license-template-list)
                                                                   :prompt (format "Select %s template" (propertize "license " 'face 'consult-gh-warning-face))
@@ -2666,6 +2662,7 @@ Description of Arguments:
 
 ****** Interactive async command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-repo-list (&optional initial noaction)
   "Interactive command to list repos of users/organizations asynchronously.
 
@@ -2781,8 +2778,7 @@ Description of Arguments:
                       (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-repo-from-directory) nil))))
     (consult--read
      (consult--async-command builder
-       (consult-gh--search-repos-transform builder)
-       )
+       (consult-gh--search-repos-transform builder))
      :prompt prompt
      :lookup (consult-gh--repo-lookup)
      :state (funcall #'consult-gh--repo-state)
@@ -2800,6 +2796,7 @@ Description of Arguments:
 
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-search-repos (&optional initial noaction)
   "Interactively search GitHub repositories.
 
@@ -2866,8 +2863,7 @@ if NOACTION is non-nil, return the candidate without runing action."
                              :state (funcall #'consult-gh--repo-state)
                              :group #'consult-gh--repo-group
                              :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
-                                                  consult-gh--known-repos-list
-                                                  )
+                                                  consult-gh--known-repos-list)
                              :history 'consult-gh--repos-history
                              :require-match t
                              :category 'consult-gh-repos
@@ -2881,6 +2877,7 @@ if NOACTION is non-nil, return the candidate without runing action."
 **** consult-gh-default-repos
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-default-repos ()
   "List repositories of orgs in `consult-gh-default-orgs-list'.
 
@@ -2893,6 +2890,7 @@ or any other favorite accounts whose repositories are frequently visited."
 **** consult-gh-repo-fork
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-repo-fork (&optional repos)
   "Interactively fork REPOS.
 
@@ -2913,6 +2911,7 @@ If REPOS not supplied, interactively asks user to pick REPOS."
 **** consult-gh-repo-clone
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-repo-clone (&optional repos targetdir)
   "Interactively clone REPOS to TARGETDIR.
 
@@ -3025,6 +3024,7 @@ Description of Arguments:
 
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-issue-list (&optional initial noaction)
   "Interactively list issues of a GitHub repository.
 
@@ -3155,6 +3155,7 @@ Description of Arguments:
 
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-search-issues (&optional initial repo noaction)
   "Interactively search GitHub issues of REPO.
 
@@ -3282,8 +3283,7 @@ Description of Arguments:
      :group #'consult-gh--pr-group-by-state
      :require-match t
      :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
-                          consult-gh--known-repos-list
-                          )
+                          consult-gh--known-repos-list)
      :history '(:input consult-gh--repos-history)
      :preview-key consult-gh-preview-key
      :sort nil)))
@@ -3291,6 +3291,7 @@ Description of Arguments:
 
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-pr-list (&optional initial noaction)
   "Interactively list pull requests of a GitHub repository.
 
@@ -3421,6 +3422,7 @@ Description of Arguments:
 
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-search-prs (&optional initial repo noaction)
   "Interactively search GitHub pull requests of REPO.
 
@@ -3546,6 +3548,7 @@ Description of Arguments:
 
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-search-code (&optional initial repo noaction)
   "Interactively search GitHub codes.
 
@@ -3598,6 +3601,7 @@ URL `https://github.com/minad/consult'."
 This section deals with fetching file trees and file contents of repositories by using github API e.g. =gh api repos/armindarvish/consult-gh/git/trees/main:?recursive=1=
 ****** Interactive command
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-find-file (&optional repo branch initial noaction)
   "Interactively find files of a REPO in BRANCH.
 
@@ -3663,12 +3667,15 @@ INITIAL is an optional arg for the initial input in the minibuffer
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.1
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (consult-gh "1.0.1"))
+;; Version: 1.0
+;; Package-Requires: ((emacs "29.1") (consult "0.34") (consult-gh "1.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
 ;;; Commentary:
+
+;; This package provides embark actions for consult-gh
+;; (see URL `https://github.com/armindarvish/consult-gh').
 
 ;;; Code:
 #+end_src
@@ -3922,12 +3929,14 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.1
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (forge "0.3.3") (consult-gh "1.0.1"))
+;; Version: 1.0
+;; Package-Requires: ((emacs "29.1") (consult "0.34") (forge "0.3.3") (consult-gh "1.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
 ;;; Commentary:
+;; This package provides forge integration for consult-gh
+;; (see URL `https://github.com/armindarvish/consult-gh').
 
 ;;; Code:
 #+end_src
@@ -4237,12 +4246,14 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.1
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (consult-gh "1.0.1"))
+;; Version: 1.0
+;; Package-Requires: ((emacs "29.1") (consult "0.34") (consult-gh "1.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
 ;;; Commentary:
+;; This package providesa transient menu for consult-gh
+;; (see URL `https://github.com/armindarvish/consult-gh').
 
 ;;; Code:
 #+end_src
@@ -4253,7 +4264,8 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
 (require 'transient)
 
 ;; Prefixes
-(transient-define-prefix consult-gh ()
+;;;###autoload
+(transient-define-prefix consult-gh-transient ()
   "Main transient menu for consult-gh"
   [:description
    (lambda ()
@@ -4295,15 +4307,17 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
     (consult-gh-transient--infix-issue-state)
     (consult-gh-transient--infix-prs-state)]])
 
+(defalias consult-gh #'consult-gh-transient
+"Use transient menu as consult-gh entry.")
 
-(defun consult-gh--transient-read-variable (prompt initial-input history)
+(defun consult-gh-transient-read-variable (prompt initial-input history)
   "Read value from minibuffer for `consult-gh' transient menu.
 
 PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   (read-from-minibuffer prompt initial-input read-expression-map t history))
 
 ;; Prefixes
-(transient-define-prefix consult-gh--transient-repos ()
+(transient-define-prefix consult-gh-transient-repos ()
   "Repo section for `consult-gh' transient menu."
   [:description "Repos"]
   [["Actions"
@@ -4312,7 +4326,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
    ["Parameters"
     (consult-gh-transient--infix-repo-maxnum)]])
 
-(transient-define-prefix consult-gh--transient-issues ()
+(transient-define-prefix consult-gh-transient-issues ()
   "Issue section for `consult-gh' transient menu."
   [:description "Issues"]
   [["Actions"
@@ -4328,7 +4342,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   :class 'transient-lisp-variable
   :variable 'consult-gh-repo-maxnum
   :key "r -L"
-  :reader 'consult-gh--transient-read-variable)
+  :reader 'consult-gh-transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-issue-maxnum ()
   "Set `consult-gh-issue-maxnum' in `consult-gh' transient menu."
@@ -4336,7 +4350,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   :class 'transient-lisp-variable
   :variable 'consult-gh-issue-maxnum
   :key "i -L"
-  :reader 'consult-gh--transient-read-variable)
+  :reader 'consult-gh-transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-pr-maxnum ()
   "Set `consult-gh-pr-maxnum' in `consult-gh' transient menu."
@@ -4344,7 +4358,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   :class 'transient-lisp-variable
   :variable 'consult-gh-pr-maxnum
   :key "p -L"
-  :reader 'consult-gh--transient-read-variable)
+  :reader 'consult-gh-transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-code-maxnum ()
   "Set `consult-gh-code-maxnum' in `consult-gh' transient menu."
@@ -4352,7 +4366,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   :class 'transient-lisp-variable
   :variable 'consult-gh-code-maxnum
   :key "c -L"
-  :reader 'consult-gh--transient-read-variable)
+  :reader 'consult-gh-transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-issue-state ()
   "Set `consult-gh-issues-state-to-show' in `consult-gh' transient menu."

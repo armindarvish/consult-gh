@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.1
-;; Package-Requires: ((emacs "27.1") (consult "0.34"))
+;; Version: 1.0
+;; Package-Requires: ((emacs "29.1") (consult "0.34"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
@@ -24,7 +24,7 @@
 (eval-when-compile
   (require 'json))
 
-(require 'consult)
+(require 'consult) ;; core dependency
 (require 'crm)
 
 ;;; Group
@@ -314,8 +314,7 @@ Common options include:
           '(choice (const :tag "Open the Issue URL in default browser" #'consult-gh--issue-browse-url-action)
                    (const :tag "Open the Issue in an Emacs buffer" #'consult-gh--issue-view-action)
                    (const :tag "Open the Issue in a Magit/Forge buffer" #'consult-gh-forge--issue-view-action)
-                   (function :tag "Custom Function"))
-          ))
+                   (function :tag "Custom Function"))))
 
 (defcustom consult-gh-pr-action #'consult-gh--pr-browse-url-action
   "What function to call when a PR is selected?
@@ -339,8 +338,7 @@ Common options include:
                                                   (function :tag "Custom Function"))
           '(choice (const :tag "Open the PR URL in default browser" #'consult-gh--pr-browse-url-action)
                    (const :tag "Open the PR in an Emacs buffer" #'consult-gh--pr-view-action)
-                   (function :tag "Custom Function"))
-          ))
+                   (function :tag "Custom Function"))))
 
 (defcustom consult-gh-code-action #'consult-gh--code-browse-url-action
   "What function to call when a code is selected?
@@ -600,8 +598,7 @@ within MAXWIDTH or a fraction of MAXWIDTH.  This is used for aligning
            (consult-gh--set-string-width string (- (floor (/ maxwidth 1.2)) w) t))
           ((< (+ s w) maxwidth)
            (consult-gh--set-string-width string (- maxwidth w) t))
-          (t string)
-          )))
+          (t string))))
 
 (defun consult-gh--highlight-match (regexp str ignore-case)
   "Highlight REGEXP in STR.
@@ -1531,8 +1528,7 @@ Description of Arguments:
          (gitignore-template (or gitignore-template (and gitignore (string-trim (consult--read (consult-gh--get-gitignore-template-list)
                                                                                                :prompt (format "Select template for %s" (propertize ".gitignore " 'face 'error))
                                                                                                :sort nil
-                                                                                               :require-match t
-                                                                                               )))))
+                                                                                               :require-match t)))))
          (license (if (not license-key) (y-or-n-p "Would you like to add a license?") t))
          (license-key (or license-key (and license (consult--read (consult-gh--get-license-template-list)
                                                                   :prompt (format "Select %s template" (propertize "license " 'face 'consult-gh-warning-face))
@@ -2388,6 +2384,7 @@ Description of Arguments:
                    :preview-key consult-gh-preview-key
                    :sort nil)))
 
+;;;###autoload
 (defun consult-gh-repo-list (&optional initial noaction)
   "Interactive command to list repos of users/organizations asynchronously.
 
@@ -2490,8 +2487,7 @@ Description of Arguments:
                       (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-repo-from-directory) nil))))
     (consult--read
      (consult--async-command builder
-       (consult-gh--search-repos-transform builder)
-       )
+       (consult-gh--search-repos-transform builder))
      :prompt prompt
      :lookup (consult-gh--repo-lookup)
      :state (funcall #'consult-gh--repo-state)
@@ -2505,6 +2501,7 @@ Description of Arguments:
      :preview-key consult-gh-preview-key
      :sort nil)))
 
+;;;###autoload
 (defun consult-gh-search-repos (&optional initial noaction)
   "Interactively search GitHub repositories.
 
@@ -2567,8 +2564,7 @@ if NOACTION is non-nil, return the candidate without runing action."
                              :state (funcall #'consult-gh--repo-state)
                              :group #'consult-gh--repo-group
                              :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
-                                                  consult-gh--known-repos-list
-                                                  )
+                                                  consult-gh--known-repos-list)
                              :history 'consult-gh--repos-history
                              :require-match t
                              :category 'consult-gh-repos
@@ -2578,6 +2574,7 @@ if NOACTION is non-nil, return the candidate without runing action."
         sel
       (funcall consult-gh-repo-action sel))))
 
+;;;###autoload
 (defun consult-gh-default-repos ()
   "List repositories of orgs in `consult-gh-default-orgs-list'.
 
@@ -2587,6 +2584,7 @@ or any other favorite accounts whose repositories are frequently visited."
   (interactive)
   (consult-gh-orgs consult-gh-default-orgs-list))
 
+;;;###autoload
 (defun consult-gh-repo-fork (&optional repos)
   "Interactively fork REPOS.
 
@@ -2604,6 +2602,7 @@ If REPOS not supplied, interactively asks user to pick REPOS."
                      (name (if consult-gh-confirm-name-before-fork (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
                 (consult-gh--repo-fork repo name))) repos)))
 
+;;;###autoload
 (defun consult-gh-repo-clone (&optional repos targetdir)
   "Interactively clone REPOS to TARGETDIR.
 
@@ -2701,6 +2700,7 @@ Description of Arguments:
      :preview-key consult-gh-preview-key
      :sort nil)))
 
+;;;###autoload
 (defun consult-gh-issue-list (&optional initial noaction)
   "Interactively list issues of a GitHub repository.
 
@@ -2816,6 +2816,7 @@ Description of Arguments:
    :preview-key consult-gh-preview-key
    :sort nil))
 
+;;;###autoload
 (defun consult-gh-search-issues (&optional initial repo noaction)
   "Interactively search GitHub issues of REPO.
 
@@ -2930,12 +2931,12 @@ Description of Arguments:
      :group #'consult-gh--pr-group-by-state
      :require-match t
      :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
-                          consult-gh--known-repos-list
-                          )
+                          consult-gh--known-repos-list)
      :history '(:input consult-gh--repos-history)
      :preview-key consult-gh-preview-key
      :sort nil)))
 
+;;;###autoload
 (defun consult-gh-pr-list (&optional initial noaction)
   "Interactively list pull requests of a GitHub repository.
 
@@ -3051,6 +3052,7 @@ Description of Arguments:
    :preview-key consult-gh-preview-key
    :sort nil))
 
+;;;###autoload
 (defun consult-gh-search-prs (&optional initial repo noaction)
   "Interactively search GitHub pull requests of REPO.
 
@@ -3162,6 +3164,7 @@ Description of Arguments:
    :preview-key consult-gh-preview-key
    :sort nil))
 
+;;;###autoload
 (defun consult-gh-search-code (&optional initial repo noaction)
   "Interactively search GitHub codes.
 
@@ -3209,6 +3212,7 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-code-action sel))))
 
+;;;###autoload
 (defun consult-gh-find-file (&optional repo branch initial noaction)
   "Interactively find files of a REPO in BRANCH.
 
