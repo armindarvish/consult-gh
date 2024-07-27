@@ -59,8 +59,8 @@ pulling files for viewing."
 (defcustom consult-gh-crm-separator crm-separator
   "Separator for multiple selections with `completing-read-multiple'.
 
-For more info, see `crm-separator'.  Uses crm-separator for default.
-This is obsolete in version>=1.0.0."
+Uses `crm-separator' for default.
+This is obsolete in version>=1.0"
   :group 'consult-gh
   :type 'regexp)
 
@@ -178,7 +178,7 @@ visited organizations."
   :type 'string)
 
 (defcustom consult-gh-show-preview nil
-  "Should consult-gh show previews?
+  "Should `consult-gh' show previews?
 
 It turns previews on/off globally for all categories
 \(repos, issues, prs, codes, files,...\)"
@@ -186,10 +186,10 @@ It turns previews on/off globally for all categories
   :type 'boolean)
 
 (defcustom consult-gh-preview-key consult-preview-key
-  "What key to use to show preview for consult-gh?
+  "What key to use to show preview for `consult-gh'?
 
 This key is bound in minibuffer, and is similar to `consult-preview-key'
-\(the default\) but explicitly for consult-gh.
+\(the default\) but explicitly for `consult-gh'.
 This is used for all categories \(issues, prs, codes, files, etc.\)"
   :group 'consult-gh
   :type '(choice (const :tag "Any key" any)
@@ -871,13 +871,13 @@ Returns a list where CAR is the user's name and CADR is the package name."
 (defun consult-gh--get-username (repo)
   "Return the username of REPO.
 
-\(e.g. “armindarvish” if REPO is “armindarvish\consult-gh”\)"
+\(e.g. “armindarvish” if REPO is “armindarvish/consult-gh”\)"
   (car (consult-gh--split-repo repo)))
 
 (defun consult-gh--get-package (repo)
   "Return the package name of REPO.
 
-\(e.g. “consult-gh” if REPO is “armindarvish\consult-gh”\)"
+\(e.g. “consult-gh” if REPO is “armindarvish/consult-gh”\)"
   (cadr (consult-gh--split-repo repo)))
 
 ;;; Backend functions for `consult-gh'.
@@ -1359,7 +1359,7 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
   "Open REPO's Readme in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of
-a GitHub repository \(e.g. “armindarvish\consult-gh”\) and
+a GitHub repository \(e.g. “armindarvish/consult-gh”\) and
 shows the README of that repo in an Emacs buffer.
 
 It fetches the preview from GitHub by “gh repo view REPO”
@@ -1401,7 +1401,7 @@ This is a wrapper function around `consult-gh--repo-view'.
 It parses CAND to extract relevant values \(e.g. repository's name\) and
 passes them to `consult-gh--repo-view'.
 
-To use this as the default action for consult-gh repos, set
+To use this as the default action for repos, set
 `consult-gh-repo-action' to function `consult-gh--repo-view-action'."
 
   (let* ((repo (substring-no-properties cand))
@@ -1419,7 +1419,7 @@ This is a wrapper function around `consult-gh-find-file'.
 It parses CAND to extract relevant values \(e.g. repository name\)
 and passes them to `consult-gh-find-file'.
 
-To use this as the default action for consult-gh repos,
+To use this as the default action for repos,
 set `consult-gh-repo-action' to `consult-gh--repo-browse-files-action'."
   (let* ((repo (plist-get (cdr cand) :repo)))
     (consult-gh-find-file repo)))
@@ -1453,7 +1453,7 @@ This is a wrapper function around `consult-gh--repo-clone'.
 It parses CAND to extract relevant values \(e.g. repository's name\)
 and passes them to `consult-gh--repo-clone'.
 
-To use this as the default action for consult-gh's repos,
+To use this as the default action for repos,
 set `consult-gh-repo-action' to `consult-gh--repo-clone-action'.
 
 If `consult-gh-confirm-before-clone' is nil it clones the repo
@@ -1499,7 +1499,7 @@ This is a wrapper function around `consult-gh--repo-fork'.
 It parses CAND to extract relevant values \(e.g. repository name\)
 and passes them to `consult-gh--repo-fork'.
 
-To use this as the default action for consult-gh repos,
+To use this as the default action for repos,
 set `consult-gh-repo-action' to `consult-gh--repo-fork-action'."
   (let* ((reponame (plist-get (cdr cand) :repo)))
     (consult-gh--repo-fork reponame)))
@@ -1884,7 +1884,7 @@ set `consult-gh-issue-action' to `consult-gh--issue-browse-url-action'."
   "Open ISSUE of REPO in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of a
-repository \(e.g. “armindarvish\consult-gh”\) and ISSUE,
+repository \(e.g. “armindarvish/consult-gh”\) and ISSUE,
 a issue number of that repository, and shows
 the contents of the issue in an Emacs buffer.
 
@@ -1931,7 +1931,7 @@ It parses CAND to extract relevant values
 \(e.g. repository's name and issue number\)
 and passes them to `consult-gh--issue-view'.
 
-To use this as the default action for consult-gh's issues,
+To use this as the default action for issues,
 set `consult-gh-issue-action' to `consult-gh--issue-view-action'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
@@ -2109,7 +2109,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-browse-url-action'."
   "Open pull request, PR of REPO in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of a repository
-\(e.g. “armindarvish\consult-gh”\) and PR, a pr number of that repository,
+\(e.g. “armindarvish/consult-gh”\) and PR, a pr number of that repository,
 and shows the contents of the pr in an Emacs buffer.
 
 It fetches the preview of the PR by runing “gh or view PR --repo REPO”
@@ -2157,7 +2157,7 @@ This is a wrapper function around `consult-gh--pr-view'.  It parses CAND
 to extract relevant values \(e.g. repository's name and pull request
 number\) and passes them to `consult-gh--pr-view'.
 
-To use this as the default action for consult-gh's prs,
+To use this as the default action for prs,
 set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
@@ -2288,7 +2288,7 @@ It parses CAND to extract relevant values
 \(e.g. repository, file path, url, ...\)
 and passes them to `consult-gh--files-view'.
 
-To use this as the default action on consult-gh's code candidates,
+To use this as the default action on code candidates,
 set `consult-gh-code-action' to `consult-gh--code-view-action'."
   (let* ((info (cdr cand))
          (repo (plist-get info :repo))
@@ -2652,7 +2652,7 @@ BUILDER is the command line builder function \(e.g.
   "Build gh command line for listing issues the INPUT repository.
 
 INPUT must be the full name of a GitHub repository as a string
-e.g. “armindarvish\consult-gh”."
+e.g. “armindarvish/consult-gh”."
   (pcase-let* ((consult-gh-args (append consult-gh-args '("issue" "list" "--repo")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
@@ -2890,7 +2890,7 @@ BUILDER is the command line builder function \(e.g.
   "Build gh command line for listing pull requests of the INPUT repository.
 
 INPUT must be the full name of a GitHub repository as a string
-e.g. “armindarvish\consult-gh”."
+e.g. “armindarvish/consult-gh”."
   (pcase-let* ((consult-gh-args (append consult-gh-args '("pr" "list" "--repo")))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))

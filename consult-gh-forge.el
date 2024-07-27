@@ -69,11 +69,15 @@ for `forge-add-repository'."
 
 
 (defun consult-gh-forge--remove-repository (host owner name)
-  "Remove the forge defined by OWNER/HOST/NAME from `forge-database'."
+  "Remove the forge defined by OWNER/HOST/NAME.
+
+Removes the forge from the list in variable `forge-database'."
   (closql-delete (forge-get-repository (list host owner name))))
 
 (defun consult-gh-forge--remove-repository-by-url (url)
-  "Remove the forge defined by URL from `forge-database'."
+  "Remove the forge defined by URL.
+
+Removes the forge from the list in variable `forge-database'."
   (let* ((forge-repo (forge-get-repository url))
          (owner (oref forge-repo owner))
          (name (oref forge-repo name))
@@ -91,10 +95,11 @@ The repos are stored in `conuslt-gh-forge--aded-repositories'."
     (mapcar #'consult-gh-forge--remove-repository-by-url urls)))
 
 (defun consult-gh-forge-remove-repository (&optional urls)
-  "Ask the user to select forges to be removed from `forge-database'.
+  "Ask the user to select forges to be removed.
 
-Only lists the repositories added by consult-gh
-\(stored in `consult-gh-forge--added-repositories'\).
+Lists forges added by `consult-gh'
+\(stored in `consult-gh-forge--added-repositories'\) and
+removes them from the list in variable `forge-database'.
 
 If optional argument URLS is non-nil, remove the forges of the URLS."
   (interactive)

@@ -23,7 +23,7 @@
 ;; Prefixes
 ;;;###autoload
 (transient-define-prefix consult-gh-transient ()
-  "Main transient menu for consult-gh"
+  "Main transient menu for `consult-gh'."
   [:description
    (lambda ()
      (let ((username (consult-gh--get-current-username))
