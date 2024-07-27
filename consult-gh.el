@@ -133,9 +133,9 @@ There are three options, \='suggest, nil or t.
 
 When set to \='suggest,  the git repository from the local folder
 \(i.e. `default-directory')\ is added to the future history list
-so it can quickly be accessed by `next-history-element'
-\(default keybinding `M-n')\  when running commands
-such as `consult-gh-issue-list' or `consult-gh-find-file'.
+so it can quickly be accessed by `next-history-element' \(bound to
+'\\[next-history-element]'\) when running commands such as
+`consult-gh-issue-list' or `consult-gh-find-file'.
 
 When set to t, the git repository from the local folder is used
 as initial-input value for commands such as `consult-gh-issue-list'
