@@ -20,7 +20,7 @@
 ;;; Commentary:
 
 ;; This package provides and interactive interface to GitHub command-line
-;; client (see URL `https://cli.github.com/'). It uses a consult-based minibuffer
+;; client (see URL `https://cli.github.com/').  It uses a consult-based minibuffer
 ;; completion for searching and selecting GitHub repositories, issues,
 ;; pull erquests, codes, and etc.
 
@@ -3692,8 +3692,8 @@ and passes ARGS to it."
 
 ;;; Commentary:
 
-;; This package provides embark actions for consult-gh
-;; (see URL `https://github.com/armindarvish/consult-gh').
+;; This package provides embark actions for consult-gh.
+;; (see URL `https://github.com/armindarvish/consult-gh' for more info).
 
 ;;; Code:
 #+end_src
@@ -3953,8 +3953,8 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 ;; Keywords: matching, git, repositories, forges, completion
 
 ;;; Commentary:
-;; This package provides forge integration for consult-gh
-;; (see URL `https://github.com/armindarvish/consult-gh').
+;; This package provides forge integration for consult-gh.
+;; (see URL `https://github.com/armindarvish/consult-gh' for more info).
 
 ;;; Code:
 #+end_src
@@ -4275,8 +4275,8 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
 ;; Keywords: matching, git, repositories, forges, completion
 
 ;;; Commentary:
-;; This package providesa transient menu for consult-gh
-;; (see URL `https://github.com/armindarvish/consult-gh').
+;; This package providesa transient menu for consult-gh.
+;; (see URL `https://github.com/armindarvish/consult-gh' for more info).
 
 ;;; Code:
 #+end_src

@@ -13,7 +13,7 @@
 ;;; Commentary:
 
 ;; This package provides and interactive interface to GitHub command-line
-;; client (see URL `https://cli.github.com/'). It uses a consult-based minibuffer
+;; client (see URL `https://cli.github.com/').  It uses a consult-based minibuffer
 ;; completion for searching and selecting GitHub repositories, issues,
 ;; pull erquests, codes, and etc.
 
