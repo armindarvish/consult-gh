@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.0
-;; Package-Requires: ((emacs "27.1") (consult "0.34"))
+;; Version: 1.0.1
+;; Package-Requires: ((emacs "27.1") (consult "0.34") (consult-gh "1.0.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -15,6 +15,7 @@
 ;;; Code:
 
 ;; Requirements
+(require 'consult-gh)
 (require 'transient)
 
 ;; Prefixes
@@ -27,8 +28,7 @@
        (concat
         (propertize "*CONSULT-GH* \n" 'face 'transient-heading)
         (if username (concat (propertize "user: " 'face 'consult-gh-date-face) (propertize username 'face 'consult-gh-user-face) "\t"))
-        (if repo (concat (propertize "current repo: " 'face 'consult-gh-date-face) (propertize repo 'face 'consult-gh-user-face) "\t"))
-        )))
+        (if repo (concat (propertize "current repo: " 'face 'consult-gh-date-face) (propertize repo 'face 'consult-gh-user-face) "\t")))))
    ""]
 
   [:description "--Actions--"
@@ -36,23 +36,18 @@
                  (consult-gh-transient--suffix-search-issues)
                  (consult-gh-transient--suffix-search-repos)
                  (consult-gh-transient--suffix-search-prs)
-                 (consult-gh-transient--suffix-search-code)
-                 ]
+                 (consult-gh-transient--suffix-search-code)]
 
                 ["Repos"
                  (consult-gh-transient--suffix-repo-list)
                  (consult-gh-transient--suffix-repo-clone)
-                 (consult-gh-transient--suffix-repo-fork)
-                 ]
+                 (consult-gh-transient--suffix-repo-fork)]
 
                 ["Issues"
-                 (consult-gh-transient--suffix-issue-list)
-                 ]
+                 (consult-gh-transient--suffix-issue-list)]
 
                 ["Pull Requests"
-                 (consult-gh-transient--suffix-pr-list)
-                 ]
-                ]
+                 (consult-gh-transient--suffix-pr-list)]]
 
   [:description
    "--Settings--"
@@ -64,14 +59,14 @@
 
    ["States"
     (consult-gh-transient--infix-issue-state)
-    (consult-gh-transient--infix-prs-state)
-    ]])
+    (consult-gh-transient--infix-prs-state)]])
 
 
 (defun consult-gh--transient-read-variable (prompt initial-input history)
-  "Read value from minibuffer for `consult-gh' transient menu."
-  (read-from-minibuffer prompt initial-input read-expression-map t history))
+  "Read value from minibuffer for `consult-gh' transient menu.
 
+PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
+  (read-from-minibuffer prompt initial-input read-expression-map t history))
 
 ;; Prefixes
 (transient-define-prefix consult-gh--transient-repos ()
@@ -79,25 +74,18 @@
   [:description "Repos"]
   [["Actions"
     (consult-gh-transient--suffix-search-repos)
-    (consult-gh-transient--suffix-repo-list)
-    ]
+    (consult-gh-transient--suffix-repo-list)]
    ["Parameters"
-    (consult-gh-transient--infix-repo-maxnum)
-    ]
-   ]
-  )
+    (consult-gh-transient--infix-repo-maxnum)]])
 
 (transient-define-prefix consult-gh--transient-issues ()
   "Issue section for `consult-gh' transient menu."
   [:description "Issues"]
   [["Actions"
     (consult-gh-transient--suffix-search-issues)
-    (consult-gh-transient--suffix-issue-list)
-    ]
+    (consult-gh-transient--suffix-issue-list)]
    ["Parameters"
-    (consult-gh-transient--infix-issue-maxnum)
-    ]
-   ])
+    (consult-gh-transient--infix-issue-maxnum)]])
 
 ;; Infixes
 (transient-define-infix consult-gh-transient--infix-repo-maxnum ()
@@ -143,7 +131,6 @@
             (completing-read
              prompt
              '("all" "open" "closed"))))
-
 
 (transient-define-infix consult-gh-transient--infix-prs-state ()
   "Set `consult-gh-prs-state-to-show' in `consult-gh' transient menu."
