@@ -62,7 +62,9 @@
 
 
 (defun consult-gh--transient-read-variable (prompt initial-input history)
-  "Read value from minibuffer for `consult-gh' transient menu."
+  "Read value from minibuffer for `consult-gh' transient menu.
+
+PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   (read-from-minibuffer prompt initial-input read-expression-map t history))
 
 ;; Prefixes
