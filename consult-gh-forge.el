@@ -67,11 +67,11 @@ for `forge-add-repository'."
 
 
 (defun consult-gh-forge--remove-repository (host owner name)
-"Remove the forge defined by OWNER/HOST/NAME from `forge-database'."
+  "Remove the forge defined by OWNER/HOST/NAME from `forge-database'."
   (closql-delete (forge-get-repository (list host owner name))))
 
 (defun consult-gh-forge--remove-repository-by-url (url)
-"Remove the forge defined by URL from `forge-database'."
+  "Remove the forge defined by URL from `forge-database'."
   (let* ((forge-repo (forge-get-repository url))
          (owner (oref forge-repo owner))
          (name (oref forge-repo name))
@@ -80,7 +80,7 @@ for `forge-add-repository'."
     (setq consult-gh-forge--added-repositories (delete url consult-gh-forge--added-repositories))))
 
 (defun consult-gh-forge-remove-added-repositories (&optional urls)
-"Remove all the forge repos added by `consult-gh-forge--add-repository'.
+  "Remove all the forge repos added by `consult-gh-forge--add-repository'.
 
 If optional argument URLS is non-nil, remove forges of URLS.
 The repos are stored in `conuslt-gh-forge--aded-repositories'."
@@ -89,7 +89,7 @@ The repos are stored in `conuslt-gh-forge--aded-repositories'."
     (mapcar #'consult-gh-forge--remove-repository-by-url urls)))
 
 (defun consult-gh-forge-remove-repository (&optional urls)
-"Ask the user to select forges to be removed from `forge-database'.
+  "Ask the user to select forges to be removed from `forge-database'.
 
 Only lists the repositories added by consult-gh
 \(stored in `consult-gh-forge--added-repositories'\).
@@ -103,13 +103,13 @@ If optional argument URLS is non-nil, remove the forges of the URLS."
          (urls (or urls (completing-read-multiple "Remove Repository from forge db: " list))))
     (message (format "%s" urls))
     (mapcar (lambda (url-parts) (let* ((parts (string-split url-parts " "))
-                                 (host (string-trim (car (cdr parts)) "@"))
-                                 (owner (car (string-split (car parts) "/")))
-                                 (name (cadr (string-split (car parts) "/")))
-                                 (url (string-trim (consult-gh--command-to-string "browse" "--repo" (format "%s/%s" owner name) "--no-browser"))))
-                            (consult-gh-forge--remove-repository host owner name)
-                            (setq consult-gh-forge--added-repositories
-                                  (delete url consult-gh-forge--added-repositories))))
+                                       (host (string-trim (car (cdr parts)) "@"))
+                                       (owner (car (string-split (car parts) "/")))
+                                       (name (cadr (string-split (car parts) "/")))
+                                       (url (string-trim (consult-gh--command-to-string "browse" "--repo" (format "%s/%s" owner name) "--no-browser"))))
+                                  (consult-gh-forge--remove-repository host owner name)
+                                  (setq consult-gh-forge--added-repositories
+                                        (delete url consult-gh-forge--added-repositories))))
             urls)))
 
 (defun consult-gh-forge--pull-topic (url topic)
@@ -138,7 +138,7 @@ See forge documentation for `forge-add-repository'."
 
 
 (defun consult-gh-forge--magit-setup-buffer-internal (mode locked bindings)
-"Reimplement `magit-setup-buffer-intenral'.
+  "Reimplement `magit-setup-buffer-intenral'.
 
 This is to avoid making changes to magit settings for the repository
 in the current working directory.
@@ -172,7 +172,7 @@ MODE, LOCKED, and BINDINGS are as defined in `magit-setup-buffer-intenral'"
     buffer))
 
 (defmacro consult-gh-forge--magit-setup-buffer (mode &optional locked &rest bindings)
-"Reimplement `magit-setup-buffer'.
+  "Reimplement `magit-setup-buffer'.
 
 This is  to avoid making changes to magit settings for the repository
 in the current working directory.
@@ -186,7 +186,7 @@ MODE, LOCKED, and BINDINGS are as defined in `magit-setup-buffer'"
                          bindings))))
 
 (defun consult-gh-forge--topic-setup-buffer (topic)
-"Reimplement `forge-setup-buffer'.
+  "Reimplement `forge-setup-buffer'.
 
 This is to avoid making changes to magit settings for the repository
 in the current working directory.
@@ -207,7 +207,7 @@ TOPIC is as defined in `forge-setup-buffer'"
       (forge-buffer-topic-ident ident))))
 
 (defun consult-gh-forge--visit-topic (topic)
-"Reimplement `forge-visit-topic'.
+  "Reimplement `forge-visit-topic'.
 
 This is to avoid making changes to magit settings for the repository
 in the current working directory.
@@ -252,10 +252,10 @@ ISSUE."
   "Open preview of an issue candidate, CAND, in `forge'.
 
 This is a wrapper function arround `consult-gh-forge--issue-view'."
-    (let* ((info (cdr cand))
-           (repo (substring-no-properties (plist-get info :repo)))
-           (issue (substring-no-properties (format "%s" (plist-get info :issue)))))
-      (consult-gh-forge--issue-view repo issue)))
+  (let* ((info (cdr cand))
+         (repo (substring-no-properties (plist-get info :repo)))
+         (issue (substring-no-properties (format "%s" (plist-get info :issue)))))
+    (consult-gh-forge--issue-view repo issue)))
 
 (defun consult-gh-forge--pr-view (repo pr &optional timeout)
   "Add the REPO and PR to forge database.
@@ -289,10 +289,10 @@ otherwise reverts to using `consult-gh--pr-view-action' to open the PR."
   "Open preview of a pr candidate, CAND, in `forge'.
 
 This is a wrapper function arround `consult-gh-forge--pr-view'."
-    (let* ((info (cdr cand))
-           (repo (substring-no-properties (plist-get info :repo)))
-           (pr (substring-no-properties (format "%s" (plist-get info :pr)))))
-      (consult-gh-forge--pr-view repo pr)))
+  (let* ((info (cdr cand))
+         (repo (substring-no-properties (plist-get info :repo)))
+         (pr (substring-no-properties (format "%s" (plist-get info :pr)))))
+    (consult-gh-forge--pr-view repo pr)))
 
 ;;; Provide `consult-gh-forge' module
 
