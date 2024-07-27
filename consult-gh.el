@@ -7,10 +7,15 @@
 ;; Created: 2023
 ;; Version: 1.0.1
 ;; Package-Requires: ((emacs "27.1") (consult "0.34"))
-;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: convenience, matching, tools, vc
+;; Homepage: https://github.com/armindarvish/consult-gh
 
 ;;; Commentary:
+
+;; This package provides and interactive interface to GitHub command-line
+;; client (see URL `https://cli.github.com/'). It uses a consult-based minibuffer
+;; completion for searching and selecting GitHub repositories, issues,
+;; pull erquests, codes, and etc.
 
 ;;; Code:
 
