@@ -5,12 +5,14 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.1
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (consult-gh "1.0.1"))
+;; Version: 1.0
+;; Package-Requires: ((emacs "29.1") (consult "1.0") (consult-gh "1.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
 ;;; Commentary:
+;; This package providesa transient menu for consult-gh.
+;; (see URL `https://github.com/armindarvish/consult-gh' for more info).
 
 ;;; Code:
 
@@ -19,8 +21,9 @@
 (require 'transient)
 
 ;; Prefixes
-(transient-define-prefix consult-gh ()
-  "Main transient menu for consult-gh"
+;;;###autoload
+(transient-define-prefix consult-gh-transient ()
+  "Main transient menu for `consult-gh'."
   [:description
    (lambda ()
      (let ((username (consult-gh--get-current-username))
@@ -61,15 +64,14 @@
     (consult-gh-transient--infix-issue-state)
     (consult-gh-transient--infix-prs-state)]])
 
-
-(defun consult-gh--transient-read-variable (prompt initial-input history)
+(defun consult-gh-transient-read-variable (prompt initial-input history)
   "Read value from minibuffer for `consult-gh' transient menu.
 
 PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   (read-from-minibuffer prompt initial-input read-expression-map t history))
 
 ;; Prefixes
-(transient-define-prefix consult-gh--transient-repos ()
+(transient-define-prefix consult-gh-transient-repos ()
   "Repo section for `consult-gh' transient menu."
   [:description "Repos"]
   [["Actions"
@@ -78,7 +80,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
    ["Parameters"
     (consult-gh-transient--infix-repo-maxnum)]])
 
-(transient-define-prefix consult-gh--transient-issues ()
+(transient-define-prefix consult-gh-transient-issues ()
   "Issue section for `consult-gh' transient menu."
   [:description "Issues"]
   [["Actions"
@@ -94,7 +96,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   :class 'transient-lisp-variable
   :variable 'consult-gh-repo-maxnum
   :key "r -L"
-  :reader 'consult-gh--transient-read-variable)
+  :reader 'consult-gh-transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-issue-maxnum ()
   "Set `consult-gh-issue-maxnum' in `consult-gh' transient menu."
@@ -102,7 +104,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   :class 'transient-lisp-variable
   :variable 'consult-gh-issue-maxnum
   :key "i -L"
-  :reader 'consult-gh--transient-read-variable)
+  :reader 'consult-gh-transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-pr-maxnum ()
   "Set `consult-gh-pr-maxnum' in `consult-gh' transient menu."
@@ -110,7 +112,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   :class 'transient-lisp-variable
   :variable 'consult-gh-pr-maxnum
   :key "p -L"
-  :reader 'consult-gh--transient-read-variable)
+  :reader 'consult-gh-transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-code-maxnum ()
   "Set `consult-gh-code-maxnum' in `consult-gh' transient menu."
@@ -118,7 +120,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   :class 'transient-lisp-variable
   :variable 'consult-gh-code-maxnum
   :key "c -L"
-  :reader 'consult-gh--transient-read-variable)
+  :reader 'consult-gh-transient-read-variable)
 
 (transient-define-infix consult-gh-transient--infix-issue-state ()
   "Set `consult-gh-issues-state-to-show' in `consult-gh' transient menu."

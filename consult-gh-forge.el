@@ -5,12 +5,14 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.1
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (forge "0.3.3") (consult-gh "1.0.1"))
+;; Version: 1.0
+;; Package-Requires: ((emacs "29.1") (consult "1.0") (forge "0.3.3") (consult-gh "1.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
 ;;; Commentary:
+;; This package provides forge integration for consult-gh.
+;; (see URL `https://github.com/armindarvish/consult-gh' for more info).
 
 ;;; Code:
 
@@ -67,11 +69,15 @@ for `forge-add-repository'."
 
 
 (defun consult-gh-forge--remove-repository (host owner name)
-  "Remove the forge defined by OWNER/HOST/NAME from `forge-database'."
+  "Remove the forge defined by OWNER/HOST/NAME.
+
+Removes the forge from the list in variable `forge-database'."
   (closql-delete (forge-get-repository (list host owner name))))
 
 (defun consult-gh-forge--remove-repository-by-url (url)
-  "Remove the forge defined by URL from `forge-database'."
+  "Remove the forge defined by URL.
+
+Removes the forge from the list in variable `forge-database'."
   (let* ((forge-repo (forge-get-repository url))
          (owner (oref forge-repo owner))
          (name (oref forge-repo name))
@@ -89,10 +95,11 @@ The repos are stored in `conuslt-gh-forge--aded-repositories'."
     (mapcar #'consult-gh-forge--remove-repository-by-url urls)))
 
 (defun consult-gh-forge-remove-repository (&optional urls)
-  "Ask the user to select forges to be removed from `forge-database'.
+  "Ask the user to select forges to be removed.
 
-Only lists the repositories added by consult-gh
-\(stored in `consult-gh-forge--added-repositories'\).
+Lists forges added by `consult-gh'
+\(stored in `consult-gh-forge--added-repositories'\) and
+removes them from the list in variable `forge-database'.
 
 If optional argument URLS is non-nil, remove the forges of the URLS."
   (interactive)

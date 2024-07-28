@@ -5,12 +5,15 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0.1
-;; Package-Requires: ((emacs "27.1") (consult "0.34") (consult-gh "1.0.1"))
+;; Version: 1.0
+;; Package-Requires: ((emacs "29.1") (consult "1.0") (consult-gh "1.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
 ;;; Commentary:
+
+;; This package provides embark actions for consult-gh.
+;; (see URL `https://github.com/armindarvish/consult-gh' for more info).
 
 ;;; Code:
 
