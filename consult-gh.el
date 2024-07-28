@@ -6,7 +6,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 1.0
-;; Package-Requires: ((emacs "29.1") (consult "0.34"))
+;; Package-Requires: ((emacs "29.1") (consult "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
@@ -2623,7 +2623,7 @@ to pick them."
   (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
          (repos (or repos (substring-no-properties (car (consult-gh-search-repos nil t)))))
          (targetdir (or targetdir consult-gh-default-clone-directory))
-         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " (file-name-as-directory targetdir)) (or targetdir default-directory))))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " (file-name-as-directory targetdir))t (or targetdir default-directory))))
     (if (stringp repos)
         (setq repos (list repos)))
     (mapcar (lambda (repo)
