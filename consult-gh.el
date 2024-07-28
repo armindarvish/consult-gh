@@ -1463,7 +1463,7 @@ from REPO as the default name for the cloned folder."
   (let* ((reponame (plist-get (cdr cand) :repo))
          (package (car (last (split-string reponame "\/")))))
     (if consult-gh-confirm-before-clone
-        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or consult-gh-default-clone-directory default-directory) default-directory))
+        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or (file-name-as-directory consult-gh-default-clone-directory) default-directory) default-directory))
                (name (read-string "name: " package)))
           (consult-gh--repo-clone reponame name targetdir))
       (consult-gh--repo-clone reponame package consult-gh-default-clone-directory))))
@@ -2623,7 +2623,7 @@ to pick them."
   (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
          (repos (or repos (substring-no-properties (car (consult-gh-search-repos nil t)))))
          (targetdir (or targetdir consult-gh-default-clone-directory))
-         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " targetdir) (or targetdir default-directory))))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " (file-name-as-directory targetdir)) (or targetdir default-directory))))
     (if (stringp repos)
         (setq repos (list repos)))
     (mapcar (lambda (repo)
