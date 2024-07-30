@@ -4287,7 +4287,6 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
 (require 'transient)
 
 ;; Prefixes
-;;;###autoload
 (transient-define-prefix consult-gh-transient ()
   "Main transient menu for `consult-gh'."
   [:description

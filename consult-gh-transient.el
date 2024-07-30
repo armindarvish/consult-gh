@@ -21,7 +21,6 @@
 (require 'transient)
 
 ;; Prefixes
-;;;###autoload
 (transient-define-prefix consult-gh-transient ()
   "Main transient menu for `consult-gh'."
   [:description
