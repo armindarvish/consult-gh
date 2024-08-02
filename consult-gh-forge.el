@@ -58,31 +58,29 @@ This is to ensure magit and forge can operate as intended."
 Note that this only pull individual topics when the user
 invokes `forge-pull-topic'.  See forge documentation
 for `forge-add-repository'."
-  (if (forge-get-repository url nil 'full)
+  (if (forge-get-repository url nil :tracked?)
       nil
-    (progn
-      (let ((repo (forge-get-repository url nil 'create)))
-        (oset repo sparse-p nil)
+    (when (forge-get-repository url nil :valid?)
+      (let ((repo (forge-get-repository url nil :insert!)))
         (oset repo selective-p t)
         (forge--pull repo nil))
       "created")))
-
 
 (defun consult-gh-forge--remove-repository (host owner name)
   "Remove the forge defined by OWNER/HOST/NAME.
 
 Removes the forge from the list in variable `forge-database'."
-  (closql-delete (forge-get-repository (list host owner name))))
+  (closql-delete (forge-get-repository (list host owner name) nil :known?)))
 
 (defun consult-gh-forge--remove-repository-by-url (url)
   "Remove the forge defined by URL.
 
 Removes the forge from the list in variable `forge-database'."
-  (let* ((forge-repo (forge-get-repository url))
+  (let* ((forge-repo (forge-get-repository url :known))
          (owner (oref forge-repo owner))
          (name (oref forge-repo name))
          (host (oref forge-repo githost)))
-    (closql-delete (forge-get-repository (list host owner name)))
+    (closql-delete (forge-get-repository (list host owner name) :known?))
     (setq consult-gh-forge--added-repositories (delete url consult-gh-forge--added-repositories))))
 
 (defun consult-gh-forge-remove-added-repositories (&optional urls)
@@ -103,10 +101,11 @@ removes them from the list in variable `forge-database'.
 
 If optional argument URLS is non-nil, remove the forges of the URLS."
   (interactive)
-  (let* ((list (mapcar (lambda (url) (let* ((url-parse (forge--split-url url))
+  (let* ((list (mapcar (lambda (url) (let* ((url-parse (forge--split-forge-url url))
                                             (repo (string-join (cdr url-parse) "/"))
                                             (host (car url-parse)))
-                                       (format "%s @%s" repo host))) consult-gh-forge--added-repositories))
+                                       (format "%s @%s" repo host)))
+                       consult-gh-forge--added-repositories))
          (urls (or urls (completing-read-multiple "Remove Repository from forge db: " list))))
     (message (format "%s" urls))
     (mapcar (lambda (url-parts) (let* ((parts (string-split url-parts " "))
@@ -123,18 +122,15 @@ If optional argument URLS is non-nil, remove the forges of the URLS."
   "Pull the TOPIC from repository at URL using `forge-pull-topic'.
 
 See forge documentation for `forge-pull-topic'."
-  (let ((repo (forge-get-repository url)))
-    (forge--zap-repository-cache repo)
-    (forge--pull-topic repo
-                       (forge-issue :repository (oref repo id)
-                                    :number topic))))
+  (let ((repo (forge-get-repository url :known?)))
+    (forge--pull-topic repo topic)))
 
 (defun consult-gh-forge--add-topic (url topic)
   "Add the TOPIC of URL to the forge database.
 
 See forge documentation for `forge-add-repository'."
   (cl-letf (((symbol-function #'magit-toplevel)
-             (lambda () (consult-gh--make-tempdir (string-join (cdr (forge--split-url url)) "/")))))
+             (lambda () (consult-gh--make-tempdir (string-join (cdr (forge--split-forge-url url)) "/")))))
     (let ((created (consult-gh-forge--add-repository url))
           (repo (forge-get-repository url)))
       (while (not repo)
@@ -142,7 +138,6 @@ See forge documentation for `forge-add-repository'."
         (setq repo (forge-get-repository url)))
       (consult-gh-forge--pull-topic url topic)
       created)))
-
 
 (defun consult-gh-forge--magit-setup-buffer-internal (mode locked bindings)
   "Reimplement `magit-setup-buffer-intenral'.
