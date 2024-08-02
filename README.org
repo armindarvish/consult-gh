@@ -8,11 +8,11 @@
 #+html: <a href="https://github.com/armindarvish"><img alt="Armin Darvish" src="https://img.shields.io/static/v1?label=Armin%20Darvish&message=consult-gh&color=00A8B0&logo=github"/></a>
 #+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://img.shields.io/static/v1?label=Made%20For&message=GNU%20Emacs&color=7a5aba&logo=gnuemacs&logoColor=white"/></a>
 
-**NOTICE**: Around Oct. 10th, 2023 there was a major update to use consult-async. This required reimplementing the package from scratch and may break old version. In the new version, there are many new features and functionalities inclduing:
+**NOTICE**: Around Oct. 10th, 2023 there was a major update to use consult-async. This required re-implementing the package from scratch and may break old version. In the new version, there are many new features and functionalities including:
 - async search, i.e. dynamic update of completion table as user enters an entry
 - dynamically add additional command line arguments in the minibuffer
 - search pull requests and codes
-- when searching codes, can open files and jump to the code in an emacs buffer
+- when searching codes, can open files and jump to the code in an Emacs buffer
 - highlight relevant search terms, code snippets, etc. in preview buffers
 - transient menu to quickly find the desired interactive command or settings
 - ...
@@ -35,10 +35,10 @@ _List Repos, Issues or PRs_:
 
 _Search Functions_:
 
-4. =consult-gh-search-repos=: Search github repositories, similar to running =gh search repos= in the command line.
-5. =consult-gh-search-issues=: Search github issues, similar to running =gh search issues= in the command line.
-6. =consult-gh-search-prs=: Search github pull requests, similar to running =gh search prs= in the command line.
-7. =consult-gh-search-code=: Search for code on github, similar to running =gh search code= in the command line.
+4. =consult-gh-search-repos=: Search GitHub repositories, similar to running =gh search repos= in the command line.
+5. =consult-gh-search-issues=: Search GitHub issues, similar to running =gh search issues= in the command line.
+6. =consult-gh-search-prs=: Search GitHub pull requests, similar to running =gh search prs= in the command line.
+7. =consult-gh-search-code=: Search for code on GitHub, similar to running =gh search code= in the command line.
 
 _Browse File Contents_:
 
@@ -50,8 +50,12 @@ _Quickly See Repositories of Favorite Users/Organizations_:
 
 _Clone or Fork Repos_:
 
-10. =consult-gh-repo-clone=: Quickly clone a repository with just typing the name of the repository. This function has a post-hook =consult-gh-repo-post-clone-hook= that cna be used for example to switch o appropriate directory, etc.
-11. =consult-gh-repo-fork=: Quickly fork one or more repositories. This function also has a post-hook =consult-gh-repo-post-fork-hook=, that cna be used for example to clone the forked repository.
+10. =consult-gh-repo-clone=: Quickly clone a repository with just typing the name of the repository. This function has a post-hook =consult-gh-repo-post-clone-hook= that can be used for example to switch o appropriate directory, etc.
+11. =consult-gh-repo-fork=: Quickly fork one or more repositories. This function also has a post-hook =consult-gh-repo-post-fork-hook=, that can be used for example to clone the forked repository.
+
+_Create New Repos_:
+
+12. =consult-gh-repo-create-new==: Create repos from scratch (or templates), or push existing git repositories to GitHub.
 
 Furthermore, Consult-GH, also provides a number of useful [[https://github.com/oantolin/embark][Embark]] actions (see examples below.)
 
@@ -71,7 +75,7 @@ To install GitHub CLI, follow the official documentations here: [[https://github
 Make sure you are logged in by running =gh auth login= and following the instructions. Refer to the official manual if you need further help, [[https://cli.github.com/manual/][GitHub CLI Manual]].
 
 *Why use gh instead of other Emacs packages?*
-While there are other Emacs packages to interact with GitHub API, we use "gh" commandline tool as the backend instead of direct calls to REST API or GraphQL, and this is very much intentional. By leaving API functionalities to the official GitHub CLI tool, we simplify usage (no need to set up authentication within Emacs), reduce security risks (no risk of exposing authentication tokens, ...) and increase maintainability (no need to keep compatibility with API changes).
+While there are other Emacs packages to interact with GitHub API, we use "gh" command-line tool as the back-end instead of direct calls to REST API or GraphQL, and this is very much intentional. By leaving API functionalities to the official GitHub CLI tool, we simplify usage (no need to set up authentication within Emacs), reduce security risks (no risk of exposing authentication tokens, ...) and increase maintainability (no need to keep compatibility with API changes).
 
 **** [[https://github.com/minad/consult][Consult]]
 To install consult follow the official instructions here: [[https://github.com/minad/consult#configuration][Configuration of Consult.]]
@@ -162,8 +166,8 @@ This is the maximum file size, above which =consult-gh= requests a confirmation 
 
 **** =consult-gh-prioritize-local-folder=
 
-This varibale defines whther =gh= uses the git repo in the local folder to select/guess the repository for commands like =consult-gh-find-file= and =consult-gh-issue-list=, etc. Note that everything is still retrieved from the remote (for example =consult-gh-find-file= would fetch the contents of the repo from remote and not from the local folder) but the local repo name is used instead of querying the user.
-You can set this varibale to ='suggest=, =t=, or =nil=
+This variable defines whether =gh= uses the git repo in the local folder to select/guess the repository for commands like =consult-gh-find-file= and =consult-gh-issue-list=, etc. Note that everything is still retrieved from the remote (for example =consult-gh-find-file= would fetch the contents of the repo from remote and not from the local folder) but the local repo name is used instead of querying the user.
+You can set this variable to ='suggest=, =t=, or =nil=
 - 'suggest simply adds the local repo name as initial input in the minibuffer so you don't have to type it out.
 - t would skip the query and uses the local repo name, if any, otherwise it falls back to querying the user.
 - nil would not suggest the local repo name as initial-input but instead uses it as default value. That means the local repo is added to the end of history list (accessible by default keybinding =M-n=).
@@ -200,7 +204,7 @@ This is the major-mode used to show repository previews. By default, it is set t
 **** =consult-gh-show-preview=
 This variable is a boolean determining whether Consult-GH shows previews or not. By default, this is set to nil because loading repository views or file contents can be resource-heavy depending on the size of the content. Therefore, it is left to the user to intentionally turn this feature on if it is suitable for their use-case and their setup.
 
-Note that getting previews makes an API call to GitHub and downloads contents of a file. When =consult-gh-show-preview= is set to =nil= (default setting), no API call is made (no resources used) and no preview will be available either. This might be a useful configuration if you only want to see the name of repositories or issues and do actions such as cloning, forking or getting links, or jumping to urls in the browser but not for viewing files or issues within Emacs.
+Note that getting previews makes an API call to GitHub and downloads contents of a file. When =consult-gh-show-preview= is set to =nil= (default setting), no API call is made (no resources used) and no preview will be available either. This might be a useful configuration if you only want to see the name of repositories or issues and do actions such as cloning, forking or getting links, or jumping to URLs in the browser but not for viewing files or issues within Emacs.
 
 *If you want to be able to get a preview on demand without turning previews on globally, then look at =consult-gh-preview-key= below.*
 
@@ -240,12 +244,12 @@ This variable stores the function that is called when a repository is selected. 
 You can also set this variable to any custom function as long as it follows the patterns of the built-in functions (e.g. input ARGs,...)
 
 **** =consult-gh-issue-action=
-Similar to =consult-gh-repo-action= but for issues. This variable stores the default function that is called, when an issue is selected. By default, it is bound to =#'consult-gh--issue-browse-url-action= which opens the issue page in a browser. Alternatively, you can bind it to =consult-gh--issue-view-action= if you want to see the issue inside an Emacs buffer. Note that this is only for viewing issues and not interacting (adding posts, filing new issues, etc.) with them. This is mainly due to the fact that the =gh= backend itself is also limited when it comes to managing issues (interactive command line queries are not that useful!). In the future, I may add more features here, but keep in mind that for managing issues (and pull requests), we can use other packages like [[https://github.com/magit/forge][magit/forge]]. In fact, consult-gh now provides support for integration with [[https://github.com/magit/forge][magit/forge]]. You can use it by setting this variable to =#'consult-gh-forge--issue-view-action= provided in in [[./consult-gh-forge.el]] (See below for more information).
+Similar to =consult-gh-repo-action= but for issues. This variable stores the default function that is called, when an issue is selected. By default, it is bound to =#'consult-gh--issue-browse-url-action= which opens the issue page in a browser. Alternatively, you can bind it to =consult-gh--issue-view-action= if you want to see the issue inside an Emacs buffer. Note that this is only for viewing issues and not interacting (adding posts, filing new issues, etc.) with them. This is mainly due to the fact that the =gh= back-end itself is also limited when it comes to managing issues (interactive command line queries are not that useful!). In the future, I may add more features here, but keep in mind that for managing issues (and pull requests), we can use other packages like [[https://github.com/magit/forge][magit/forge]]. In fact, consult-gh now provides support for integration with [[https://github.com/magit/forge][magit/forge]]. You can use it by setting this variable to =#'consult-gh-forge--issue-view-action= provided in in [[./consult-gh-forge.el]] (See below for more information).
 **** =consult-gh-pr-action=
 Similar to =consult-gh-issue-action= but for pull requests. This variable stores the default function that is called, when a pull request is selected; and by default, it is bound to =#'consult-gh--pr-browse-url-action= which opens the pull request page in a browser. Alternatively, you can bind it to =consult-gh--pr-view-action= if you want to see the issue inside an Emacs buffer. Alternatively, you can use [[https://github.com/magit/forge][magit/forge]] to view pull requests if you use =#'consult-gh-forge--pr-view-action= provided in [[./consult-gh-forge.el]] (See below for more information).
 
 **** =consult-gh-code-action=
-Similar to other action variables above but for code snippets. This variable stores the default function that is called, when a code (search results from =gh search code=) is selected. By default, it is bound to =#'consult-gh--code-browse-url-action= which opens the url for the file containing the code snippet in a browser. Alternatively, you can bind it to =consult-gh--code-view-action= if you want to see the file inside an Emacs buffer. Note that when you open the file in an emacs buffer, consult-gh tries to put the cursor around the relevant code snippet in the file and highlights the snippet as well. (See below for screenshots and examples).
+Similar to other action variables above but for code snippets. This variable stores the default function that is called, when a code (search results from =gh search code=) is selected. By default, it is bound to =#'consult-gh--code-browse-url-action= which opens the URL for the file containing the code snippet in a browser. Alternatively, you can bind it to =consult-gh--code-view-action= if you want to see the file inside an Emacs buffer. Note that when you open the file in an Emacs buffer, consult-gh tries to put the cursor around the relevant code snippet in the file and highlights the snippet as well. (See below for screenshots and examples).
 
 **** =consult-gh-file-action=
 Similar to =consult-gh-repo-action= and =consult-gh-issue-action= but for files. This variable stores the default function that is called, when a file is selected. By default, it is bound to =#' consult-gh--files-browse-url-action= which opens the file page in a browser. Alternatively, you can bind it to other provided action functions for files such as =consult-gh--files-view-action= which opens the file in an Emacs buffer (in the right major mode as well) or =consult-gh--files-save-file-action= which allows you to save a file without cloning the entire repository. If you select multiple files, using [[*=consult-gh-crm-separator=][=consult-gh-crm-separator=]], you can even save multiple files possibly from different repositories.
@@ -284,7 +288,7 @@ Here is a good customization for great performance as well as functionality:
 For a detailed discussion and demo, see this blog post: [[https://www.armindarvish.com/en/post/consult-gh_working_with_github_inside_emacs_in_2023_/][consult-gh_working_with_github_inside_emacs_in_2023]].
 If you prefer demo videos, you can watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]].
 
-In the screenshots below,  I am using vanilla emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], and [[https://github.com/oantolin/embark][embark]] and this repo with the following config:
+In the screenshots below,  I am using vanilla Emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], and [[https://github.com/oantolin/embark][embark]] and this repo with the following config:
 
 #+begin_src emacs-lisp
 (use-package consult-gh
@@ -353,10 +357,10 @@ In the screenshot below, I use =consult-gh-search-issues= to search for issues a
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-issues.gif
 
-Pull requests can be searched similary by using =consult-gh-search-prs=.
+Pull requests can be searched similarly by using =consult-gh-search-prs=.
 
 ** Searching for code
-In the screenshot below, I use =consult-gh-search-code= to search for some code on github. For example I search for =deque=, then I add some command line arguments to limit the search to python files only (e.g. =deque -- --language==python=). When a preview is opened, consult-gh open the file containing the code and tries to find the region where the code is. This enables the user to interactively use the github code search, find relevant files and jump right to where the relevant code is used in the file.
+In the screenshot below, I use =consult-gh-search-code= to search for some code on GitHub. For example I search for =deque=, then I add some command line arguments to limit the search to python files only (e.g. =deque -- --language==python=). When a preview is opened, consult-gh open the file containing the code and tries to find the region where the code is. This enables the user to interactively use the GitHub code search, find relevant files and jump right to where the relevant code is used in the file.
 
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
@@ -365,7 +369,7 @@ In the screenshot below, I use =consult-gh-search-code= to search for some code 
 
 
 ** Embark Integration
-Consult-GH also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu. For example, you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's url in a browser, but then call embark on any item for running alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= etc. You can also call embark and select items with =embark-select= (by default bound to =SPC=) before running some commands on all of them, for example select multiple repos and run clone for all of them.
+Consult-GH also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu. For example, you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's URL in a browser, but then call embark on any item for running alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= etc. You can also call embark and select items with =embark-select= (by default bound to =SPC=) before running some commands on all of them, for example select multiple repos and run clone for all of them.
 
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-embark.gif]]
 
@@ -378,7 +382,7 @@ If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub rep
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-forge.gif]]
 
 *** Set Up and Customization of Forge Integration
-*Warning*: Before you decide to use =consult-gh-forge=, be aware that due the way magit/forge is implemented, it is deeply integrated with magit and its different components (like ghub) and everything is intended for a git repository with a =.git= folder path to work otherwise =magit= will show errors. As a result, I had to reimplement some of the functionalities in magit and forge, to ensure that =consult-gh-forge= works without those errors and also does not break magit or forge. *But this is still highly experimental and you may experience bugs and issues with magit and forge if you decide to integrate =consult-gh= with magit/forge*. Also, dependence on the =magit/forge= package may cuase maintainability issues down the road. So use this at your own risk.
+*Warning*: Before you decide to use =consult-gh-forge=, be aware that due the way magit/forge is implemented, it is deeply integrated with magit and its different components (like ghub) and everything is intended for a git repository with a =.git= folder path to work otherwise =magit= will show errors. As a result, I had to re-implement some of the functionalities in magit and forge, to ensure that =consult-gh-forge= works without those errors and also does not break magit or forge. *But this is still highly experimental and you may experience bugs and issues with magit and forge if you decide to integrate =consult-gh= with magit/forge*. Also, dependence on the =magit/forge= package may cause maintainability issues down the road. So use this at your own risk.
 
 To use =consult-gh-forge=, make sure that both [[https://github.com/magit/magit][magit]] and [[https://github.com/magit/forge][forge]] are installed and loaded before loading consult-gh and then add =require 'consult-gh-forge= to your config. An example of a minimal config:
 
@@ -405,7 +409,7 @@ Note that we are trying to keep =consult-gh-forge= edits of forge database trans
 With =consult-gh-forge=, you get one more "customization" variable as well:
 
 **** =consult-gh-forge-timeout-seconds=
-This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before the reaching the timeout time!
+This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal Emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before the reaching the timeout time!
 
 
 ** Transient Menu
