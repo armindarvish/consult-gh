@@ -106,9 +106,8 @@ or if you use =use-package= macro with straight, you can do:
 
 #+begin_src emacs-lisp
 (use-package consult-gh
-	:straight (consult-gh :type git :host github :repo "armindarvish/consult-gh"
-        :after consult)
-)
+  :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+  :after consult)
 #+end_src
 
 You can also fork this repository and use your own repo.
@@ -125,6 +124,7 @@ Consult-GH is built with the idea that the user should be able to customize ever
 #+begin_src emacs-lisp
 (use-package consult-gh
   :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+  :after consult
 
   :config
   ;;add your main GitHub account (replace "armindarvish" with your user or org)
@@ -134,8 +134,7 @@ Consult-GH is built with the idea that the user should be able to customize ever
   (setq consult-gh-default-orgs-list (append consult-gh-default-orgs-list (remove "" (split-string (or (consult-gh--command-to-string "org" "list") "") "\n"))))
 
   ;; set the default folder for cloning repositories, By default Consult-GH will confirm this before cloning
-  (setq consult-gh-default-clone-directory "~/")
-)
+  (setq consult-gh-default-clone-directory "~/"))
 
 #+end_src
 The configuration above adds "armindarvish" to the default orgs (used by =consult-gh-default-repos= so you can quickly see all your repositories.
@@ -214,7 +213,7 @@ For example, if you have turned preview on by setting =consult-gh-show-preview= 
 
 #+begin_src emacs-lisp
 (setq consult-gh-show-preview t)
-(setq consult-gh-preview-key "M-o")
+(setq consult-gh-preview-key "C-o")
 #+end_src
 
 Be aware that getting previews is resource heavy since it has to make an API call to GitHub and download contents of a file. If you set a specific key for =consult-gh-preview-key=, this API call and downloading the content is done only when you hit the key binding.
@@ -263,6 +262,7 @@ Here is a good customization for great performance as well as functionality:
 #+begin_src emacs-lisp
 (use-package consult-gh
   :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+  :after consult
   :custom
   (consult-gh-default-clone-directory "~/projects")
   (consult-gh-show-preview t)
@@ -277,7 +277,7 @@ Here is a good customization for great performance as well as functionality:
   :config
   ;;add your main GitHub account (replace "armindarvish" with your user or org)
   (add-to-list 'consult-gh-default-orgs-list "armindarvish")
-  (require 'consult-gh-embark)
+  (require 'consult-gh-embark))
 #+end_src
 
 * Features and Demos
@@ -293,6 +293,7 @@ In the screenshots below,  I am using vanilla Emacs and a minimal config with [[
 #+begin_src emacs-lisp
 (use-package consult-gh
   :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
+  :after consult
   :custom
   (consult-gh-repo-maxnum 30) ;;set max number of repos to 30
   (consult-gh-issues-maxnum 100) ;;set max number of issues to 100
@@ -355,7 +356,7 @@ In the screenshot below, I use =consult-gh-search-issues= to search for issues a
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
-[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-issues.gif
+https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-issues.gif
 
 Pull requests can be searched similarly by using =consult-gh-search-prs=.
 
@@ -389,7 +390,7 @@ To use =consult-gh-forge=, make sure that both [[https://github.com/magit/magit]
 #+begin_src emacs-lisp
 (use-package consult-gh
   :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
-  :after forge
+  :after forge consult
   :config
   (require 'consult-gh-embark)
   (require 'consult-gh-forge)
@@ -397,8 +398,8 @@ To use =consult-gh-forge=, make sure that both [[https://github.com/magit/magit]
   (setq consult-gh-repo-action #'consult-gh--repo-browse-files-action)
   (setq consult-gh-file-action #'consult-gh--files-view-action)
   (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action) ;;this enables opening issues in magit/forge buffer
-  (setq consult-gh-forge-timeout-seconds 20) ;;maximum time inseconds for consult-gh to try opening issuers in forge, and then reverts back to opening in normal emacs buffer with consult-gh-issue--view.
-)
+  (setq consult-gh-forge-timeout-seconds 20)) ;;maximum time inseconds for consult-gh to try opening issuers in forge, and then reverts back to opening in normal emacs buffer with consult-gh-issue--view.
+
 #+end_src
 
 Note that we are trying to keep =consult-gh-forge= edits of forge database transparent. Therefore a list of all the repositories that are added to =forge-database= is stored under the variable =consult-gh-forge-added-repositories= and interactive commands are provided to remove them from =forge-databse= either all at once (by using =consult-gh-forge-remove-added-repositories=) or by interactive selection through =consult-gh-forge-remove-repository=. This can still be done by =forge-remove-repository= as well, but consult-gh versions provide a transparent way to only remove the forge repositories added by consult-gh.
@@ -418,11 +419,10 @@ After the major update on October 2023, consult-gh now has a transient menu. It 
 #+begin_src emacs-lisp
 (use-package consult-gh
   :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
-  :after forge transient
+  :after forge transient consult
   :config
   (require 'consult-gh-embark)
-  (require 'consult-gh-transient)
-)
+  (require 'consult-gh-transient))
 #+end_src
 
 #+ATTR_ORG: :width 800px
