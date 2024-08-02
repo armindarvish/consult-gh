@@ -1716,7 +1716,7 @@ Description of Arguments:
   HIGHLIGHT if non-nil, input is highlighted
             with `consult-gh-highlight-match-face' in the minibuffer."
   (let* ((parts (string-split string "\t"))
-         (repo input)
+         (repo (car (consult--command-split input)))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
          (issue (car parts))
@@ -1953,7 +1953,7 @@ Description of Arguments:
   HIGHLIGHT if non-nil, input is highlighted
             with `consult-gh-highlight-match-face' in the minibuffer."
   (let* ((parts (string-split string "\t"))
-         (repo input)
+         (repo (car (consult--command-split input)))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
          (pr (car parts))
