@@ -29,33 +29,33 @@ Consult-GH offers the following "MAIN" interactive commands
 
 _List Repos, Issues or PRs_:
 
-1. =consult-gh-repo-list=: Finds repositories for a given GitHub user/organization, similar to running =gh repo list= in the command line.
-2. =consult-gh-issue-list=: Lists issues of a given GitHub repository, similar to running =gh issue list= in the command line.
-3. =consult-gh-pr-list=: Lists pull requests of a given GitHub repository, similar to running =gh pr list= in the command line.
+- =consult-gh-repo-list=: Finds repositories for a given GitHub user/organization, similar to running =gh repo list= in the command line.
+- =consult-gh-issue-list=: Lists issues of a given GitHub repository, similar to running =gh issue list= in the command line.
+- =consult-gh-pr-list=: Lists pull requests of a given GitHub repository, similar to running =gh pr list= in the command line.
 
 _Search Functions_:
 
-4. =consult-gh-search-repos=: Search GitHub repositories, similar to running =gh search repos= in the command line.
-5. =consult-gh-search-issues=: Search GitHub issues, similar to running =gh search issues= in the command line.
-6. =consult-gh-search-prs=: Search GitHub pull requests, similar to running =gh search prs= in the command line.
-7. =consult-gh-search-code=: Search for code on GitHub, similar to running =gh search code= in the command line.
+- =consult-gh-search-repos=: Search GitHub repositories, similar to running =gh search repos= in the command line.
+- =consult-gh-search-issues=: Search GitHub issues, similar to running =gh search issues= in the command line.
+- =consult-gh-search-prs=: Search GitHub pull requests, similar to running =gh search prs= in the command line.
+- =consult-gh-search-code=: Search for code on GitHub, similar to running =gh search code= in the command line.
 
 _Browse File Contents_:
 
-8. =consult-gh-find-file=: Find files within any branch of any repository.
+- =consult-gh-find-file=: Find files within any branch of any repository.
 
 _Quickly See Repositories of Favorite Users/Organizations_:
 
-9. =consult-gh-default-repos=: This calls =consult-gh-repo-list= on a defined default list of orgs stored in variable =consult-gh-default-orgs-list= for quick access to frequently used repositories. This can for example be useful for accessing your own repositories (in multiple accounts) quickly.
+- =consult-gh-default-repos=: This calls =consult-gh-repo-list= on a defined default list of orgs stored in variable =consult-gh-default-orgs-list= for quick access to frequently used repositories. This can for example be useful for accessing your own repositories (in multiple accounts) quickly.
 
 _Clone or Fork Repos_:
 
-10. =consult-gh-repo-clone=: Quickly clone a repository with just typing the name of the repository. This function has a post-hook =consult-gh-repo-post-clone-hook= that can be used for example to switch o appropriate directory, etc.
-11. =consult-gh-repo-fork=: Quickly fork one or more repositories. This function also has a post-hook =consult-gh-repo-post-fork-hook=, that can be used for example to clone the forked repository.
+- =consult-gh-repo-clone=: Quickly clone a repository with just typing the name of the repository. This function has a post-hook =consult-gh-repo-post-clone-hook= that can be used for example to switch o appropriate directory, etc.
+- =consult-gh-repo-fork=: Quickly fork one or more repositories. This function also has a post-hook =consult-gh-repo-post-fork-hook=, that can be used for example to clone the forked repository.
 
 _Create New Repos_:
 
-12. =consult-gh-repo-create-new==: Create repos from scratch (or templates), or push existing git repositories to GitHub.
+- =consult-gh-repo-create-new==: Create repos from scratch (or templates), or push existing git repositories to GitHub.
 
 Furthermore, Consult-GH, also provides a number of useful [[https://github.com/oantolin/embark][Embark]] actions (see examples below.)
 
