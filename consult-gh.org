@@ -17,6 +17,22 @@
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
+;; This file is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published
+;; by the Free Software Foundation, either version 3 of the License,
+;; or (at your option) any later version.
+;;
+;; This file is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this file.  If not, see <https://www.gnu.org/licenses/>.
+
+
 ;;; Commentary:
 
 ;; This package provides and interactive interface to GitHub command-line
@@ -820,7 +836,7 @@ and a message saying “gh” is not found."
   (if (executable-find "gh")
       (with-temp-buffer
         (set-buffer-file-coding-system 'cp1047)
-        (list (apply 'call-process "gh" nil (current-buffer) nil args)
+        (list (apply #'call-process "gh" nil (current-buffer) nil args)
               (replace-regexp-in-string "" "\n"
                                         (buffer-string))))
     (progn
@@ -1603,7 +1619,7 @@ ARGS are ignored."
   (if (consult-gh--command-to-string "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
       (progn
         (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name name targetdir))
-        (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face)))))
+        (message "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face))))
   (let ((inhibit-message t))
     (expand-file-name name targetdir)))
 
@@ -1651,7 +1667,7 @@ using `consult-gh--command-to-string'."
          (name (or name package))
          (forkrepo (concat (consult-gh--get-current-username) "/" name)))
     (consult-gh--command-to-string "repo" "fork" (format "%s" repo) "--fork-name" name)
-    (message (format "repo %s was forked to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize forkrepo 'face 'font-lock-warning-face)))
+    (message "repo %s was forked to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize forkrepo 'face 'font-lock-warning-face))
     (run-hook-with-args 'consult-gh-repo-post-fork-hook forkrepo)
     (let ((inhibit-message t))
       forkrepo)))
@@ -1734,7 +1750,7 @@ Description of Arguments:
     (setq out (apply #'consult-gh--call-process args))
     (if (eq (car out) 0)
         (when (and clone (file-exists-p targetdir))
-          (message (format "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face)))
+          (message "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face))
           (run-hook-with-args 'consult-gh-repo-post-clone-hook targetdir)
           targetdir)
       (progn (message (cadr out))))))
@@ -1795,7 +1811,7 @@ Description of Arguments:
         (setq out (apply #'consult-gh--call-process args))
         (if (eq (car out) 0)
             (when (and clone (file-exists-p targetdir))
-              (message (format "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face)))
+              (message "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face))
               (run-hook-with-args 'consult-gh-repo-post-clone-hook targetdir)
               targetdir)
           (progn (message (cadr out))))))
@@ -3680,7 +3696,7 @@ and passes ARGS to it."
 #+begin_src  emacs-lisp
 ;;; consult-gh-embark.el --- Embark Actions for consult-gh -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021-2023 Free Software Foundation, Inc.
+;; Copyright (C) 2023 Armin Darvish
 
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
@@ -3689,6 +3705,22 @@ and passes ARGS to it."
 ;; Package-Requires: ((emacs "29.1") (consult "1.0") (consult-gh "1.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
+
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
+;; This file is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published
+;; by the Free Software Foundation, either version 3 of the License,
+;; or (at your option) any later version.
+;;
+;; This file is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this file.  If not, see <https://www.gnu.org/licenses/>.
+
 
 ;;; Commentary:
 
@@ -3942,7 +3974,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 #+begin_src  emacs-lisp
 ;;; consult-gh-forge.el --- Magit/Forge Integration for consult-gh -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021-2023 Free Software Foundation, Inc.
+;; Copyright (C) 2023 Armin Darvish
 
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
@@ -3951,6 +3983,22 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 ;; Package-Requires: ((emacs "29.1") (consult "1.0") (forge "0.3.3") (consult-gh "1.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
+
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
+;; This file is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published
+;; by the Free Software Foundation, either version 3 of the License,
+;; or (at your option) any later version.
+;;
+;; This file is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this file.  If not, see <https://www.gnu.org/licenses/>.
+
 
 ;;; Commentary:
 ;; This package provides forge integration for consult-gh.
@@ -4054,7 +4102,7 @@ If optional argument URLS is non-nil, remove the forges of the URLS."
                                        (format "%s @%s" repo host)))
                        consult-gh-forge--added-repositories))
          (urls (or urls (completing-read-multiple "Remove Repository from forge db: " list))))
-    (message (format "%s" urls))
+    (message "%s" urls)
     (mapcar (lambda (url-parts) (let* ((parts (string-split url-parts " "))
                                        (host (string-trim (car (cdr parts)) "@"))
                                        (owner (car (string-split (car parts) "/")))
@@ -4259,7 +4307,7 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
 #+begin_src  emacs-lisp
 ;;; consult-gh-transient.el --- Emabrk Actions for consult-gh -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021-2023 Free Software Foundation, Inc.
+;; Copyright (C) 2023 Armin Darvish
 
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
@@ -4268,6 +4316,22 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
 ;; Package-Requires: ((emacs "29.1") (consult "1.0") (consult-gh "1.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
+
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
+;; This file is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published
+;; by the Free Software Foundation, either version 3 of the License,
+;; or (at your option) any later version.
+;;
+;; This file is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this file.  If not, see <https://www.gnu.org/licenses/>.
+
 
 ;;; Commentary:
 ;; This package providesa transient menu for consult-gh.
