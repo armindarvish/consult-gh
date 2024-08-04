@@ -10,6 +10,22 @@
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
+;; This file is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published
+;; by the Free Software Foundation, either version 3 of the License,
+;; or (at your option) any later version.
+;;
+;; This file is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this file.  If not, see <https://www.gnu.org/licenses/>.
+
+
 ;;; Commentary:
 
 ;; This package provides and interactive interface to GitHub command-line
@@ -766,7 +782,7 @@ and a message saying “gh” is not found."
   (if (executable-find "gh")
       (with-temp-buffer
         (set-buffer-file-coding-system 'cp1047)
-        (list (apply 'call-process "gh" nil (current-buffer) nil args)
+        (list (apply #'call-process "gh" nil (current-buffer) nil args)
               (replace-regexp-in-string "" "\n"
                                         (buffer-string))))
     (progn
@@ -1442,7 +1458,7 @@ ARGS are ignored."
   (if (consult-gh--command-to-string "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
       (progn
         (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name name targetdir))
-        (message (format "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face)))))
+        (message "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face))))
   (let ((inhibit-message t))
     (expand-file-name name targetdir)))
 
@@ -1486,7 +1502,7 @@ using `consult-gh--command-to-string'."
          (name (or name package))
          (forkrepo (concat (consult-gh--get-current-username) "/" name)))
     (consult-gh--command-to-string "repo" "fork" (format "%s" repo) "--fork-name" name)
-    (message (format "repo %s was forked to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize forkrepo 'face 'font-lock-warning-face)))
+    (message "repo %s was forked to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize forkrepo 'face 'font-lock-warning-face))
     (run-hook-with-args 'consult-gh-repo-post-fork-hook forkrepo)
     (let ((inhibit-message t))
       forkrepo)))
@@ -1564,7 +1580,7 @@ Description of Arguments:
     (setq out (apply #'consult-gh--call-process args))
     (if (eq (car out) 0)
         (when (and clone (file-exists-p targetdir))
-          (message (format "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face)))
+          (message "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face))
           (run-hook-with-args 'consult-gh-repo-post-clone-hook targetdir)
           targetdir)
       (progn (message (cadr out))))))
@@ -1622,7 +1638,7 @@ Description of Arguments:
         (setq out (apply #'consult-gh--call-process args))
         (if (eq (car out) 0)
             (when (and clone (file-exists-p targetdir))
-              (message (format "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face)))
+              (message "repo %s was cloned to %s" (propertize name 'face 'font-lock-keyword-face) (propertize targetdir 'face 'font-lock-type-face))
               (run-hook-with-args 'consult-gh-repo-post-clone-hook targetdir)
               targetdir)
           (progn (message (cadr out))))))
