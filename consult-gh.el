@@ -933,6 +933,12 @@ Returns a list where CAR is the user's name and CADR is the package name."
 \(e.g. “consult-gh” if REPO is “armindarvish/consult-gh”\)"
   (cadr (consult-gh--split-repo repo)))
 
+(defun consult-gh--tempdir ()
+ "Make a new temporary directory with timestamp."
+ (if (and consult-gh--current-tempdir (< (time-convert (time-subtract (current-time) (nth 5 (file-attributes (substring (file-name-as-directory consult-gh--current-tempdir) 0 -1))) 'integer) consult-gh-temp-tempdir-cache))
+         consult-gh--current-tempdir
+(expand-file-name (make-temp-name (concat (format-time-string consult-gh-temp-tempdir-time-format  (current-time)) "-")) consult-gh-tempdir)))
+
 ;;; Backend functions for `consult-gh'.
 
 ;; Buffers
@@ -1126,20 +1132,25 @@ and is used to preview files or do other actions on the file."
                     (path (plist-get (cdr cand) :path))
                     (branch (or (plist-get (cdr cand) :branch) "HEAD"))
                     (url (plist-get (cdr cand) :url))
-                    (tempdir (expand-file-name (concat (make-temp-name (concat repo "/")) "/" branch "/") consult-gh-tempdir))
+                    (tempdir (expand-file-name (concat repo "/" branch "/")
+                                               (or consult-gh--current-tempdir
+                                                   (consult-gh--tempdir))))
                     (file-p (or (file-name-extension path) (plist-get (cdr cand) :size)))
                     (file-size (and file-p (plist-get (cdr cand) :size)))
-                    (confirm (if (and file-p (>= file-size consult-gh-large-file-warning-threshold))
+                    (confirm (if (and file-size (>= file-size
+                                                    consult-gh-large-file-warning-threshold))
                                  (yes-or-no-p (format "File is %s Bytes.  Do you really want to load it?" file-size))
                                t))
-                    (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
-                    (suffix (concat "." (file-name-extension path)))
-                    (temp-file (expand-file-name path tempdir))
-                    (_ (and file-p confirm (make-directory (file-name-directory temp-file) t)))
-                    (text (and file-p confirm (consult-gh--files-get-content url)))
-                    (_ (and file-p confirm (with-temp-file temp-file (insert text)
-                                                           (set-buffer-file-coding-system 'raw-text))))
-                    (buffer (or (and file-p confirm (with-temp-buffer (find-file-noselect temp-file t))) nil)))
+                    (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" "path")) consult-gh--open-files-list)) (expand-file-name path tempdir)))
+                    (_ (and file-p confirm (progn
+                                             (unless (file-exists-p temp-file)
+                                               (make-directory (file-name-directory temp-file) t)
+                                               (with-temp-file temp-file
+                                                 (insert (consult-gh--files-get-content url))
+                                                 (set-buffer-file-coding-system 'raw-text)
+                                                 (write-file temp-file)))
+                                             (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file)))))
+                    (buffer (or (and file-p confirm (find-file-noselect temp-file t)) nil)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
                (funcall preview action
                         buffer))))))))
