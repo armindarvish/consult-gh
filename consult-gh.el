@@ -1178,15 +1178,15 @@ Description of Arguments:
   TEMPDIR   the directory where the temporary file is saved
 
 Output is the buffer visiting the file."
-  (let* ((tempdir (or tempdir consult-gh-tempdir))
-         (prefix (file-name-sans-extension (file-name-nondirectory path)))
-         (suffix (concat "." (file-name-extension path)))
-         (temp-file (expand-file-name path tempdir))
-         (text (consult-gh--files-get-content url)))
-    (make-directory (file-name-directory temp-file) t)
-    (with-temp-file temp-file
-      (insert  text)
-      (set-buffer-file-coding-system 'raw-text))
+  (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
+         (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir))))
+    (unless (file-exists-p temp-file)
+      (make-directory (file-name-directory temp-file) t)
+      (with-temp-file temp-file
+        (insert (consult-gh--files-get-content url))
+        (set-buffer-file-coding-system 'raw-text)
+        (write-file temp-file))
+      (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file)))
     (if no-select
         (find-file-noselect temp-file)
       (with-current-buffer (find-file temp-file)
@@ -1214,16 +1214,17 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
          (path (plist-get info :path))
          (url (plist-get info :url))
          (branch (or (plist-get info :branch) "HEAD"))
-         (consult-gh-tempdir (expand-file-name (concat (make-temp-name (format "%s/" repo)) "/" branch "/") consult-gh-tempdir))
+         (tempdir (expand-file-name (concat repo "/" branch "/")
+                                    (or consult-gh--current-tempdir (consult-gh--tempdir))))
          (file-p (or (file-name-extension path) (plist-get info :size)))
          (file-size (and file-p (plist-get info :size)))
          (confirm t))
-    (when (>= file-size consult-gh-large-file-warning-threshold)
+    (when (and file-size (>= file-size consult-gh-large-file-warning-threshold))
       (if (yes-or-no-p (format "File is %s Bytes.  Do you really want to load it?" file-size))
           (setq confirm t)
         (setq confirm nil)))
     (if (and file-p confirm)
-        (consult-gh--files-view repo path url))))
+        (consult-gh--files-view repo path url nil tempdir))))
 
 (defun consult-gh--files-save-file-action (cand)
   "Save file candidate, CAND, to a file.
@@ -1251,7 +1252,7 @@ set `consult-gh-file-action' to `consult-gh--files-save-file-action'."
                          (file-truename (read-file-name "Save As: " consult-gh-default-save-directory nil nil filename))
                        (expand-file-name filename consult-gh-default-save-directory)))
          (confirm t))
-    (when (>= file-size consult-gh-large-file-warning-threshold)
+    (when (and file-size (>= file-size consult-gh-large-file-warning-threshold))
       (if (yes-or-no-p (format "File is %s Bytes.  Do you really want to load it?" file-size))
           (setq confirm t)
         (setq confirm nil)))
@@ -2245,18 +2246,23 @@ and is used to preview or do other actions on the code."
                  (let* ((repo (plist-get (cdr cand) :repo))
                         (path (plist-get (cdr cand) :path))
                         (branch (or (plist-get (cdr cand) :branch) "HEAD"))
-                        (query (plist-get (cdr cand) :query))
                         (code (plist-get (cdr cand) :code))
                         (url (plist-get (cdr cand) :url))
-                        (tempdir (expand-file-name (concat (make-temp-name (concat repo "/")) "/" branch "/") consult-gh-tempdir))
-                        (prefix (concat (file-name-sans-extension  (file-name-nondirectory path))))
-                        (suffix (concat "." (file-name-extension path)))
-                        (temp-file (expand-file-name path tempdir))
+                        (tempdir (expand-file-name (concat repo "/" branch "/")
+                                    (or consult-gh--current-tempdir (consult-gh--tempdir))))
+                        (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" "path")) consult-gh--open-files-list)) (expand-file-name path tempdir)))
                         (_ (make-directory (file-name-directory temp-file) t))
                         (text (consult-gh--files-get-content url))
                         (_ (with-temp-file temp-file (insert text) (set-buffer-file-coding-system 'raw-text)))
-                        (buffer (or (with-temp-buffer (find-file-noselect temp-file t))
-                                    nil)))
+                        (_ (progn
+                             (unless (file-exists-p temp-file)
+                               (make-directory (file-name-directory temp-file) t)
+                               (with-temp-file temp-file
+                                 (insert (consult-gh--files-get-content url))
+                                 (set-buffer-file-coding-system 'raw-text)
+                                 (write-file temp-file)))
+                           (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file))))
+                        (buffer (or (find-file-noselect temp-file t) nil)))
                    (when buffer
                      (with-current-buffer buffer
                        (if consult-gh-highlight-matches
@@ -2309,12 +2315,12 @@ set `consult-gh-code-action' to `consult-gh--code-view-action'."
   (let* ((info (cdr cand))
          (repo (plist-get info :repo))
          (branch (or (plist-get info :branch) "HEAD"))
-         (query (plist-get info :query))
          (code (plist-get info :code))
-         (consult-gh-tempdir (expand-file-name (concat (make-temp-name (format "%s/" repo)) "/" branch "/") consult-gh-tempdir))
+         (tempdir (expand-file-name (concat repo "/" branch "/")
+                                    (or consult-gh--current-tempdir (consult-gh--tempdir))))
          (path (plist-get info :path))
          (url (plist-get info :url)))
-    (consult-gh--files-view repo path url nil nil code)))
+    (consult-gh--files-view repo path url nil tempdir code)))
 
 (defun consult-gh--repo-list-transform (async builder)
   "Add annotation to repo candidates in `consult-gh-repo-list'.
@@ -3223,10 +3229,13 @@ For more details on consult--async functionalities, see `consult-grep'
 and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
+  (setq consult-gh--open-files-list nil
+        consult-gh--current-tempdir (consult-gh--tempdir))
   (if current-prefix-arg
       (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
   (let* ((consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-code "Search Code:  " #'consult-gh--search-code-builder initial)))
+    (setq consult-gh--open-files-list nil)
     ;;add org and repo to known lists
     (when-let ((reponame (plist-get (cdr sel) :repo)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
@@ -3252,6 +3261,8 @@ Upon selection of a candidate either
 INITIAL is an optional arg for the initial input in the minibuffer
 \(passed as INITITAL to `consult-read'\)."
   (interactive)
+  (setq consult-gh--open-files-list nil
+        consult-gh--current-tempdir (consult-gh--tempdir))
   (let* ((repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t)))))
          (branch (or branch (format "%s" (cdr (consult-gh--read-branch repo)))))
          (candidates (mapcar #'consult-gh--file-format (consult-gh--files-nodirectory-items repo branch)))
