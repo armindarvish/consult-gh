@@ -192,13 +192,41 @@ no initial input is provided."
                  (const :tag "Current repository is default input" t)
                  (const :tag "Current repository is ignored" nil)))
 
-(defcustom consult-gh-preview-buffer-mode 'markdown-mode
+;; (defcustom consult-gh-preview-buffer-mode 'markdown-mode
+;;   "Major mode to preview issues, pull requests,...
+
+;; Choices are \='markdown-mode or \='org-mode."
+;;   :group 'consult-gh
+;;   :type '(choice (const :tag "Use default Markdown Style" markdown-mode)
+;;                  (const :tag "Covert Markdown to Org-mode" org-mode)))
+
+(defcustom consult-gh-repo-preview-mode nil
   "Major mode to preview repository READMEs.
 
-Choices are \='markdown-mode or \='org-mode."
+Choices are:
+  - \='nil            Use major-mode associated with orginal file extension
+  - \='markdown-mode  Use \='markdown-mode if available
+  - \='org-mode       Use \='org-mode"
   :group 'consult-gh
-  :type '(choice (const :tag "Use default Markdown Style" markdown-mode)
-                 (const :tag "Covert Markdown to Org-mode" org-mode)))
+  :type '(choice (const :tag "(Default) Guess major mode based on file format " nil)
+                 (const :tag "Use markdown mode" markdown-mode)
+                 (const :tag "Use org mode" org-mode)))
+
+(defcustom consult-gh-issue-preview-mode 'markdown-mode
+  "Major mode to preview issues and pull requests.
+
+Choices are:
+  - \='nil            Use \='fundamental-mode
+  - \='markdown-mode  Use \='markdown-mode when available
+  - \='org-mode       Use \='org-mode"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use markdown mode" markdown-mode)
+                 (const :tag "Use org mode" org-mode)
+                 (const :tag "Use fundamental-mode" nil)))
+
+
+
+(make-obsolete-variable 'consult-gh-preview-buffer-mode "Use `consult-gh-repo-preview-mode', or `consult-gh-issue-preview-mode' instead." "1.1")
 
 (defcustom consult-gh-default-orgs-list (list)
   "List of default GitHub orgs.
@@ -722,8 +750,10 @@ Uses simple regexp replacements."
           (goto-char (point-min))
           (when (re-search-forward "^-\\{2\\}$" nil t)
             (delete-char -2)
-            (insert "=================================\n")
-            (replace-regexp "\\(^[a-zA-Z]+:[[:blank:]]\\)" "#+\\1" nil 0 (point-marker) nil nil))
+            (insert "-----\n")
+
+            (while (re-search-backward "\\(^[a-zA-Z]+:[[:blank:]]\\)" nil t)
+              (replace-match "#+\\1" nil nil)))
           (while (re-search-forward "#\\|\\*\\{1,2\\}\\(?1:.+?\\)\\*\\{1,2\\}\\|_\\{1,2\\}\\(?2:.+?\\)_\\{1,2\\}\\|`\\(?3:[^`].+?\\)`\\|```\\(?4:.*\n\\)\\(?5:[[:ascii:][:nonascii:]]*?\\)```" nil t)
             (pcase (match-string-no-properties 0)
               ("#" (if (looking-at "#\\|[[:blank:]]")
@@ -794,7 +824,8 @@ Uses simple regexp replacements."
   "Convert from markdown format to \='org-mode format in BUFFER.
 
 This is used for viewing repos \(a.k.a. fetching README file of repos\)
-if `consult-gh-preview-buffer-mode' is set to \='org-mode."
+or issue, when `consult-gh-repo-preview-mode' or
+`consult-gh-issue-preview-mode'  is set to \='org-mode."
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name))))
     (with-current-buffer buffer
       (consult-gh--markdown-to-org-footnotes buffer)
@@ -1547,6 +1578,82 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
 #+end_src
 
 ******* view repo
+
+******** insert readme
+
+********* markdown format
+#+begin_src emacs-lisp
+(defun consult-gh--repo-insert-readme-markdown (repo)
+  "Insert REPO's Readme in markdown format at point."
+  (save-mark-and-excursion
+    (insert (cadr (consult-gh--call-process "repo" "view" repo)))
+    (if (featurep 'markdown-mode)
+        (progn
+          (require 'markdown-mode nil t)
+          (markdown-mode)
+          (markdown-display-inline-images))
+      (normal-mode))
+    nil))
+#+end_src
+
+********* org format
+#+begin_src emacs-lisp
+(defun consult-gh--repo-insert-readme-org (repo)
+  "Insert REPO's Readme in org format at point."
+  (save-mark-and-excursion
+    (let* ((org-display-remote-inline-images 'download)
+           (info (cadr (consult-gh--api-get-json (format "repos/%s" repo))))
+           (name (consult-gh--api-json-to-hashtable info :name))
+           (desc (consult-gh--api-json-to-hashtable info :description))
+           (readme (cadr (consult-gh--api-get-json (format "repos/%s/readme" repo))))
+           (path (consult-gh--api-json-to-hashtable readme :path))
+           (extension (and (stringp path) (file-name-extension path)))
+           (content (consult-gh--api-json-to-hashtable readme :content)))
+      (insert (concat ""
+                      "#+name:\t" name "\n"
+                      "#+description:\t" desc "\n"
+                      (make-string 5 ?\-)
+                      "\n\n"))
+      (when content
+        (insert (base64-decode-string content))
+        (set-buffer-file-coding-system 'raw-text))
+      (cond
+       ((and (stringp extension) (equal (downcase extension) "org"))
+        (org-mode)
+        (org-table-map-tables 'org-table-align t)
+        (org-fold-show-all))
+       ((and (stringp extension) (member (downcase extension) '("md" "mkdn" "mdown" "markdown")))
+        (consult-gh--markdown-to-org))
+       (t
+        (org-mode)))))
+  nil)
+#+end_src
+
+********* file format
+#+begin_src emacs-lisp
+(defun consult-gh--repo-insert-readme (repo)
+  "Insert REPO's Readme at point."
+  (save-mark-and-excursion
+    (let* ((info (cadr (consult-gh--api-get-json (format "repos/%s" repo))))
+           (name (consult-gh--api-json-to-hashtable info :name))
+           (desc (consult-gh--api-json-to-hashtable info :description))
+           (readme (cadr (consult-gh--api-get-json (format "repos/%s/readme" repo))))
+           (path (consult-gh--api-json-to-hashtable readme :path))
+           (content (consult-gh--api-json-to-hashtable readme :content)))
+      (setq-local buffer-file-name path)
+      (insert (concat ""
+                      comment-start "name:\t" name comment-end "\n"
+                      comment-start "description:\t" desc comment-end "\n"
+                      (make-string 5 ?\-)
+                      "\n\n"))
+      (when content
+        (insert (base64-decode-string content))
+        (set-buffer-file-coding-system 'raw-text))
+      (normal-mode)))
+  nil)
+#+end_src
+
+******** view repo
 #+begin_src emacs-lisp
 (defun consult-gh--repo-view (repo &optional buffer)
   "Open REPO's Readme in an Emacs buffer, BUFFER.
@@ -1560,48 +1667,25 @@ and puts the response as raw text in the buffer defined by
 the optional input, BUFFER.  If BUFFER is nil, a buffer named by
 `consult-gh-preview-buffer-name' is used instead.
 
-If `consult-gh-preview-buffer-mode' is set to either \='markdown-mode
-or \='org-mode, it sets the major mode of the buffer accordingly,
-otherwise it shows the raw text in \='fundamental-mode.
+If `consult-gh-repo-preview-mode' is non-nil, uses it to set the
+major-mode, otherwise uses the major mode associated with the README's
+file extension (.e.g. .md, .org, .rst).
 
 Description of Arguments:
 
 REPO   the name of the repository to be previewed.
 BUFFER an optional buffer the preview should be shown in."
-  (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-        (text (cadr (consult-gh--call-process "repo" "view" repo))))
-    (with-current-buffer buffer
-      (erase-buffer)
-      (insert text)
-      (goto-char (point-min-marker))
-      (pcase consult-gh-preview-buffer-mode
-        ('markdown-mode
-         (if (featurep 'markdown-mode)
-             (progn
-               (require 'markdown-mode)
-               (markdown-mode)
-               (markdown-display-inline-images))
-           (message "markdown-mode not available")))
-        ('org-mode
-         (let ((org-display-remote-inline-images 'download))
-           (consult-gh--markdown-to-org buffer)))
-        (_ ())))))
+  (with-current-buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name))
+    (erase-buffer)
+    (pcase consult-gh-repo-preview-mode
+      ('markdown-mode
+       (consult-gh--repo-insert-readme-markdown repo))
+      ('org-mode
+       (consult-gh--repo-insert-readme-org repo))
+      (_ (consult-gh--repo-insert-readme repo)))
+    (goto-char (point-min))
+    (current-buffer)))
 
-(defun consult-gh--repo-view-action (cand)
-  "Open the preview of a repo candidate, CAND.
-
-This is a wrapper function around `consult-gh--repo-view'.
-It parses CAND to extract relevant values \(e.g. repository's name\) and
-passes them to `consult-gh--repo-view'.
-
-To use this as the default action for repos, set
-`consult-gh-repo-action' to function `consult-gh--repo-view-action'."
-
-  (let* ((repo (substring-no-properties cand))
-         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "*")))
-    (consult-gh--repo-view repo)
-    (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
-    (rename-buffer buffername t)))
 #+end_src
 
 ******* browse files
@@ -2136,9 +2220,8 @@ It fetches the preview of the ISSUE by runing the command
 “gh issue view ISSUE --repo REPO” using `consult-gh--call-process'
 and put it as raw text in either BUFFER or if BUFFER is nil,
 in a buffer named by `consult-gh-preview-buffer-name'.
-If `consult-gh-preview-buffer-mode' is set to either \='markdown-mode
-or \='org-mode, it sets the major mode of the buffer accordingly,
-otherwise it shows the raw text in \='fundamental-mode.
+If `consult-gh-issue-preview-mode' is non-nil, uses it as
+major-mode, otherwise shows the raw text in \='fundamental-mode.
 
 REPO is the name of the repository to be previewed.
 ISSUE is the issue number
@@ -2155,7 +2238,7 @@ see `consult-gh--issue-view-action'."
       (insert "\n--\n")
       (insert (string-trim text-comments))
       (goto-char (point-min-marker))
-      (pcase consult-gh-preview-buffer-mode
+      (pcase consult-gh-issue-preview-mode
         ('markdown-mode
          (if (featurep 'markdown-mode)
              (progn
@@ -2165,7 +2248,8 @@ see `consult-gh--issue-view-action'."
         ('org-mode
          (let ((org-display-remote-inline-images 'download))
            (consult-gh--markdown-to-org buffer)))
-        (_ ())))))
+        (_ ()))
+      (current-buffer))))
 
 (defun consult-gh--issue-view-action (cand)
   "Open the preview of an issue candidate, CAND.
@@ -2181,8 +2265,7 @@ set `consult-gh-issue-action' to `consult-gh--issue-view-action'."
          (repo (substring-no-properties (plist-get info :repo)))
          (issue (substring-no-properties (format "%s" (plist-get info :issue))))
          (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/issues/" issue "*")))
-    (consult-gh--issue-view repo issue)
-    (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
+    (switch-to-buffer (consult-gh--issue-view repo issue))
     (rename-buffer buffername t)))
 #+end_src
 
@@ -2391,9 +2474,8 @@ using `consult-gh--call-process' and puts it as raw text in either
 BUFFER, or if BUFFER is nil, in a buffer named by
 `consult-gh-preview-buffer-name'.
 
-If `consult-gh-preview-buffer-mode' is set to either \='markdown-mode
-or \='org-mode, it sets the major mode of the buffer accordingly,
-otherwise it shows the raw text in \='fundamental-mode.
+If `consult-gh-issue-preview-mode' is non-nil, uses it as
+major-mode, otherwise shows the raw text in \='fundamental-mode.
 
 Description of Arguments:
 
@@ -2412,7 +2494,7 @@ see `consult-gh--pr-view-action'."
       (insert "\n--\n")
       (insert (string-trim text-comments))
       (goto-char (point-min-marker))
-      (pcase consult-gh-preview-buffer-mode
+      (pcase consult-gh-issue-preview-mode
         ('markdown-mode
          (if (featurep 'markdown-mode)
              (progn
@@ -2422,7 +2504,8 @@ see `consult-gh--pr-view-action'."
         ('org-mode
          (let ((org-display-remote-inline-images 'download))
            (consult-gh--markdown-to-org buffer)))
-        (_ ())))))
+        (_ ()))
+      (current-buffer))))
 
 (defun consult-gh--pr-view-action (cand)
   "Opens the preview of a pull request candidate, CAND.
@@ -2437,8 +2520,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
          (repo (substring-no-properties (plist-get info :repo)))
          (pr (substring-no-properties (format "%s" (plist-get info :pr))))
          (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/pull/" pr "*")))
-    (consult-gh--pr-view repo pr)
-    (switch-to-buffer (get-buffer-create consult-gh-preview-buffer-name))
+    (switch-to-buffer (consult-gh--pr-view repo pr))
     (rename-buffer buffername t)))
 #+end_src
 
