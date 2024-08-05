@@ -5,7 +5,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0
+;; Version: 1.1
 ;; Package-Requires: ((emacs "29.1") (consult "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
@@ -28,7 +28,7 @@
 
 ;;; Commentary:
 
-;; This package provides and interactive interface to GitHub command-line
+;; This package provides an interactive interface to GitHub command-line
 ;; client (see URL `https://cli.github.com/').  It uses a consult-based minibuffer
 ;; completion for searching and selecting GitHub repositories, issues,
 ;; pull erquests, codes, and etc.
@@ -72,13 +72,26 @@ pulling files for viewing."
   :group 'consult-gh
   :type 'directory)
 
-(defcustom consult-gh-crm-separator crm-separator
-  "Separator for multiple selections with `completing-read-multiple'.
+(make-obsolete-variable 'consult-gh-crm-separator nil "1.0")
+;; (defcustom consult-gh-crm-separator crm-separator
+;;   "Separator for multiple selections with `completing-read-multiple'.
 
-Uses `crm-separator' for default.
-This is obsolete in version>=1.0"
-  :group 'consult-gh
-  :type 'regexp)
+(defcustom consult-gh-temp-tempdir-time-format "%Y%m%d%I%H%M"
+
+  "This is passed as FORMAT-STRING to `format-time-string' for
+naming temporary diretories."
+:type 'string)
+
+(defcustom consult-gh-temp-tempdir-cache 300
+
+  "Time in seconds before making a new temp directory."
+:type 'string)
+
+;; Uses `crm-separator' for default.
+;; This is obsolete in version>=1.0"
+;;   :group 'consult-gh
+;;   :type 'regexp)
+
 
 (defcustom consult-gh-repo-maxnum 30
   "Maximum number of repos to show for list and search operations.
@@ -1113,7 +1126,7 @@ CONS is a list of files for example returned by
 
 This is passed as LOOKUP to `consult--read' on file candidates
 and is used to format the output when a candidate is selected."
-  (lambda (sel cands &rest args)
+  (lambda (sel cands &rest _)
     (let* ((info (cdr (assoc sel cands)))
            (path (plist-get info :path)))
       (cons path info))))
@@ -1331,8 +1344,6 @@ Description of Arguments:
          (date (substring (cadr (cdr (cdr parts))) 0 10))
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
-         (w (string-width repo))
-         (s (string-width visibility))
          (str (format "%s\s\s%s\s\s%s\s\s%s"
                       (concat
                        (propertize user 'face 'consult-gh-user-face )
@@ -1345,7 +1356,7 @@ Description of Arguments:
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
-          (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+          (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
@@ -1357,7 +1368,7 @@ Description of Arguments:
 This is passed as LOOKUP to `consult--read'
 in in `consult-gh-search-repos' and is used
 to format the output when a candidate is selected."
-  (lambda (sel cands &rest args)
+  (lambda (sel cands &rest _)
     (let* ((info (cdr (assoc sel cands)))
            (repo (plist-get info :repo)))
       (cons (format "%s" repo) info))))
@@ -1383,7 +1394,7 @@ to preview or do other actions on the repo."
                  (if consult-gh-highlight-matches
                      (cond
                       ((listp match-str)
-                       (mapcar (lambda (item)
+                       (mapc (lambda (item)
                                  (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
                       ((stringp match-str)
                        (highlight-regexp match-str 'consult-gh-preview-match-face)))))
@@ -1534,7 +1545,7 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-files-action'."
 
 Full path of the cloned repo is passed to these functions.")
 
-(defun consult-gh--repo-clone (repo name targetdir &rest args)
+(defun consult-gh--repo-clone (repo name targetdir &rest _)
   "Clones REPO to the path TARGETDIR/NAME.
 
 This is an internal function for non-interactive use.
@@ -1746,7 +1757,7 @@ Description of arguments:
  DESCRIPTION description for the repo
  VISIBILITY  private|public|internal"
   (let* ((directory (or directory (read-directory-name "Path to local repository: " default-directory)))
-         (directory (and (stringp directory) (f-directory-p directory) (file-expand-wildcards (expand-file-name ".git" directory)) directory))
+         (directory (and (stringp directory) (file-directory-p directory) (file-expand-wildcards (expand-file-name ".git" directory)) directory))
          (use-scratch (if (not directory) (y-or-n-p "No git directory selected.  Would you like to make the repo from scratch instead?"))))
     (cond
      (directory
@@ -1846,7 +1857,7 @@ Description of Arguments:
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
-          (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+          (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
@@ -1897,7 +1908,7 @@ Description of Arguments:
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
-          (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+          (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
@@ -1915,7 +1926,7 @@ Description of Arguments:
 
 This is passed as LOOKUP to `consult--read' in  in `consult-gh-search-issues'
 and is used to format the output when a candidate is selected."
-  (lambda (sel cands &rest args)
+  (lambda (sel cands &rest _)
     (let* ((info (cdr (assoc sel cands)))
            (title (plist-get info :title))
            (issue (plist-get info :issue)))
@@ -1942,7 +1953,7 @@ and is used to preview or do other actions on the issue."
                  (if consult-gh-highlight-matches
                      (cond
                       ((listp match-str)
-                       (mapcar (lambda (item)
+                       (mapc (lambda (item)
                                  (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
                       ((stringp match-str)
                        (highlight-regexp match-str 'consult-gh-preview-match-face)))))
@@ -2082,7 +2093,7 @@ Description of Arguments:
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
-          (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+          (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
@@ -2126,7 +2137,7 @@ Description of Arguments:
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
-          (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+          (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
@@ -2137,7 +2148,7 @@ Description of Arguments:
 
 This is passed as LOOKUP to `consult--read' in `consult-gh-search-prs'
 and is used to format the output when a candidate is selected."
-  (lambda (sel cands &rest args)
+  (lambda (sel cands &rest _)
     (let* ((info (cdr (assoc sel cands)))
            (title (plist-get info :title))
            (pr (plist-get info :pr)))
@@ -2165,7 +2176,7 @@ and is used to preview or do other actions on the pr."
                      (if consult-gh-highlight-matches
                          (cond
                           ((listp match-str)
-                           (mapcar (lambda (item)
+                           (mapc (lambda (item)
                                      (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
                           ((stringp match-str)
                            (highlight-regexp match-str 'consult-gh-preview-match-face)))))
@@ -2300,7 +2311,7 @@ Description of Arguments:
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
-          (mapcar (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+          (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
@@ -2311,7 +2322,7 @@ Description of Arguments:
 
 This is passed as LOOKUP to `consult--read' in `consult-gh-search-code'
 and is used to format the output when a candidate is selected."
-  (lambda (sel cands &rest args)
+  (lambda (sel cands &rest _)
     (if-let* ((info (cdr (assoc sel cands)))
               (repo (plist-get info :repo))
               (path (plist-get info :path)))
@@ -3382,7 +3393,7 @@ INITIAL is an optional arg for the initial input in the minibuffer
 Calls the function in `consult-gh-default-interactive-command'
 and passes ARGS to it."
   (interactive)
-  (apply consult-omni-default-interactive-command args))
+  (apply (or consult-gh-default-interactive-command #'consult-gh-search-repos) args))
 
 ;;; provide `consult-gh' module
 

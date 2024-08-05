@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0
-;; Package-Requires: ((emacs "29.1") (consult "1.0") (consult-gh "1.0"))
+;; Version: 1.1
+;; Package-Requires: ((emacs "29.1") (consult "1.0") (consult-gh "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -95,7 +95,8 @@
          (path (or (get-text-property 0 :path cand) nil))
          (branch (or (get-text-property 0 :branch cand) nil))
          (code (or (get-text-property 0 :code cand) nil))
-         (newcand (cons cand `(:repo ,repo :user ,user :package ,package :url ,url :path ,path :branch ,branch :issue ,issue :pr ,pr :code ,code))))
+         (size (or (get-text-property 0 :size cand) nil))
+         (newcand (cons cand `(:repo ,repo :user ,user :package ,package :url ,url :path ,path :branch ,branch :issue ,issue :pr ,pr :code ,code :sie ,size))))
     (cond
      (code
       (funcall consult-gh-code-action newcand))
