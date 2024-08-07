@@ -887,8 +887,14 @@ Runs “gh api user” and returns the login field of json data."
 
 Runs “gh api user/orgs” and returns the login field of json data."
   (let ((data (consult-gh--api-get-json "user/orgs")))
-    (if (and (eq (car data) 0) (hash-table-p (cadr data)))
-      (gethash :login (cadr data)))))
+    (if (eq (car data) 0)
+        (let ((table (consult-gh--api-json-to-hashtable (cadr data))))
+          (cond
+           ((listp table)
+            (mapcar (lambda (tab) (gethash :login tab)) table))
+           ((hash-table-p table)
+            (gethash :login table))
+           (t nil))))))
 
 (defun consult-gh--get-gitignore-template-list ()
   "List name of .gitignore templates."
@@ -998,6 +1004,11 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)."
 
 (setq consult-gh--auth-current-account (consult-gh--auth-current-active-account))
 
+(defvar consult-gh-auth-post-switch-hook nil
+  "Functions called after `consult-auth--switch'.
+
+host and username are passed to these functions.")
+
 (defun consult-gh--auth-switch (host user)
 "Authentication the account for USER on HOST.
 
@@ -1007,6 +1018,7 @@ For interactive use see `consult-gh-auth-switch'."
   (let ((str (consult-gh--command-to-string "auth" "switch" "-h" host "-u" user)))
     (when (stringp str)
       (setq consult-gh--auth-current `(,user ,host t))
+      (run-hook-with-args 'consult-gh-auth-post-switch-hook host user)
       (message str)))
   (message "HOST and USER need to be provided as strings.")))
 
