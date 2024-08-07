@@ -500,6 +500,8 @@ This is used in `consult-gh-issue-list' and `consult-gh-pr-list'.")
 (defvar consult-gh--current-tempdir nil
   "Current temporary directory.")
 
+(defvar consult-gh--current-input nil
+"Current input of user query")
 
 (defvar consult-gh--auth-current-account nil
   "Current logged-in and active account.
@@ -2521,21 +2523,21 @@ authenticaiton otherwise query the user to select an account."
         (setq host (cadr sel)))))
   (consult-gh--auth-switch host user))
 
-(defun consult-gh--repo-list-transform (async &rest builder)
+(defun consult-gh--repo-list-transform (async &rest _)
   "Add annotation to repo candidates in `consult-gh-repo-list'.
 
 Returns ASYNC function after formatting results with
 `consult-gh--repo-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--repo-list-builder'\)."
-  (let ((input))
+  (let ((consult-gh--current-input nil))
     `(lambda (action)
        (cond
         ((stringp action)
-         (setq input action)
+         (setq consult-gh--current-input action)
          (funcall ,async action))
         (t (mapcar (lambda (string)
-                     (consult-gh--repo-format string input nil))
+                     (consult-gh--repo-format string consult-gh--current-input nil))
                    (funcall ,async action)))))))
 
 (defun consult-gh--repo-list-builder (input)
@@ -2658,21 +2660,21 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-repo-action sel))))
 
-(defun consult-gh--search-repos-transform (async builder)
+(defun consult-gh--search-repos-transform (async &rest _)
   "Add annotation to repo candidates in `consult-gh-search-repos'.
 
 Returns ASYNC function after formatting results with
 `consult-gh--repo-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--search-repos-builder'\)."
-  (let ((input))
-   `(lambda (action)
+  (let ((consult-gh--current-input nil))
+    `(lambda (action)
        (cond
         ((stringp action)
-         (setq input action)
+         (setq consult-gh--current-input action)
          (funcall ,async action))
         (t (mapcar (lambda (string)
-                     (consult-gh--repo-format string input t))
+                     (consult-gh--repo-format string consult-gh--current-input t))
                    (funcall ,async action)))))))
 
 (defun consult-gh--search-repos-builder (input)
@@ -2859,21 +2861,21 @@ to pick them."
                 (consult-gh-with-host (consult-gh--auth-account-host)
                     (consult-gh--repo-clone repo name clonedir)))) repos)))
 
-(defun consult-gh--issue-list-transform (async builder)
+(defun consult-gh--issue-list-transform (async &rest _)
   "Add annotation to issue candidates in `consult-gh-issue-list'.
 
 Returns ASYNC function after formatting results with
 `consult-gh--issue-list-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--issue-list-builder'\)."
-  (let ((input))
+  (let ((consult-gh--current-input nil))
     `(lambda (action)
        (cond
         ((stringp action)
-         (setq input action)
+         (setq consult-gh--current-input action)
          (funcall ,async action))
         (t (mapcar (lambda (string)
-                     (consult-gh--issue-list-format string input nil))
+                     (consult-gh--issue-list-format string consult-gh--current-input nil))
                    (funcall ,async action)))))))
 
 (defun consult-gh--issue-list-builder (input)
@@ -2987,21 +2989,21 @@ URL `https://github.com/minad/consult'"
         sel
       (funcall consult-gh-issue-action sel))))
 
-(defun consult-gh--search-issues-transform (async builder)
+(defun consult-gh--search-issues-transform (async &rest _)
   "Add annotation to issue candidates in `consult-gh-search-issues'.
 
 Returns ASYNC function after formatting results with
 `consult-gh--search-issues-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--search-issues-builder'\)."
-  (let ((input))
+  (let ((consult-gh--current-input nil))
     `(lambda (action)
        (cond
         ((stringp action)
-         (setq input action)
+         (setq consult-gh--current-input action)
          (funcall ,async action))
         (t (mapcar (lambda (string)
-                     (consult-gh--search-issues-format string input t))
+                     (consult-gh--search-issues-format string consult-gh--current-input t))
                    (funcall ,async action)))))))
 
 (defun consult-gh--search-issues-builder (input)
@@ -3101,21 +3103,21 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-issue-action sel))))
 
-(defun consult-gh--pr-list-transform (async builder)
+(defun consult-gh--pr-list-transform (async &rest _)
   "Add annotation to issue candidates in `consult-gh-pr-list'.
 
 Returns ASYNC function after formatting results with
 `consult-gh--pr-list-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--pr-list-builder'\)."
-  (let ((input))
+  (let ((consult-gh--current-input nil))
     `(lambda (action)
        (cond
         ((stringp action)
-         (setq input action)
+         (setq consult-gh--current-input action)
          (funcall ,async action))
         (t (mapcar (lambda (string)
-                     (consult-gh--pr-list-format string input nil))
+                     (consult-gh--pr-list-format string consult-gh--current-input nil))
                    (funcall ,async action)))))))
 
 (defun consult-gh--pr-list-builder (input)
@@ -3228,21 +3230,21 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-pr-action sel))))
 
-(defun consult-gh--search-prs-transform (async builder)
+(defun consult-gh--search-prs-transform (async &rest _)
   "Add annotation to pr candidates in `consult-gh-search-prs'.
 
 Returns ASYNC function after formatting results with
 `consult-gh--search-prs-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--search-prs-builder'\)."
-  (let ((input))
+  (let ((consult-gh--current-input nil))
     `(lambda (action)
        (cond
         ((stringp action)
-         (setq input action)
+         (setq consult-gh--current-input action)
          (funcall ,async action))
         (t (mapcar (lambda (string)
-                     (consult-gh--search-prs-format string input t))
+                     (consult-gh--search-prs-format string consult-gh--current-input t))
                    (funcall ,async action)))))))
 
 (defun consult-gh--search-prs-builder (input)
@@ -3342,21 +3344,21 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-pr-action sel))))
 
-(defun consult-gh--search-code-transform (async builder)
+(defun consult-gh--search-code-transform (async &rest _)
   "Add annotation to code candidates in `consult-gh-search-code'.
 
 Returns ASYNC function after formatting results with
 `consult-gh--search-code-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--search-code-builder'\)."
-  (let ((input))
+  (let ((consult-gh--current-input nil))
     `(lambda (action)
        (cond
         ((stringp action)
-         (setq input action)
+         (setq consult-gh--current-input action)
          (funcall ,async action))
         (t (mapcar (lambda (string)
-                     (consult-gh--search-code-format string input t))
+                     (consult-gh--search-code-format string consult-gh--current-input t))
                    (funcall ,async action)))))))
 
 (defun consult-gh--search-code-builder (input)
