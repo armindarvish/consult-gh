@@ -901,19 +901,22 @@ ig optional argument KEY is non-nil, returns only the value of KEY."
 Runs “gh api user” and returns the login field of json data."
   (consult-gh--api-json-to-hashtable (cadr (consult-gh--api-get-json "user")) :login))
 
-(defun consult-gh--get-current-orgs ()
+(defun consult-gh--get-current-orgs (&optional include-user)
   "Get the organizations for currently logged in user.
 
-Runs “gh api user/orgs” and returns the login field of json data."
+Runs “gh api user/orgs” and returns the login field of json data.
+When INCLUDE-USER is non-nil, add the name of the user the list."
   (let ((data (consult-gh--api-get-json "user/orgs")))
     (if (eq (car data) 0)
         (let ((table (consult-gh--api-json-to-hashtable (cadr data))))
           (cond
            ((listp table)
-            (mapcar (lambda (tab) (gethash :login tab)) table))
+            (append (mapcar (lambda (tab) (gethash :login tab)) table)
+                    (if include-user (list (consult-gh--get-current-username)))))
            ((hash-table-p table)
-            (gethash :login table))
-           (t nil))))))
+            (append (list (gethash :login table))
+                    (if include-user (list (consult-gh--get-current-username)))))
+           (t (if include-user (list (consult-gh--get-current-username)))))))))
 
 (defun consult-gh--get-gitignore-template-list ()
   "List name of .gitignore templates."
@@ -1706,7 +1709,7 @@ Description of Arguments:
  GITIGNORE-TEMPLATE name of gitignore template
  LICENSE-KEY        key for license template"
   (let* ((name (or name (read-string "Repository name: ")))
-         (owner (or owner (consult--read (append (list (consult-gh--get-current-username)) (consult-gh--get-current-orgs))
+         (owner (or owner (consult--read (consult-gh--get-current-orgs t)
                                          :prompt "Repository owner: "
                                          :initial nil
                                          :sort nil
@@ -1769,7 +1772,7 @@ Description of Arguments:
  VISIBILITY  private|public|internal
  TEMPLATE    Full name of template repo \(e.g. user/repo\)"
   (let* ((name (or name (read-string "Repository name: ")))
-         (owner (or owner (consult--read (list (consult-gh--get-current-username) (consult-gh--get-current-orgs))
+         (owner (or owner (consult--read (consult-gh--get-current-orgs t)
                                          :prompt "Repository owner: "
                                          :initial nil
                                          :sort nil
@@ -1835,7 +1838,7 @@ Description of arguments:
     (cond
      (directory
       (let* ((name (or name (read-string "Repository name: " (file-name-nondirectory (string-trim-right directory "/")))))
-             (owner (or owner (consult--read (list (consult-gh--get-current-username) (consult-gh--get-current-orgs))
+             (owner (or owner (consult--read (consult-gh--get-current-orgs t)
                                              :prompt "Repository owner: "
                                              :initial nil
                                              :sort nil
