@@ -42,6 +42,7 @@
 
 (require 'consult) ;; core dependency
 (require 'markdown-mode) ;; markdown-mode for viewing issues,prs, ...
+(require 'org)
 
 ;;; Group
 
@@ -975,7 +976,7 @@ Returns a list where CAR is the user's name and CADR is the package name."
 
 (defun consult-gh--tempdir ()
  "Make a new temporary directory with timestamp."
- (if (and consult-gh--current-tempdir (< (time-convert (time-subtract (current-time) (nth 5 (file-attributes (substring (file-name-as-directory consult-gh--current-tempdir) 0 -1))) 'integer) consult-gh-temp-tempdir-cache)))
+ (if (and consult-gh--current-tempdir (< (time-convert (time-subtract (current-time) (nth 5 (file-attributes (substring (file-name-as-directory consult-gh--current-tempdir) 0 -1)))) 'integer) consult-gh-temp-tempdir-cache))
          consult-gh--current-tempdir
 (expand-file-name (make-temp-name (concat (format-time-string consult-gh-temp-tempdir-time-format  (current-time)) "-")) consult-gh-tempdir)))
 
