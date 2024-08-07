@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.0
-;; Package-Requires: ((emacs "29.1") (consult "1.0") (forge "0.3.3") (consult-gh "1.0"))
+;; Version: 1.1
+;; Package-Requires: ((emacs "29.1") (consult "1.0") (forge "0.3.3") (consult-gh "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -49,6 +49,14 @@ this time, `consult-gh--issue-view-action' or `consult-gh--pr-view-action'
 is used to load the topic instead."
   :group 'consult-gh
   :type 'integer)
+
+(defcustom consult-gh-forge-confirm-account t
+  "Ask for confirmation when account doesn't match git config?
+
+Query the user to pick an account when the account from gh cli command
+and git config do not match."
+  :group 'consult-gh
+  :type 'boolean)
 
 ;;; Other Variables
 
@@ -204,12 +212,12 @@ MODE, LOCKED, and BINDINGS are as defined in `magit-setup-buffer'"
                          bindings))))
 
 (defun consult-gh-forge--topic-setup-buffer (topic)
-  "Reimplement `forge-setup-buffer'.
+  "Reimplement `forge-topic-setup-buffer'.
 
 This is to avoid making changes to magit settings for the repository
 in the current working directory.
 
-TOPIC is as defined in `forge-setup-buffer'"
+TOPIC is as defined in `forge-topic-setup-buffer'"
   (let* ((repo  (forge-get-repository topic))
          (ident (concat "#"
                         (number-to-string (oref topic number))))
@@ -232,6 +240,91 @@ in the current working directory.
 
 TOPIC is as defined in `forge-visit-topic'."
   (consult-gh-forge--topic-setup-buffer topic))
+
+
+;;; Redefine ghub authentication functions
+(cl-defmethod ghub--username :around (host &optional forge)
+"Get username for HOST and FORGE (consult-gh override).
+
+Note that this is created by `consult-gh' and overrides the
+default behavior of `ghub--username' to allow using
+consult-gh user name instead if the user chooses to."
+  (let ((ghub-user (cl-call-next-method))
+        (consult-gh-user (car-safe (consult-gh--auth-current-active-account))))
+  (cond
+   ((equal ghub-user consult-gh-user) ghub-user)
+   (t
+    (let ((user (if consult-gh-forge-confirm-account
+                    (consult--read (list (propertize consult-gh-user 'account "from consult-gh")
+                                     (propertize ghub-user 'account "from ghub/forge (i.e. git config)"))
+                  :prompt "Which account do you want to use?"
+                  :sort nil
+                  :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
+                                             (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
+                  consult-gh-user)))
+      (if (and user (not (string-empty-p user))) user
+        (cl-call-next-method)))))))
+
+(cl-defmethod ghub--host :around (&optional forge)
+"Get host name for FORGE (consult-gh override).
+
+Note that this is created by `consult-gh' and overrides the
+default behavior of `ghub--host' to allow using
+consult-gh host name instead if the user chooses to."
+  (let ((ghub-host (cl-call-next-method))
+        (consult-gh-host (and (consp consult-gh--auth-current) (cadr consult-gh--auth-current)))
+  (cond
+   ((equal ghub-host consult-gh-host) ghub-host)
+   (t
+    (let ((host (if consult-gh-forge-confirm-account
+                    (consult--read (list (propertize consult-gh-host 'account "from consult-gh")
+                                     (propertize ghub-host 'account "from ghub/forge (i.e. git config)"))
+                  :prompt "Which account do you want to use?"
+                  :sort nil
+                  :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
+                                             (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
+                  consult-gh-host)))
+      (if (and host (not (string-empty-p host))) host
+        (cl-call-next-method))))))))
+
+(defun consult-gh-ghub--token (host username package &optional nocreate forge)
+"Get GitHub token for HOST USERNAME and PACKAGE.
+
+This is an override function for `ghub--token' to allow
+using `consult-gh' for getting tokens when ghub--token fails.
+This allows getting token from gh cli commands without saving tokens
+in auth sources.
+
+See `ghub--token' for more info."
+  (let* ((user (ghub--ident username package))
+         (host (if (equal host ghub-default-host) (string-trim-left ghub-default-host "api.") host))
+         (cmd-args (append '("auth" "token")
+                           (and username `("-u" ,username))
+                           (and host `("-h" ,host))))
+         (gh-token (apply #'consult-gh--command-to-string cmd-args))
+         (token
+          (or (car (ghub--auth-source-get (list :secret)
+                     :host host :user user))
+              (and (stringp gh-token) (string-trim gh-token))
+              (progn
+                ;; Auth-Source caches the information that there is no
+                ;; value, but in our case that is a situation that needs
+                ;; fixing so we want to keep trying by invalidating that
+                ;; information.
+                ;; The (:max 1) is needed and has to be placed at the
+                ;; end for Emacs releases before 26.1.  #24 #64 #72
+                (auth-source-forget (list :host host :user user :max 1))
+                (and (not nocreate)
+                     (error "\
+Required %s token (\"%s\" for \"%s\") does not exist.
+See https://magit.vc/manual/ghub/Getting-Started.html
+or (info \"(ghub)Getting Started\") for instructions.
+\(The setup wizard no longer exists.)"
+                            (capitalize (symbol-name (or forge 'github)))
+                            user host))))))
+    (if (functionp token) (funcall token) token)))
+
+(advice-add 'ghub--token :override #'consult-gh-ghub--token)
 
 
 ;;; Define Functions and Interactive Commands for `consult-gh-forge'
