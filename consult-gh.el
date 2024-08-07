@@ -1499,7 +1499,8 @@ in an external browser.
 
 To use this as the default action for repos,
 set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
-  (let* ((response (consult-gh--call-process "browse" "--repo" (substring-no-properties cand) "--no-browser"))
+  (let* ((repo (plist-get (cdr cand) :repo))
+         (response (consult-gh--call-process "browse" "--repo" (substring-no-properties repo) "--no-browser"))
          (url (string-trim (cadr response))))
     (if (eq (car response) 0)
         (browse-url url)
