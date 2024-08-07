@@ -77,20 +77,16 @@ pulling files for viewing."
 ;;   "Separator for multiple selections with `completing-read-multiple'.
 
 (defcustom consult-gh-temp-tempdir-time-format "%Y%m%d%I%H%M"
+  "Tme FORMAT-STRING for temporary directories.
 
-  "This is passed as FORMAT-STRING to `format-time-string' for
-naming temporary diretories."
+This is passed as FORMAT-STRING to `format-time-string' for naming
+temporary diretories."
 :type 'string)
 
 (defcustom consult-gh-temp-tempdir-cache 300
-
   "Time in seconds before making a new temp directory."
 :type 'string)
 
-;; Uses `crm-separator' for default.
-;; This is obsolete in version>=1.0"
-;;   :group 'consult-gh
-;;   :type 'regexp)
 
 
 (defcustom consult-gh-repo-maxnum 30
@@ -509,7 +505,7 @@ This is used in `consult-gh-issue-list' and `consult-gh-pr-list'.")
 This is a list of \='(USERNAME HOST IF-ACTIVE)")
 
 (defvar consult-gh-default-host "github.com"
-"Defualt host of GitHUB")
+"Defualt host of GitHub.")
 
 ;;; Faces
 (defface consult-gh-success-face
@@ -1531,11 +1527,11 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
            (path (consult-gh--api-json-to-hashtable readme :path))
            (extension (and (stringp path) (file-name-extension path)))
            (content (consult-gh--api-json-to-hashtable readme :content)))
-      (insert (concat ""
-                      "#+name:\t" name "\n"
-                      "#+description:\t" desc "\n"
-                      (make-string 5 ?\-)
-                      "\n\n"))
+      (insert ""
+              "#+name:\t" name "\n"
+              "#+description:\t" desc "\n"
+              (make-string 5 ?\-)
+              "\n\n")
       (when content
         (insert (base64-decode-string content))
         (set-buffer-file-coding-system 'raw-text))
@@ -1560,11 +1556,11 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
            (path (consult-gh--api-json-to-hashtable readme :path))
            (content (consult-gh--api-json-to-hashtable readme :content)))
       (setq-local buffer-file-name path)
-      (insert (concat ""
-                      comment-start "name:\t" name comment-end "\n"
-                      comment-start "description:\t" desc comment-end "\n"
-                      (make-string 5 ?\-)
-                      "\n\n"))
+      (insert ""
+              comment-start "name:\t" name comment-end "\n"
+              comment-start "description:\t" desc comment-end "\n"
+              (make-string 5 ?\-)
+              "\n\n")
       (when content
         (insert (base64-decode-string content))
         (set-buffer-file-coding-system 'raw-text))
@@ -1696,12 +1692,13 @@ set `consult-gh-repo-action' to `consult-gh--repo-fork-action'."
   (let* ((reponame (plist-get (cdr cand) :repo)))
     (consult-gh--repo-fork reponame)))
 
-(defun consult-gh--repo-create-scratch (&optional name directory owner description visibility make-readme gitignore-template license-key directory)
+(defun consult-gh--repo-create-scratch (&optional name directory owner description visibility make-readme gitignore-template license-key)
   "Create a new repository on github from scratch.
 
 Description of Arguments:
 
  NAME               name of repository
+ DIRECTORY          path to local directory of git repository
  OWNER              user/organization owning the repo
  DESCRIPTION        description for the repo
  VISIBILITY         private|public|internal
@@ -1827,7 +1824,7 @@ Description of Arguments:
   "Create a new repository on github from local repo in DIRECTORY.
 
 Description of arguments:
- DIRECTORY   Path to local directory of git repository
+ DIRECTORY   path to local directory of git repository
  NAME        name of repository
  OWNER       user/organization owning the repo
  DESCRIPTION description for the repo
@@ -1872,7 +1869,7 @@ Description of arguments:
      (t
       (message "Aborted without making repository!")))))
 
-(defun consult-gh-repo-create-new (&optional name local-repo owner description visibility make-readme gitignore-template license-key template)
+(defun consult-gh-repo-create (&optional name local-repo owner description visibility make-readme gitignore-template license-key template)
   "Create a new repo, CAND, on GitHub.
 
 This mimicks the same interactive repo creation
