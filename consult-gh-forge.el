@@ -204,12 +204,12 @@ MODE, LOCKED, and BINDINGS are as defined in `magit-setup-buffer'"
                          bindings))))
 
 (defun consult-gh-forge--topic-setup-buffer (topic)
-  "Reimplement `forge-setup-buffer'.
+  "Reimplement `forge-topic-setup-buffer'.
 
 This is to avoid making changes to magit settings for the repository
 in the current working directory.
 
-TOPIC is as defined in `forge-setup-buffer'"
+TOPIC is as defined in `forge-topic-setup-buffer'"
   (let* ((repo  (forge-get-repository topic))
          (ident (concat "#"
                         (number-to-string (oref topic number))))

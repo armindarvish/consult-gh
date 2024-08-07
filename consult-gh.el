@@ -224,8 +224,7 @@ Choices are:
 (defcustom consult-gh-default-orgs-list (list)
   "List of default GitHub orgs.
 
-It's generally useful to add personal accounts or frequently
-visited organizations."
+This can be a list of orgs or a function returning a list"
   :group 'consult-gh
   :type '(repeat (string :tag "GitHub Organization (i.e. Username)")))
 
@@ -503,6 +502,11 @@ This is used in `consult-gh-issue-list' and `consult-gh-pr-list'.")
 
 (defvar consult-gh--current-tempdir nil
   "Current temporary directory.")
+
+
+(defvar consult-gh--auth-current-account nil
+  "Current logged-in and active account.
+This is a list of \='(USERNAME HOST IF-ACTIVE)")
 
 ;;; Faces
 (defface consult-gh-success-face
@@ -882,10 +886,9 @@ Runs “gh api user” and returns the login field of json data."
   "Get the organizations for currently logged in user.
 
 Runs “gh api user/orgs” and returns the login field of json data."
-  (gethash :login (car
-                   (consult-gh--api-json-to-hashtable
-                    (cadr
-                     (consult-gh--api-get-json "user/orgs"))))))
+  (let ((data (consult-gh--api-get-json "user/orgs")))
+    (if (and (eq (car data) 0) (hash-table-p (cadr data)))
+      (gethash :login (cadr data)))))
 
 (defun consult-gh--get-gitignore-template-list ()
   "List name of .gitignore templates."
@@ -948,7 +951,7 @@ Returns a list where CAR is the user's name and CADR is the package name."
 
 (defun consult-gh--tempdir ()
  "Make a new temporary directory with timestamp."
- (if (and consult-gh--current-tempdir (< (time-convert (time-subtract (current-time) (nth 5 (file-attributes (substring (file-name-as-directory consult-gh--current-tempdir) 0 -1))) 'integer) consult-gh-temp-tempdir-cache))
+ (if (and consult-gh--current-tempdir (< (time-convert (time-subtract (current-time) (nth 5 (file-attributes (substring (file-name-as-directory consult-gh--current-tempdir) 0 -1))) 'integer) consult-gh-temp-tempdir-cache)))
          consult-gh--current-tempdir
 (expand-file-name (make-temp-name (concat (format-time-string consult-gh-temp-tempdir-time-format  (current-time)) "-")) consult-gh-tempdir)))
 
@@ -968,6 +971,44 @@ and removes the buffers that are killed from the list."
                 (setq consult-gh--preview-buffers-list
                       (delete buff consult-gh--preview-buffers-list))))
             consult-gh--preview-buffers-list)))
+
+(defun consult-gh--auth-accounts ()
+  "Return a list of currently autheticated accounts.
+
+Each account is in the form \='(USERNAME HOST IF-ACTIVE)."
+  (let* ((str (consult-gh--command-to-string "auth" "status"))
+              (i 0)
+              (accounts nil))
+    (while (and (string-match "Logged in to \\(.+\\)? account \\(.+\\)? \(.*\)\n.*Active account: \\(.+\\)?" str i)
+                (> (match-end 0) i))
+      (let ((m (match-data))
+            (host (match-string 1 str))
+            (name (match-string 2 str))
+            (active (equal (match-string 3 str) "true")))
+        (push `(,name ,host ,active) accounts)
+        (setq i (cadr m))))
+accounts))
+
+(defun consult-gh--auth-current-active-account ()
+  "Return currently logged-in active account.
+
+This is a list of \='(USERNAME HOST IF-ACTIVE)."
+     (let* ((accounts (consult-gh--auth-accounts)))
+       (car-safe (seq-filter (lambda (acc) (if (caddr acc) acc)) accounts))))
+
+(setq consult-gh--auth-current-account (consult-gh--auth-current-active-account))
+
+(defun consult-gh--auth-switch (host user)
+"Authentication the account for USER on HOST.
+
+This is an internal function for non-interactive use.
+For interactive use see `consult-gh-auth-switch'."
+(if (and (stringp host) (stringp user))
+  (let ((str (consult-gh--command-to-string "auth" "switch" "-h" host "-u" user)))
+    (when (stringp str)
+      (setq consult-gh--auth-current `(,user ,host t))
+      (message str)))
+  (message "HOST and USER need to be provided as strings.")))
 
 (defun consult-gh--files-get-branches (repo)
   "List branches of REPO, in json format.
@@ -1620,7 +1661,7 @@ set `consult-gh-repo-action' to `consult-gh--repo-fork-action'."
   (let* ((reponame (plist-get (cdr cand) :repo)))
     (consult-gh--repo-fork reponame)))
 
-(defun consult-gh--repo-create-scratch (&optional name owner description visibility make-readme gitignore-template license-key)
+(defun consult-gh--repo-create-scratch (&optional name directory owner description visibility make-readme gitignore-template license-key directory)
   "Create a new repository on github from scratch.
 
 Description of Arguments:
@@ -1633,7 +1674,7 @@ Description of Arguments:
  GITIGNORE-TEMPLATE name of gitignore template
  LICENSE-KEY        key for license template"
   (let* ((name (or name (read-string "Repository name: ")))
-         (owner (or owner (consult--read (list (consult-gh--get-current-username) (consult-gh--get-current-orgs))
+         (owner (or owner (consult--read (append (list (consult-gh--get-current-username)) (consult-gh--get-current-orgs))
                                          :prompt "Repository owner: "
                                          :initial nil
                                          :sort nil
@@ -1661,7 +1702,7 @@ Description of Arguments:
                                                                   :sort nil))))
          (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo-face) (propertize visibility 'face 'warning))))
          (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
-         (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
+         (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or directory (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
          (default-directory (or clonedir default-directory))
          (targetdir (expand-file-name name default-directory))
          (args '("repo" "create"))
@@ -1747,7 +1788,7 @@ Description of Arguments:
      (t
       (message "aborted without making repository")))))
 
-(defun consult-gh--repo-create-push-existing (&optional directory name owner description visibility)
+(defun consult-gh--repo-create-push-existing (&optional name directory owner description visibility)
   "Create a new repository on github from local repo in DIRECTORY.
 
 Description of arguments:
@@ -1796,7 +1837,7 @@ Description of arguments:
      (t
       (message "Aborted without making repository!")))))
 
-(defun consult-gh-repo-create-new (&optional name owner description visibility make-readme gitignore-template license-key template local-repo)
+(defun consult-gh-repo-create-new (&optional name local-repo owner description visibility make-readme gitignore-template license-key template)
   "Create a new repo, CAND, on GitHub.
 
 This mimicks the same interactive repo creation
@@ -1816,9 +1857,9 @@ For description of LOCAL-REPO see directory argument in
                                :lookup #'consult--lookup-cdr
                                :sort nil)))
     (pcase answer
-      (':scratch (consult-gh--repo-create-scratch name owner description visibility make-readme gitignore-template license-key))
+      (':scratch (consult-gh--repo-create-scratch name local-repo owner description visibility make-readme gitignore-template license-key))
       (':template (consult-gh--repo-create-template name owner description visibility template))
-      (':existing (consult-gh--repo-create-push-existing local-repo name owner description visibility)))))
+      (':existing (consult-gh--repo-create-push-existing name local-repo owner description visibility)))))
 
 (defun consult-gh--issue-list-format (string input highlight)
   "Format minibuffer candidates for issues.
@@ -2418,6 +2459,31 @@ set `consult-gh-code-action' to `consult-gh--code-view-action'."
          (path (plist-get info :path))
          (url (plist-get info :url)))
     (consult-gh--files-view repo path url nil tempdir code)))
+
+;;;###autoload
+(defun consult-gh-auth-switch (&optional host user)
+  "Switch between authenticated accounts
+
+If the optional arguments, HOST and USER are non-nil, use them for
+authenticaiton otherwise query the user to select an account."
+  (interactive "P")
+  (unless (and host user)
+    (let* ((accounts (consult-gh--auth-accounts))
+           (sel (consult--read accounts
+                               :prompt "Select Account:"
+                               :lookup #'consult--lookup-cons
+                               :sort nil
+                               :annotate (lambda (cand)
+                                           (let* ((info (assoc cand accounts))
+                                                  (host (cadr info))
+                                                  (status (if (caddr info) "active" "")))
+                                             (format "\t\t%s\s\s%s"
+                                                     (propertize host 'face 'consult-gh-tags-face)
+                                                     (propertize status 'face 'consult-gh-visibility-face)))))))
+      (when (and sel (consp sel))
+        (setq user (car sel))
+        (setq host (cadr sel)))))
+    (consult-gh--auth-switch host user))
 
 (defun consult-gh--repo-list-transform (async builder)
   "Add annotation to repo candidates in `consult-gh-repo-list'.

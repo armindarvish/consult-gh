@@ -244,8 +244,7 @@ Choices are:
 (defcustom consult-gh-default-orgs-list (list)
   "List of default GitHub orgs.
 
-It's generally useful to add personal accounts or frequently
-visited organizations."
+This can be a list of orgs or a function returning a list"
   :group 'consult-gh
   :type '(repeat (string :tag "GitHub Organization (i.e. Username)")))
 
@@ -529,7 +528,9 @@ This is used in `consult-gh-issue-list' and `consult-gh-pr-list'.")
   "Current temporary directory.")
 
 
-
+(defvar consult-gh--auth-current-account nil
+  "Current logged-in and active account.
+This is a list of \='(USERNAME HOST IF-ACTIVE)")
 #+end_src
 
 ** Define faces
@@ -951,10 +952,9 @@ Runs “gh api user” and returns the login field of json data."
   "Get the organizations for currently logged in user.
 
 Runs “gh api user/orgs” and returns the login field of json data."
-  (gethash :login (car
-                   (consult-gh--api-json-to-hashtable
-                    (cadr
-                     (consult-gh--api-get-json "user/orgs"))))))
+  (let ((data (consult-gh--api-get-json "user/orgs")))
+    (if (and (eq (car data) 0) (hash-table-p (cadr data)))
+      (gethash :login (cadr data)))))
 #+end_src
 **** get gitignore name list
 #+begin_src emacs-lisp
@@ -1018,6 +1018,7 @@ Under each category we have subentries for different type of functions including
 
 Other functions can also be defined under appropriate subentries depending on the needs for each category.
 **** utilities
+***** split repo name
 #+begin_src emacs-lisp
 (defun consult-gh--split-repo (repo &optional separators)
   "Split REPO string by SEPARATORS to get user and package name.
@@ -1025,22 +1026,30 @@ Other functions can also be defined under appropriate subentries depending on th
 Returns a list where CAR is the user's name and CADR is the package name."
   (let ((separators (or separators "\/")))
     (string-split repo separators)))
-
+#+end_src
+***** get username
+#+begin_src emacs-lisp
 (defun consult-gh--get-username (repo)
   "Return the username of REPO.
 
 \(e.g. “armindarvish” if REPO is “armindarvish/consult-gh”\)"
   (car (consult-gh--split-repo repo)))
 
+#+end_src
+***** get package
+#+begin_src emacs-lisp
 (defun consult-gh--get-package (repo)
   "Return the package name of REPO.
 
 \(e.g. “consult-gh” if REPO is “armindarvish/consult-gh”\)"
   (cadr (consult-gh--split-repo repo)))
 
+#+end_src
+***** create tempdir
+#+begin_src emacs-lisp
 (defun consult-gh--tempdir ()
  "Make a new temporary directory with timestamp."
- (if (and consult-gh--current-tempdir (< (time-convert (time-subtract (current-time) (nth 5 (file-attributes (substring (file-name-as-directory consult-gh--current-tempdir) 0 -1))) 'integer) consult-gh-temp-tempdir-cache))
+ (if (and consult-gh--current-tempdir (< (time-convert (time-subtract (current-time) (nth 5 (file-attributes (substring (file-name-as-directory consult-gh--current-tempdir) 0 -1))) 'integer) consult-gh-temp-tempdir-cache)))
          consult-gh--current-tempdir
 (expand-file-name (make-temp-name (concat (format-time-string consult-gh-temp-tempdir-time-format  (current-time)) "-")) consult-gh-tempdir)))
 
@@ -1067,6 +1076,55 @@ and removes the buffers that are killed from the list."
                       (delete buff consult-gh--preview-buffers-list))))
             consult-gh--preview-buffers-list)))
 
+#+end_src
+
+**** auth
+
+***** consult-gh--auth-accounts
+#+begin_src emacs-lisp
+(defun consult-gh--auth-accounts ()
+  "Return a list of currently autheticated accounts.
+
+Each account is in the form \='(USERNAME HOST IF-ACTIVE)."
+  (let* ((str (consult-gh--command-to-string "auth" "status"))
+              (i 0)
+              (accounts nil))
+    (while (and (string-match "Logged in to \\(.+\\)? account \\(.+\\)? \(.*\)\n.*Active account: \\(.+\\)?" str i)
+                (> (match-end 0) i))
+      (let ((m (match-data))
+            (host (match-string 1 str))
+            (name (match-string 2 str))
+            (active (equal (match-string 3 str) "true")))
+        (push `(,name ,host ,active) accounts)
+        (setq i (cadr m))))
+accounts))
+#+end_src
+
+***** consult-gh--auth-current-active-account
+#+begin_src emacs-lisp
+(defun consult-gh--auth-current-active-account ()
+  "Return currently logged-in active account.
+
+This is a list of \='(USERNAME HOST IF-ACTIVE)."
+     (let* ((accounts (consult-gh--auth-accounts)))
+       (car-safe (seq-filter (lambda (acc) (if (caddr acc) acc)) accounts))))
+
+(setq consult-gh--auth-current-account (consult-gh--auth-current-active-account))
+#+end_src
+
+***** consult-gh--auth-switch
+#+begin_src emacs-lisp
+(defun consult-gh--auth-switch (host user)
+"Authentication the account for USER on HOST.
+
+This is an internal function for non-interactive use.
+For interactive use see `consult-gh-auth-switch'."
+(if (and (stringp host) (stringp user))
+  (let ((str (consult-gh--command-to-string "auth" "switch" "-h" host "-u" user)))
+    (when (stringp str)
+      (setq consult-gh--auth-current `(,user ,host t))
+      (message str)))
+  (message "HOST and USER need to be provided as strings.")))
 #+end_src
 
 **** branches
@@ -1807,7 +1865,7 @@ set `consult-gh-repo-action' to `consult-gh--repo-fork-action'."
 
 ******** create from scratch
 #+begin_src emacs-lisp
-(defun consult-gh--repo-create-scratch (&optional name owner description visibility make-readme gitignore-template license-key)
+(defun consult-gh--repo-create-scratch (&optional name directory owner description visibility make-readme gitignore-template license-key directory)
   "Create a new repository on github from scratch.
 
 Description of Arguments:
@@ -1820,7 +1878,7 @@ Description of Arguments:
  GITIGNORE-TEMPLATE name of gitignore template
  LICENSE-KEY        key for license template"
   (let* ((name (or name (read-string "Repository name: ")))
-         (owner (or owner (consult--read (list (consult-gh--get-current-username) (consult-gh--get-current-orgs))
+         (owner (or owner (consult--read (append (list (consult-gh--get-current-username)) (consult-gh--get-current-orgs))
                                          :prompt "Repository owner: "
                                          :initial nil
                                          :sort nil
@@ -1848,7 +1906,7 @@ Description of Arguments:
                                                                   :sort nil))))
          (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo-face) (propertize visibility 'face 'warning))))
          (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
-         (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
+         (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or directory (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
          (default-directory (or clonedir default-directory))
          (targetdir (expand-file-name name default-directory))
          (args '("repo" "create"))
@@ -1939,7 +1997,7 @@ Description of Arguments:
 #+end_src
 ******** push existing
 #+begin_src emacs-lisp
-(defun consult-gh--repo-create-push-existing (&optional directory name owner description visibility)
+(defun consult-gh--repo-create-push-existing (&optional name directory owner description visibility)
   "Create a new repository on github from local repo in DIRECTORY.
 
 Description of arguments:
@@ -1990,7 +2048,7 @@ Description of arguments:
 #+end_src
 ******** create new
 #+begin_src emacs-lisp
-(defun consult-gh-repo-create-new (&optional name owner description visibility make-readme gitignore-template license-key template local-repo)
+(defun consult-gh-repo-create-new (&optional name local-repo owner description visibility make-readme gitignore-template license-key template)
   "Create a new repo, CAND, on GitHub.
 
 This mimicks the same interactive repo creation
@@ -2010,9 +2068,9 @@ For description of LOCAL-REPO see directory argument in
                                :lookup #'consult--lookup-cdr
                                :sort nil)))
     (pcase answer
-      (':scratch (consult-gh--repo-create-scratch name owner description visibility make-readme gitignore-template license-key))
+      (':scratch (consult-gh--repo-create-scratch name local-repo owner description visibility make-readme gitignore-template license-key))
       (':template (consult-gh--repo-create-template name owner description visibility template))
-      (':existing (consult-gh--repo-create-push-existing local-repo name owner description visibility)))))
+      (':existing (consult-gh--repo-create-push-existing name local-repo owner description visibility)))))
 #+end_src
 
 **** issues
@@ -2699,6 +2757,34 @@ set `consult-gh-code-action' to `consult-gh--code-view-action'."
 #+end_src
 
 ** Frontend Interactive Commands
+
+**** consult-gh-auth-switch
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-auth-switch (&optional host user)
+  "Switch between authenticated accounts
+
+If the optional arguments, HOST and USER are non-nil, use them for
+authenticaiton otherwise query the user to select an account."
+  (interactive "P")
+  (unless (and host user)
+    (let* ((accounts (consult-gh--auth-accounts))
+           (sel (consult--read accounts
+                               :prompt "Select Account:"
+                               :lookup #'consult--lookup-cons
+                               :sort nil
+                               :annotate (lambda (cand)
+                                           (let* ((info (assoc cand accounts))
+                                                  (host (cadr info))
+                                                  (status (if (caddr info) "active" "")))
+                                             (format "\t\t%s\s\s%s"
+                                                     (propertize host 'face 'consult-gh-tags-face)
+                                                     (propertize status 'face 'consult-gh-visibility-face)))))))
+      (when (and sel (consp sel))
+        (setq user (car sel))
+        (setq host (cadr sel)))))
+    (consult-gh--auth-switch host user))
+#+end_src
 **** consult-gh-repo-list
 ****** transform
 #+begin_src emacs-lisp
@@ -4309,12 +4395,12 @@ MODE, LOCKED, and BINDINGS are as defined in `magit-setup-buffer'"
                          bindings))))
 
 (defun consult-gh-forge--topic-setup-buffer (topic)
-  "Reimplement `forge-setup-buffer'.
+  "Reimplement `forge-topic-setup-buffer'.
 
 This is to avoid making changes to magit settings for the repository
 in the current working directory.
 
-TOPIC is as defined in `forge-setup-buffer'"
+TOPIC is as defined in `forge-topic-setup-buffer'"
   (let* ((repo  (forge-get-repository topic))
          (ident (concat "#"
                         (number-to-string (oref topic number))))
