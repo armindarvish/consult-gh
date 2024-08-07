@@ -2521,14 +2521,14 @@ authenticaiton otherwise query the user to select an account."
         (setq host (cadr sel)))))
   (consult-gh--auth-switch host user))
 
-(defun consult-gh--repo-list-transform (async builder)
+(defun consult-gh--repo-list-transform (async &rest builder)
   "Add annotation to repo candidates in `consult-gh-repo-list'.
 
 Returns ASYNC function after formatting results with
 `consult-gh--repo-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--repo-list-builder'\)."
-  (let (input)
+  (let ((input))
     `(lambda (action)
        (cond
         ((stringp action)
@@ -2665,8 +2665,8 @@ Returns ASYNC function after formatting results with
 `consult-gh--repo-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--search-repos-builder'\)."
-  (let (input)
-    `(lambda (action)
+  (let ((input))
+   `(lambda (action)
        (cond
         ((stringp action)
          (setq input action)
@@ -2866,7 +2866,7 @@ Returns ASYNC function after formatting results with
 `consult-gh--issue-list-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--issue-list-builder'\)."
-  (let (input)
+  (let ((input))
     `(lambda (action)
        (cond
         ((stringp action)
@@ -2994,7 +2994,7 @@ Returns ASYNC function after formatting results with
 `consult-gh--search-issues-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--search-issues-builder'\)."
-  (let (input)
+  (let ((input))
     `(lambda (action)
        (cond
         ((stringp action)
@@ -3108,7 +3108,7 @@ Returns ASYNC function after formatting results with
 `consult-gh--pr-list-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--pr-list-builder'\)."
-  (let (input)
+  (let ((input))
     `(lambda (action)
        (cond
         ((stringp action)
@@ -3235,7 +3235,7 @@ Returns ASYNC function after formatting results with
 `consult-gh--search-prs-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--search-prs-builder'\)."
-  (let (input)
+  (let ((input))
     `(lambda (action)
        (cond
         ((stringp action)
@@ -3349,7 +3349,7 @@ Returns ASYNC function after formatting results with
 `consult-gh--search-code-format'.
 BUILDER is the command line builder function \(e.g.
 `consult-gh--search-code-builder'\)."
-  (let (input)
+  (let ((input))
     `(lambda (action)
        (cond
         ((stringp action)
