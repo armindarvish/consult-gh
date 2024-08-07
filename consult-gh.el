@@ -2494,7 +2494,7 @@ set `consult-gh-code-action' to `consult-gh--code-view-action'."
 
 ;;;###autoload
 (defun consult-gh-auth-switch (&optional host user)
-  "Switch between authenticated accounts
+  "Switch between authenticated accounts.
 
 If the optional arguments, HOST and USER are non-nil, use them for
 authenticaiton otherwise query the user to select an account."
@@ -2508,14 +2508,16 @@ authenticaiton otherwise query the user to select an account."
                                :annotate (lambda (cand)
                                            (let* ((info (assoc cand accounts))
                                                   (host (cadr info))
-                                                  (status (if (caddr info) "active" "")))
-                                             (format "\t\t%s\s\s%s"
+                                                  (status (if (caddr info) "active" ""))
+                                                  (current (if (equal info consult-gh--auth-current-account) "selected" "")))
+                                             (format "\t\t%s\s\s%s\s\s%s"
                                                      (propertize host 'face 'consult-gh-tags-face)
-                                                     (propertize status 'face 'consult-gh-visibility-face)))))))
+                                                     (propertize status 'face 'consult-gh-user-face)
+                                                     (propertize current 'face 'consult-gh-visibility-face)))))))
       (when (and sel (consp sel))
         (setq user (car sel))
         (setq host (cadr sel)))))
-    (consult-gh--auth-switch host user))
+  (consult-gh--auth-switch host user))
 
 (defun consult-gh--repo-list-transform (async builder)
   "Add annotation to repo candidates in `consult-gh-repo-list'.
