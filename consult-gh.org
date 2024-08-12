@@ -524,7 +524,7 @@ This is used in `consult-gh-issue-list' and `consult-gh-pr-list'.")
   "Current temporary directory.")
 
 (defvar consult-gh--current-input nil
-"Current input of user query")
+"Current input of user query.")
 
 (defvar consult-gh--auth-current-account nil
   "Current logged-in and active account.
@@ -4678,7 +4678,6 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 1.1
-;; Package-Requires: ((emacs "29.1") (consult "1.0") (consult-gh "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 

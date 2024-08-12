@@ -501,7 +501,7 @@ This is used in `consult-gh-issue-list' and `consult-gh-pr-list'.")
   "Current temporary directory.")
 
 (defvar consult-gh--current-input nil
-"Current input of user query")
+"Current input of user query.")
 
 (defvar consult-gh--auth-current-account nil
   "Current logged-in and active account.
