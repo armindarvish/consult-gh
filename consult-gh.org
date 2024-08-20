@@ -1118,9 +1118,9 @@ and removes the buffers that are killed from the list."
 
 Each account is in the form \='(USERNAME HOST IF-ACTIVE)."
   (let* ((str (consult-gh--command-to-string "auth" "status"))
-              (i 0)
-              (accounts nil))
-    (while (and (string-match "Logged in to \\(.+\\)? account \\(.+\\)? \(.*\)\n.*Active account: \\(.+\\)?" str i)
+         (i 0)
+         (accounts nil))
+    (while (and (stringp str) (string-match "Logged in to \\(.+\\)? account \\(.+\\)? \(.*\)\n.*Active account: \\(.+\\)?" str i)
                 (> (match-end 0) i))
       (let ((m (match-data))
             (host (match-string 1 str))
@@ -4678,6 +4678,7 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 1.1
+;; Package-Requires: ((consult-gh "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 

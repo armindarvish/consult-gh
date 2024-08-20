@@ -1004,9 +1004,9 @@ and removes the buffers that are killed from the list."
 
 Each account is in the form \='(USERNAME HOST IF-ACTIVE)."
   (let* ((str (consult-gh--command-to-string "auth" "status"))
-              (i 0)
-              (accounts nil))
-    (while (and (string-match "Logged in to \\(.+\\)? account \\(.+\\)? \(.*\)\n.*Active account: \\(.+\\)?" str i)
+         (i 0)
+         (accounts nil))
+    (while (and (stringp str) (string-match "Logged in to \\(.+\\)? account \\(.+\\)? \(.*\)\n.*Active account: \\(.+\\)?" str i)
                 (> (match-end 0) i))
       (let ((m (match-data))
             (host (match-string 1 str))
