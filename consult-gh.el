@@ -58,12 +58,71 @@
 ;;; Customization Variables
 
 (defcustom consult-gh-args '("gh")
-  "Command line arguments to call GitHub CLI, see `consult-gh-search-repos'.
+  "Command line arguments to call GitHub CLI.
 
 The dynamically computed arguments are appended.
 Can be either a string, or a list of strings or expressions."
   :group 'consult-gh
   :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-repo-list-args '("repo" "list")
+  "Additional arguments for `consult-gh-repo-list'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-issue-list-args '("issue" "list" "--repo")
+  "Additional arguments for `consult-gh-issue-list'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+
+(defcustom consult-gh-search-issues-args '("search" "issues")
+  "Additional arguments for `consult-gh-search-issues'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-search-repos-args '("search" "repos" "--include-forks" "true")
+"Additional arguments for `consult-gh-search-repos'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-pr-list-args '("pr" "list" "--repo")
+  "Additional arguments for `consult-gh-pr-list'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-search-prs-args '("search" "prs")
+  "Additional arguments for `consult-gh-search-prs'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-search-code-args '("search" "code")
+  "Additional arguments for `consult-gh-search-code'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+
 
 (defcustom consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory)
   "Temporary file directory for the `consult-gh' package.
@@ -2545,7 +2604,7 @@ BUILDER is the command line builder function \(e.g.
 
 INPUT must be a GitHub user or org as a string e.g. “armindarvish”."
 
-  (pcase-let* ((consult-gh-args (append consult-gh-args '("repo" "list")))
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-repo-list-args))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
                (flags (append cmd opts)))
@@ -2681,7 +2740,7 @@ BUILDER is the command line builder function \(e.g.
   "Build gh command line for searching repositories with INPUT query.
 
 The command arguments such as \(e.g. “gh search repos INPUT”\)."
-  (pcase-let* ((consult-gh-args (append consult-gh-args '("search" "repos")))
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-repos-args))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
                (flags (append cmd opts)))
@@ -2883,7 +2942,7 @@ BUILDER is the command line builder function \(e.g.
 
 INPUT must be the full name of a GitHub repository as a string
 e.g. “armindarvish/consult-gh”."
-  (pcase-let* ((consult-gh-args (append consult-gh-args '("issue" "list" "--repo")))
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-issue-list-args))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
                (flags (append cmd opts)))
@@ -3008,7 +3067,7 @@ BUILDER is the command line builder function \(e.g.
 
 (defun consult-gh--search-issues-builder (input)
   "Build gh command line for searching issues of INPUT query."
-  (pcase-let* ((consult-gh-args (append consult-gh-args '("search" "issues")))
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-issues-args))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
                (flags (append cmd opts)))
@@ -3125,7 +3184,7 @@ BUILDER is the command line builder function \(e.g.
 
 INPUT must be the full name of a GitHub repository as a string
 e.g. “armindarvish/consult-gh”."
-  (pcase-let* ((consult-gh-args (append consult-gh-args '("pr" "list" "--repo")))
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-pr-list-args))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
                (flags (append cmd opts)))
@@ -3249,7 +3308,7 @@ BUILDER is the command line builder function \(e.g.
 
 (defun consult-gh--search-prs-builder (input)
   "Build gh command line for searching pull requests of INPUT query."
-  (pcase-let* ((consult-gh-args (append consult-gh-args '("search" "prs")))
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-prs-args))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
                (flags (append cmd opts)))
@@ -3363,7 +3422,7 @@ BUILDER is the command line builder function \(e.g.
 
 (defun consult-gh--search-code-builder (input)
   "Build gh command line for searching code with INPUT query."
-  (pcase-let* ((consult-gh-args (append consult-gh-args '("search" "code")))
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-code-args))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult--command-split input))
                (flags (append cmd opts)))
