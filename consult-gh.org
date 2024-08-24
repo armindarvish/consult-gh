@@ -1718,8 +1718,8 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
            (extension (and (stringp path) (file-name-extension path)))
            (content (consult-gh--api-json-to-hashtable readme :content)))
       (insert ""
-              "#+name:\t" name "\n"
-              "#+description:\t" desc "\n"
+              "#+name:\t" (or name "") "\n"
+              "#+description:\t" (or desc "") "\n"
               (make-string 5 ?\-)
               "\n\n")
       (when content
@@ -1750,8 +1750,8 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
            (content (consult-gh--api-json-to-hashtable readme :content)))
       (setq-local buffer-file-name path)
       (insert ""
-              comment-start "name:\t" name comment-end "\n"
-              comment-start "description:\t" desc comment-end "\n"
+              (or comment-start "") "name:\t" (or name "") (or comment-end "") "\n"
+              (or comment-start "") "description:\t" (or desc "") (or comment-end "") "\n"
               (make-string 5 ?\-)
               "\n\n")
       (when content
