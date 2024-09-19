@@ -340,6 +340,8 @@ default behavior of `ghub--host' to allow using
       (consult-gh-forge--mode-on)
     (consult-gh-forge--mode-off)))
 
+(consult-gh-forge-mode +1)
+
 ;;; Provide `consult-gh-forge' module
 
 (provide 'consult-gh-forge)
