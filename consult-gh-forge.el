@@ -180,7 +180,7 @@ ISSUE."
          (timeout (or timeout consult-gh-forge-timeout-seconds))
          (created (consult-gh-forge--add-topic url id))
          (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--issue-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
+    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--issue-view-action (propertize (format "%s" issue) ':repo repo ':issue issue)))
       (while (not topic)
         (sit-for 0.001)
         (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
@@ -211,7 +211,7 @@ otherwise reverts to using `consult-gh--pr-view-action' to open the PR."
          (timeout (or timeout consult-gh-forge-timeout-seconds))
          (created (consult-gh-forge--add-topic url id))
          (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--pr-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
+    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--pr-view-action (propertize (format "%s" pr) ':repo repo ':pr pr)))
       (while (not topic)
         (sit-for 0.001)
         (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
@@ -278,7 +278,7 @@ Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--username' to allow using
 `consult-gh' user name instead if the user chooses to."
   (let ((ghub-user (cl-call-next-method))
-        (consult-gh-user (car-safe (consult-gh--auth-current-active-account))))
+        (consult-gh-user (car-safe (consult-gh--auth-current-active-account host))))
     (cond
      ((equal ghub-user consult-gh-user) ghub-user)
      (t
@@ -300,7 +300,7 @@ Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--host' to allow using
 `consult-gh' host name instead if the user chooses to."
   (let ((ghub-host (cl-call-next-method))
-        (consult-gh-host (and (consp consult-gh--auth-current) (cadr consult-gh--auth-current)))
+        (consult-gh-host (and (consp consult-gh--auth-current) (cadr consult-gh--auth-current))))
         (cond
          ((equal ghub-host consult-gh-host) ghub-host)
          (t
@@ -313,7 +313,7 @@ default behavior of `ghub--host' to allow using
                                                                     (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
                         consult-gh-host)))
             (if (and host (not (string-empty-p host))) host
-              (cl-call-next-method))))))))
+              (cl-call-next-method)))))))
 
 (defun consult-gh-forge--mode-on ()
   "Enable `consult-gh-forge-mode'."
