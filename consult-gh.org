@@ -4219,6 +4219,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
          (size (get-text-property 0 :size cand)))
     (funcall #'consult-gh--files-save-file-action (cons path `(:repo ,repo :path ,path :url ,url :size ,size)))))
 
+
 ;;; Define Embark Keymaps
 
 (defvar-keymap consult-gh-embark-general-actions-map
@@ -4243,57 +4244,50 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   "r p" #'consult-gh-embark-view-prs-of-repo
   "o" #'consult-gh-embark-open-in-browser)
 
-(add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-general-actions-map))
-
 (defvar-keymap consult-gh-embark-orgs-actions-map
   :doc "Keymap for consult-gh-embark-orgs"
   :parent consult-gh-embark-general-actions-map)
 
-(add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
-
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map)
-
-(add-to-list 'embark-keymap-alist '(consult-gh-repos . consult-gh-embark-repos-actions-map))
-
 
 (defvar-keymap consult-gh-embark-files-actions-map
   :doc "Keymap for consult-gh-embark-files"
   :parent consult-gh-embark-general-actions-map
   "s" #'consult-gh-embark-save-file)
 
-(add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
-
 (defvar-keymap consult-gh-embark-issues-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map)
-
-(add-to-list 'embark-keymap-alist '(consult-gh-issues . consult-gh-embark-issues-actions-map))
 
 (defvar-keymap consult-gh-embark-prs-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map)
 
-(add-to-list 'embark-keymap-alist '(consult-gh-prs . consult-gh-embark-prs-actions-map))
-
 (defvar-keymap consult-gh-embark-codes-actions-map
   :doc "Keymap for consult-gh-embark-codes"
   :parent consult-gh-embark-general-actions-map)
 
-(add-to-list 'embark-keymap-alist '(consult-gh-codes . consult-gh-embark-codes-actions-map))
+;;; Define consult-gh-embark minor-mode
 
-(add-to-list 'embark-default-action-overrides '(consult-gh-repos . consult-gh-embark-default-action))
-(add-to-list 'embark-default-action-overrides '(consult-gh-issues . consult-gh-embark-default-action))
-(add-to-list 'embark-default-action-overrides '(consult-gh-prs . consult-gh-embark-default-action))
-(add-to-list 'embark-default-action-overrides '(consult-gh-files . consult-gh-embark-default-action))
-(add-to-list 'embark-default-action-overrides '(consult-gh-codes . consult-gh-embark-default-action))
+(defun consult-gh-embark--mode-on ()
+  "Enable `consult-gh-embark-mode'."
+  (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-general-actions-map))
+  (add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
+  (add-to-list 'embark-keymap-alist '(consult-gh-repos . consult-gh-embark-repos-actions-map))
+  (add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
+  (add-to-list 'embark-keymap-alist '(consult-gh-issues . consult-gh-embark-issues-actions-map))
+  (add-to-list 'embark-keymap-alist '(consult-gh-prs . consult-gh-embark-prs-actions-map))
+  (add-to-list 'embark-keymap-alist '(consult-gh-codes . consult-gh-embark-codes-actions-map))
+  (add-to-list 'embark-default-action-overrides '(consult-gh-repos . consult-gh-embark-default-action))
+  (add-to-list 'embark-default-action-overrides '(consult-gh-issues . consult-gh-embark-default-action))
+  (add-to-list 'embark-default-action-overrides '(consult-gh-prs . consult-gh-embark-default-action))
+  (add-to-list 'embark-default-action-overrides '(consult-gh-files . consult-gh-embark-default-action))
+  (add-to-list 'embark-default-action-overrides '(consult-gh-codes . consult-gh-embark-default-action)))
 
-;;; Provide `consul-gh-embark' module
-
-
-(defun consult-gh-embark-unload-function ()
-  "Unload function for `consult-gh-embark'."
+(defun consult-gh-embark--mode-off ()
+  "Disable `consult-gh-embark-mode'."
   (setq  embark-keymap-alist (seq-difference embark-keymap-alist '((consult-gh . consult-gh-embark-general-actions-map)
                                                                    (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
                                                                    (consult-gh-repos . consult-gh-embark-repos-actions-map)
@@ -4307,6 +4301,24 @@ The candidate can be a repo, issue, PR, file path, or a branch."
                                                           (consult-gh-files . consult-gh-embark-default-action)
                                                           (consult-gh-codes . consult-gh-embark-default-action)))))
 
+(defun consult-gh-embark-unload-function ()
+  "Unload function for `consult-gh-embark'."
+  (consult-gh-embark--mode-off))
+
+;;;###autoload
+(define-minor-mode consult-gh-embark-mode
+  "Use embark with `consult-gh' for extra actions."
+  :init-value nil
+  :global t
+  :group 'consult-gh
+  :lighter "consult-gh-embark"
+  (if consult-gh-embark-mode
+      (consult-gh-embark--mode-on)
+    (consult-gh-embark--mode-off)))
+
+(consult-gh-embark-mode +1)
+
+;;; Provide `consul-gh-embark' module
 
 (provide 'consult-gh-embark)
 
@@ -4665,6 +4677,8 @@ default behavior of `ghub--host' to allow using
   (if consult-gh-forge-mode
       (consult-gh-forge--mode-on)
     (consult-gh-forge--mode-off)))
+
+(consult-gh-forge-mode +1)
 
 ;;; Provide `consult-gh-forge' module
 
