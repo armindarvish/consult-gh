@@ -263,6 +263,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 
 
 (defun consult-gh-embark-unload-function ()
+  "Unload function for `consult-gh-embark'."
   (setq  embark-keymap-alist (seq-difference embark-keymap-alist '((consult-gh . consult-gh-embark-general-actions-map)
                                                                    (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
                                                                    (consult-gh-repos . consult-gh-embark-repos-actions-map)
@@ -276,17 +277,6 @@ The candidate can be a repo, issue, PR, file path, or a branch."
                                                           (consult-gh-files . consult-gh-embark-default-action)
                                                           (consult-gh-codes . consult-gh-embark-default-action)))))
 
-;; (delq '(consult-gh . consult-gh-embark-general-actions-map) embark-keymap-alist)
-;; (delq '(consult-gh-orgs . consult-gh-embark-orgs-actions-map) embark-keymap-alist)
-;; (delq '(consult-gh-repos . consult-gh-embark-repos-actions-map) embark-keymap-alist)
-;; (delq '(consult-gh-files . consult-gh-embark-files-actions-map) embark-keymap-alist)
-;; (delq '(consult-gh-issues . consult-gh-embark-issues-actions-map) embark-keymap-alist)
-;; (delq '(consult-gh-prs . consult-gh-embark-prs-actions-map) embark-keymap-alist)
-;; (delq '(consult-gh-repos . consult-gh-embark-default-action) embark-default-action-overrides)
-;; (delq '(consult-gh-issues . consult-gh-embark-default-action) embark-default-action-overrides)
-;; (delq '(consult-gh-prs . consult-gh-embark-default-action) embark-default-action-overrides)
-;; (delq '(consult-gh-files . consult-gh-embark-default-action) embark-default-action-overrides)
-;; (delq '(consult-gh-codes . consult-gh-embark-default-action) embark-default-action-overrides)
 
 (provide 'consult-gh-embark)
 

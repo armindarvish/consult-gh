@@ -4359,10 +4359,7 @@ This section includes additional extension to open issues and potentially pull r
 
 #+begin_src  emacs-lisp
 ;;; Requirements
-
-(if (featurep 'forge)
-    (require 'forge)
-  (message "magit/forge is not loaded. Make sure both magit and forge are installed and loaded before loading consult-gh-forge."))
+(require 'forge)
 (require 'consult-gh)
 
 ;;; Customization Variables
@@ -4391,17 +4388,13 @@ and git config do not match."
 
 Uses `consult-gh-forge--add-topic' to add topics.")
 
+(defvar consult-gh-forge--default-issue-action consult-gh-issue-action
+  "Default action for viewing issues without forge integration.")
+
+(defvar consult-gh-forge--default-pr-action consult-gh-pr-action
+  "Default action for viewing PRs without forge integration.")
+
 ;;; Define Backend Functions for `consult-gh-forge'
-
-(defun consult-gh-forge--make-tempdir (repo)
-  "Make a temporary directory for REPO in `consult-gh-tempdir'.
-
-This is to ensure magit and forge can operate as intended."
-  (let* ((tempdir (expand-file-name (concat repo "/" "forge/") consult-gh-tempdir))
-         (gitdir (expand-file-name ".git/" tempdir))
-         (_ (make-directory (file-name-directory gitdir) t)))
-    tempdir))
-
 (defun consult-gh-forge--add-repository (url)
   "Add the repo at URL to the forge database.
 
@@ -4475,88 +4468,19 @@ See forge documentation for `forge-pull-topic'."
   (let ((repo (forge-get-repository url :known?)))
     (forge--pull-topic repo topic)))
 
+
 (defun consult-gh-forge--add-topic (url topic)
   "Add the TOPIC of URL to the forge database.
 
 See forge documentation for `forge-add-repository'."
-  (cl-letf (((symbol-function #'magit-toplevel)
-             (lambda () (consult-gh--make-tempdir (string-join (cdr (forge--split-forge-url url)) "/")))))
-    (let ((created (consult-gh-forge--add-repository url))
-          (repo (forge-get-repository url)))
-      (while (not repo)
-        (sit-for 0.0001)
-        (setq repo (forge-get-repository url)))
-      (consult-gh-forge--pull-topic url topic)
-      created)))
+  (let ((created (consult-gh-forge--add-repository url))
+        (repo (forge-get-repository url)))
+    (while (not repo)
+      (sit-for 0.0001)
+      (setq repo (forge-get-repository url)))
+    (consult-gh-forge--pull-topic url topic)
+    created))
 
-(defun consult-gh-forge--magit-setup-buffer-internal (mode locked bindings)
-  "Reimplement `magit-setup-buffer-intenral'.
-
-This is to avoid making changes to magit settings for the repository
-in the current working directory.
-
-MODE, LOCKED, and BINDINGS are as defined in `magit-setup-buffer-intenral'"
-  (let* ((value (and locked
-                     (with-temp-buffer
-                       (pcase-dolist (`(,var ,val) bindings)
-                         (set (make-local-variable var) val))
-                       (let ((major-mode mode))
-                         (magit-buffer-value)))))
-         (buffer  (magit-get-mode-buffer mode value))
-         (section (and buffer (magit-current-section)))
-         (created (not buffer)))
-    (unless buffer
-      (setq buffer (magit-generate-new-buffer mode value)))
-    (with-current-buffer buffer
-      (setq magit-previous-section section)
-      (funcall mode)
-      (magit-xref-setup #'magit-setup-buffer-internal bindings)
-      (setq magit-buffer-gitdir (magit-gitdir))
-      (setq magit-buffer-topdir (magit-toplevel))
-      (pcase-dolist (`(,var ,val) bindings)
-        (set (make-local-variable var) val))
-      (when created
-        (run-hooks 'magit-create-buffer-hook)))
-    (magit-display-buffer buffer)
-    (with-current-buffer buffer
-      (run-hooks 'magit-setup-buffer-hook)
-      (magit-refresh-buffer))
-    buffer))
-
-(defmacro consult-gh-forge--magit-setup-buffer (mode &optional locked &rest bindings)
-  "Reimplement `magit-setup-buffer'.
-
-This is  to avoid making changes to magit settings for the repository
-in the current working directory.
-
-MODE, LOCKED, and BINDINGS are as defined in `magit-setup-buffer'"
-  (declare (indent 2))
-  `(consult-gh-forge--magit-setup-buffer-internal
-    ,mode ,locked
-    ,(cons 'list (mapcar (pcase-lambda (`(,var ,form))
-                           `(list ',var ,form))
-                         bindings))))
-
-(defun consult-gh-forge--topic-setup-buffer (topic)
-  "Reimplement `forge-topic-setup-buffer'.
-
-This is to avoid making changes to magit settings for the repository
-in the current working directory.
-
-TOPIC is as defined in `forge-topic-setup-buffer'"
-  (let* ((repo  (forge-get-repository topic))
-         (ident (concat "#"
-                        (number-to-string (oref topic number))))
-         (owner (oref repo owner))
-         (name (oref repo name))
-         (buffname  (format "*forge: %s/%s %s*" owner name ident))
-         (tempdir (consult-gh-forge--make-tempdir (format "%s/%s" owner name)))
-         (magit-generate-buffer-name-function (lambda (_mode _value) buffname))
-         (default-directory (or (oref repo worktree)
-                                tempdir)))
-    (consult-gh-forge--magit-setup-buffer (if (functionp 'forge-issue-mode) (if (forge-issue-p topic) #'forge-issue-mode #'forge-pullreq-mode) #'forge-topic-mode) t
-      (forge-buffer-topic topic)
-      (forge-buffer-topic-ident ident))))
 
 (defun consult-gh-forge--visit-topic (topic)
   "Reimplement `forge-visit-topic'.
@@ -4565,56 +4489,76 @@ This is to avoid making changes to magit settings for the repository
 in the current working directory.
 
 TOPIC is as defined in `forge-visit-topic'."
-  (consult-gh-forge--topic-setup-buffer topic))
+  (forge-topic-setup-buffer topic))
 
+;;; Define Functions and Interactive Commands for `consult-gh-forge'
 
-;;; Redefine ghub authentication functions
-(cl-defmethod ghub--username :around (host &optional forge)
-"Get username for HOST and FORGE (consult-gh override).
+(defun consult-gh-forge--issue-view (repo issue &optional timeout)
+  "Add the REPO and ISSUE to forge database.
 
-Note that this is created by `consult-gh' and overrides the
-default behavior of `ghub--username' to allow using
-consult-gh user name instead if the user chooses to."
-  (let ((ghub-user (cl-call-next-method))
-        (consult-gh-user (car-safe (consult-gh--auth-current-active-account))))
-  (cond
-   ((equal ghub-user consult-gh-user) ghub-user)
-   (t
-    (let ((user (if consult-gh-forge-confirm-account
-                    (consult--read (list (propertize consult-gh-user 'account "from consult-gh")
-                                     (propertize ghub-user 'account "from ghub/forge (i.e. git config)"))
-                  :prompt "Which account do you want to use?"
-                  :sort nil
-                  :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
-                                             (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
-                  consult-gh-user)))
-      (if (and user (not (string-empty-p user))) user
-        (cl-call-next-method)))))))
+Uses `consult-gh-forge--add-topic' and tries to load the issue in forge
+by `consult-gh-forge--visit-topic' within the TIMEOUT limit \(in seconds\),
+otherwise reverts to using `consult-gh--issue-view-action' to open the
+ISSUE."
+  (let* ((repo (string-trim repo))
+         (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+         (id (string-to-number issue))
+         (timeout (or timeout consult-gh-forge-timeout-seconds))
+         (created (consult-gh-forge--add-topic url id))
+         (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
+    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--issue-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
+      (while (not topic)
+        (sit-for 0.001)
+        (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
+      (if topic
+          (consult-gh-forge--visit-topic topic)
+        (consult-gh--issue-view repo issue)))
+    (when created
+      (add-to-list 'consult-gh-forge--added-repositories url))))
 
-(cl-defmethod ghub--host :around (&optional forge)
-"Get host name for FORGE (consult-gh override).
+(defun consult-gh-forge--issue-view-action (cand)
+  "Open preview of an issue candidate, CAND, in `forge'.
 
-Note that this is created by `consult-gh' and overrides the
-default behavior of `ghub--host' to allow using
-consult-gh host name instead if the user chooses to."
-  (let ((ghub-host (cl-call-next-method))
-        (consult-gh-host (and (consp consult-gh--auth-current) (cadr consult-gh--auth-current)))
-  (cond
-   ((equal ghub-host consult-gh-host) ghub-host)
-   (t
-    (let ((host (if consult-gh-forge-confirm-account
-                    (consult--read (list (propertize consult-gh-host 'account "from consult-gh")
-                                     (propertize ghub-host 'account "from ghub/forge (i.e. git config)"))
-                  :prompt "Which account do you want to use?"
-                  :sort nil
-                  :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
-                                             (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
-                  consult-gh-host)))
-      (if (and host (not (string-empty-p host))) host
-        (cl-call-next-method))))))))
+This is a wrapper function arround `consult-gh-forge--issue-view'."
+  (let* ((info (cdr cand))
+         (repo (substring-no-properties (plist-get info :repo)))
+         (issue (substring-no-properties (format "%s" (plist-get info :issue)))))
+    (consult-gh-forge--issue-view repo issue)))
+
+(defun consult-gh-forge--pr-view (repo pr &optional timeout)
+  "Add the REPO and PR to forge database.
+
+ Uses `consult-gh-forge--add-topic' and tries to load the issue in forge
+by `consult-gh-forge--visit-topic' within the TIMEOUT limit \(in seconds\),
+otherwise reverts to using `consult-gh--pr-view-action' to open the PR."
+  (let* ((repo (string-trim repo))
+         (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+         (id (string-to-number pr))
+         (timeout (or timeout consult-gh-forge-timeout-seconds))
+         (created (consult-gh-forge--add-topic url id))
+         (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
+    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--pr-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
+      (while (not topic)
+        (sit-for 0.001)
+        (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
+      (if topic
+          (consult-gh-forge--visit-topic topic)
+        (consult-gh--pr-view repo pr)))
+    (when created
+      (add-to-list 'consult-gh-forge--added-repositories url))))
+
+(defun consult-gh-forge--pr-view-action (cand)
+  "Open preview of a pr candidate, CAND, in `forge'.
+
+This is a wrapper function arround `consult-gh-forge--pr-view'."
+  (let* ((info (cdr cand))
+         (repo (substring-no-properties (plist-get info :repo)))
+         (pr (substring-no-properties (format "%s" (plist-get info :pr)))))
+    (consult-gh-forge--pr-view repo pr)))
+
 
 (defun consult-gh-ghub--token (host username package &optional nocreate forge)
-"Get GitHub token for HOST USERNAME and PACKAGE.
+  "Get GitHub token for HOST USERNAME and PACKAGE.
 
 This is an override function for `ghub--token' to allow
 using `consult-gh' for getting tokens when ghub--token fails.
@@ -4650,86 +4594,73 @@ or (info \"(ghub)Getting Started\") for instructions.
                             user host))))))
     (if (functionp token) (funcall token) token)))
 
-(advice-add 'ghub--token :override #'consult-gh-ghub--token)
 
+;;; Redefine ghub authentication functions
+(cl-defmethod ghub--username :around (host &optional forge)
+  "Get username for HOST and FORGE (consult-gh override).
 
-;;; Define Functions and Interactive Commands for `consult-gh-forge'
+Note that this is created by `consult-gh' and overrides the
+default behavior of `ghub--username' to allow using
+consult-gh user name instead if the user chooses to."
+  (let ((ghub-user (cl-call-next-method))
+        (consult-gh-user (car-safe (consult-gh--auth-current-active-account))))
+    (cond
+     ((equal ghub-user consult-gh-user) ghub-user)
+     (t
+      (let ((user (if consult-gh-forge-confirm-account
+                      (consult--read (list (propertize consult-gh-user 'account "from consult-gh")
+                                           (propertize ghub-user 'account "from ghub/forge (i.e. git config)"))
+                                     :prompt "Which account do you want to use?"
+                                     :sort nil
+                                     :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
+                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
+                    consult-gh-user)))
+        (if (and user (not (string-empty-p user))) user
+          (cl-call-next-method)))))))
 
-(defun consult-gh-forge--issue-view (repo issue &optional timeout)
-  "Add the REPO and ISSUE to forge database.
+(cl-defmethod ghub--host :around (&optional forge)
+  "Get host name for FORGE (consult-gh override).
 
-Uses `consult-gh-forge--add-topic' and tries to load the issue in forge
-by `consult-gh-forge--visit-topic' within the TIMEOUT limit \(in seconds\),
-otherwise reverts to using `consult-gh--issue-view-action' to open the
-ISSUE."
-  (let* ((repo (string-trim repo))
-         (tempdir (consult-gh-forge--make-tempdir repo))
-         (default-directory (file-name-parent-directory tempdir))
-         (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
-         (id (string-to-number issue))
-         (timeout (or timeout consult-gh-forge-timeout-seconds)))
+Note that this is created by `consult-gh' and overrides the
+default behavior of `ghub--host' to allow using
+consult-gh host name instead if the user chooses to."
+  (let ((ghub-host (cl-call-next-method))
+        (consult-gh-host (and (consp consult-gh--auth-current) (cadr consult-gh--auth-current)))
+        (cond
+         ((equal ghub-host consult-gh-host) ghub-host)
+         (t
+          (let ((host (if consult-gh-forge-confirm-account
+                          (consult--read (list (propertize consult-gh-host 'account "from consult-gh")
+                                               (propertize ghub-host 'account "from ghub/forge (i.e. git config)"))
+                                         :prompt "Which account do you want to use?"
+                                         :sort nil
+                                         :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
+                                                                    (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
+                        consult-gh-host)))
+            (if (and host (not (string-empty-p host))) host
+              (cl-call-next-method))))))))
 
-    (cl-letf (((symbol-function #'magit-toplevel)
-               `(lambda () ,tempdir))
-              ((symbol-function #'magit-gitdir)
-               `(lambda () (expand-file-name ".git/" ,tempdir))))
-      (let* ((created (consult-gh-forge--add-topic url id))
-             (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-        (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--issue-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
-          (while (not topic)
-            (sit-for 0.001)
-            (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-          (if topic
-              (consult-gh-forge--visit-topic topic)
-            (consult-gh--issue-view repo issue)))
-        (when created
-          (add-to-list 'consult-gh-forge--added-repositories url))))))
+(defun consult-gh-forge-mode-on ()
+  (setq consult-gh-forge--default-issue-action consult-gh-issue-action)
+  (setq consult-gh-pr--default-action consult-gh-pr-action)
+  (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action)
+  (setq consult-gh-pr-action #'consult-gh-forge--pr-view-action)
+  (advice-add 'ghub--token :override #'consult-gh-ghub--token))
 
-(defun consult-gh-forge--issue-view-action (cand)
-  "Open preview of an issue candidate, CAND, in `forge'.
+(defun consult-gh-forge-mode-off ()
+  (setq consult-gh-issue-action consult-gh-forge--default-issue-action)
+  (setq consult-gh-pr-action consult-gh-pr--default-action)
+  (advice-remove 'ghub--token #'consult-gh-ghub--token))
 
-This is a wrapper function arround `consult-gh-forge--issue-view'."
-  (let* ((info (cdr cand))
-         (repo (substring-no-properties (plist-get info :repo)))
-         (issue (substring-no-properties (format "%s" (plist-get info :issue)))))
-    (consult-gh-forge--issue-view repo issue)))
-
-(defun consult-gh-forge--pr-view (repo pr &optional timeout)
-  "Add the REPO and PR to forge database.
-
- Uses `consult-gh-forge--add-topic' and tries to load the issue in forge
-by `consult-gh-forge--visit-topic' within the TIMEOUT limit \(in seconds\),
-otherwise reverts to using `consult-gh--pr-view-action' to open the PR."
-  (let* ((repo (string-trim repo))
-         (tempdir (consult-gh-forge--make-tempdir repo))
-         (default-directory tempdir)
-         (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
-         (id (string-to-number pr))
-         (timeout (or timeout consult-gh-forge-timeout-seconds)))
-    (cl-letf (((symbol-function #'magit-toplevel)
-               `(lambda () ,tempdir))
-              ((symbol-function #'magit-gitdir)
-               `(lambda () (expand-file-name ".git/" ,tempdir))))
-      (let* ((created (consult-gh-forge--add-topic url id))
-             (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-        (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall (consult-gh--pr-view-action) (propertize (format "%s" issue) ':repo repo ':issue issue)))
-          (while (not topic)
-            (sit-for 0.001)
-            (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-          (if topic
-              (consult-gh-forge--visit-topic topic)
-            (consult-gh--pr-view repo pr)))
-        (when created
-          (add-to-list 'consult-gh-forge--added-repositories url))))))
-
-(defun consult-gh-forge--pr-view-action (cand)
-  "Open preview of a pr candidate, CAND, in `forge'.
-
-This is a wrapper function arround `consult-gh-forge--pr-view'."
-  (let* ((info (cdr cand))
-         (repo (substring-no-properties (plist-get info :repo)))
-         (pr (substring-no-properties (format "%s" (plist-get info :pr)))))
-    (consult-gh-forge--pr-view repo pr)))
+(define-minor-mode consult-gh-forge-mode
+  "Use magit/forge with consult-gh for viewing issues/prs."
+  :init-value nil
+  :global t
+  :group 'consult-gh
+  :lighter "consult-gh-forge"
+  (if consult-gh-forge-mode
+      (consult-gh-forge-mode-on)
+    (consult-gh-forge-mode-off)))
 
 ;;; Provide `consult-gh-forge' module
 
