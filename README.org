@@ -397,15 +397,12 @@ To use =consult-gh-forge=, make sure that both [[https://github.com/magit/magit]
   (setq consult-gh-preview-key "M-o")
   (setq consult-gh-repo-action #'consult-gh--repo-browse-files-action)
   (setq consult-gh-file-action #'consult-gh--files-view-action)
-  (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action) ;;this enables opening issues in magit/forge buffer
-  (setq consult-gh-forge-timeout-seconds 20)) ;;maximum time inseconds for consult-gh to try opening issuers in forge, and then reverts back to opening in normal emacs buffer with consult-gh-issue--view.
+  (setq consult-gh-forge-timeout-seconds 20) ;;maximum time inseconds for consult-gh to try opening issuers in forge, and then reverts back to opening in normal emacs buffer with consult-gh-issue--view.
+  (consult-gh-forge-mode +1)) ;;this enables consult-gh-forge-mode which uses forge buffers for viewing issues and pull-requests.
 
 #+end_src
 
 Note that we are trying to keep =consult-gh-forge= edits of forge database transparent. Therefore a list of all the repositories that are added to =forge-database= is stored under the variable =consult-gh-forge-added-repositories= and interactive commands are provided to remove them from =forge-databse= either all at once (by using =consult-gh-forge-remove-added-repositories=) or by interactive selection through =consult-gh-forge-remove-repository=. This can still be done by =forge-remove-repository= as well, but consult-gh versions provide a transparent way to only remove the forge repositories added by consult-gh.
-
-*Keep in Mind*: consult-gh adds temporary folders to =consult-gh-tempdir= in order to do magit/forge actions, and therefore you may face issues when those temporary folders are deleted on system restarts. In this case, you may want to use =consult-gh-forge-remove-added-repositories= to clean up forge-database and then you should be able to use =consult-gh-forge--issue-view= normally again.
-
 
 With =consult-gh-forge=, you get one more "customization" variable as well:
 
