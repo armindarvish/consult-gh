@@ -4319,7 +4319,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 :END:
 ** Header
 #+begin_src  emacs-lisp
-;;; onsult-gh-forge.el --- Magit/Forge Integration for consult-gh -*- lexical-binding: t -*-
+;;; consult-gh-forge.el --- Magit/Forge Integration for consult-gh -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Armin Darvish
 
@@ -4557,7 +4557,7 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
     (consult-gh-forge--pr-view repo pr)))
 
 
-(defun consult-gh-ghub--token (host username package &optional nocreate forge)
+(defun consult-gh-forge--ghub-token (host username package &optional nocreate forge)
   "Get GitHub token for HOST USERNAME and PACKAGE.
 
 This is an override function for `ghub--token' to allow
@@ -4647,14 +4647,15 @@ default behavior of `ghub--host' to allow using
   (setq consult-gh-pr--default-action consult-gh-pr-action)
   (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action)
   (setq consult-gh-pr-action #'consult-gh-forge--pr-view-action)
-  (advice-add 'ghub--token :override #'consult-gh-ghub--token))
+  (advice-add 'ghub--token :override #'consult-gh-forge--ghub-token))
 
 (defun consult-gh-forge--mode-off ()
   "Disable `consult-gh-forge-mode'."
   (setq consult-gh-issue-action consult-gh-forge--default-issue-action)
   (setq consult-gh-pr-action consult-gh-pr--default-action)
-  (advice-remove 'ghub--token #'consult-gh-ghub--token))
+  (advice-remove 'ghub--token #'consult-gh-forge--ghub-token))
 
+;;;###autoload
 (define-minor-mode consult-gh-forge-mode
   "Use magit/forge with `consult-gh' for viewing issues/prs."
   :init-value nil
