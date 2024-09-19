@@ -300,7 +300,7 @@ Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--host' to allow using
 `consult-gh' host name instead if the user chooses to."
   (let ((ghub-host (cl-call-next-method))
-        (consult-gh-host (and (consp consult-gh--auth-current) (cadr consult-gh--auth-current))))
+        (consult-gh-host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))))
         (cond
          ((equal ghub-host consult-gh-host) ghub-host)
          (t
@@ -318,7 +318,7 @@ default behavior of `ghub--host' to allow using
 (defun consult-gh-forge--mode-on ()
   "Enable `consult-gh-forge-mode'."
   (setq consult-gh-forge--default-issue-action consult-gh-issue-action)
-  (setq consult-gh-pr--default-action consult-gh-pr-action)
+  (setq consult-gh-forge--default-pr-action consult-gh-pr-action)
   (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action)
   (setq consult-gh-pr-action #'consult-gh-forge--pr-view-action)
   (advice-add 'ghub--token :override #'consult-gh-forge--ghub-token))
@@ -326,7 +326,7 @@ default behavior of `ghub--host' to allow using
 (defun consult-gh-forge--mode-off ()
   "Disable `consult-gh-forge-mode'."
   (setq consult-gh-issue-action consult-gh-forge--default-issue-action)
-  (setq consult-gh-pr-action consult-gh-pr--default-action)
+  (setq consult-gh-pr-action consult-gh-forge--default-pr-action)
   (advice-remove 'ghub--token #'consult-gh-forge--ghub-token))
 
 ;;;###autoload
