@@ -261,6 +261,33 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 
 ;;; Provide `consul-gh-embark' module
 
+
+(defun consult-gh-embark-unload-function ()
+  (setq  embark-keymap-alist (seq-difference embark-keymap-alist '((consult-gh . consult-gh-embark-general-actions-map)
+                                                                   (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
+                                                                   (consult-gh-repos . consult-gh-embark-repos-actions-map)
+                                                                   (consult-gh-files . consult-gh-embark-files-actions-map)
+                                                                   (consult-gh-issues . consult-gh-embark-issues-actions-map)
+                                                                   (consult-gh-prs . consult-gh-embark-prs-actions-map))))
+  (setq embark-default-action-overrides (seq-difference embark-default-action-overrides
+                                                        '((consult-gh-repos . consult-gh-embark-default-action)
+                                                          (consult-gh-issues . consult-gh-embark-default-action)
+                                                          (consult-gh-prs . consult-gh-embark-default-action)
+                                                          (consult-gh-files . consult-gh-embark-default-action)
+                                                          (consult-gh-codes . consult-gh-embark-default-action)))))
+
+;; (delq '(consult-gh . consult-gh-embark-general-actions-map) embark-keymap-alist)
+;; (delq '(consult-gh-orgs . consult-gh-embark-orgs-actions-map) embark-keymap-alist)
+;; (delq '(consult-gh-repos . consult-gh-embark-repos-actions-map) embark-keymap-alist)
+;; (delq '(consult-gh-files . consult-gh-embark-files-actions-map) embark-keymap-alist)
+;; (delq '(consult-gh-issues . consult-gh-embark-issues-actions-map) embark-keymap-alist)
+;; (delq '(consult-gh-prs . consult-gh-embark-prs-actions-map) embark-keymap-alist)
+;; (delq '(consult-gh-repos . consult-gh-embark-default-action) embark-default-action-overrides)
+;; (delq '(consult-gh-issues . consult-gh-embark-default-action) embark-default-action-overrides)
+;; (delq '(consult-gh-prs . consult-gh-embark-default-action) embark-default-action-overrides)
+;; (delq '(consult-gh-files . consult-gh-embark-default-action) embark-default-action-overrides)
+;; (delq '(consult-gh-codes . consult-gh-embark-default-action) embark-default-action-overrides)
+
 (provide 'consult-gh-embark)
 
 ;;; consult-gh-embark.el ends here

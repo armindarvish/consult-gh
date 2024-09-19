@@ -1,4 +1,4 @@
-;;; consult-gh-forge.el --- Magit/Forge Integration for consult-gh -*- lexical-binding: t -*-
+;;; onsult-gh-forge.el --- Magit/Forge Integration for consult-gh -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Armin Darvish
 
