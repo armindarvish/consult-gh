@@ -4291,6 +4291,23 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 
 ;;; Provide `consul-gh-embark' module
 
+
+(defun consult-gh-embark-unload-function ()
+  "Unload function for `consult-gh-embark'."
+  (setq  embark-keymap-alist (seq-difference embark-keymap-alist '((consult-gh . consult-gh-embark-general-actions-map)
+                                                                   (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
+                                                                   (consult-gh-repos . consult-gh-embark-repos-actions-map)
+                                                                   (consult-gh-files . consult-gh-embark-files-actions-map)
+                                                                   (consult-gh-issues . consult-gh-embark-issues-actions-map)
+                                                                   (consult-gh-prs . consult-gh-embark-prs-actions-map))))
+  (setq embark-default-action-overrides (seq-difference embark-default-action-overrides
+                                                        '((consult-gh-repos . consult-gh-embark-default-action)
+                                                          (consult-gh-issues . consult-gh-embark-default-action)
+                                                          (consult-gh-prs . consult-gh-embark-default-action)
+                                                          (consult-gh-files . consult-gh-embark-default-action)
+                                                          (consult-gh-codes . consult-gh-embark-default-action)))))
+
+
 (provide 'consult-gh-embark)
 
 ;;; consult-gh-embark.el ends here
@@ -4302,7 +4319,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 :END:
 ** Header
 #+begin_src  emacs-lisp
-;;; consult-gh-forge.el --- Magit/Forge Integration for consult-gh -*- lexical-binding: t -*-
+;;; onsult-gh-forge.el --- Magit/Forge Integration for consult-gh -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Armin Darvish
 
