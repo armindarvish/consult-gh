@@ -235,11 +235,12 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
   "Get GitHub token for HOST USERNAME and PACKAGE.
 
 This is an override function for `ghub--token' to allow
-using `consult-gh' for getting tokens when ghub--token fails.
+using `consult-gh' for getting tokens when `ghub--token' fails.
 This allows getting token from gh cli commands without saving tokens
 in auth sources.
 
-See `ghub--token' for more info."
+See `ghub--token' for definition of NOCREATE and FORGE as well as
+more info."
   (let* ((user (ghub--ident username package))
          (host (if (equal host ghub-default-host) (string-trim-left ghub-default-host "api.") host))
          (cmd-args (append '("auth" "token")
@@ -271,11 +272,11 @@ or (info \"(ghub)Getting Started\") for instructions.
 
 ;;; Redefine ghub authentication functions
 (cl-defmethod ghub--username :around (host &optional forge)
-  "Get username for HOST and FORGE (consult-gh override).
+  "Get username for HOST and FORGE (`consult-gh' override).
 
 Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--username' to allow using
-consult-gh user name instead if the user chooses to."
+`consult-gh' user name instead if the user chooses to."
   (let ((ghub-user (cl-call-next-method))
         (consult-gh-user (car-safe (consult-gh--auth-current-active-account))))
     (cond
@@ -293,11 +294,11 @@ consult-gh user name instead if the user chooses to."
           (cl-call-next-method)))))))
 
 (cl-defmethod ghub--host :around (&optional forge)
-  "Get host name for FORGE (consult-gh override).
+  "Get host name for FORGE (`consult-gh' override).
 
 Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--host' to allow using
-consult-gh host name instead if the user chooses to."
+`consult-gh' host name instead if the user chooses to."
   (let ((ghub-host (cl-call-next-method))
         (consult-gh-host (and (consp consult-gh--auth-current) (cadr consult-gh--auth-current)))
         (cond
@@ -314,27 +315,29 @@ consult-gh host name instead if the user chooses to."
             (if (and host (not (string-empty-p host))) host
               (cl-call-next-method))))))))
 
-(defun consult-gh-forge-mode-on ()
+(defun consult-gh-forge--mode-on ()
+  "Enable `consult-gh-forge-mode'."
   (setq consult-gh-forge--default-issue-action consult-gh-issue-action)
   (setq consult-gh-pr--default-action consult-gh-pr-action)
   (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action)
   (setq consult-gh-pr-action #'consult-gh-forge--pr-view-action)
   (advice-add 'ghub--token :override #'consult-gh-ghub--token))
 
-(defun consult-gh-forge-mode-off ()
+(defun consult-gh-forge--mode-off ()
+  "Disable `consult-gh-forge-mode'."
   (setq consult-gh-issue-action consult-gh-forge--default-issue-action)
   (setq consult-gh-pr-action consult-gh-pr--default-action)
   (advice-remove 'ghub--token #'consult-gh-ghub--token))
 
 (define-minor-mode consult-gh-forge-mode
-  "Use magit/forge with consult-gh for viewing issues/prs."
+  "Use magit/forge with `consult-gh' for viewing issues/prs."
   :init-value nil
   :global t
   :group 'consult-gh
   :lighter "consult-gh-forge"
   (if consult-gh-forge-mode
-      (consult-gh-forge-mode-on)
-    (consult-gh-forge-mode-off)))
+      (consult-gh-forge--mode-on)
+    (consult-gh-forge--mode-off)))
 
 ;;; Provide `consult-gh-forge' module
 
