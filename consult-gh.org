@@ -4609,29 +4609,32 @@ or (info \"(ghub)Getting Started\") for instructions.
 
 
 ;;; Redefine ghub authentication functions
-(cl-defmethod ghub--username :around (host &optional forge)
+(cl-defmethod ghub--username :around (host &context (consult-gh-forge-mode (eql t)) &optional forge)
   "Get username for HOST and FORGE (`consult-gh' override).
 
 Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--username' to allow using
 `consult-gh' user name instead if the user chooses to."
+
   (let ((ghub-user (cl-call-next-method))
-        (consult-gh-user (car-safe (consult-gh--auth-current-active-account host))))
+        (consult-gh-user (or (car-safe (consult-gh--auth-current-active-account (if (equal host "api.github.com") "github.com" (or host consult-gh-default-host)))) (car-safe consult-gh--auth-current-account))))
     (cond
      ((equal ghub-user consult-gh-user) ghub-user)
      (t
-      (let ((user (if consult-gh-forge-confirm-account
+      (let ((user (if (and consult-gh-forge-confirm-account
+                           (stringp ghub-user)
+                           (stringp consult-gh-user))
                       (consult--read (list (propertize consult-gh-user 'account "from consult-gh")
                                            (propertize ghub-user 'account "from ghub/forge (i.e. git config)"))
                                      :prompt "Which account do you want to use?"
                                      :sort nil
                                      :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
                                                                 (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
-                    consult-gh-user)))
+                    (or consult-gh-user ghub-user))))
         (if (and user (not (string-empty-p user))) user
           (cl-call-next-method)))))))
 
-(cl-defmethod ghub--host :around (&optional forge)
+(cl-defmethod ghub--host :around (&context (consult-gh-forge-mode (eql t)) &optional forge)
   "Get host name for FORGE (`consult-gh' override).
 
 Note that this is created by `consult-gh' and overrides the
@@ -4642,7 +4645,9 @@ default behavior of `ghub--host' to allow using
         (cond
          ((equal ghub-host consult-gh-host) ghub-host)
          (t
-          (let ((host (if consult-gh-forge-confirm-account
+          (let ((host (if (and consult-gh-forge-confirm-account
+                               (stringp ghub-host)
+                               (stringp consult-gh-host))
                           (consult--read (list (propertize consult-gh-host 'account "from consult-gh")
                                                (propertize ghub-host 'account "from ghub/forge (i.e. git config)"))
                                          :prompt "Which account do you want to use?"
