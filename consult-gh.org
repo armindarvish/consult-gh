@@ -4311,12 +4311,11 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   :init-value nil
   :global t
   :group 'consult-gh
-  :lighter "consult-gh-embark"
+  :lighter " consult-gh-embark"
   (if consult-gh-embark-mode
       (consult-gh-embark--mode-on)
     (consult-gh-embark--mode-off)))
 
-(consult-gh-embark-mode +1)
 
 ;;; Provide `consul-gh-embark' module
 
