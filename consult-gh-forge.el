@@ -142,7 +142,6 @@ See forge documentation for `forge-pull-topic'."
   (let ((repo (forge-get-repository url :known?)))
     (forge--pull-topic repo topic)))
 
-
 (defun consult-gh-forge--add-topic (url topic)
   "Add the TOPIC of URL to the forge database.
 
@@ -154,7 +153,6 @@ See forge documentation for `forge-add-repository'."
       (setq repo (forge-get-repository url)))
     (consult-gh-forge--pull-topic url topic)
     created))
-
 
 (defun consult-gh-forge--visit-topic (topic)
   "Reimplement `forge-visit-topic'.
@@ -230,7 +228,6 @@ This is a wrapper function arround `consult-gh-forge--pr-view'."
          (pr (substring-no-properties (format "%s" (plist-get info :pr)))))
     (consult-gh-forge--pr-view repo pr)))
 
-
 (defun consult-gh-forge--ghub-token (host username package &optional nocreate forge)
   "Get GitHub token for HOST USERNAME and PACKAGE.
 
@@ -269,7 +266,6 @@ or (info \"(ghub)Getting Started\") for instructions.
                             user host))))))
     (if (functionp token) (funcall token) token)))
 
-
 (defun consult-gh-forge--mode-on ()
   "Enable `consult-gh-forge-mode'."
   (setq consult-gh-forge--default-issue-action consult-gh-issue-action)
@@ -296,7 +292,7 @@ or (info \"(ghub)Getting Started\") for instructions.
     (consult-gh-forge--mode-off)))
 
 ;;; Redefine ghub authentication functions
-(cl-defmethod ghub--username :around (host &context (consult-gh-forge-mode (eql t)) &optional forge)
+(cl-defmethod ghub--username :around (host &context (consult-gh-forge-mode (eql t)) &optional _forge)
   "Get username for HOST and FORGE (`consult-gh' override).
 
 Note that this is created by `consult-gh' and overrides the
@@ -305,7 +301,6 @@ default behavior of `ghub--username' to allow using
 
   (let ((ghub-user (cl-call-next-method))
         (consult-gh-user (or (car-safe (consult-gh--auth-current-active-account (if (equal host "api.github.com") "github.com" (or host consult-gh-default-host)))) (car-safe consult-gh--auth-current-account))))
-    (ignore forge)
     (cond
      ((equal ghub-user consult-gh-user) ghub-user)
      (t
@@ -322,7 +317,7 @@ default behavior of `ghub--username' to allow using
         (if (and user (not (string-empty-p user))) user
           (cl-call-next-method)))))))
 
-(cl-defmethod ghub--host :around (&context (consult-gh-forge-mode (eql t)) &optional forge)
+(cl-defmethod ghub--host :around (&context (consult-gh-forge-mode (eql t)) &optional _forge)
   "Get host name for FORGE (`consult-gh' override).
 
 Note that this is created by `consult-gh' and overrides the
@@ -330,7 +325,6 @@ default behavior of `ghub--host' to allow using
 `consult-gh' host name instead if the user chooses to."
   (let ((ghub-host (cl-call-next-method))
         (consult-gh-host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))))
-    (ignore forge)
         (cond
          ((equal ghub-host consult-gh-host) ghub-host)
          (t
