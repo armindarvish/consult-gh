@@ -4685,8 +4685,6 @@ default behavior of `ghub--host' to allow using
               (cl-call-next-method)))))))
 
 
-(consult-gh-forge-mode +1)
-
 ;;; Provide `consult-gh-forge' module
 
 (provide 'consult-gh-forge)
