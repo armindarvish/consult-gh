@@ -91,7 +91,7 @@ Can be either a string, or a list of strings or expressions."
   :type '(choice string (repeat (choice string sexp))))
 
 (defcustom consult-gh-search-repos-args '("search" "repos" "--include-forks" "true")
-"Additional arguments for `consult-gh-search-repos'.
+  "Additional arguments for `consult-gh-search-repos'.
 
 The dynamically computed arguments are appended.
 Can be either a string, or a list of strings or expressions."
@@ -122,7 +122,28 @@ Can be either a string, or a list of strings or expressions."
   :group 'consult-gh
   :type '(choice string (repeat (choice string sexp))))
 
+(defcustom consult-gh-notifications-show-unread-only t
+  "Whether to hide reacd notifications?"
+  :group 'consult-gh
+  :type 'boolean)
 
+(defcustom consult-gh-notifications-args `("api" ,(concat "notifications?sort=updated" (unless consult-gh-notifications-show-unread-only "&all=true")) "--paginate" "--template" ,(concat "{{range .}}" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""\n" "{{end}}"))
+  "Additional arguments for `consult-gh-notifications'.
+
+The dynamically computed arguments are appended.
+Can be either be a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-dashboard-items-functions (list #'consult-gh--dashboard-collect-author #'consult-gh--dashboard-collect-assigned #'consult-gh--dashboard-collect-mentions #'consult-gh--dashboard-collect-involves)
+  "A list of functions for collecting items in `consult-gh-dashboard'
+
+Each function in this list gets called in `consult-gh--dashboard-items'.
+The function should accept an optional arg for user and
+should return a list of candidates (relevant issues/pr for the user) to be used in
+`consult-gh-dashboard'. For an example see `consult-gh--dashboard-collect-author'."
+  :group 'consult-gh
+  :type '(repeat function))
 
 (defcustom consult-gh-tempdir (expand-file-name "consult-gh" temporary-file-directory)
   "Temporary file directory for the `consult-gh' package.
@@ -133,21 +154,17 @@ pulling files for viewing."
   :type 'directory)
 
 (make-obsolete-variable 'consult-gh-crm-separator nil "1.0")
-;; (defcustom consult-gh-crm-separator crm-separator
-;;   "Separator for multiple selections with `completing-read-multiple'.
 
 (defcustom consult-gh-temp-tempdir-time-format "%Y%m%d%I%H%M"
   "Tme FORMAT-STRING for temporary directories.
 
 This is passed as FORMAT-STRING to `format-time-string' for naming
 temporary diretories."
-:type 'string)
+  :type 'string)
 
 (defcustom consult-gh-temp-tempdir-cache 300
   "Time in seconds before making a new temp directory."
-:type 'string)
-
-
+  :type 'string)
 
 (defcustom consult-gh-repo-maxnum 30
   "Maximum number of repos to show for list and search operations.
@@ -241,14 +258,6 @@ no initial input is provided."
                  (const :tag "Current repository is default input" t)
                  (const :tag "Current repository is ignored" nil)))
 
-;; (defcustom consult-gh-preview-buffer-mode 'markdown-mode
-;;   "Major mode to preview issues, pull requests,...
-
-;; Choices are \='markdown-mode or \='org-mode."
-;;   :group 'consult-gh
-;;   :type '(choice (const :tag "Use default Markdown Style" markdown-mode)
-;;                  (const :tag "Covert Markdown to Org-mode" org-mode)))
-
 (defcustom consult-gh-repo-preview-mode nil
   "Major mode to preview repository READMEs.
 
@@ -272,8 +281,6 @@ Choices are:
   :type '(choice (const :tag "(Default) Use markdown mode" markdown-mode)
                  (const :tag "Use org mode" org-mode)
                  (const :tag "Use fundamental-mode" nil)))
-
-
 
 (make-obsolete-variable 'consult-gh-preview-buffer-mode "Use `consult-gh-repo-preview-mode', or `consult-gh-issue-preview-mode' instead." "1.1")
 
@@ -486,6 +493,96 @@ Common options include:
                  (const :tag "Save the File to local folder" consult-gh--files-view-action)
                  (function :tag "Custom Function")))
 
+(defcustom consult-gh-discussion-action #'consult-gh--discussion-browse-url-action
+  "What function to call when a discussion is selected?
+
+Common options include:
+
+ - `consult-gh--discussion-browse-url-action' Opens the notification url  in default browser
+ - A custom function                     A function that takes
+                                         only 1 input argument,
+                                         the notification candidate."
+  :group 'consult-gh
+  :type '(choice (const :tag "Browse the Discussion URL" consult-gh--discussion-browse-url-actionn)
+                 (function :tag "Custom Function")))
+
+(defcustom consult-gh-notifications-action #'consult-gh--notifications-action
+  "What function to call when a notification is selected?
+
+Common options include:
+
+ - `consult-gh--notifications-action'            Uses default action of
+                                                 item type (e.g. issue,
+                                                 pr, discussion,...)
+ - `consult-gh--notifications-browse-url-action' Open relevant
+                                                 notifications in external
+                                                 browser
+ - A custom function                             A function that takes
+                                                 only 1 input argument,
+                                                 the notification
+                                                 candidate."
+  :group 'consult-gh
+  :type '(choice (const :tag "Use Default Action of Item Type (e.g. issue, pr, ...)" consult-gh--notifications-action)
+                 (const :tag "Open relevant notifications in the browser)" consult-gh--notifications-browse-url-action)
+                 (function :tag "Custom Function")))
+
+(defcustom consult-gh-notifications-group-function #'consult-gh--notifications-group-by-date
+  "What function to use for grouping items in `consult-gh-notifications'?
+
+Common options include:
+
+ - `consult-gh--notifications-group-by-date'   by date (e.g. latest first)
+ - `consult-gh--notifications-group-by-reason' by reason of reason
+                                               (e.g. mentions)
+ - `consult-gh--notifications-group-by-type'   by type (e.g. issue or pr)
+ - `consult-gh--notifications-group-by-repo'   by repository's name
+ - `consult-gh--notifications-group-by-state'  by status (e.g. read or unread)
+ - A custom function:                          A function with similar
+                                               format as examples above"
+  :group 'consult-gh
+  :type '(choice (function :tag "Group by date (e.g. latest notification first)" consult-gh--notifications-group-by-date)
+                 (function :tag "Group by Reason (e.g. mentions, involves,...)" consult-gh--notifications-group-by-reason)
+                 (function :tag "Group by topic type (e.g. issue or pr)" consult-gh--notifications-group-by-type)
+                 (function :tag "Group by repository's name" consult-gh--notifications-group-by-repo)
+                 (function :tag "Group by state (e.g. read or unread notification" consult-gh--notifications-group-by-state)
+                 (function :tag "Custom Function")))
+
+
+(defcustom consult-gh-dashboard-action #'consult-gh--dashboard-action
+  "What function to call when a dashboard item is selected?
+
+Common options include:
+
+ - `consult-gh--dashboard-action'            Uses default action of item type
+                                             (e.g. issue or pr)
+ - `consult-gh--dashboard-browse-url-action' Opens the link in an external
+                                             browser
+ - A custom function                         A function that takes
+                                             only 1 input argument,
+                                             the dashboard candidate."
+  :group 'consult-gh
+  :type '(choice (const :tag "Use Default Action of Item Type (e.g. issue, pr, ...)" consult-gh--dashboard-action)
+                 (const :tag "Open Issue/PR in external browser" consult-gh--dashboard-browse-url-action)
+                 (function :tag "Custom Function")))
+
+(defcustom consult-gh-dashboard-group-function #'consult-gh--dashboard-group-by-reason
+  "What function to use for grouping items in `consult-gh-dashboard'?
+
+Common options include:
+
+ - `consult-gh--dashboard-group-by-reason' by reason of reason
+                                              (e.g. mentions)
+ - `consult-gh--dashboard-group-by-date'      by date of latest update
+ - `consult-gh--dashboard-group-by-type'      by type (e.g. issue or pr)
+ - `consult-gh--dashboard-group-by-repo'      by repository's name
+ - A custom function:                         A function with similar
+                                              format as examples above"
+  :group 'consult-gh
+  :type '(choice (function :tag "Group by Reason (e.g. mentions, involves,...)" consult-gh--dashboard-group-by-reason)
+                 (function :tag "Group by topic type (e.g. issue or pr)" consult-gh--dashboard-group-by-type)
+                 (function :tag "Group by repository's name" consult-gh--dashboard-group-by-repo)
+                 (function :tag "Custom Function")))
+
 (defcustom consult-gh-highlight-matches t
   "Should queries or code snippets be highlighted in preview buffers?"
   :group 'consult-gh
@@ -515,6 +612,9 @@ Common options include:
 (defvar consult-gh-codes-category 'consult-gh-codes
   "Category symbol for codes in `consult-gh' package.")
 
+(defvar consult-gh-notifications-category 'consult-gh-notifications
+  "Category symbol for notifications in `consult-gh' package.")
+
 (defvar consult-gh-orgs-category 'consult-gh-orgs
   "Category symbol for Orgs in `consult-gh' package.")
 
@@ -531,6 +631,11 @@ Common options include:
   "History variable for repos.
 
 This is used in `consult-gh-issue-list' and `consult-gh-pr-list'.")
+
+(defvar consult-gh--notifications-history nil
+  "History variable for notifications.
+
+This is used in `consult-gh-notifications'.")
 
 (defvar consult-gh--search-repos-history nil
   "History variable for searching repos in `consult-gh-search-repos'.")
@@ -2555,6 +2660,457 @@ set `consult-gh-code-action' to `consult-gh--code-view-action'."
          (url (plist-get info :url)))
     (consult-gh--files-view repo path url nil tempdir code)))
 
+(defun consult-gh--dashboard-format (string)
+  "Format minibuffer candidates for dashboard items.
+
+Description of Arguments:
+
+  STRING    the output of a “gh” call
+            \(e.g. “gh search code ...”\)."
+  (let* ((query "")
+         (parts (string-split string "\t"))
+         (isPR (car parts))
+         (type (if (equal isPR "true") "pr" "issue"))
+         (repo (cadr parts))
+         (user (consult-gh--get-username repo))
+         (package (consult-gh--get-package repo))
+         (title (caddr parts))
+         (number (cadddr parts))
+         (state (upcase (cadddr (cdr parts))))
+         (date (substring (cadddr (cddr parts)) 0 10))
+         (tags (cadddr (cdddr parts)))
+         (tags (and (stringp tags) (progn (string-match "\\[map\\[\\(.*\\)\\]" tags)
+                                          (concat "[" (match-string 1 tags) "]"))))
+         (reason (cadddr (cddr (cdddr parts))))
+         (reason-str (cond
+                      ((string-prefix-p "Assigned to" reason) "assigned")
+                      ((string-prefix-p "Authored by" reason) "owned")
+                      ((string-prefix-p "Mentions " reason) "mentions")
+                      ((string-prefix-p "Involves " reason) "involves")
+                      ((string-prefix-p "Involves " reason) "request")))
+         (url (cadddr (cdddr (cdddr parts))))
+         (face (pcase isPR
+                 ("false"
+                  (pcase state
+                    ("CLOSED" 'consult-gh-success-face)
+                    ("OPEN" 'consult-gh-warning-face)
+                    (_ 'consult-gh-issue-face)))
+                 ("true"
+                  (pcase state
+                    ("CLOSED" 'consult-gh-error-face)
+                    ("MERGED" 'consult-gh-success-face)
+                    ("OPEN" 'consult-gh-warning-face)
+                    (_ 'consult-gh-pr-face)))
+                 (_ 'consult-gh-issue-face)))
+         (str (concat (consult-gh--set-string-width
+                       (concat (propertize (format "%s" user) 'face 'consult-gh-user-face)
+                               "/"
+                               (propertize (format "%s" package) 'face 'consult-gh-package-face)
+
+                               (propertize (format " - %s #%s: " (upcase (substring type 0 2)) number) 'face face)
+                               (propertize (format "%s" title) 'face 'consult-gh-default-face)) 85)
+                      (when reason-str (concat "\s\s" (propertize (consult-gh--set-string-width reason-str 8) 'face 'consult-gh-visibility-face)))
+                      (when date (concat "\s\s" (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)))
+                      (when state (concat "\s\s" (propertize (consult-gh--set-string-width state 6) 'face face)))
+                      (when tags (concat "\s\s" (propertize tags 'face 'consult-gh-tags-face)))))
+         (str (propertize str
+                          :repo repo
+                          :user user
+                          :package package
+                          :number number
+                          :state state
+                          :title title
+                          :tags tags
+                          :date date
+                          :query query
+                          :type type
+                          :url url
+                          :reason reason)))
+    (cons str  (list :repo repo
+                     :user user
+                     :number number
+                     :state state
+                     :title title
+                     :tags tags
+                     :date date
+                     :query query
+                     :type type
+                     :url url
+                     :reason reason))))
+
+(defun consult-gh--dashboard-lookup ()
+  "Lookup function for dashboard candidates.
+
+This is passed as LOOKUP to `consult--read' in `consult-gh-dashboard'
+and is used to format the output when a candidate is selected."
+  (lambda (sel cands &rest _)
+    (let* ((info (cdr (assoc sel cands)))
+           (repo (plist-get info :repo))
+           (title (plist-get info :title))
+           (type (plist-get info :type))
+           (number (plist-get info :number))
+           (url (plist-get info :url)))
+      (pcase type
+        ("issue"
+         (cons (format "%s - %s #%s: %s" repo type number title) (plist-put info :issue number)))
+        ("pr"
+         (cons (format "%s - %s #%s: %s" repo type number title) (plist-put info :pr number)))
+        (_
+         (cons (format "%s - %s #%s: %s" repo type number title) info))))))
+
+(defun consult-gh--dashboard-state ()
+  "State function for dashboard candidates.
+
+This is passed as STATE to `consult--read' in `consult-gh-dashboard'
+and is used to preview or do other actions on the code."
+  (lambda (action cand)
+    (let* ((preview (consult--buffer-preview)))
+      (pcase action
+        ('preview
+         (if (and consult-gh-show-preview cand)
+             (when-let ((repo (plist-get (cdr cand) :repo))
+                        (type (plist-get (cdr cand) :type))
+                        (number (plist-get (cdr cand) :number))
+                        (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
+               (cond
+                ((equal type "issue")
+                 (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer)
+                 (funcall preview action buffer))
+                ((equal type "pr")
+                 (consult-gh--pr-view (format "%s" repo) (format "%s" number) buffer)
+                 (funcall preview action buffer))
+                (t (message "Preview is not supoorted for items that are not issues or pull requests!"))))))
+        ('return
+         cand)))))
+
+(defun consult-gh--dashboard-group-by-date (cand transform)
+  "Group function for dashboard candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
+and is used to group issues by their update date.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (upcase (get-text-property 0 :date cand))))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--dashboard-group-by-type (cand transform)
+  "Group function for dashboard candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
+and is used to group issues by their state e.g. “Open”, “Closed”, “Merged”,
+etc.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (upcase (get-text-property 0 :type cand))))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--dashboard-group-by-reason (cand transform)
+  "Group function for dashboard candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
+and is used to group dashboard items by reason e.g. “Mentions”, “Assigned”,
+“Review Requested”, etc.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (get-text-property 0 :reason cand)))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--dashboard-group-by-repo (cand transform)
+  "Group function for dashboard candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
+and is used to group items in the dashboard by repository names.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (car (last (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s")))))))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--dashboard-action (cand)
+  "View dashboard item, CAND.
+
+This is an internal action function that gets a dashboard candidate, CAND,
+from `consult-gh-dashboard' and passes it to default actions for issues or
+prs, discussions, etc.
+
+To use this as the default action for issues,
+set `consult-gh-dashboard-action' to `consult-gh--dashboard-action'."
+
+(let* ((info (cdr cand))
+       (repo (plist-get info :repo))
+       (type (plist-get info :type))
+       (number (plist-get info :number))
+       (url (plist-get info :url)))
+  (cond
+    ((equal type "issue")
+     (funcall consult-gh-issue-action cand))
+    ((equal type "pr")
+     (funcall consult-gh-pr-action cand))
+    (url
+     (browse-url url))
+    (t
+     (message "cannot open that with `consult-gh--dashboard-action'!")))))
+
+(defun consult-gh--dashboard-browse-url-action (cand)
+  "Browse the url for a dashboard candidate, CAND.
+
+This is an internal action function that gets a dashboard candidate, CAND,
+from `consult-gh-dashboard' and opens the url of the issue/pr
+in an external browser.
+
+To use this as the default action for issues,
+set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
+  (let* ((info (cdr cand))
+         (repo (substring-no-properties (plist-get info :repo)))
+         (type (substring-no-properties (plist-get info :type)))
+         (url (substring-no-properties (plist-get info :type))))
+    (if url (browse-url url))))
+
+(defun consult-gh--notifications-format (string)
+  "Format minibuffer candidates for notifications.
+
+Description of Arguments:
+
+  STRING    the output of a “gh” call
+            \(e.g. “gh search code ...”\)."
+  (let* ((query "")
+         (parts (string-split string "\t"))
+         (type (car parts))
+         (repo (cadr parts))
+         (user (consult-gh--get-username repo))
+         (package (consult-gh--get-package repo))
+         (title (caddr parts))
+         (reason (cadddr parts))
+         (unread (cadddr (cdr parts)))
+         (face (pcase unread
+                 ("true" 'consult-gh-warning-face)
+                 ("false" 'default)
+                 (_ 'consult-gh-default-face)))
+         (state (pcase unread
+                  ("true" "unread")
+                  ("false" "seen")
+                  (_ "unknown")))
+         (date (substring (cadddr (cddr parts)) 0 10))
+         (reltime (cadddr (cddr parts)))
+         (url (cadddr (cdr (cdddr parts))))
+         (url-parts (and (stringp url) (split-string url "/" t)))
+         (id (and url-parts
+                  (or
+                   (cadr (member "issues" url-parts))
+                   (cadr (member "pulls" url-parts)))))
+         (issue (if (equal type "Issue") id))
+         (pr (if (equal type "PullRequest") id))
+         (str (format "%s\s\s%s\s\s%s"
+                      (consult-gh--set-string-width
+                       (concat (propertize (format "%s" repo) 'face 'consult-gh-repo-face)
+                               " - "
+                               (propertize (concat type (if id " #") id) 'face face)
+                               ": "
+                               (propertize (format "%s" title) 'face 'consult-gh-default-face)) 100)
+                      (propertize (consult-gh--set-string-width (propertize state 'face face) 7) 'face face)
+                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)))
+         (str (propertize str
+                          :repo repo
+                          :user user
+                          :package package
+                          :id id
+                          :issue issue
+                          :pr pr
+                          :reason reason
+                          :state state
+                          :title title
+                          :date date
+                          :reltime reltime
+                          :query query
+                          :type type
+                          :url url
+                          :reason reason)))
+    (cons str  (list :repo repo
+                     :user user
+                     :package package
+                     :id id
+                     :issue issue
+                     :pr pr
+                     :reason reason
+                     :state state
+                     :title title
+                     :date date
+                     :reltime reltime
+                     :query query
+                     :type type
+                     :url url
+                     :reason reason))))
+
+(defun consult-gh--notifications-lookup ()
+  "Lookup function for code candidates.
+
+This is passed as LOOKUP to `consult--read' in `consult-gh-notifications'
+and is used to format the output when a candidate is selected."
+  (lambda (sel cands &rest _)
+    (let* ((info (cdr (assoc sel cands)))
+           (repo (plist-get info :repo))
+           (type (plist-get info :type))
+           (id (plist-get info :id))
+           (title (plist-get info :title)))
+      (cons (concat repo " - " type (when id (concat " #" id)) ":" title) info))))
+
+(defun consult-gh--notifications-state ()
+  "State function for code candidates.
+
+This is passed as STATE to `consult--read' in `consult-gh-notifications'
+and is used to preview or do other actions on the code."
+  (lambda (action cand)
+    (let* ((preview (consult--buffer-preview)))
+      (pcase action
+        ('preview
+         (if (and consult-gh-show-preview cand)
+             (let* ((repo (plist-get (cdr cand) :repo))
+                    (type (plist-get (cdr cand) :type))
+                    (id (plist-get (cdr cand) :id))
+                    (issue (plist-get (cdr cand) :issue))
+                    (pr (plist-get (cdr cand) :pr))
+                    (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
+               (cond
+                (issue (consult-gh--issue-view (format "%s" repo) (format "%s" issue) buffer))
+                (pr (consult-gh--pr-view (format "%s" repo) (format "%s" pr) buffer))
+                (t (message "Preview not supported for %s items" type)))
+
+               (when (or issue pr) (funcall preview action
+                        buffer)))))
+        ('return
+         cand)))))
+
+(defun consult-gh--notifications-group-by-date (cand transform)
+  "Group function for notification candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-notification',
+and is used to group notifications by their update date.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (upcase (get-text-property 0 :date cand))))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--notifications-group-by-relative-timeago (cand transform)
+  "Group function for notification candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-notification',
+and is used to group notifications by their update date.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (upcase (get-text-property 0 :reltime cand))))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--notifications-group-by-type (cand transform)
+  "Group function for notification candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-notification',
+and is used to group notifications by their type e.g. “issue”, “pr”, etc.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (upcase (get-text-property 0 :type cand))))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--notifications-group-by-reason (cand transform)
+  "Group function for notifications candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-notifications',
+and is used to group dashboard items by reason e.g. “subscribed” or “assigned”, etc.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (get-text-property 0 :reason cand)))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--notifications-group-by-repo (cand transform)
+  "Group function for notification candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-notification',
+and is used to group notifications by their repository
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (upcase (get-text-property 0 :repo cand))))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--notifications-group-by-state (cand transform)
+  "Group function for notification candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-notification',
+and is used to group notifications by their state e.g. “unread” or “seen”
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let ((name (upcase (get-text-property 0 :state cand))))
+    (if transform (substring cand) name)))
+
+(defun consult-gh--discussion-browse-url (repo title &optional date)
+  "Browse the url for a discussion in REPO with TITLE.
+
+Optional argument DATE is latest updated date of discussion."
+
+  (let* ((filter (concat (format "filter=%s in:title repo:%s" title repo)
+                         (when date (format " updated:>=%s" date))))
+         (query "query=query($filter: String!) {search(query: $filter, type: DISCUSSION, first: 1) { nodes { ... on Discussion { number }}}}")
+         (id (consult-gh--command-to-string "api" "graphql" "--paginate" "--cache" "24h" "-F" filter "-f" query "--template" "{{(index .data.search.nodes 0).number}}"))
+         (url (concat "https://" (consult-gh--auth-account-host) (format "/%s/discussions/%s" repo id))))
+    (when url (browse-url url))))
+
+(defun consult-gh--discussion-browse-url-action (cand)
+  "Open the discussion of CAND thread in the browser CAND.
+
+This is a wrapper function around `consult-gh--discussion-browse-url'.
+It parses CAND to extract relevant values
+\(e.g. repository's name and discussion title\)
+and passes them to `consult-gh--discussion-browse-url'.
+
+To use this as the default action for discussions,
+set `consult-gh-discussion-action' to `consult-gh--discussion-browse-url-action'."
+  (let* ((info (cdr cand))
+         (repo (substring-no-properties (plist-get info :repo)))
+         (title (substring-no-properties (format "%s" (plist-get info :title))))
+         (date (substring-no-properties (plist-get info :date))))
+    (consult-gh--discussion-browse-url repo title date)))
+
+(defun consult-gh--notifications-action (cand)
+  "View notification item, CAND.
+
+This is an internal action function that gets a notification candidate, CAND,
+from `consult-gh-notifications' and passes it to default actions for issues or
+prs, discussions, etc.
+
+To use this as the default action for issues,
+set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
+
+(let* ((info (cdr cand))
+       (repo (plist-get info :repo))
+       (type (plist-get info :type))
+       (issue (plist-get info :issue))
+       (pr (plist-get info :pr))
+       (discussion (equal type "Discussion"))
+       (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
+  (cond
+    (issue
+     (funcall consult-gh-issue-action cand))
+    (pr
+     (funcall consult-gh-pr-action cand))
+    (discussion
+     (funcall consult-gh-discussion-action cand))
+    (t
+     (browse-url url)))))
+
+(defun consult-gh--notifications-browse-url-action (cand)
+  "Browse the url for a notification candidate, CAND.
+
+This is an internal action function that gets a notification candidate, CAND,
+from `consult-gh-notifications' and opens the url with relevant notifications
+in an external browser.
+
+To use this as the default action for issues,
+set `consult-gh-notificatios-action' to `consult-gh--notifications-browse-url-action'."
+  (if-let* ((info (cdr cand))
+            (repo (substring-no-properties (plist-get info :repo)))
+            (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
+    (browse-url url)
+    (message "Cannot find the right url to open!")))
+
 ;;;###autoload
 (defun consult-gh-auth-switch (&optional host user)
   "Switch between authenticated accounts.
@@ -2667,7 +3223,8 @@ Description of Arguments:
                    :group #'consult-gh--repo-group
                    :add-history (append (list
                                          (if current-repo
-                                             (consult--async-split-initial (consult-gh--get-username current-repo))) (consult--async-split-thingatpt 'symbol))
+                                             (consult--async-split-initial (consult-gh--get-username current-repo)))
+                                         (consult--async-split-thingatpt 'symbol))
                                         consult-gh--known-orgs-list)
                    :history '(:input consult-gh--orgs-history)
                    :require-match t
@@ -2994,7 +3551,8 @@ Description of Arguments:
          :group #'consult-gh--issue-group-by-state
          :require-match t
          :category 'consult-gh-issues
-         :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
+         :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
+                                    (consult--async-split-thingatpt 'symbol))
                               consult-gh--known-repos-list)
          :history '(:input consult-gh--repos-history)
          :preview-key consult-gh-preview-key
@@ -3567,6 +4125,156 @@ INITIAL is an optional arg for the initial input in the minibuffer
     (if noaction
         sel
       (funcall consult-gh-file-action sel))))
+
+(defun consult-gh--dashboard-collect-assigned (&optional user &rest args)
+  "Find all the Issues/PRs assigned to USER."
+  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Assigned to %s" (or user "me")) "\n" "{{end}}") "--assignee" (or user "@me")))
+        (prs (consult-gh--command-to-string "search" "prs" "--state" consult-gh-prs-state-to-show "--sort" "updated" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Review Requested from %s" (or user "me")) "\n" "{{end}}") "--review-requested" (or user "@me"))))
+  (append (and (stringp issues) (cl-delete-duplicates (delq nil (split-string issues "\n\\|\r" t))))
+          (and (stringp prs) (cl-delete-duplicates (delq nil (split-string prs "\n\\|\r" t)))))))
+
+(defun consult-gh--dashboard-collect-author (&optional user &rest args)
+  "Find all the Issues/PRs authored by USER."
+  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Authored by %s" (or user "me")) "\n" "{{end}}") "--author" (or user "@me"))))
+    (and (stringp issues) (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
+
+(defun consult-gh--dashboard-collect-involves (&optional user &rest args)
+  "Find all the Issues/PRs that involve USER."
+  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--involves" (or user "@me") "--" "-author:" (or user "@me"))))
+    (and (stringp issues) (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
+
+(defun consult-gh--dashboard-collect-mentions (&optional user &rest args)
+  "Find all the Issues/PRs that mention USER."
+  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}"  "\t" (format "Mentions %s" (or user "me")) "\n" "{{end}}") "--mentions" (or user "@me"))))
+    (and (stringp issues) (cl-delete-duplicates (delq nil (string-split issues  "\n\\|\r" t))))))
+
+(defun consult-gh--dashboard-items (&optional user &rest args)
+  "Find all the relevant Issues/PRs for USER."
+  (let* ((items (list)))
+    (cl-loop for func in consult-gh-dashboard-items-functions
+             do (setq items (append items (cl-delete-duplicates (delq nil (apply func user args))))))
+    (mapcar #'consult-gh--dashboard-format items)))
+
+(defun consult-gh--dashboard (prompt &optional initial user)
+  "Search USER's work on GitHub.
+
+This is a non-interactive internal function.
+For the interactive version see `consult-gh-dashboard'.
+
+This searches relevant (e.g. mentioned, owned, review-requested, etc.)
+issues and pull-requests for the USER.
+
+Description of Arguments:
+
+  PROMPT  the prompt in the minibuffer
+          \(passed as PROMPT to `consult--red'\)
+  USER    name of the GitHub user/or organization.
+  INITIAL an optional arg for the initial input in the minibuffer.
+          \(passed as INITITAL to `consult--read'\)"
+  (consult-gh-with-host (consult-gh--auth-account-host)
+                        (if-let ((candidates (consult-gh--dashboard-items user)))
+                            (consult--read
+                             candidates
+                             :prompt prompt
+                             :lookup (consult-gh--dashboard-lookup)
+                             :state (funcall #'consult-gh--dashboard-state)
+                             :initial initial
+                             :group consult-gh-dashboard-group-function
+                             :require-match t
+                             :history 'consult-gh--search-issues-history
+                             :category 'consult-gh-issues
+                             :preview-key consult-gh-preview-key
+                             :sort t)
+                          (progn
+                            (message "no items in the dashboard")
+                            nil))))
+
+;;;###autoload
+(defun consult-gh-dashboard (&optional initial user noaction)
+  "Search GitHub for USER's work on GitHub.
+
+This is an interactive wrapper function around
+`consult-gh--dashboard'.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-issue-action'
+
+INITIAL is an optional arg for the initial input in the minibuffer."
+  (interactive)
+  (let* ((sel (consult-gh--dashboard "Search Dashboard:  " initial user)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (consp sel) (plist-get (cdr sel) :repo))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (consp sel) (plist-get (cdr sel) :user))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (and (consp sel) (funcall consult-gh-dashboard-action sel)))))
+
+(defun consult-gh--notifications-items ()
+  "Find all the user's notifications."
+  (let* ((notifications (string-split (apply #'consult-gh--command-to-string consult-gh-notifications-args) "\n\\|\r" t)))
+(cl-delete-duplicates (delq nil (mapcar (lambda (string) (consult-gh--notifications-format string)) notifications)))))
+
+(defun consult-gh--notifications (prompt &optional initial)
+  "Search GitHub issues asynchronously.
+
+This is a non-interactive internal function.
+For the interactive version see `consult-gh-search-issues'.
+
+This runs the command line from `consult-gh--search-issues-builder' in
+an async process and returns the results \(list of search results
+for the input\) as a completion table in minibuffer.  The completion table
+gets dynamically updated as the user types in the minibuffer.
+Each candidate is formatted by `consult-gh--search-issues-transform'
+to add annotation and other info to the candidate.
+
+Description of Arguments:
+
+  PROMPT  the prompt in the minibuffer
+          \(passed as PROMPT to `consult--red'\)
+  BUILDER an async builder function passed to `consult--async-command'.
+  INITIAL an optional arg for the initial input in the minibuffer.
+          \(passed as INITITAL to `consult--read'\)"
+  (consult-gh-with-host (consult-gh--auth-account-host)
+                        (if-let ((candidates (consult-gh--notifications-items)))
+                            (consult--read
+                             candidates
+                             :prompt prompt
+                             :lookup (consult-gh--notifications-lookup)
+                             :state (funcall #'consult-gh--notifications-state)
+                             :initial initial
+                             :group consult-gh-notifications-group-function
+                             :require-match t
+                             :history 'consult-gh--notifications-history
+                             :category 'consult-gh-notifications
+                             :preview-key consult-gh-preview-key
+                             :sort nil)
+                          (progn (message "No new notifications!") nil))))
+
+;;;###autoload
+(defun consult-gh-notifications (&optional initial repo noaction)
+  "Search GitHub for User's work on GitHub.
+
+This is an interactive wrapper function around
+`consult-gh--dashboard'.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-issue-action'
+
+INITIAL is an optional arg for the initial input in the minibuffer."
+  (interactive)
+  (let* ((sel (consult-gh--notifications "Select Notification:  " initial)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (plistp sel) (plist-get (cdr sel) :repo))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (plistp sel) (plist-get (cdr sel) :user))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (and (consp sel) (funcall consult-gh-notifications-action sel)))))
 
 (defun consult-gh (&rest args)
   "Convinient wrapper function for favorite interactive command.
