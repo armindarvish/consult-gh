@@ -3,7 +3,6 @@
 #+language: en
 
 * Development
-* Version 1.1 (2024-09-25)
 - Package is now on MELPA
 - Adds support for switching accounts (multi-account)
 - Adds support for alternative hosts (e.g. GitHub Enterprise)
