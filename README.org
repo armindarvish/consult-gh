@@ -138,13 +138,12 @@ Clone this repo and make sure the files are on your load path, as described on [
 
 
 ** Configuration
-=consult-gh= is built with the idea that the user should be able to customize everything based on their use-case. In fact, the default configurations are minimal and prioritize performance over usability, therefore the user is very much expected to configure =consult-gh= according to their use case. For example, with the default configuration, when selecting a repository, =consult-gh= opens the link in a browser, but you can configure the package to show the README or browse branches and files inside Emacs or do something else (e.g. clone the repository). Therefore, I recommend you read through this section and understand how to configure the package according to your needs and for your specific use-case, but if you just want a drop-in minimal config, look at the snippet below and make sure you set the =consult-gh-default-orgs-list= to your own GitHub username instead of "armindarvish":
+=consult-gh= is built with the idea that the user should be able to customize everything based on their use-case. In fact, the default configurations are minimal and prioritize performance over usability, therefore the user is very much expected to configure =consult-gh= according to their use case. For example, with the default configuration, when selecting a repository, =consult-gh= opens the link in a browser, but you can configure the package to show the README or browse branches and files inside Emacs or do something else (e.g. clone the repository). Therefore, I recommend you read through this section and understand how to configure the package according to your needs and for your specific use-case, but if you just want a drop-in minimal config to test the package, look at the snippet below:
 
 #+begin_src emacs-lisp
 (use-package consult-gh
   :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
   :after consult
-
   :config
   ;; set the default accounts for qucik access to your own repos
   (setq consult-gh-default-orgs-list (consult-gh--get-current-orgs t))
@@ -158,6 +157,8 @@ Clone this repo and make sure the files are on your load path, as described on [
   (setq consult-gh-default-clone-directory "~/"))
 
 #+end_src
+
+For more advanced configurations, read the customization section below and see [[id:F7C9FF9F-80A3-4EEC-97CE-6EEC02B5DD75][example configs]].
 
 *** Customization
 For the full list and descriptios of the custom variables please refer to the documentation or use emacs's customize interface by =M-x customize= or =(customize 'consult-gh)=. Here is a list of the most important custom varibales with brief description:
@@ -337,6 +338,9 @@ This variable determines if =consult-gh= highlights search terms, code snippets,
 
 
 *** Example Customization for Good Performance and Functionality
+:PROPERTIES:
+:ID:       F7C9FF9F-80A3-4EEC-97CE-6EEC02B5DD75
+:END:
 Here is a good customization for great performance as well as functionality:
 
 #+begin_src emacs-lisp
@@ -364,17 +368,16 @@ Here is a good customization for great performance as well as functionality:
 (add-to-list 'savehist-additional-variables 'consult-gh--known-repos-list))
 
 
+;; Install `consult-gh-embark' for embark actions
 (use-package consult-gh-embark
 :config
 (consult-gh-embark-mode +1))
 
+;; Install `consult-gh-forge' for forge actions
 (use-package consult-gh-forge
 :config
 (consult-gh-forge-mode +1)
-(setq consult-gh-forge-timeout-seconds 20)
-)
-
-
+(setq consult-gh-forge-timeout-seconds 20))
 
 #+end_src
 
