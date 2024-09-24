@@ -239,7 +239,10 @@ in auth sources.
 See `ghub--token' for definition of NOCREATE and FORGE as well as
 more info."
   (let* ((user (ghub--ident username package))
-         (host (if (equal host ghub-default-host) (string-trim-left ghub-default-host "api.") host))
+         (host (cond ((equal host ghub-default-host)
+                      (string-trim-left ghub-default-host "api."))
+                     ((string-suffix-p "/api" host) (string-trim-right host "/api"))
+                     (t host)))
          (cmd-args (append '("auth" "token")
                            (and username `("-u" ,username))
                            (and host `("-h" ,host))))
@@ -337,7 +340,7 @@ default behavior of `ghub--host' to allow using
                                          :sort nil
                                          :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
                                                                     (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
-                        consult-gh-host)))
+                        (or consult-gh-host ghub-host))))
             (if (and host (not (string-empty-p host))) host
               (cl-call-next-method)))))))
 
