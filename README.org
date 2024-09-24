@@ -7,6 +7,7 @@
 
 #+html: <a href="https://github.com/armindarvish"><img alt="Armin Darvish" src="https://img.shields.io/static/v1?label=Armin%20Darvish&message=consult-gh&color=00A8B0&logo=github"/></a>
 #+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://img.shields.io/static/v1?label=Made%20For&message=GNU%20Emacs&color=7a5aba&logo=gnuemacs&logoColor=white"/></a>
+#+html: <a href="https://melpa.org/#/consult-gh"><img alt="MELPA" src="https://melpa.org/packages/consult-gh-badge.svg"/></a>
 
 **NOTICE**: Around Oct. 10th, 2023 there was a major update to use consult-async. This required re-implementing the package from scratch and may break old version. In the new version, there are many new features and functionalities including:
 - async search, i.e. dynamic update of completion table as user enters an entry
