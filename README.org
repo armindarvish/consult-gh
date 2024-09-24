@@ -1,7 +1,7 @@
 #+include: ~/OrgFiles/armin/org-macros.setup
 #+OPTIONS: h:1 num:nil toc:nil d:nil
 
-#+TITLE: =consult-gh= - A [[https://cli.github.com/][GitHub CLI]] client inside GNU Emacs using [[https://github.com/minad/consult][Consult]]
+#+TITLE: consult-gh - A [[https://cli.github.com/][GitHub CLI]] client inside GNU Emacs using [[https://github.com/minad/consult][Consult]]
 #+AUTHOR: Armin Darvish
 #+LANGUAGE: en
 
