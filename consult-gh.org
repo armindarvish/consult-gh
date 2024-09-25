@@ -155,16 +155,17 @@ Common options include:
  - A custom function                     A function that takes
                                          no input argument."
   :group 'consult-gh
-  :type '(choice (const :tag "Default Funciton" #'consult-gh-notifications-make-args)
+  :type '(choice (const :tag "Default Funciton" consult-gh-notifications-make-args)
                  (function :tag "Custom Function")))
 
 (defcustom consult-gh-dashboard-items-functions (list #'consult-gh--dashboard-collect-author #'consult-gh--dashboard-collect-assigned #'consult-gh--dashboard-collect-mentions #'consult-gh--dashboard-collect-involves)
-  "A list of functions for collecting items in `consult-gh-dashboard'
+  "A list of functions for collecting items in `consult-gh-dashboard'.
 
 Each function in this list gets called in `consult-gh--dashboard-items'.
 The function should accept an optional arg for user and
-should return a list of candidates (relevant issues/pr for the user) to be used in
-`consult-gh-dashboard'. For an example see `consult-gh--dashboard-collect-author'."
+should return a list of candidates (relevant issues/pr for the user) to be
+used in `consult-gh-dashboard'.  For an example see
+`consult-gh--dashboard-collect-author'."
   :group 'consult-gh
   :type '(repeat function))
 
@@ -183,10 +184,12 @@ pulling files for viewing."
 
 This is passed as FORMAT-STRING to `format-time-string' for naming
 temporary diretories."
+  :group 'consult-gh
   :type 'string)
 
 (defcustom consult-gh-temp-tempdir-cache 300
   "Time in seconds before making a new temp directory."
+  :group 'consult-gh
   :type 'string)
 
 (defcustom consult-gh-repo-maxnum 30
@@ -304,6 +307,18 @@ Choices are:
   :type '(choice (const :tag "(Default) Use markdown mode" markdown-mode)
                  (const :tag "Use org mode" org-mode)
                  (const :tag "Use fundamental-mode" nil)))
+
+(defcustom consult-gh-topic-comment-mode 'markdown-mode
+  "Major mode for editing comments on issues or pull requests.
+
+Choices are:
+  - \='nil            Use \='text-mode
+  - \='markdown-mode  Use \='markdown-mode when available
+  - \='org-mode       Use \='org-mode"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use markdown mode" markdown-mode)
+                 (const :tag "Use org mode" org-mode)
+                 (const :tag "Use text-mode" nil)))
 
 (make-obsolete-variable 'consult-gh-preview-buffer-mode "Use `consult-gh-repo-preview-mode', or `consult-gh-issue-preview-mode' instead." "1.1")
 
@@ -521,10 +536,11 @@ Common options include:
 
 Common options include:
 
- - `consult-gh--discussion-browse-url-action' Opens the notification url  in default browser
- - A custom function                     A function that takes
-                                         only 1 input argument,
-                                         the notification candidate."
+ - `consult-gh--discussion-browse-url-action' Opens the notification url
+                                              in default browser
+ - A custom function                          A function that takes
+                                              only 1 input argument,
+                                              the notification candidate."
   :group 'consult-gh
   :type '(choice (const :tag "Browse the Discussion URL" consult-gh--discussion-browse-url-actionn)
                  (function :tag "Custom Function")))
@@ -692,14 +708,14 @@ This is used in `consult-gh-notifications'.")
   "Current temporary directory.")
 
 (defvar consult-gh--current-input nil
-"Current input of user query.")
+  "Current input of user query.")
 
 (defvar consult-gh--auth-current-account nil
   "Current logged-in and active account.
 This is a list of \='(USERNAME HOST IF-ACTIVE)")
 
 (defvar consult-gh-default-host "github.com"
-"Defualt host of GitHub.")
+  "Defualt host of GitHub.")
 #+end_src
 
 ** Define faces
@@ -1944,7 +1960,7 @@ the optional input, BUFFER.  If BUFFER is nil, a buffer named by
 
 If `consult-gh-repo-preview-mode' is non-nil, uses it to set the
 major-mode, otherwise uses the major mode associated with the README's
-file extension (.e.g. .md, .org, .rst).
+file extension (e.g. .md, .org, .rst).
 
 Description of Arguments:
 
@@ -2484,7 +2500,7 @@ set `consult-gh-issue-action' to `consult-gh--issue-browse-url-action'."
 
 ******* view issue
 #+begin_src emacs-lisp
-(defun consult-gh--issue-view (repo issue &optional buffer)
+(defun consult-gh--issue-view (repo issue &optional buffer title)
   "Open ISSUE of REPO in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of a
@@ -2499,15 +2515,20 @@ in a buffer named by `consult-gh-preview-buffer-name'.
 If `consult-gh-issue-preview-mode' is non-nil, uses it as
 major-mode, otherwise shows the raw text in \='fundamental-mode.
 
-REPO is the name of the repository to be previewed.
-ISSUE is the issue number
-BUFFER is an optional buffer the preview should be shown in.
+Description of Arguments:
+
+  REPO is the name of the repository to be previewed.
+  ISSUE is the issue number
+  BUFFER is an optional buffer the preview should be shown in.
+  TITLE  is an optional title string
 
 To use this as the default action for repos,
 see `consult-gh--issue-view-action'."
-  (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-        (text-main (cadr (consult-gh--call-process "issue" "view" issue "--repo" repo)))
-        (text-comments (cadr (consult-gh--call-process "issue" "view" issue "--repo" repo "--comments"))))
+  (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
+         (text-main (cadr (consult-gh--call-process "issue" "view" issue "--repo" repo)))
+         (title (or title (and (stringp text-main) (car-safe (split-string text-main "\n" t)))))
+         (title (and (stringp title) (string-trim-left title "title:\t")))
+         (text-comments (cadr (consult-gh--call-process "issue" "view" issue "--repo" repo "--comments"))))
     (with-current-buffer buffer
       (erase-buffer)
       (insert (string-trim text-main))
@@ -2525,6 +2546,9 @@ see `consult-gh--issue-view-action'."
          (let ((org-display-remote-inline-images 'download))
            (consult-gh--markdown-to-org buffer)))
         (_ ()))
+      (consult-gh-issue-view-mode +1)
+      (defvar-local consult-gh--topic (list))
+      (setq-local consult-gh--topic (list (format "%s/#%s" repo issue) :repo repo :type "issue" :number issue :title title))
       (current-buffer))))
 
 (defun consult-gh--issue-view-action (cand)
@@ -2738,7 +2762,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-browse-url-action'."
 
 ******* view pr
 #+begin_src emacs-lisp
-(defun consult-gh--pr-view (repo pr &optional buffer)
+(defun consult-gh--pr-view (repo pr &optional buffer title)
   "Open pull request, PR of REPO in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of a repository
@@ -2758,11 +2782,14 @@ Description of Arguments:
   REPO   the full name of the repository to be previewed.
   PR     pull request number
   BUFFER an optional buffer the preview should be shown in.
+  TITLE  is an optional title string
 
 To use this as the default action for PRs,
 see `consult-gh--pr-view-action'."
-  (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
+  (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
         (text-main (cadr (consult-gh--call-process "pr" "view" pr "--repo" repo)))
+        (title (or title (and (stringp text-main) (car-safe (split-string text-main "\n" t)))))
+        (title (and (stringp title) (string-trim-left title "title:\t")))
         (text-comments (cadr (consult-gh--call-process "pr" "view" pr "--repo" repo "--comments"))))
     (with-current-buffer buffer
       (erase-buffer)
@@ -2781,6 +2808,9 @@ see `consult-gh--pr-view-action'."
          (let ((org-display-remote-inline-images 'download))
            (consult-gh--markdown-to-org buffer)))
         (_ ()))
+      (consult-gh-pr-view-mode +1)
+      (defvar-local consult-gh--topic (list))
+      (setq-local consult-gh--topic (list (format "%s/#%s" repo pr) :repo repo :type "pr" :number pr :title title))
       (current-buffer))))
 
 (defun consult-gh--pr-view-action (cand)
@@ -3165,20 +3195,20 @@ prs, discussions, etc.
 To use this as the default action for issues,
 set `consult-gh-dashboard-action' to `consult-gh--dashboard-action'."
 
-(let* ((info (cdr cand))
-       (repo (plist-get info :repo))
-       (type (plist-get info :type))
-       (number (plist-get info :number))
-       (url (plist-get info :url)))
-  (cond
-    ((equal type "issue")
-     (funcall consult-gh-issue-action cand))
-    ((equal type "pr")
-     (funcall consult-gh-pr-action cand))
-    (url
-     (browse-url url))
-    (t
-     (message "cannot open that with `consult-gh--dashboard-action'!")))))
+  (let* ((info (cdr cand))
+         (repo (plist-get info :repo))
+         (type (plist-get info :type))
+         (number (plist-get info :number))
+         (url (plist-get info :url)))
+    (cond
+     ((equal type "issue")
+      (funcall consult-gh-issue-action cand))
+     ((equal type "pr")
+      (funcall consult-gh-pr-action cand))
+     (url
+      (browse-url url))
+     (t
+      (message "cannot open that with `consult-gh--dashboard-action'!")))))
 
 #+end_src
 ******* browse url
@@ -3204,8 +3234,8 @@ set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
 ****** cmd args
 #+begin_src emacs-lisp
 (defun consult-gh-notifications-make-args ()
-"Make cmd aerguments for notifications."
-(list "api" (concat "notifications?sort=updated" (if consult-gh-notifications-show-unread-only "" "&all=true")) "--paginate" "--template" (concat "{{range .}}" "{{.id}}" "\t" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""\n" "{{end}}")))
+  "Make cmd aerguments for notifications."
+  (list "api" (concat "notifications?sort=updated" (if consult-gh-notifications-show-unread-only "" "&all=true")) "--paginate" "--template" (concat "{{range .}}" "{{.id}}" "\t" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""\n" "{{end}}")))
 #+end_src
 ****** format
 
@@ -3331,7 +3361,7 @@ and is used to preview or do other actions on the code."
                 (t (message "Preview not supported for %s items" type)))
 
                (when (or issue pr) (funcall preview action
-                        buffer)))))
+                                            buffer)))))
         ('return
          cand)))))
 #+end_src
@@ -3379,7 +3409,8 @@ If TRANSFORM is non-nil, the CAND itself is returned."
   "Group function for notifications candidates, CAND.
 
 This is passed as GROUP to `consult--read' in `consult-gh-notifications',
-and is used to group dashboard items by reason e.g. “subscribed” or “assigned”, etc.
+and is used to group dashboard items by reason e.g. “subscribed” or
+“assigned”, etc.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
   (let ((name (get-text-property 0 :reason cand)))
@@ -3431,12 +3462,12 @@ Optional argument DATE is latest updated date of discussion."
   "Open the discussion of CAND thread in the browser CAND.
 
 This is a wrapper function around `consult-gh--discussion-browse-url'.
-It parses CAND to extract relevant values
-\(e.g. repository's name and discussion title\)
-and passes them to `consult-gh--discussion-browse-url'.
+It parses CAND to extract relevant values \(e.g. repository's name and
+discussion title\) and passes them to `consult-gh--discussion-browse-url'.
 
 To use this as the default action for discussions,
-set `consult-gh-discussion-action' to `consult-gh--discussion-browse-url-action'."
+set `consult-gh-discussion-action' to
+`consult-gh--discussion-browse-url-action'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
          (title (substring-no-properties (format "%s" (plist-get info :title))))
@@ -3456,35 +3487,36 @@ prs, discussions, etc.
 To use this as the default action for issues,
 set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
 
-(let* ((info (cdr cand))
-       (repo (plist-get info :repo))
-       (type (plist-get info :type))
-       (issue (plist-get info :issue))
-       (pr (plist-get info :pr))
-       (discussion (equal type "Discussion"))
-       (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
-  (cond
-    (issue
-     (funcall consult-gh-issue-action cand))
-    (pr
-     (funcall consult-gh-pr-action cand))
-    (discussion
-     (funcall consult-gh-discussion-action cand))
-    (t
-     (browse-url url)))
-t))
+  (let* ((info (cdr cand))
+         (repo (plist-get info :repo))
+         (type (plist-get info :type))
+         (issue (plist-get info :issue))
+         (pr (plist-get info :pr))
+         (discussion (equal type "Discussion"))
+         (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
+    (cond
+     (issue
+      (funcall consult-gh-issue-action cand))
+     (pr
+      (funcall consult-gh-pr-action cand))
+     (discussion
+      (funcall consult-gh-discussion-action cand))
+     (t
+      (browse-url url)))
+    t))
 #+end_src
 ******* find relevant notifications in the browser
 #+begin_src emacs-lisp
 (defun consult-gh--notifications-browse-url-action (cand)
   "Browse the url for a notification candidate, CAND.
 
-This is an internal action function that gets a notification candidate, CAND,
-from `consult-gh-notifications' and opens the url with relevant notifications
-in an external browser.
+This is an internal action function that gets a notification candidate,
+CAND, from `consult-gh-notifications' and opens the url with relevant
+notifications in an external browser.
 
 To use this as the default action for issues,
-set `consult-gh-notificatios-action' to `consult-gh--notifications-browse-url-action'."
+set `consult-gh-notificatios-action' to
+`consult-gh--notifications-browse-url-action'."
   (if-let* ((info (cdr cand))
             (repo (substring-no-properties (plist-get info :repo)))
             (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
@@ -3494,14 +3526,89 @@ set `consult-gh-notificatios-action' to `consult-gh--notifications-browse-url-ac
 ******* mark as read
 #+begin_src emacs-lisp
 (defun consult-gh--notifications-mark-as-read (cand)
-  "mark CAND as read.
+  "Mark CAND as read.
 
 This is an internal action function that gets a notification candidate, CAND,
 from `consult-gh-notifications' and makrs it as read."
-(when-let ((thread (plist-get (cdr cand) :thread)))
-  (print thread)
-(consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH")))
+  (when-let ((thread (plist-get (cdr cand) :thread)))
+    (consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH")))
 #+end_src
+
+** Minor Modes
+*** consult-gh-issue-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-issue-view-mode-map
+  :doc "Consult-gh topics keymap."
+  "C-c C-r" #'consult-gh-topics-create-comment)
+
+;;;###autoload
+(define-minor-mode consult-gh-issue-view-mode
+  "Minor-mode for viewing issues."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-issue-view"
+  :keymap consult-gh-issue-view-mode-map)
+#+end_src
+
+
+*** consult-gh-pr-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-pr-view-mode-map
+  :doc "Consult-gh topics keymap."
+  "C-c C-r" #'consult-gh-topics-create-comment)
+
+;;;###autoload
+(define-minor-mode consult-gh-pr-view-mode
+  "Minor-mode for viewing issues."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-pr-view"
+  :keymap consult-gh-pr-view-mode-map)
+#+end_src
+
+
+
+*** consult-gh-topics-edit-comment-mode
+#+begin_src emacs-lisp
+(defun consult-gh-topics-edit-comment-header-line ()
+  "Create `header-line-format' for consult-gh-topics."
+  (let* ((topic consult-gh--topic)
+         (info (cdr topic))
+         (repo (plist-get info :repo))
+         (type (plist-get info :type))
+         (number (plist-get info :number))
+         (title (plist-get info :title)))
+    (list
+     (concat "New comment on "
+             (buttonize (format "%s: %s #%s" (consult-gh--get-package repo) (upcase type) number)
+                        `(lambda (&rest _)
+                           (pcase ,type
+                             ("issue"
+                              (funcall consult-gh-issue-action (list ,repo :repo ,repo :issue ,number)))
+                             ("pr"
+                              (funcall consult-gh-pr-action (list ,repo :repo ,repo :pr ,number)))))))
+     ".  "
+     (substitute-command-keys "When done, use `\\[consult-gh-topics-comment-submit]' to submit or `\\[consult-gh-topics-comment-cancel]' to cancel."))))
+
+(defvar-keymap consult-gh-topics-edit-comment-mode-map
+  :doc "Consult-gh topics keymap."
+  "C-c C-c" #'consult-gh-topics-comment-submit
+  "C-c C-k" #'consult-gh-topics-comment-cancel)
+
+;;;###autoload
+(define-minor-mode consult-gh-topics-edit-comment-mode
+  "Minor-mode for viewing topics."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-topics-edit-comment"
+  :keymap consult-gh-topics-edit-comment-mode-map
+  (setq-local header-line-format (consult-gh-topics-edit-comment-header-line)))
+#+end_src
+
+
 ** Frontend Interactive Commands
 
 **** consult-gh-auth-switch
@@ -4651,46 +4758,53 @@ INITIAL is an optional arg for the initial input in the minibuffer
 ****** collect items
 ******** assigned to me or review requested
 #+begin_src emacs-lisp
-(defun consult-gh--dashboard-collect-assigned (&optional user &rest args)
+(defun consult-gh--dashboard-collect-assigned (&optional user &rest _)
   "Find all the Issues/PRs assigned to USER."
   (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Assigned to %s" (or user "me")) "\n" "{{end}}") "--assignee" (or user "@me")))
         (prs (consult-gh--command-to-string "search" "prs" "--state" consult-gh-prs-state-to-show "--sort" "updated" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Review Requested from %s" (or user "me")) "\n" "{{end}}") "--review-requested" (or user "@me"))))
-  (append (and (stringp issues) (cl-delete-duplicates (delq nil (split-string issues "\n\\|\r" t))))
-          (and (stringp prs) (cl-delete-duplicates (delq nil (split-string prs "\n\\|\r" t)))))))
+    (append (and (stringp issues)
+                 (cl-delete-duplicates (delq nil (split-string issues "\n\\|\r" t))))
+            (and (stringp prs)
+                 (cl-delete-duplicates (delq nil (split-string prs "\n\\|\r" t)))))))
 
 #+end_src
 ******** user's issues/prs
 #+begin_src emacs-lisp
-(defun consult-gh--dashboard-collect-author (&optional user &rest args)
+(defun consult-gh--dashboard-collect-author (&optional user &rest _)
   "Find all the Issues/PRs authored by USER."
   (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Authored by %s" (or user "me")) "\n" "{{end}}") "--author" (or user "@me"))))
-    (and (stringp issues) (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
+    (and (stringp issues)
+         (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
 
 #+end_src
 ******** involved
 #+begin_src emacs-lisp
-(defun consult-gh--dashboard-collect-involves (&optional user &rest args)
+(defun consult-gh--dashboard-collect-involves (&optional user &rest _)
   "Find all the Issues/PRs that involve USER."
   (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--involves" (or user "@me") "--" "-author:" (or user "@me"))))
-    (and (stringp issues) (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
+    (and (stringp issues)
+         (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
 
 #+end_src
 ******** mentions
 #+begin_src emacs-lisp
-(defun consult-gh--dashboard-collect-mentions (&optional user &rest args)
+(defun consult-gh--dashboard-collect-mentions (&optional user &rest _)
   "Find all the Issues/PRs that mention USER."
   (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}"  "\t" (format "Mentions %s" (or user "me")) "\n" "{{end}}") "--mentions" (or user "@me"))))
-    (and (stringp issues) (cl-delete-duplicates (delq nil (string-split issues  "\n\\|\r" t))))))
+    (and (stringp issues)
+         (cl-delete-duplicates (delq nil (string-split issues  "\n\\|\r" t))))))
 
 #+end_src
 ******** all
 #+begin_src emacs-lisp
 (defun consult-gh--dashboard-items (&optional user &rest args)
-  "Find all the relevant Issues/PRs for USER."
+  "Find all the relevant Issues/PRs for USER.
+ARGS are extra arguments that will be passed to each funciton
+in `consult-gh-dashboard-items-functions'."
   (let* ((items (list)))
     (cl-loop for func in consult-gh-dashboard-items-functions
              do (setq items (append items (cl-delete-duplicates (delq nil (apply func user args))))))
-    (mapcar #'consult-gh--dashboard-format items)))
+    (mapc #'consult-gh--dashboard-format items)))
 
 
 #+end_src
@@ -4767,7 +4881,8 @@ INITIAL is an optional arg for the initial input in the minibuffer."
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
   (let* ((notifications (string-split (apply #'consult-gh--command-to-string (funcall consult-gh-notifications-args-func)) "\n\\|\r" t)))
-(cl-delete-duplicates (delq nil (mapcar (lambda (string) (consult-gh--notifications-format string)) notifications)))))
+    (cl-delete-duplicates (delq nil (mapcar (lambda (string) (consult-gh--notifications-format string))
+                                            notifications)))))
 
 #+end_src
 
@@ -4820,7 +4935,7 @@ Description of Arguments:
 
 This is an interactive wrapper function around
 `consult-gh--dashboard'.
-
+If optonal argument REPO is non-nil, limits items to specifie REPO.
 Upon selection of a candidate either
  - if NOACTION is non-nil  candidate is returned
  - if NOACTION is nil      candidate is passed to `consult-gh-issue-action'
@@ -4841,7 +4956,75 @@ INITIAL is an optional arg for the initial input in the minibuffer."
 #+end_src
 
 
+**** commenting on topics
+
+***** consult-gh-topics-comment-cancel
+#+begin_src emacs-lisp
+(defun consult-gh-topics-comment-cancel ()
+  "Cancel comment."
+  (interactive)
+  (kill-buffer (current-buffer)))
+#+end_src
+***** consult-gh-topics-comment-submit
+#+begin_src emacs-lisp
+(defun consult-gh-topics-comment-submit (&optional topic)
+  "Submit comment on TOPIC."
+  (interactive)
+  (save-mark-and-excursion
+    (let* ((text (buffer-string))
+           (topic (or topic consult-gh--topic))
+           (info (cdr topic))
+           (repo (plist-get info :repo))
+           (type (plist-get info :type))
+           (number (plist-get info :number)))
+      (when text
+        (if (string-empty-p text)
+            (message "Comment is empty!")
+          (pcase type
+            ((or "issue" "pr")
+             (and
+              (consult-gh--command-to-string "api" (format "repos/%s/issues/%s/comments" repo number) "-f" (format "body=%s" text))
+              (kill-buffer)))
+            ("discussion"
+             (message "Commenting on discussions is not supported, yet!"))))))))
+
+(defun consult-gh-topics-create-comment (&optional topic)
+  "Interactivel create a new comment post on TOPIC."
+  (interactive "P")
+  (let* ((topic (or topic consult-gh--topic))
+         (info (cdr topic))
+         (repo (plist-get info :repo))
+         (type (plist-get info :type))
+         (number (plist-get info :number))
+         (title (plist-get info :title))
+         (buffer (get-buffer-create (format "*consult-gh-topics-comment: %s - %s #%s" repo type number)))
+         (existing nil))
+    (cond
+     ((not (= (buffer-size buffer) 0))
+      (when (y-or-n-p "Buffer already exists.  Would you like to resume editing comment in the same buffer?")
+        (setq existing t)))
+     (t (setq existing nil)))
+    (with-current-buffer buffer
+      (unless existing
+        (erase-buffer)
+        (cond
+         ((equal consult-gh-topic-comment-mode 'markdown-mode)
+          (markdown-mode))
+         ((equal consult-gh-topic-comment-mode 'org-mode)
+          (org-mode))
+         (t
+          (text-mode))))
+      (setq-local consult-gh--topic (list (format "%s/#%s" repo number) :repo repo :type type :number number :title title))
+      (consult-gh-topics-edit-comment-mode +1)
+      (goto-char (point-max))
+      (with-no-warnings (outline-show-all)))
+    (switch-to-buffer buffer)))
+
+#+end_src
+
+
 **** consult-gh
+
 
 #+begin_src emacs-lisp
 (defun consult-gh (&rest args)
