@@ -127,13 +127,17 @@ Can be either a string, or a list of strings or expressions."
   :group 'consult-gh
   :type 'boolean)
 
-(defcustom consult-gh-notifications-args `("api" ,(concat "notifications?sort=updated" (unless consult-gh-notifications-show-unread-only "&all=true")) "--paginate" "--template" ,(concat "{{range .}}" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""\n" "{{end}}"))
+(defcustom consult-gh-notifications-args-func #'consult-gh-notifications-make-args
   "Additional arguments for `consult-gh-notifications'.
 
-The dynamically computed arguments are appended.
-Can be either be a string, or a list of strings or expressions."
+Common options include:
+
+ - `consult-gh-notifications-make-args' Make args to see unread notifications
+ - A custom function                     A function that takes
+                                         no input argument."
   :group 'consult-gh
-  :type '(choice string (repeat (choice string sexp))))
+  :type '(choice (const :tag "Default Funciton" #'consult-gh-notifications-make-args)
+                 (function :tag "Custom Function")))
 
 (defcustom consult-gh-dashboard-items-functions (list #'consult-gh--dashboard-collect-author #'consult-gh--dashboard-collect-assigned #'consult-gh--dashboard-collect-mentions #'consult-gh--dashboard-collect-involves)
   "A list of functions for collecting items in `consult-gh-dashboard'
@@ -2866,6 +2870,10 @@ set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
          (url (substring-no-properties (plist-get info :type))))
     (if url (browse-url url))))
 
+(defun consult-gh-notifications-make-args ()
+"Make cmd aerguments for notifications."
+(list "api" (concat "notifications?sort=updated" (if consult-gh-notifications-show-unread-only "" "&all=true")) "--paginate" "--template" (concat "{{range .}}" "{{.id}}" "\t" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""\n" "{{end}}")))
+
 (defun consult-gh--notifications-format (string)
   "Format minibuffer candidates for notifications.
 
@@ -2875,13 +2883,14 @@ Description of Arguments:
             \(e.g. “gh search code ...”\)."
   (let* ((query "")
          (parts (string-split string "\t"))
-         (type (car parts))
-         (repo (cadr parts))
+         (thread (car parts))
+         (type (cadr parts))
+         (repo (caddr parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
-         (title (caddr parts))
-         (reason (cadddr parts))
-         (unread (cadddr (cdr parts)))
+         (title (cadddr parts))
+         (reason (cadddr (cdr parts)))
+         (unread (cadddr (cddr parts)))
          (face (pcase unread
                  ("true" 'consult-gh-warning-face)
                  ("false" 'default)
@@ -2890,9 +2899,9 @@ Description of Arguments:
                   ("true" "unread")
                   ("false" "seen")
                   (_ "unknown")))
-         (date (substring (cadddr (cddr parts)) 0 10))
-         (reltime (cadddr (cddr parts)))
-         (url (cadddr (cdr (cdddr parts))))
+         (date (substring (cadddr (cdddr parts)) 0 10))
+         (reltime (cadddr (cdr (cdddr parts))))
+         (url (cadddr (cddr (cdddr parts))))
          (url-parts (and (stringp url) (split-string url "/" t)))
          (id (and url-parts
                   (or
@@ -2910,6 +2919,7 @@ Description of Arguments:
                       (propertize (consult-gh--set-string-width (propertize state 'face face) 7) 'face face)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)))
          (str (propertize str
+                          :thread thread
                           :repo repo
                           :user user
                           :package package
@@ -2925,7 +2935,8 @@ Description of Arguments:
                           :type type
                           :url url
                           :reason reason)))
-    (cons str  (list :repo repo
+    (cons str  (list :thread thread
+                     :repo repo
                      :user user
                      :package package
                      :id id
@@ -3094,7 +3105,8 @@ set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
     (discussion
      (funcall consult-gh-discussion-action cand))
     (t
-     (browse-url url)))))
+     (browse-url url)))
+t))
 
 (defun consult-gh--notifications-browse-url-action (cand)
   "Browse the url for a notification candidate, CAND.
@@ -3110,6 +3122,15 @@ set `consult-gh-notificatios-action' to `consult-gh--notifications-browse-url-ac
             (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
     (browse-url url)
     (message "Cannot find the right url to open!")))
+
+(defun consult-gh--notifications-mark-as-read (cand)
+  "mark CAND as read.
+
+This is an internal action function that gets a notification candidate, CAND,
+from `consult-gh-notifications' and makrs it as read."
+(when-let ((thread (plist-get (cdr cand) :thread)))
+  (print thread)
+(consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH")))
 
 ;;;###autoload
 (defun consult-gh-auth-switch (&optional host user)
@@ -4214,7 +4235,7 @@ INITIAL is an optional arg for the initial input in the minibuffer."
 
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
-  (let* ((notifications (string-split (apply #'consult-gh--command-to-string consult-gh-notifications-args) "\n\\|\r" t)))
+  (let* ((notifications (string-split (apply #'consult-gh--command-to-string (funcall consult-gh-notifications-args-func)) "\n\\|\r" t)))
 (cl-delete-duplicates (delq nil (mapcar (lambda (string) (consult-gh--notifications-format string)) notifications)))))
 
 (defun consult-gh--notifications (prompt &optional initial)
@@ -4274,7 +4295,8 @@ INITIAL is an optional arg for the initial input in the minibuffer."
       (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
     (if noaction
         sel
-      (and (consp sel) (funcall consult-gh-notifications-action sel)))))
+      (and (consp sel) (funcall consult-gh-notifications-action sel)
+           (consult-gh--notifications-mark-as-read sel)))))
 
 (defun consult-gh (&rest args)
   "Convinient wrapper function for favorite interactive command.
