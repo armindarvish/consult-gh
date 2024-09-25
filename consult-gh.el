@@ -5,7 +5,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.1
+;; Version: 2.0
 ;; Package-Requires: ((emacs "29.1") (consult "1.0") (markdown-mode "2.6"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
@@ -1355,7 +1355,8 @@ Uses `consult-gh--api-get-json' and decodes it into raw text."
 
 CONS is a list of files for example returned by
 `consult-gh--files-nodirectory-items'."
-  (when-let* ((path (car cons))
+  (when-let* ((class "file")
+              (path (car cons))
               (path (string-join (mapcar (lambda (x) x) (string-split path "/")) (propertize "/" 'face 'consult-gh-default-face)))
               (info (cdr cons))
               (repo (plist-get info :repo))
@@ -1371,14 +1372,16 @@ CONS is a list of files for example returned by
                                :path path
                                :url url
                                :size size
-                               :branch branch)))
+                               :branch branch
+                               :class class)))
     (cons str (list :repo repo
                     :user user
                     :package package
                     :path path
                     :url url
                     :branch branch
-                    :size size))))
+                    :size size
+                    :class class))))
 
 (defun consult-gh--file-lookup ()
   "Lookup function for file candidates in `consult-gh-find-file'.
@@ -1594,7 +1597,8 @@ Description of Arguments:
             \(a.k.a. command line argument passed to the gh call\).
   HIGHLIGHT if non-nil, input is highlighted with
             `consult-gh-highlight-match-face' in the minibuffer."
-  (let* ((parts (string-split string "\t"))
+  (let* ((class "repo")
+         (parts (string-split string "\t"))
          (repo (car parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
@@ -1611,7 +1615,7 @@ Description of Arguments:
                       (consult-gh--justify-left (propertize visibility 'face 'consult-gh-visibility-face) repo (frame-width))
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
                       (propertize description 'face 'consult-gh-description-face)))
-         (str (propertize str :repo repo :user user :package package :description description :visibility visibility :date date :query query)))
+         (str (propertize str :repo repo :user user :package package :description description :visibility visibility :date date :query query :class class)))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -1619,7 +1623,7 @@ Description of Arguments:
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
-    (cons str (list :repo repo :user user :package package :date date :description description :visibility visibility :query query))))
+    (cons str (list :repo repo :user user :package package :date date :description description :visibility visibility :query query :class class))))
 
 (defun consult-gh--repo-lookup ()
   "Lookup function for repo candidates.
@@ -2092,11 +2096,12 @@ Description of Arguments:
             \(a.k.a. command line argument passed to the gh call\).
   HIGHLIGHT if non-nil, input is highlighted
             with `consult-gh-highlight-match-face' in the minibuffer."
-  (let* ((parts (string-split string "\t"))
+  (let* ((class "issue")
+         (parts (string-split string "\t"))
          (repo (car (consult--command-split input)))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
-         (issue (car parts))
+         (number (car parts))
          (state (upcase (cadr parts)))
          (face (pcase state
                  ("CLOSED" 'consult-gh-success-face)
@@ -2108,12 +2113,12 @@ Description of Arguments:
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width (concat (propertize (format "%s" issue) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
+                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
                       (propertize (consult-gh--set-string-width state 8) 'face face)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
                       (propertize (consult-gh--set-string-width tags 24) 'face 'consult-gh-tags-face)
                       (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40)))
-         (str (propertize str :repo repo :user user :package package :issue issue :state state :title title :tags tags :date date :query query))
+         (str (propertize str :repo repo :user user :package package :number number :state state :title title :tags tags :date date :query query :class class))
          (str (if highlight (consult-gh--highlight-match repo str t) str)))
     (if (and consult-gh-highlight-matches highlight)
         (cond
@@ -2122,7 +2127,7 @@ Description of Arguments:
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
-    (cons str (list :repo repo :user user :package package :issue issue :state state :title title :tags tags :date date :query query))))
+    (cons str (list :repo repo :user user :package package :number number :state state :title title :tags tags :date date :query query :class class))))
 
 (defun consult-gh--search-issues-format (string input highlight)
   "Format candidates for issues.
@@ -2135,11 +2140,12 @@ Description of Arguments:
          \(a.k.a. command line argument passed to the gh call\).
   HIGHLIGHT if non-nil, input is highlighted
            with `consult-gh-highlight-match-face' in the minibuffer."
-  (let* ((parts (string-split string "\t"))
+  (let* ((class "issue")
+         (parts (string-split string "\t"))
          (repo (car parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
-         (issue (cadr parts))
+         (number (cadr parts))
          (state (upcase (cadr (cdr parts))))
          (face (pcase state
                  ("CLOSED" 'consult-gh-success-face)
@@ -2151,7 +2157,7 @@ Description of Arguments:
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width (concat (propertize (format "%s" issue) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 80)
+                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 80)
                       (propertize (consult-gh--set-string-width state 8) 'face face)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
                       (propertize (consult-gh--set-string-width tags 24) 'face 'consult-gh-tags-face)
@@ -2160,12 +2166,13 @@ Description of Arguments:
                           :repo repo
                           :user user
                           :package package
-                          :issue issue
+                          :number number
                           :state state
                           :title title
                           :tags tags
                           :date date
-                          :query query)))
+                          :query query
+                          :class class)))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -2175,12 +2182,13 @@ Description of Arguments:
       str)
     (cons str  (list :repo repo
                      :user user
-                     :issue issue
+                     :number number
                      :state state
                      :title title
                      :tags tags
                      :date date
-                     :query query))))
+                     :query query
+                     :class class))))
 
 (defun consult-gh--issue-lookup ()
   "Lookup function for issue candidates.
@@ -2190,8 +2198,8 @@ and is used to format the output when a candidate is selected."
   (lambda (sel cands &rest _)
     (let* ((info (cdr (assoc sel cands)))
            (title (plist-get info :title))
-           (issue (plist-get info :issue)))
-      (cons (format "%s:%s" issue title) info))))
+           (number (plist-get info :number)))
+      (cons (format "%s:%s" number title) info))))
 
 (defun consult-gh--issue-state ()
   "State function for issue candidates.
@@ -2205,11 +2213,11 @@ and is used to preview or do other actions on the issue."
          (if (and consult-gh-show-preview cand)
              (when-let ((repo (plist-get (cdr cand) :repo))
                         (query (plist-get (cdr cand) :query))
-                        (issue (plist-get (cdr cand) :issue))
+                        (number (plist-get (cdr cand) :number))
                         (match-str (consult--build-args query))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (consult-gh--issue-view (format "%s" repo) (format "%s" issue) buffer)
+               (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer)
                (with-current-buffer buffer
                  (if consult-gh-highlight-matches
                      (cond
@@ -2254,10 +2262,10 @@ To use this as the default action for issues,
 set `consult-gh-issue-action' to `consult-gh--issue-browse-url-action'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
-         (issue (substring-no-properties (plist-get info :issue))))
-    (consult-gh--call-process "issue" "view" "--repo" repo  "--web" issue)))
+         (number (substring-no-properties (plist-get info :number))))
+    (consult-gh--call-process "issue" "view" "--repo" repo  "--web" number)))
 
-(defun consult-gh--issue-view (repo issue &optional buffer title)
+(defun consult-gh--issue-view (repo number &optional buffer title)
   "Open ISSUE of REPO in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of a
@@ -2275,17 +2283,17 @@ major-mode, otherwise shows the raw text in \='fundamental-mode.
 Description of Arguments:
 
   REPO is the name of the repository to be previewed.
-  ISSUE is the issue number
+  NUMBER is the issue number
   BUFFER is an optional buffer the preview should be shown in.
   TITLE  is an optional title string
 
 To use this as the default action for repos,
 see `consult-gh--issue-view-action'."
   (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-         (text-main (cadr (consult-gh--call-process "issue" "view" issue "--repo" repo)))
+         (text-main (cadr (consult-gh--call-process "issue" "view" number "--repo" repo)))
          (title (or title (and (stringp text-main) (car-safe (split-string text-main "\n" t)))))
          (title (and (stringp title) (string-trim-left title "title:\t")))
-         (text-comments (cadr (consult-gh--call-process "issue" "view" issue "--repo" repo "--comments"))))
+         (text-comments (cadr (consult-gh--call-process "issue" "view" number "--repo" repo "--comments"))))
     (with-current-buffer buffer
       (erase-buffer)
       (insert (string-trim text-main))
@@ -2305,7 +2313,7 @@ see `consult-gh--issue-view-action'."
         (_ ()))
       (consult-gh-issue-view-mode +1)
       (defvar-local consult-gh--topic (list))
-      (setq-local consult-gh--topic (list (format "%s/#%s" repo issue) :repo repo :type "issue" :number issue :title title))
+      (setq-local consult-gh--topic (list (format "%s/#%s" repo number) :repo repo :type "issue" :number number :title title))
       (current-buffer))))
 
 (defun consult-gh--issue-view-action (cand)
@@ -2320,9 +2328,9 @@ To use this as the default action for issues,
 set `consult-gh-issue-action' to `consult-gh--issue-view-action'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
-         (issue (substring-no-properties (format "%s" (plist-get info :issue))))
-         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/issues/" issue "*")))
-    (switch-to-buffer (consult-gh--issue-view repo issue))
+         (number (substring-no-properties (format "%s" (plist-get info :number))))
+         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/issues/" number "*")))
+    (switch-to-buffer (consult-gh--issue-view repo number))
     (rename-buffer buffername t)))
 
 (defun consult-gh--pr-list-format (string input highlight)
@@ -2336,11 +2344,12 @@ Description of Arguments:
             \(a.k.a. command line argument passed to the gh call\)
   HIGHLIGHT if non-nil, input is highlighted
             with `consult-gh-highlight-match-face' in the minibuffer."
-  (let* ((parts (string-split string "\t"))
+  (let* ((class "pr")
+         (parts (string-split string "\t"))
          (repo (car (consult--command-split input)))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
-         (pr (car parts))
+         (number (car parts))
          (state (upcase (cadr (cdr (cdr parts)))))
          (face (pcase state
                  ("CLOSED" 'consult-gh-error-face)
@@ -2353,12 +2362,12 @@ Description of Arguments:
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width (concat (propertize (format "%s" pr) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
+                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
                       (propertize (consult-gh--set-string-width state 8) 'face face)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
                       (propertize (consult-gh--set-string-width branch 24) 'face 'consult-gh-branch-face)
                       (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40)))
-         (str (propertize str :repo repo :user user :package package :pr pr :state state :title title :branch branch :date date :query query)))
+         (str (propertize str :repo repo :user user :package package :number number :state state :title title :branch branch :date date :query query :class class)))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -2366,7 +2375,7 @@ Description of Arguments:
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
-    (cons str (list :repo repo :user user :package package :pr pr :state state :title title :branch branch :date date :query query))))
+    (cons str (list :repo repo :user user :package package :number number :state state :title title :branch branch :date date :query query :class class))))
 
 (defun consult-gh--search-prs-format (string input highlight)
   "Format minibuffer candidates for pull requests.
@@ -2380,11 +2389,12 @@ Description of Arguments:
   HIGHLIGHT if non-nil, input is highlighted
             with `consult-gh-highlight-match-face' in the minibuffer."
 
-  (let* ((parts (string-split string "\t"))
+  (let* ((class "pr")
+         (parts (string-split string "\t"))
          (repo (car parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
-         (pr (cadr parts))
+         (number (cadr parts))
          (state (upcase (cadr (cdr parts))))
          (face (pcase state
                  ("CLOSED" 'consult-gh-error-face)
@@ -2397,12 +2407,12 @@ Description of Arguments:
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width (concat (propertize (format "%s" pr) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
+                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
                       (propertize (consult-gh--set-string-width state 8) 'face face)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
                       (propertize (consult-gh--set-string-width tags 40) 'face 'consult-gh-tags-face)
                       (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40)))
-         (str (propertize str :repo repo :user user :package package :pr pr :state state :title title :tags tags :date date :query query)))
+         (str (propertize str :repo repo :user user :package package :number number :state state :title title :tags tags :date date :query query :class class)))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -2410,7 +2420,7 @@ Description of Arguments:
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
-    (cons str  (list :repo repo :user user :pr pr :state state :title title :tags tags :date date :query query))))
+    (cons str  (list :repo repo :user user :number number :state state :title title :tags tags :date date :query query :class class))))
 
 (defun consult-gh--pr-lookup ()
   "Lookup function for pr candidates.
@@ -2420,8 +2430,8 @@ and is used to format the output when a candidate is selected."
   (lambda (sel cands &rest _)
     (let* ((info (cdr (assoc sel cands)))
            (title (plist-get info :title))
-           (pr (plist-get info :pr)))
-      (cons (format "%s:%s" pr title) info))))
+           (number (plist-get info :number)))
+      (cons (format "%s:%s" number title) info))))
 
 (defun consult-gh--pr-state ()
   "State function for pull request candidates.
@@ -2435,12 +2445,12 @@ and is used to preview or do other actions on the pr."
             ('preview
              (if (and consult-gh-show-preview cand)
                  (when-let ((repo (plist-get (cdr cand) :repo))
-                            (pr (plist-get (cdr cand) :pr))
+                            (number (plist-get (cdr cand) :number))
                             (query (plist-get (cdr cand) :query))
                             (match-str (consult--build-args query))
                             (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                    (add-to-list 'consult-gh--preview-buffers-list buffer)
-                   (consult-gh--pr-view repo pr buffer)
+                   (consult-gh--pr-view repo number buffer)
                    (with-current-buffer buffer
                      (if consult-gh-highlight-matches
                          (cond
@@ -2486,10 +2496,10 @@ To use this as the default action for prs,
 set `consult-gh-pr-action' to `consult-gh--pr-browse-url-action'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
-         (pr (substring-no-properties (plist-get info :pr))))
-    (consult-gh--call-process "pr" "view" "--repo" repo  "--web" pr)))
+         (number (substring-no-properties (plist-get info :number))))
+    (consult-gh--call-process "pr" "view" "--repo" repo  "--web" number)))
 
-(defun consult-gh--pr-view (repo pr &optional buffer title)
+(defun consult-gh--pr-view (repo number &optional buffer title)
   "Open pull request, PR of REPO in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of a repository
@@ -2507,17 +2517,17 @@ major-mode, otherwise shows the raw text in \='fundamental-mode.
 Description of Arguments:
 
   REPO   the full name of the repository to be previewed.
-  PR     pull request number
+  NUMBER    pull request number
   BUFFER an optional buffer the preview should be shown in.
   TITLE  is an optional title string
 
 To use this as the default action for PRs,
 see `consult-gh--pr-view-action'."
   (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-        (text-main (cadr (consult-gh--call-process "pr" "view" pr "--repo" repo)))
+        (text-main (cadr (consult-gh--call-process "pr" "view" number "--repo" repo)))
         (title (or title (and (stringp text-main) (car-safe (split-string text-main "\n" t)))))
         (title (and (stringp title) (string-trim-left title "title:\t")))
-        (text-comments (cadr (consult-gh--call-process "pr" "view" pr "--repo" repo "--comments"))))
+        (text-comments (cadr (consult-gh--call-process "pr" "view" number "--repo" repo "--comments"))))
     (with-current-buffer buffer
       (erase-buffer)
       (insert (string-trim text-main))
@@ -2537,7 +2547,7 @@ see `consult-gh--pr-view-action'."
         (_ ()))
       (consult-gh-pr-view-mode +1)
       (defvar-local consult-gh--topic (list))
-      (setq-local consult-gh--topic (list (format "%s/#%s" repo pr) :repo repo :type "pr" :number pr :title title))
+      (setq-local consult-gh--topic (list (format "%s/#%s" repo number) :repo repo :type "pr" :number number :title title))
       (current-buffer))))
 
 (defun consult-gh--pr-view-action (cand)
@@ -2551,9 +2561,9 @@ To use this as the default action for prs,
 set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
-         (pr (substring-no-properties (format "%s" (plist-get info :pr))))
+         (number (substring-no-properties (format "%s" (plist-get info :number))))
          (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/pull/" pr "*")))
-    (switch-to-buffer (consult-gh--pr-view repo pr))
+    (switch-to-buffer (consult-gh--pr-view repo number))
     (rename-buffer buffername t)))
 
 (defun consult-gh--search-code-format (string input highlight)
@@ -2567,7 +2577,8 @@ Description of Arguments:
             \(a.k.a. command line argument passed to the gh call\).
   HIGHLIGHT if non-nil, input is highlighted
             with `consult-gh-highlight-match-face' in the minibuffer."
-  (let* ((parts (string-split string ":"))
+  (let* ((class "code")
+         (parts (string-split string ":"))
          (repo (car parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
@@ -2582,7 +2593,7 @@ Description of Arguments:
                       (consult-gh--set-string-width (propertize code 'face  'consult-gh-code-face) 100)
                       (propertize path 'face 'consult-gh-url-face)
                       (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40)))
-         (str (propertize str ':repo repo ':user user ':package package ':code code ':path path ':url url ':query query)))
+         (str (propertize str :repo repo :user user :package package :code code :path path :url url :query query :class class)))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -2590,7 +2601,7 @@ Description of Arguments:
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t))))
       str)
-    (cons str  (list :repo repo :user user :package package :code code :path path :url url :query query))))
+    (cons str  (list :repo repo :user user :package package :code code :path path :url url :query query :class class))))
 
 (defun consult-gh--code-lookup ()
   "Lookup function for code candidates.
@@ -2701,7 +2712,8 @@ Description of Arguments:
 
   STRING    the output of a “gh” call
             \(e.g. “gh search code ...”\)."
-  (let* ((query "")
+  (let* ((class "dashboard")
+         (query "")
          (parts (string-split string "\t"))
          (isPR (car parts))
          (type (if (equal isPR "true") "pr" "issue"))
@@ -2747,6 +2759,7 @@ Description of Arguments:
                       (when date (concat "\s\s" (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)))
                       (when state (concat "\s\s" (propertize (consult-gh--set-string-width state 6) 'face face)))
                       (when tags (concat "\s\s" (propertize tags 'face 'consult-gh-tags-face)))))
+         (print str)
          (str (propertize str
                           :repo repo
                           :user user
@@ -2759,18 +2772,21 @@ Description of Arguments:
                           :query query
                           :type type
                           :url url
-                          :reason reason)))
-    (cons str  (list :repo repo
-                     :user user
-                     :number number
-                     :state state
-                     :title title
-                     :tags tags
-                     :date date
-                     :query query
-                     :type type
-                     :url url
-                     :reason reason))))
+                          :reason reason
+                          :class class)))
+    (cons str (list :repo repo
+                    :user user
+                    :package package
+                    :number number
+                    :state state
+                    :title title
+                    :tags tags
+                    :date date
+                    :query query
+                    :type type
+                    :url url
+                    :reason reason
+                    :class class))))
 
 (defun consult-gh--dashboard-lookup ()
   "Lookup function for dashboard candidates.
@@ -2786,9 +2802,9 @@ and is used to format the output when a candidate is selected."
            (url (plist-get info :url)))
       (pcase type
         ("issue"
-         (cons (format "%s - %s #%s: %s" repo type number title) (plist-put info :issue number)))
+         (cons (format "%s - %s #%s: %s" repo type number title) (plist-put info :number number)))
         ("pr"
-         (cons (format "%s - %s #%s: %s" repo type number title) (plist-put info :pr number)))
+         (cons (format "%s - %s #%s: %s" repo type number title) (plist-put info :number number)))
         (_
          (cons (format "%s - %s #%s: %s" repo type number title) info))))))
 
@@ -2911,7 +2927,8 @@ Description of Arguments:
 
   STRING    the output of a “gh” call
             \(e.g. “gh search code ...”\)."
-  (let* ((query "")
+  (let* ((class "notification")
+         (query "")
          (parts (string-split string "\t"))
          (thread (car parts))
          (type (cadr parts))
@@ -2933,17 +2950,15 @@ Description of Arguments:
          (reltime (cadddr (cdr (cdddr parts))))
          (url (cadddr (cddr (cdddr parts))))
          (url-parts (and (stringp url) (split-string url "/" t)))
-         (id (and url-parts
+         (number (and url-parts
                   (or
                    (cadr (member "issues" url-parts))
                    (cadr (member "pulls" url-parts)))))
-         (issue (if (equal type "Issue") id))
-         (pr (if (equal type "PullRequest") id))
          (str (format "%s\s\s%s\s\s%s"
                       (consult-gh--set-string-width
                        (concat (propertize (format "%s" repo) 'face 'consult-gh-repo-face)
                                " - "
-                               (propertize (concat type (if id " #") id) 'face face)
+                               (propertize (concat type (if number " #") number) 'face face)
                                ": "
                                (propertize (format "%s" title) 'face 'consult-gh-default-face)) 100)
                       (propertize (consult-gh--set-string-width (propertize state 'face face) 7) 'face face)
@@ -2953,9 +2968,7 @@ Description of Arguments:
                           :repo repo
                           :user user
                           :package package
-                          :id id
-                          :issue issue
-                          :pr pr
+                          :number number
                           :reason reason
                           :state state
                           :title title
@@ -2964,14 +2977,13 @@ Description of Arguments:
                           :query query
                           :type type
                           :url url
-                          :reason reason)))
+                          :reason reason
+                          :class class)))
     (cons str  (list :thread thread
                      :repo repo
                      :user user
                      :package package
-                     :id id
-                     :issue issue
-                     :pr pr
+                     :number number
                      :reason reason
                      :state state
                      :title title
@@ -2980,7 +2992,8 @@ Description of Arguments:
                      :query query
                      :type type
                      :url url
-                     :reason reason))))
+                     :reason reason
+                     :class class))))
 
 (defun consult-gh--notifications-lookup ()
   "Lookup function for code candidates.
@@ -3007,17 +3020,15 @@ and is used to preview or do other actions on the code."
          (if (and consult-gh-show-preview cand)
              (let* ((repo (plist-get (cdr cand) :repo))
                     (type (plist-get (cdr cand) :type))
-                    (id (plist-get (cdr cand) :id))
-                    (issue (plist-get (cdr cand) :issue))
-                    (pr (plist-get (cdr cand) :pr))
+                    (number (plist-get (cdr cand) :number))
                     (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
                (cond
-                (issue (consult-gh--issue-view (format "%s" repo) (format "%s" issue) buffer))
-                (pr (consult-gh--pr-view (format "%s" repo) (format "%s" pr) buffer))
+                ((equal type "issue") (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer))
+                ((equal type "pr") (consult-gh--pr-view (format "%s" repo) (format "%s" number) buffer))
                 (t (message "Preview not supported for %s items" type)))
 
-               (when (or issue pr) (funcall preview action
+               (when (or (equal type "issue") (equal type "pr")) (funcall preview action
                                             buffer)))))
         ('return
          cand)))))
@@ -3124,16 +3135,15 @@ set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
   (let* ((info (cdr cand))
          (repo (plist-get info :repo))
          (type (plist-get info :type))
-         (issue (plist-get info :issue))
-         (pr (plist-get info :pr))
+         (number (plist-get info :number))
          (discussion (equal type "Discussion"))
          (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
     (cond
-     (issue
+     ((equal type "issue")
       (funcall consult-gh-issue-action cand))
-     (pr
+     ((equal type "pr")
       (funcall consult-gh-pr-action cand))
-     (discussion
+     ((equal type "discussion")
       (funcall consult-gh-discussion-action cand))
      (t
       (browse-url url)))
@@ -3203,9 +3213,9 @@ from `consult-gh-notifications' and makrs it as read."
                         `(lambda (&rest _)
                            (pcase ,type
                              ("issue"
-                              (funcall consult-gh-issue-action (list ,repo :repo ,repo :issue ,number)))
+                              (funcall consult-gh-issue-action (list ,repo :repo ,repo :number ,number)))
                              ("pr"
-                              (funcall consult-gh-pr-action (list ,repo :repo ,repo :pr ,number)))))))
+                              (funcall consult-gh-pr-action (list ,repo :repo ,repo :number ,number)))))))
      ".  "
      (substitute-command-keys "When done, use `\\[consult-gh-topics-comment-submit]' to submit or `\\[consult-gh-topics-comment-cancel]' to cancel."))))
 
@@ -4241,8 +4251,8 @@ INITIAL is an optional arg for the initial input in the minibuffer
 
 (defun consult-gh--dashboard-collect-assigned (&optional user &rest _)
   "Find all the Issues/PRs assigned to USER."
-  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Assigned to %s" (or user "me")) "\n" "{{end}}") "--assignee" (or user "@me")))
-        (prs (consult-gh--command-to-string "search" "prs" "--state" consult-gh-prs-state-to-show "--sort" "updated" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Review Requested from %s" (or user "me")) "\n" "{{end}}") "--review-requested" (or user "@me"))))
+  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--assignee" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Assigned to %s" (or user "me")) "\n" "{{end}}")))
+        (prs (consult-gh--command-to-string "search" "prs" "--state" consult-gh-prs-state-to-show "--sort" "updated" "--review-requested" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Review Requested from %s" (or user "me")) "\n" "{{end}}"))))
     (append (and (stringp issues)
                  (cl-delete-duplicates (delq nil (split-string issues "\n\\|\r" t))))
             (and (stringp prs)
@@ -4250,21 +4260,21 @@ INITIAL is an optional arg for the initial input in the minibuffer
 
 (defun consult-gh--dashboard-collect-author (&optional user &rest _)
   "Find all the Issues/PRs authored by USER."
-  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Authored by %s" (or user "me")) "\n" "{{end}}") "--author" (or user "@me"))))
+  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--author" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Authored by %s" (or user "me")) "\n" "{{end}}"))))
     (and (stringp issues)
          (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
 
 (defun consult-gh--dashboard-collect-involves (&optional user &rest _)
   "Find all the Issues/PRs that involve USER."
-  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--involves" (or user "@me") "--" "-author:" (or user "@me"))))
+  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--involves" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--" (concat "-author:" (or user "@me")))))
     (and (stringp issues)
          (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
 
 (defun consult-gh--dashboard-collect-mentions (&optional user &rest _)
   "Find all the Issues/PRs that mention USER."
-  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}"  "\t" (format "Mentions %s" (or user "me")) "\n" "{{end}}") "--mentions" (or user "@me"))))
+  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--mentions" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}"  "\t" (format "Mentions %s" (or user "me")) "\n" "{{end}}"))))
     (and (stringp issues)
-         (cl-delete-duplicates (delq nil (string-split issues  "\n\\|\r" t))))))
+         (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
 
 (defun consult-gh--dashboard-items (&optional user &rest args)
   "Find all the relevant Issues/PRs for USER.
@@ -4273,7 +4283,7 @@ in `consult-gh-dashboard-items-functions'."
   (let* ((items (list)))
     (cl-loop for func in consult-gh-dashboard-items-functions
              do (setq items (append items (cl-delete-duplicates (delq nil (apply func user args))))))
-    (mapc #'consult-gh--dashboard-format items)))
+    (mapcar #'consult-gh--dashboard-format items)))
 
 (defun consult-gh--dashboard (prompt &optional initial user)
   "Search USER's work on GitHub.

@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.1
-;; Package-Requires: ((emacs "29.1") (consult "1.0") (forge "0.3.3") (consult-gh "1.1"))
+;; Version: 2.0
+;; Package-Requires: ((emacs "29.1") (consult "1.0") (forge "0.3.3") (consult-gh "2.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -165,26 +165,26 @@ TOPIC is as defined in `forge-visit-topic'."
 
 ;;; Define Functions and Interactive Commands for `consult-gh-forge'
 
-(defun consult-gh-forge--issue-view (repo issue &optional timeout)
+(defun consult-gh-forge--issue-view (repo number &optional timeout)
   "Add the REPO and ISSUE to forge database.
 
 Uses `consult-gh-forge--add-topic' and tries to load the issue in forge
 by `consult-gh-forge--visit-topic' within the TIMEOUT limit \(in seconds\),
 otherwise reverts to using `consult-gh--issue-view-action' to open the
-ISSUE."
+issue identified by NUMBER."
   (let* ((repo (string-trim repo))
          (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
-         (id (string-to-number issue))
+         (id (string-to-number number))
          (timeout (or timeout consult-gh-forge-timeout-seconds))
          (created (consult-gh-forge--add-topic url id))
          (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--issue-view-action (propertize (format "%s" issue) ':repo repo ':issue issue)))
+    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--issue-view-action (propertize (format "%s" number) :repo repo :number number)))
       (while (not topic)
         (sit-for 0.001)
         (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
       (if topic
           (consult-gh-forge--visit-topic topic)
-        (consult-gh--issue-view repo issue)))
+        (consult-gh--issue-view repo number)))
     (when created
       (add-to-list 'consult-gh-forge--added-repositories url))))
 
@@ -194,28 +194,28 @@ ISSUE."
 This is a wrapper function arround `consult-gh-forge--issue-view'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
-         (issue (substring-no-properties (format "%s" (plist-get info :issue)))))
-    (consult-gh-forge--issue-view repo issue)))
+         (number (substring-no-properties (format "%s" (plist-get info :number)))))
+    (consult-gh-forge--issue-view repo number)))
 
-(defun consult-gh-forge--pr-view (repo pr &optional timeout)
+(defun consult-gh-forge--pr-view (repo number &optional timeout)
   "Add the REPO and PR to forge database.
 
  Uses `consult-gh-forge--add-topic' and tries to load the issue in forge
 by `consult-gh-forge--visit-topic' within the TIMEOUT limit \(in seconds\),
-otherwise reverts to using `consult-gh--pr-view-action' to open the PR."
+otherwise reverts to using `consult-gh--pr-view-action' to open the pr identified by NUMBER."
   (let* ((repo (string-trim repo))
          (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
-         (id (string-to-number pr))
+         (id (string-to-number number))
          (timeout (or timeout consult-gh-forge-timeout-seconds))
          (created (consult-gh-forge--add-topic url id))
          (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--pr-view-action (propertize (format "%s" pr) ':repo repo ':pr pr)))
+    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--pr-view-action (propertize (format "%s" number) :repo repo :number number)))
       (while (not topic)
         (sit-for 0.001)
         (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
       (if topic
           (consult-gh-forge--visit-topic topic)
-        (consult-gh--pr-view repo pr)))
+        (consult-gh--pr-view repo number)))
     (when created
       (add-to-list 'consult-gh-forge--added-repositories url))))
 
@@ -225,8 +225,8 @@ otherwise reverts to using `consult-gh--pr-view-action' to open the PR."
 This is a wrapper function arround `consult-gh-forge--pr-view'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
-         (pr (substring-no-properties (format "%s" (plist-get info :pr)))))
-    (consult-gh-forge--pr-view repo pr)))
+         (number (substring-no-properties (format "%s" (plist-get info :number)))))
+    (consult-gh-forge--pr-view repo number)))
 
 (defun consult-gh-forge--ghub-token (host username package &optional nocreate forge)
   "Get GitHub token for HOST USERNAME and PACKAGE.
@@ -328,21 +328,21 @@ default behavior of `ghub--host' to allow using
 `consult-gh' host name instead if the user chooses to."
   (let ((ghub-host (cl-call-next-method))
         (consult-gh-host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))))
-        (cond
-         ((equal ghub-host consult-gh-host) ghub-host)
-         (t
-          (let ((host (if (and consult-gh-forge-confirm-account
-                               (stringp ghub-host)
-                               (stringp consult-gh-host))
-                          (consult--read (list (propertize consult-gh-host 'account "from consult-gh")
-                                               (propertize ghub-host 'account "from ghub/forge (i.e. git config)"))
-                                         :prompt "Which account do you want to use?"
-                                         :sort nil
-                                         :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
-                                                                    (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
-                        (or consult-gh-host ghub-host))))
-            (if (and host (not (string-empty-p host))) host
-              (cl-call-next-method)))))))
+    (cond
+     ((equal ghub-host consult-gh-host) ghub-host)
+     (t
+      (let ((host (if (and consult-gh-forge-confirm-account
+                           (stringp ghub-host)
+                           (stringp consult-gh-host))
+                      (consult--read (list (propertize consult-gh-host 'account "from consult-gh")
+                                           (propertize ghub-host 'account "from ghub/forge (i.e. git config)"))
+                                     :prompt "Which account do you want to use?"
+                                     :sort nil
+                                     :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
+                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
+                    (or consult-gh-host ghub-host))))
+        (if (and host (not (string-empty-p host))) host
+          (cl-call-next-method)))))))
 
 
 ;;; Provide `consult-gh-forge' module

@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 1.1
-;; Package-Requires: ((emacs "29.1") (consult-gh "1.1") (embark-consult "1.1"))
+;; Version: 2.0
+;; Package-Requires: ((emacs "29.1") (consult-gh "2.0") (embark-consult "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -71,42 +71,37 @@
 (defun consult-gh-embark-open-in-browser (cand)
   "Open CAND link in browser."
   (let* ((repo (get-text-property 0 :repo cand))
-         (issue (or (get-text-property 0 :issue cand) nil))
-         (pr (or (get-text-property 0 :pr cand) nil))
+         (class (or (get-text-property 0 :class cand) nil))
+         (number (or (get-text-property 0 :number cand) nil))
          (path (or (get-text-property 0 :path cand) nil)))
-    (cond
-     (issue
-      (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties issue)))
-     (path
+    (pcase class
+     ("issue"
+      (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
+     ("file"
       (browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
-     (pr
-      (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties pr)))
-     (t
+     ("pr"
+      (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
+     (_
       (consult-gh--call-process "repo" "view" "--web" (substring repo))))))
 
 (defun consult-gh-embark-default-action (cand)
   "Open CAND link in an Emacs buffer."
-  (let* ((repo (get-text-property 0 :repo cand))
-         (user (get-text-property 0 :user cand))
-         (package (get-text-property 0 :package cand))
-         (url (or (get-text-property 0 :url cand) nil))
-         (issue (or (get-text-property 0 :issue cand) nil))
-         (pr (or (get-text-property 0 :pr cand) nil))
-         (path (or (get-text-property 0 :path cand) nil))
-         (branch (or (get-text-property 0 :branch cand) nil))
-         (code (or (get-text-property 0 :code cand) nil))
-         (size (or (get-text-property 0 :size cand) nil))
-         (newcand (cons cand `(:repo ,repo :user ,user :package ,package :url ,url :path ,path :branch ,branch :issue ,issue :pr ,pr :code ,code :sie ,size))))
-    (cond
-     (code
+  (let* ((class (get-text-property 0 :class cand))
+         (newcand (append (list cand) (text-properties-at 0 cand))))
+    (pcase class
+     ("code"
       (funcall consult-gh-code-action newcand))
-     (issue
+     ("issue"
       (funcall consult-gh-issue-action newcand))
-     (pr
+     ("pr"
       (funcall consult-gh-pr-action newcand))
-     (path
+     ("file"
       (funcall consult-gh-file-action newcand))
-     (t
+     ("notification"
+      (funcall consult-gh-notifications-action newcand))
+     ("dashboard"
+      (funcall consult-gh-dashboard-action newcand))
+     (_
       (funcall consult-gh-repo-action newcand)))))
 
 
@@ -123,18 +118,18 @@
 
 The candidate can be a repo, issue, PR, file path, or a branch."
   (let* ((repo (get-text-property 0 :repo cand))
-         (issue (or (get-text-property 0 :issue cand) nil))
-         (pr (or (get-text-property 0 :pr cand) nil))
+         (class (or (get-text-property 0 :class cand) nil))
+         (number (or (get-text-property 0 :number cand) nil))
          (path (or (get-text-property 0 :path cand) nil))
          (branch (or (get-text-property 0 :branch cand) nil)))
-    (cond
-     (issue
+    (pcase class
+     ("issue"
       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" issue))))
-     (path
+     ("file"
       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
-     (pr
-      (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" pr))))
-     (t
+     ("pr"
+      (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
+     (_
       (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))
 
 (defun consult-gh-embark-get-org-link (cand)
@@ -239,6 +234,11 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   :doc "Keymap for consult-gh-embark-codes"
   :parent consult-gh-embark-general-actions-map)
 
+
+(defvar-keymap consult-gh-embark-notifications-actions-map
+  :doc "Keymap for consult-gh-embark-notifications"
+  :parent consult-gh-embark-general-actions-map)
+
 ;;; Define consult-gh-embark minor-mode
 
 (defun consult-gh-embark--mode-on ()
@@ -254,7 +254,8 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   (add-to-list 'embark-default-action-overrides '(consult-gh-issues . consult-gh-embark-default-action))
   (add-to-list 'embark-default-action-overrides '(consult-gh-prs . consult-gh-embark-default-action))
   (add-to-list 'embark-default-action-overrides '(consult-gh-files . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-codes . consult-gh-embark-default-action)))
+  (add-to-list 'embark-default-action-overrides '(consult-gh-codes . consult-gh-embark-default-action))
+  (add-to-list 'embark-default-action-overrides '(consult-gh-notifications . consult-gh-embark-default-action)))
 
 (defun consult-gh-embark--mode-off ()
   "Disable `consult-gh-embark-mode'."
@@ -269,7 +270,8 @@ The candidate can be a repo, issue, PR, file path, or a branch."
                                                           (consult-gh-issues . consult-gh-embark-default-action)
                                                           (consult-gh-prs . consult-gh-embark-default-action)
                                                           (consult-gh-files . consult-gh-embark-default-action)
-                                                          (consult-gh-codes . consult-gh-embark-default-action)))))
+                                                          (consult-gh-codes . consult-gh-embark-default-action)
+                                                          (consult-gh-notifications . consult-gh-embark-default-action)))))
 
 (defun consult-gh-embark-unload-function ()
   "Unload function for `consult-gh-embark'."
