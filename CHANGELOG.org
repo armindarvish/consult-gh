@@ -6,6 +6,7 @@
 - Package is now on MELPA
 - Adds support for switching accounts (multi-account)
 - Adds support for alternative hosts (e.g. GitHub Enterprise)
+- Adds support for a minimal setup for adding comments to issues/PRs without the forge package
 - Adds support for creating repositories from within emacs (e.g. support  =gh repo create=)
 - Introduces two minor modes: =consult-gh-embark-mode= and =consult-gh-forge-mode=
 - Cleans up the code for forge integration (no more hacking forge functions)
