@@ -2562,7 +2562,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
          (number (substring-no-properties (format "%s" (plist-get info :number))))
-         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/pull/" pr "*")))
+         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/pull/" number "*")))
     (switch-to-buffer (consult-gh--pr-view repo number))
     (rename-buffer buffername t)))
 
@@ -2822,14 +2822,14 @@ and is used to preview or do other actions on the code."
                         (number (plist-get (cdr cand) :number))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (cond
-                ((equal type "issue")
+               (pcase type
+                ("issue"
                  (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer)
                  (funcall preview action buffer))
-                ((equal type "pr")
+                ("pr"
                  (consult-gh--pr-view (format "%s" repo) (format "%s" number) buffer)
                  (funcall preview action buffer))
-                (t (message "Preview is not supoorted for items that are not issues or pull requests!"))))))
+                (_ (message "Preview is not supoorted for items that are not issues or pull requests!"))))))
         ('return
          cand)))))
 
@@ -3023,13 +3023,12 @@ and is used to preview or do other actions on the code."
                     (number (plist-get (cdr cand) :number))
                     (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (cond
-                ((equal type "issue") (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer))
-                ((equal type "pr") (consult-gh--pr-view (format "%s" repo) (format "%s" number) buffer))
-                (t (message "Preview not supported for %s items" type)))
-
-               (when (or (equal type "issue") (equal type "pr")) (funcall preview action
-                                            buffer)))))
+               (pcase type
+                 ("issue" (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer))
+                 ("pr" (consult-gh--pr-view (format "%s" repo) (format "%s" number) buffer))
+                 (_ (message "Preview not supported for %s items" type)))
+               (when (member type '("issue" "pr")) (funcall preview action
+                                                            buffer)))))
         ('return
          cand)))))
 

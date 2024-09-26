@@ -2835,7 +2835,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
   (let* ((info (cdr cand))
          (repo (substring-no-properties (plist-get info :repo)))
          (number (substring-no-properties (format "%s" (plist-get info :number))))
-         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/pull/" pr "*")))
+         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/pull/" number "*")))
     (switch-to-buffer (consult-gh--pr-view repo number))
     (rename-buffer buffername t)))
 #+end_src
