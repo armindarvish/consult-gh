@@ -3062,7 +3062,6 @@ Description of Arguments:
                       (when date (concat "\s\s" (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)))
                       (when state (concat "\s\s" (propertize (consult-gh--set-string-width state 6) 'face face)))
                       (when tags (concat "\s\s" (propertize tags 'face 'consult-gh-tags-face)))))
-         (print str)
          (str (propertize str
                           :repo repo
                           :user user
@@ -3133,14 +3132,14 @@ and is used to preview or do other actions on the code."
                         (number (plist-get (cdr cand) :number))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (cond
-                ((equal type "issue")
+               (pcase type
+                ("issue"
                  (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer)
                  (funcall preview action buffer))
-                ((equal type "pr")
+                ("pr"
                  (consult-gh--pr-view (format "%s" repo) (format "%s" number) buffer)
                  (funcall preview action buffer))
-                (t (message "Preview is not supoorted for items that are not issues or pull requests!"))))))
+                (_ (message "Preview is not supoorted for items that are not issues or pull requests!"))))))
         ('return
          cand)))))
 #+end_src
@@ -3268,6 +3267,7 @@ Description of Arguments:
          (parts (string-split string "\t"))
          (thread (car parts))
          (type (cadr parts))
+         (type (and (stringp type) (downcase type)))
          (repo (caddr parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
@@ -3297,7 +3297,7 @@ Description of Arguments:
                                (propertize (concat type (if number " #") number) 'face face)
                                ": "
                                (propertize (format "%s" title) 'face 'consult-gh-default-face)) 100)
-                      (propertize (consult-gh--set-string-width (propertize state 'face face) 7) 'face face)
+                      (consult-gh--set-string-width (propertize state 'face face) 7)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)))
          (str (propertize str
                           :thread thread
@@ -3366,13 +3366,12 @@ and is used to preview or do other actions on the code."
                     (number (plist-get (cdr cand) :number))
                     (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (cond
-                ((equal type "issue") (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer))
-                ((equal type "pr") (consult-gh--pr-view (format "%s" repo) (format "%s" number) buffer))
-                (t (message "Preview not supported for %s items" type)))
-
-               (when (or (equal type "issue") (equal type "pr")) (funcall preview action
-                                            buffer)))))
+               (pcase type
+                 ("issue" (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer))
+                 ("pr" (consult-gh--pr-view (format "%s" repo) (format "%s" number) buffer))
+                 (_ (message "Preview not supported for %s items" type)))
+               (when (member type '("issue" "pr")) (funcall preview action
+                                                            buffer)))))
         ('return
          cand)))))
 #+end_src
@@ -3502,17 +3501,16 @@ set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
          (repo (plist-get info :repo))
          (type (plist-get info :type))
          (number (plist-get info :number))
-         (discussion (equal type "Discussion"))
          (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
-    (cond
-     ((equal type "issue")
+    (pcase type
+     ("issue"
       (funcall consult-gh-issue-action cand))
-     ((equal type "pr")
+     ("pr"
       (funcall consult-gh-pr-action cand))
-     ((equal type "discussion")
+     ("discussion"
       (funcall consult-gh-discussion-action cand))
-     (t
-      (browse-url url)))
+     (_
+      (and url (browse-url url))))
     t))
 #+end_src
 ******* find relevant notifications in the browser

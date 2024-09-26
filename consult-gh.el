@@ -2759,7 +2759,6 @@ Description of Arguments:
                       (when date (concat "\s\s" (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)))
                       (when state (concat "\s\s" (propertize (consult-gh--set-string-width state 6) 'face face)))
                       (when tags (concat "\s\s" (propertize tags 'face 'consult-gh-tags-face)))))
-         (print str)
          (str (propertize str
                           :repo repo
                           :user user
@@ -2932,6 +2931,7 @@ Description of Arguments:
          (parts (string-split string "\t"))
          (thread (car parts))
          (type (cadr parts))
+         (type (and (stringp type) (downcase type)))
          (repo (caddr parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
@@ -2961,7 +2961,7 @@ Description of Arguments:
                                (propertize (concat type (if number " #") number) 'face face)
                                ": "
                                (propertize (format "%s" title) 'face 'consult-gh-default-face)) 100)
-                      (propertize (consult-gh--set-string-width (propertize state 'face face) 7) 'face face)
+                      (consult-gh--set-string-width (propertize state 'face face) 7)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)))
          (str (propertize str
                           :thread thread
@@ -3136,17 +3136,16 @@ set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
          (repo (plist-get info :repo))
          (type (plist-get info :type))
          (number (plist-get info :number))
-         (discussion (equal type "Discussion"))
          (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
-    (cond
-     ((equal type "issue")
+    (pcase type
+     ("issue"
       (funcall consult-gh-issue-action cand))
-     ((equal type "pr")
+     ("pr"
       (funcall consult-gh-pr-action cand))
-     ((equal type "discussion")
+     ("discussion"
       (funcall consult-gh-discussion-action cand))
-     (t
-      (browse-url url)))
+     (_
+      (and url (browse-url url))))
     t))
 
 (defun consult-gh--notifications-browse-url-action (cand)
