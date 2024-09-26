@@ -8,7 +8,12 @@
 - Adds support for alternative hosts (e.g. GitHub Enterprise)
 - Adds support for a minimal setup for adding comments to issues/PRs without the forge package
 - Adds support for creating repositories from within emacs (e.g. support  =gh repo create=)
-- Introduces two minor modes: =consult-gh-embark-mode= and =consult-gh-forge-mode=
+- Introduces minor modes:
+   =consult-gh-embark-mode=: for enabling/disabling embark actions
+   =consult-gh-forge-mode=: for enabling/diabling forge integration
+   =consult-gh-issue-view-mode=: for buffers that view issues
+   =consult-gh-pr-view-mode=: for buffers that view pull requests
+   =consult-gh-topics-edit-comment-mode=: for editing comments
 - Cleans up the code for forge integration (no more hacking forge functions)
 - Improves file browsing (reusing downloaded files)
 - Cleans up the code (for MELPA comptbibility)
