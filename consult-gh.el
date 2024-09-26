@@ -834,8 +834,8 @@ the beginning of string, instead of the end."
         (setq string (format "%s%s" (substring string) (make-string (- width w) ?\s)))))
     (when (> w width)
       (if prepend
-          (setq string (format "...%s" (substring string (- w (- width 3)) w)))
-        (setq string (format "%s..." (substring string 0 (- width (+ w 3)))))))
+          (setq string (format "%s%s" (propertize (substring string 0 (- w (- width 3))) 'display "...") (substring string (- w (- width 3)) w)))
+        (setq string (format "%s%s" (substring string 0 (- width (+ w 3))) (propertize (substring string (- width (+ w 3)) w) 'display "...")))))
     string))
 
 (defun consult-gh--justify-left (string prefix maxwidth)
