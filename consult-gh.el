@@ -4249,7 +4249,7 @@ INITIAL is an optional arg for the initial input in the minibuffer."
   (interactive)
   (let* ((sel (consult-gh--notifications "Select Notification:  " initial)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel)))
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
