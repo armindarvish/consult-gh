@@ -716,6 +716,9 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)")
 
 (defvar consult-gh-default-host "github.com"
   "Defualt host of GitHub.")
+
+(defvar-local consult-gh--topic nil
+  "Topic in consult-gh prview buffers.")
 #+end_src
 
 ** Define faces
@@ -3077,9 +3080,7 @@ prs, discussions, etc.
 To use this as the default action for issues,
 set `consult-gh-dashboard-action' to `consult-gh--dashboard-action'."
 
-  (let* ((repo (get-text-property 0 :repo cand))
-         (type (get-text-property 0 :type cand))
-         (number (get-text-property 0 :number cand))
+  (let* ((type (get-text-property 0 :type cand))
          (url (get-text-property 0 :url cand)))
     (cond
      ((equal type "issue")
@@ -3103,9 +3104,7 @@ in an external browser.
 
 To use this as the default action for issues,
 set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
-  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
-         (type (substring-no-properties (get-text-property 0 :type cand)))
-         (url (substring-no-properties (get-text-property 0  :type cand))))
+  (let* ((url (substring-no-properties (get-text-property 0  :type cand))))
     (if url (browse-url url))))
 
 
@@ -3332,7 +3331,6 @@ set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
 
   (let* ((repo (get-text-property 0 :repo cand))
          (type (get-text-property 0 :type cand))
-         (number (get-text-property 0 :number cand))
          (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
     (pcase type
      ("issue"
@@ -3417,7 +3415,6 @@ from `consult-gh-notifications' and makrs it as read."
          (repo (get-text-property 0 :repo topic))
          (type (get-text-property 0 :type topic))
          (number (get-text-property 0 :number topic))
-         (title (get-text-property 0 :title topic))
          (cand (format "%s:#%s" repo number)))
     (add-text-properties 0 1 (list :repo repo :number number) cand)
     (list
@@ -4771,12 +4768,12 @@ Description of Arguments:
 ****** Interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
-(defun consult-gh-notifications (&optional initial repo noaction)
+(defun consult-gh-notifications (&optional initial noaction)
   "Search GitHub for User's work on GitHub.
 
 This is an interactive wrapper function around
 `consult-gh--dashboard'.
-If optonal argument REPO is non-nil, limits items to specifie REPO.
+
 Upon selection of a candidate either
  - if NOACTION is non-nil  candidate is returned
  - if NOACTION is nil      candidate is passed to `consult-gh-issue-action'
@@ -4785,7 +4782,7 @@ INITIAL is an optional arg for the initial input in the minibuffer."
   (interactive)
   (let* ((sel (consult-gh--notifications "Select Notification:  " initial)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel)))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
@@ -4835,7 +4832,6 @@ INITIAL is an optional arg for the initial input in the minibuffer."
          (repo (get-text-property 0 :repo topic))
          (type (get-text-property 0 :type topic))
          (number (get-text-property 0 :number topic))
-         (title (get-text-property 0 :title topic))
          (buffer (get-buffer-create (format "*consult-gh-topics-comment: %s - %s #%s" repo type number)))
          (existing nil))
     (cond
