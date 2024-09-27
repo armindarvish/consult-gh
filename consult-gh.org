@@ -5314,8 +5314,8 @@ removes them from the list in variable `forge-database'.
 If optional argument URLS is non-nil, remove the forges of the URLS."
   (interactive)
   (let* ((list (mapcar (lambda (url) (let* ((url-parse (forge--split-forge-url url))
-                                       (repo (string-join (cdr url-parse) "/"))
-                                       (host (car url-parse)))
+                                            (repo (string-join (cdr url-parse) "/"))
+                                            (host (car url-parse)))
                                        (format "%s @%s" repo host)))
                        consult-gh-forge--added-repositories))
          (urls (or urls (completing-read-multiple "Remove Repository from forge db: " list))))
@@ -5396,9 +5396,10 @@ This is a wrapper function arround `consult-gh-forge--issue-view'."
 (defun consult-gh-forge--pr-view (repo number &optional timeout)
   "Add the REPO and PR to forge database.
 
- Uses `consult-gh-forge--add-topic' and tries to load the issue in forge
-by `consult-gh-forge--visit-topic' within the TIMEOUT limit \(in seconds\),
-otherwise reverts to using `consult-gh--pr-view-action' to open the pr identified by NUMBER."
+Uses `consult-gh-forge--add-topic' and tries to load the issue in forge by
+`consult-gh-forge--visit-topic' within the TIMEOUT limit \(in seconds\),
+otherwise reverts to using `consult-gh--pr-view-action' to open the pr
+identified by NUMBER."
   (let* ((repo (string-trim repo))
          (url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
          (id (string-to-number number))
