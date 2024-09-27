@@ -16,7 +16,8 @@
    =consult-gh-topics-edit-comment-mode=: for editing comments
 - Cleans up the code for forge integration (no more hacking forge functions)
 - Improves file browsing (reusing downloaded files)
-- Cleans up the code (for MELPA comptbibility)
+- Cleans up the code to removes unnecessary redundancy
+- Cleans up the code (for MELPA compatibility)
 
 
 * Version 1.0 (2024-07-28)
