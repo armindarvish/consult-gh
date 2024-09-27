@@ -86,23 +86,22 @@
 
 (defun consult-gh-embark-default-action (cand)
   "Open CAND link in an Emacs buffer."
-  (let* ((class (get-text-property 0 :class cand))
-         (newcand (append (list cand) (text-properties-at 0 cand))))
+  (let* ((class (get-text-property 0 :class cand)))
     (pcase class
      ("code"
-      (funcall consult-gh-code-action newcand))
+      (funcall consult-gh-code-action cand))
      ("issue"
-      (funcall consult-gh-issue-action newcand))
+      (funcall consult-gh-issue-action cand))
      ("pr"
-      (funcall consult-gh-pr-action newcand))
+      (funcall consult-gh-pr-action cand))
      ("file"
-      (funcall consult-gh-file-action newcand))
+      (funcall consult-gh-file-action cand))
      ("notification"
-      (funcall consult-gh-notifications-action newcand))
+      (funcall consult-gh-notifications-action cand))
      ("dashboard"
-      (funcall consult-gh-dashboard-action newcand))
+      (funcall consult-gh-dashboard-action cand))
      (_
-      (funcall consult-gh-repo-action newcand)))))
+      (funcall consult-gh-repo-action cand)))))
 
 
 (defun consult-gh-embark-get-ssh-link (cand)
@@ -168,21 +167,16 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 
 (defun consult-gh-embark-clone-repo (cand)
   "Clone the CAND repo at point."
-  (let ((repo (get-text-property 0 :repo cand)))
-    (funcall #'consult-gh--repo-clone-action (cons repo `(:repo ,repo)))))
+  (setq my:test cand)
+    (funcall #'consult-gh--repo-clone-action cand))
 
 (defun consult-gh-embark-fork-repo (cand)
   "Fork the CAND repo at point."
-  (let ((repo (get-text-property 0 :repo cand)))
-    (funcall #'consult-gh--repo-fork-action (cons repo `(:repo ,repo)))))
+    (funcall #'consult-gh--repo-fork-action cand))
 
 (defun consult-gh-embark-save-file (cand)
   "Save the CAND file at point."
-  (let* ((repo (get-text-property 0 :repo cand))
-         (path (get-text-property 0 :path cand))
-         (url (get-text-property 0 :url cand))
-         (size (get-text-property 0 :size cand)))
-    (funcall #'consult-gh--files-save-file-action (cons path `(:repo ,repo :path ,path :url ,url :size ,size)))))
+    (funcall #'consult-gh--files-save-file-action cand))
 
 
 ;;; Define Embark Keymaps

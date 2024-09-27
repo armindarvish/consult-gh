@@ -119,8 +119,8 @@ removes them from the list in variable `forge-database'.
 If optional argument URLS is non-nil, remove the forges of the URLS."
   (interactive)
   (let* ((list (mapcar (lambda (url) (let* ((url-parse (forge--split-forge-url url))
-                                            (repo (string-join (cdr url-parse) "/"))
-                                            (host (car url-parse)))
+                                       (repo (string-join (cdr url-parse) "/"))
+                                       (host (car url-parse)))
                                        (format "%s @%s" repo host)))
                        consult-gh-forge--added-repositories))
          (urls (or urls (completing-read-multiple "Remove Repository from forge db: " list))))
@@ -177,8 +177,10 @@ issue identified by NUMBER."
          (id (string-to-number number))
          (timeout (or timeout consult-gh-forge-timeout-seconds))
          (created (consult-gh-forge--add-topic url id))
-         (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--issue-view-action (propertize (format "%s" number) :repo repo :number number)))
+         (topic (ignore-errors (forge-get-topic (forge-get-repository url) id)))
+         (cand (format "%s" number)))
+    (add-text-properties 0 1 (list :repo repo :number number) cand)
+    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--issue-view-action cand))
       (while (not topic)
         (sit-for 0.001)
         (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
@@ -192,9 +194,8 @@ issue identified by NUMBER."
   "Open preview of an issue candidate, CAND, in `forge'.
 
 This is a wrapper function arround `consult-gh-forge--issue-view'."
-  (let* ((info (cdr cand))
-         (repo (substring-no-properties (plist-get info :repo)))
-         (number (substring-no-properties (format "%s" (plist-get info :number)))))
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
     (consult-gh-forge--issue-view repo number)))
 
 (defun consult-gh-forge--pr-view (repo number &optional timeout)
@@ -208,8 +209,10 @@ otherwise reverts to using `consult-gh--pr-view-action' to open the pr identifie
          (id (string-to-number number))
          (timeout (or timeout consult-gh-forge-timeout-seconds))
          (created (consult-gh-forge--add-topic url id))
-         (topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
-    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--pr-view-action (propertize (format "%s" number) :repo repo :number number)))
+         (topic (ignore-errors (forge-get-topic (forge-get-repository url) id)))
+         (cand (format "%s" number)))
+    (add-text-properties 0 1 (list :repo repo :number number) cand)
+    (with-timeout (timeout (message "could not load the topic in forge, reverting back to consult-gh--issue-view!") (funcall #'consult-gh--pr-view-action cand))
       (while (not topic)
         (sit-for 0.001)
         (setq topic (ignore-errors (forge-get-topic (forge-get-repository url) id))))
@@ -223,9 +226,8 @@ otherwise reverts to using `consult-gh--pr-view-action' to open the pr identifie
   "Open preview of a pr candidate, CAND, in `forge'.
 
 This is a wrapper function arround `consult-gh-forge--pr-view'."
-  (let* ((info (cdr cand))
-         (repo (substring-no-properties (plist-get info :repo)))
-         (number (substring-no-properties (format "%s" (plist-get info :number)))))
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
     (consult-gh-forge--pr-view repo number)))
 
 (defun consult-gh-forge--ghub-token (host username package &optional nocreate forge)
