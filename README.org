@@ -99,7 +99,7 @@ consult-gh is available on MELPA. *Be advised that there are 3 different package
 :after consult)
 #+end_src
 
-- =consult-gh-embark=: To add embark actions for consult-gh:
+- =consult-gh-embark=: (NOT MERGED on MELPA yet) To add embark actions for consult-gh:
 
 #+begin_src emacs-lisp
 (use-package consult-gh-embark
@@ -108,7 +108,7 @@ consult-gh is available on MELPA. *Be advised that there are 3 different package
 (consult-gh-embark-mode +1))
 #+end_src
 
-- =consult-gh-forge=: to integrate =consult-gh= with [[https://github.com/magit/forge][magit/forge]]:
+- =consult-gh-forge=: (NOT MERGED on MELPA yet) to integrate =consult-gh= with [[https://github.com/magit/forge][magit/forge]]:
 
 #+begin_src emacs-lisp
 (use-package consult-gh-forge
