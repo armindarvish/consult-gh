@@ -1,0 +1,42 @@
+#+title: consult-gh - Changelog
+#+author: Armin DArvish
+#+language: en
+
+* Development
+- Package is now on MELPA
+- Adds support for switching accounts (multi-account)
+- Adds support for alternative hosts (e.g. GitHub Enterprise)
+- Adds support for a minimal setup for adding comments to issues/PRs without the forge package
+- Adds support for creating repositories from within emacs (e.g. support  =gh repo create=)
+- Introduces minor modes:
+   =consult-gh-embark-mode=: for enabling/disabling embark actions
+   =consult-gh-forge-mode=: for enabling/diabling forge integration
+   =consult-gh-issue-view-mode=: for buffers that view issues
+   =consult-gh-pr-view-mode=: for buffers that view pull requests
+   =consult-gh-topics-edit-comment-mode=: for editing comments
+- Cleans up the code for forge integration (no more hacking forge functions)
+- Improves file browsing (reusing downloaded files)
+- Cleans up the code to removes unnecessary redundancy
+- Cleans up the code (for MELPA compatibility)
+
+
+* Version 1.0 (2024-07-28)
+
+A major redeisgn:
+- Switches to async process with consult-async (allows dynamically updating search queries)
+- Adds support for searching Pull Requests, Codes, Files, ...
+- Improves file browsing
+- Improves integration with [[https://github.com/magit/forge][forge]]
+- Improves cloning, forking, ...
+- bumps up dependency to emacs 29.1
+
+* Version 0.12 (2023-10-08)
+
+- Overall bug fixes and improvements of UI.
+- =consult-gh-embark=: Improve embark actions.
+- =consult-gh-forge=: Adds integration with [[https://github.com/magit/forge][forge]].
+
+
+* Version 0.1 (2023-06-29)
+
+Initial stable release
