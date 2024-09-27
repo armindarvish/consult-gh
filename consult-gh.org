@@ -2497,7 +2497,6 @@ see `consult-gh--issue-view-action'."
            (consult-gh--markdown-to-org buffer)))
         (_ ()))
       (consult-gh-issue-view-mode +1)
-      (defvar-local consult-gh--topic (list))
       (setq-local consult-gh--topic topic)
       (current-buffer))))
 
@@ -2744,7 +2743,6 @@ see `consult-gh--pr-view-action'."
            (consult-gh--markdown-to-org buffer)))
         (_ ()))
       (consult-gh-pr-view-mode +1)
-      (defvar-local consult-gh--topic (list))
       (setq-local consult-gh--topic topic)
       (current-buffer))))
 
