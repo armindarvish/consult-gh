@@ -51,6 +51,11 @@ _Create New Repos_:
 
 - =consult-gh-repo-create-new=: Create repos from scratch (or templates), or push existing git repositories to GitHub.
 
+
+_Notifications and Dashboard_:
+- =consult-gh-dashboard=: Shows user's relevant work on GitHub (similar to [[https://github.com/dlvhdr/gh-dash][gh-dash]] extension)
+- =consult-gh-notifications=: Shows user's notifications and allows seeing and interacting with notifications inside Emacs.
+
 Furthermore, =consult-gh=, also provides a number of useful [[https://github.com/oantolin/embark][Embark]] actions (see examples below.), as well as integration with [[https://github.com/magit/forge][magit/forge]] package.
 
 * Getting Started
@@ -94,7 +99,7 @@ consult-gh is available on MELPA. *Be advised that there are 3 different package
 :after consult)
 #+end_src
 
-- =consult-gh-embark=: To add embark actions for consult-gh:
+- =consult-gh-embark=: (NOT MERGED on MELPA yet) To add embark actions for consult-gh:
 
 #+begin_src emacs-lisp
 (use-package consult-gh-embark
@@ -103,7 +108,7 @@ consult-gh is available on MELPA. *Be advised that there are 3 different package
 (consult-gh-embark-mode +1))
 #+end_src
 
-- =consult-gh-forge=: to integrate =consult-gh= with [[https://github.com/magit/forge][magit/forge]]:
+- =consult-gh-forge=: (NOT MERGED on MELPA yet) to integrate =consult-gh= with [[https://github.com/magit/forge][magit/forge]]:
 
 #+begin_src emacs-lisp
 (use-package consult-gh-forge
@@ -161,181 +166,7 @@ Clone this repo and make sure the files are on your load path, as described on [
 For more advanced configurations, read the customization section below and see [[id:F7C9FF9F-80A3-4EEC-97CE-6EEC02B5DD75][example configs]].
 
 *** Customization
-For the full list and descriptios of the custom variables please refer to the documentation or use emacs's customize interface by =M-x customize= or =(customize 'consult-gh)=. Here is a list of the most important custom varibales with brief description:
-
-**** =consult-gh-tempdir=
-This is where temporary files are saved. By default, this is set to your system temporary directory (=temporary-file-directory= variable in Emacs). =consult-gh= uses this folder to store temporary files (such as files you are previewing).
-
-**** =consult-gh--repo-maxnum=
-This is the limit passed to =gh= as =--limit= argument to =gh repo list= or =gh search repos= commands and defines the number of repos shown when listing or searching repos. By default, it is set to 30 following the default values of =gh= itself, but it can be customized by the user to see more or fewer results.
-
-Note that, this is a global setting, but since the update to v2, the user can add additional command line arguments in the minibuffer, and therefore adding the command line argument (e.g. =-- -L 100=) in the minibuffer will dynamically override this setting. See [[id:0AAC346E-481A-48AB-B7DA-1569EBA4A145][Features and Demos]] for screenshots and examples.
-
-**** =consult-gh--issue-maxnum=
-This is the limit passed to =gh= as =--limit= argument to =gh issue list= or =gh search issues= commands and defines the number of issues shown when listing or searching for issues. By default, it is set to 30 following the default values of =gh= itself, but it can be customized by the user to see more or fewer results.
-
-Similar to consult-gh--repo-maxnum, this can be overridden by passing command line arguments directly in the minibuffer (e.g. adding =-- -L 100= in the minibuffer entry).
-
-**** =consult-gh--pr-maxnum=
-Similar to consult-gh--issue-maxnum but for pull requests.
-
-**** =consult-gh--code-maxnum=
-Similar to maxnum variables above but for codes (for example search results for code i.e. =gh search code=).
-
-**** =consult-gh-search-repos-args=
-A list of command line arguments passed to "gh" command line program to search repositories. By default it is set to ='("search" "repos")= so it searches all repositories. Customizing this varable is useful if you want to add some additional conditions (i.e. command line arguments) permanently fto your repository searches. For example if you want to limit repository searches to a specific user or organization, etc.
-
-**** =consult-gh-repo-list-args=
-Similar to  =consult-gh-search-repos-args=, but for listing repos. The default is ='("repo" "list")=
-
-**** =consult-gh-search-issues-args=
-Similar to  =consult-gh-search-repos-args=, but for searching issues. The default is ='("search" "issues")=
-**** =consult-gh-issue-list-args=
-Similar to  =consult-gh-search-issues-args=, but for listing issues. The default is ='("issue" "list")=
-
-
-**** =consult-gh-search-prs-args=
-Similar to  =consult-gh-search-prs-args=, but for searching pull requests. The default is ='("search" "prs")=.
-
-**** =consult-gh-pr-list-args=
-Similar to  =consult-gh-search-prs-args=, but for listing pull requests. The default is ='("pr" "list")=
-
-
-**** =consult-gh-search-code-args=
-Similar to  =consult-gh-search-repos-args=, but for searching code. The default is ='("search" "code")=
-
-
-**** =consult-gh-search-issues-args=
-Similar to  =consult-gh-search-repos-args=, but for searching issues.
-
-**** =consult-gh-notifications-args=
-Similar to  =consult-gh-search-repos-args=, but for getting notifications from github cli. By default this uses a =gh api= call with =--tmeplate= formating switch to get all the relevant information about notifications.
-
-**** =consult-gh-notifications-show-unread-only=
-A boolean determining whether to hide read notifications or not (show all notifications).
-
-**** =consult-gh-dashboard-items-functions=
-A list of functions that are used to collect items that should be shown in the dashboard. Customizing this variable is useful if you want to change the items you normally see in the dashboard.
-
-**** =consult-gh-large-file-warning-threshold=
-This is the maximum file size, above which =consult-gh= requests a confirmation for previewing, opening or saving the file. Default value is set by emacs built-in =large-file-warning-threshold= variable, but since =consult-gh= is downloading files from the internet, you may want to set this to a smaller value than =large-file-warning-threshold=  depending on your network performance.
-
-**** =consult-gh-prioritize-local-folder=
-
-This variable defines whether =gh= uses the git repo in the local folder to select/guess the repository for commands like =consult-gh-find-file= and =consult-gh-issue-list=, etc. Note that everything is still retrieved from the remote (for example =consult-gh-find-file= would fetch the contents of the repo from remote and not from the local folder) but the local repo name is used instead of querying the user.
-You can set this variable to ='suggest=, =t=, or =nil=
-- 'suggest simply adds the local repo name as initial input in the minibuffer so you don't have to type it out.
-- t would skip the query and uses the local repo name, if any, otherwise it falls back to querying the user.
-- nil would not suggest the local repo name as initial-input but instead uses it as default value. That means the local repo is added to the end of history list (accessible by default keybinding =M-n=).
-
-**** =consult-gh--issues-state-to-show=
-The state of issues shown when listing or searching for issues. This is the string passed as =--state= argument to =gh search issues= or =gh issue list= and can accept =open=, =closed= or =all= for open, closed or all issues, respectively.
-
-Note that, this is a global setting, but since the update to v2, the user can add additional command line arguments in the minibuffer, and therefore adding the command line argument (e.g. =-- --state closed=) in the minibuffer will dynamically override this setting. See [[id:0AAC346E-481A-48AB-B7DA-1569EBA4A145][Features and Demos]] for screenshots and examples.
-
-**** =consult-gh--issues-state-to-show=
-Similar to consult-gh--issues-state-to-show but for pull requests.
-This is the string passed as =--state= argument to =gh search prs= or =gh pr list= and can accept =open=, =merged=, =closed= or =all= for open, merged, closed or all pull requests, respectively.
-
-**** =consult-gh-default-orgs-list=
-This is a list of default organizations you want to access frequently. I set this variable to organizations I am part of (a.k.a. to look at my own repositories). Conviniently the function =consult-gh--get-current-orgs= is provided to get a list of organizations of the currently looged in and selected user. But you can also add any other account you want to look at frequently to =consult-gh-default-orgs-list= list. Here is an example of setting the default list to "alphapapa" and "systemcrafters":
-
-#+begin_src emacs-lisp
-(setq consult-gh-default-orgs-list '("alphapapa" "systemcrafters"))
-#+end_src
-
-or if you want to append to the list:
-
-#+begin_src emacs-lisp
-(setq consult-gh-default-orgs-list (append consult-gh-default-orgs-list '("alphapapa" "systemcrafters")))
-#+end_src
-
-**** =consult-gh-repo-preview-mode=
-This is the major-mode used to show repository previews. By default, it is set to nil, which uses the major-mode associated with the extension of the README file. But you can set it to ='markdown-mode= or ='org-mode= to force showing previews in the mode you like.
-
-**** =consult-gh-issue-preview-mode=
-This is the major-mode used to show issue/pr previews. By default, it is set to ='markdown-mode=, but if you prefer to see the contents in =org-mode= format, you can set this variable to ='org-mode=. Be aware that currently, the org-mode conversion is done with some simple regex replacements and while the performance is decent and the converted version is perfectly understandable, the org conversion may cause some inaccuracies. If you want to try this you can do:
-
-#+begin_src emacs-lisp
-(setq consult-gh-issue-preview-mode 'org-mode)
-#+end_src
-
-**** =consult-gh-show-preview=
-This variable is a boolean determining whether =consult-gh= shows previews or not. By default, this is set to nil because loading repository views or file contents can be resource-heavy depending on the size of the content. Therefore, it is left to the user to intentionally turn this feature on if it is suitable for their use-case and their setup.
-
-Note that getting previews makes an API call to GitHub and downloads contents of a file. When =consult-gh-show-preview= is set to =nil= (default setting), no API call is made (no resources used) and no preview will be available either. This might be a useful configuration if you only want to see the name of repositories or issues and do actions such as cloning, forking or getting links, or jumping to URLs in the browser but not for viewing files or issues within Emacs.
-
-*If you want to be able to get a preview on demand without turning previews on globally, then look at =consult-gh-preview-key= below.*
-
-**** =consult-gh-preview-key=
-This is similar to =consult-preview-key= but only for =consult-gh=. By default, it is set to the value of consult-preview-key to keep consistent experience across different consult packages, but you can set this variable explicitly for consult-gh.
-For example, if you have turned preview on by setting =consult-gh-show-preview= to =t=, but you still only want to see previews on demand, you can set =consult-gh-preview-key= to the key binding that shows the preview. Here is an example using =C-o= as preview key. With this setting, previews are shown only when you hit =ctrl+o=.
-
-#+begin_src emacs-lisp
-(setq consult-gh-show-preview t)
-(setq consult-gh-preview-key "C-o")
-#+end_src
-
-Be aware that getting previews is resource heavy since it has to make an API call to GitHub and download contents of a file. If you set a specific key for =consult-gh-preview-key=, this API call and downloading the content is done only when you hit the key binding.
-
-**** =consult-gh-confirm-name-before-fork=
-This is a boolean determining whether =consult-gh= asks for a repo  name before forking a repository. By default, it is set to =nil=, meaning that =consult-gh= uses the same repo name when forking.
-
-**** =consult-gh-confirm-before-clone=
-This is a boolean determining whether =consult-gh= asks for path and directory name before cloning a repository. By default, it is set to =t=, meaning that =consult-gh= asks the user for the path to clone a repository and the name to give the directory. However, if you don't want consult-gh to ask you every time you clone a repository, you can set this variable to =nil=, in which case =consult-gh= clones repositories at =consult-gh-default-clone-directory= (see below) with the default name of the repository itself.
-Note that setting this variable to =nil= along with setting =consult-gh-default-clone-directory= to a directory where you keep all your repositories, allows quick cloning of multiple repositories.
-
-**** =consult-gh-default-clone-directory=
-This variable points to the directory where repositories are cloned by default. In the default settings, this is set to ="~/"= (a.k.a. user's home directory), and the user is asked for confirmation before cloning. Therefore, in the default setting no matter what this variable is, you can still choose the right path to clone each repository, but this means that you have to do this for every each repository you clone. By setting this variable to a default convenient path where you keep all your repositories, for example ="~/code/"= or ="~/projects/"= , you can minimize the effort to navigate to the right path.
-Keep in mind that if you do clone multiple repositories at the same time, it would be convenient to have this variable set to the right path, so you don't have to navigate to it for each repository especially if you turn =consult-gh-confirm-before-clone= to nil (see above).
-
-**** =consult-gh-ask-for-path-before-save=
-This is a boolean determining whether =consult-gh= asks for a path before saving a file (for single files and not cloning entire repositories). By default, it is set to =t=, meaning that =consult-gh= asks the user for the path to save a file. However, if you don't want consult-gh to ask you every time you save a file, you can set this variable to =nil=, in which case =consult-gh= saves files at =consult-gh-default-save-directory= (see below) with the name of the file.
-Note that setting this variable to =nil= along with setting =consult-gh-default-save-directory=, allows quick saving of multiple files (possibly even from different repositories).
-
-**** =consult-gh-default-save-directory=
-This variable stores the default path where files are saved and by default is set to =~/Downloads=. Keep in mind that This is used for saving individual files and not for cloning entire repositories, which uses =consult-gh-default-clone-directory= (see above).
-
-**** =consult-gh-default-branch-to-load=
-This variable is used for choosing a branch when viewing files within a repository. By default, it is set to ="ask"= meaning that =consult-gh= will ask the user which branch to clone. If you set this to =nil=, then =consult-gh= will load the *HEAD* of the git repository. If you set this to =confirm=, =consult-gh= will ask you if you want to view the *HEAD* of the repository and if not will ask you to choose a branch. If you set this to any other =string=, then =consult-gh= uses that string as the name of the branch and will try to load this branch. Be aware that setting this to a string is probably not a good idea since this will be used for any repository and if the branch does not exist, will cause an error.
-
-**** =consult-gh-repo-action=
-This variable stores the function that is called when a repository is selected. By default, it is bound to =#'consult-gh--repo-browse-url-action= which opens the homepage of the repository in a browser. You can change it to other provided functions such as =#'consult-gh--repo-view-action= which instead fetches the README of the repository within an Emacs buffer or =#' consult-gh--repo-browse-files-action= which shows the file tree of the repository (after choosing a branch). Other provided built-in actions include =#'consult-gh--repo-clone-action= and =#'consult-gh--repo-fork-action=.
-You can also set this variable to any custom function as long as it follows the patterns of the built-in functions (e.g. input ARGs,...)
-
-**** =consult-gh-issue-action=
-Similar to =consult-gh-repo-action= but for issues. This variable stores the default function that is called, when an issue is selected. By default, it is bound to =#'consult-gh--issue-browse-url-action= which opens the issue page in a browser. Alternatively, you can bind it to =consult-gh--issue-view-action= if you want to see the issue inside an Emacs buffer. Note that this is only for viewing issues and not interacting (adding posts, filing new issues, etc.) with them. This is mainly due to the fact that the =gh= back-end itself is also limited when it comes to managing issues (interactive command line queries are not that useful!). In the future, I may add more features here, but keep in mind that for managing issues (and pull requests), we can use other packages like [[https://github.com/magit/forge][magit/forge]]. In fact, consult-gh now provides support for integration with [[https://github.com/magit/forge][magit/forge]]. You can use it by setting this variable to =#'consult-gh-forge--issue-view-action= provided in in [[./consult-gh-forge.el]] (See below for more information).
-
-**** =consult-gh-pr-action=
-Similar to =consult-gh-issue-action= but for pull requests. This variable stores the default function that is called, when a pull request is selected; and by default, it is bound to =#'consult-gh--pr-browse-url-action= which opens the pull request page in a browser. Alternatively, you can bind it to =consult-gh--pr-view-action= if you want to see the issue inside an Emacs buffer. Alternatively, you can use [[https://github.com/magit/forge][magit/forge]] to view pull requests if you use =#'consult-gh-forge--pr-view-action= provided in [[./consult-gh-forge.el]] (See below for more information).
-
-**** =consult-gh-code-action=
-Similar to other action variables above but for code snippets. This variable stores the default function that is called, when a code (search results from =gh search code=) is selected. By default, it is bound to =#'consult-gh--code-browse-url-action= which opens the URL for the file containing the code snippet in a browser. Alternatively, you can bind it to =consult-gh--code-view-action= if you want to see the file inside an Emacs buffer. Note that when you open the file in an Emacs buffer, consult-gh tries to put the cursor around the relevant code snippet in the file and highlights the snippet as well. (See below for screenshots and examples).
-
-**** =consult-gh-file-action=
-Similar to =consult-gh-repo-action= and =consult-gh-issue-action= but for files. This variable stores the default function that is called, when a file is selected. By default, it is bound to =#' consult-gh--files-browse-url-action= which opens the file page in a browser. Alternatively, you can bind it to other provided action functions for files such as =consult-gh--files-view-action= which opens the file in an Emacs buffer (in the right major mode as well) or =consult-gh--files-save-file-action= which allows you to save a file without cloning the entire repository. If you select multiple files, using [[*=consult-gh-crm-separator=][=consult-gh-crm-separator=]], you can even save multiple files possibly from different repositories.
-
-
-
-**** =consult-gh-discussion-action=
-Similar to =consult-gh-issue-action= and =consult-gh-pr-action= but for discussion topics.
-
-**** =consult-gh-notifications-action=
-Similar to =consult-gh-repo-action= but for notifications. By default it is bound to =consult-gh--notifications-action= which passes notifications to defult actions of issues or prs according to the item type.
-
-**** =consult-gh-dashboard-action=
-Similar to =consult-gh-notifications-action= but for items in the dashboard. By default it is bound to =consult-gh--dashboard-action= which passes items to defult actions of issues or prs according to the item type.
-
-**** =consult-gh-notifications-group-function=
-The function used for grouping notifications. By default it is set to use =consult-gh--notifications-group-by-date= which groups the notificaitons by their date. But it can be customized to use item types (e.g. issues or pullrequests), or reason for notification (e.g. a mention vs. review-request), etc.
-
-**** =consult-gh-dashboard-group-function=
-Similar to =consult-gh-notifications-group-function= but for dashboard items. By default it is set to use =consult-gh--dashboard-group-by-reason= which groups the items in the dashboard by the reason of their relevance (e.g. mentions, review-request, assignment, etc.)
-
-**** =consult-gh-highlight-matches=
-This variable determines if =consult-gh= highlights search terms, code snippets, etc. in minibuffer or preview buffers. By default it is set to t.
-
-
+For the full list and descriptios of the custom variables please refer to the documentation or use emacs's customize interface by =M-x customize= or =(customize 'consult-gh)=. [[https://github.com/armindarvish/consult-gh/wiki/Customization][Here]] is a list of the most important custom varibales with brief description.
 
 *** Example Customization for Good Performance and Functionality
 :PROPERTIES:
@@ -355,6 +186,8 @@ Here is a good customization for great performance as well as functionality:
   (consult-gh-pr-action #'consult-gh--pr-view-action)
   (consult-gh-code-action #'consult-gh--code-view-action)
   (consult-gh-file-action #'consult-gh--files-view-action)
+  (consult-gh-notifications-action #'consult-gh--notifications-action)
+  (consult-gh-dashboard-action #'consult-gh--dashboard-action)
   (consult-gh-large-file-warning-threshold 2500000)
   (consult-gh-prioritize-local-folder 'suggest)
   :config

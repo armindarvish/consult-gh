@@ -75,32 +75,32 @@
          (number (or (get-text-property 0 :number cand) nil))
          (path (or (get-text-property 0 :path cand) nil)))
     (pcase class
-     ("issue"
+      ("issue"
       (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
-     ("file"
+      ("file"
       (browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
-     ("pr"
+      ("pr"
       (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
-     (_
+      (_
       (consult-gh--call-process "repo" "view" "--web" (substring repo))))))
 
 (defun consult-gh-embark-default-action (cand)
   "Open CAND link in an Emacs buffer."
   (let* ((class (get-text-property 0 :class cand)))
     (pcase class
-     ("code"
+      ("code"
       (funcall consult-gh-code-action cand))
-     ("issue"
+      ("issue"
       (funcall consult-gh-issue-action cand))
-     ("pr"
+      ("pr"
       (funcall consult-gh-pr-action cand))
-     ("file"
+      ("file"
       (funcall consult-gh-file-action cand))
-     ("notification"
+      ("notification"
       (funcall consult-gh-notifications-action cand))
-     ("dashboard"
+      ("dashboard"
       (funcall consult-gh-dashboard-action cand))
-     (_
+      (_
       (funcall consult-gh-repo-action cand)))))
 
 
@@ -122,13 +122,13 @@ The candidate can be a repo, issue, PR, file path, or a branch."
          (path (or (get-text-property 0 :path cand) nil))
          (branch (or (get-text-property 0 :branch cand) nil)))
     (pcase class
-     ("issue"
-      (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" issue))))
-     ("file"
+      ("issue"
+      (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number))))
+      ("file"
       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
-     ("pr"
+      ("pr"
       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
-     (_
+      (_
       (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))
 
 (defun consult-gh-embark-get-org-link (cand)
@@ -167,16 +167,15 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 
 (defun consult-gh-embark-clone-repo (cand)
   "Clone the CAND repo at point."
-  (setq my:test cand)
-    (funcall #'consult-gh--repo-clone-action cand))
+  (funcall #'consult-gh--repo-clone-action cand))
 
 (defun consult-gh-embark-fork-repo (cand)
   "Fork the CAND repo at point."
-    (funcall #'consult-gh--repo-fork-action cand))
+  (funcall #'consult-gh--repo-fork-action cand))
 
 (defun consult-gh-embark-save-file (cand)
   "Save the CAND file at point."
-    (funcall #'consult-gh--files-save-file-action cand))
+  (funcall #'consult-gh--files-save-file-action cand))
 
 
 ;;; Define Embark Keymaps

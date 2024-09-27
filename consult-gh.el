@@ -4078,22 +4078,21 @@ INITIAL is an optional arg for the initial input in the minibuffer
          (branch (or branch (format "%s" (cdr (consult-gh--read-branch repo)))))
          (candidates (mapcar #'consult-gh--file-format (consult-gh--files-nodirectory-items repo branch)))
          (sel (consult-gh-with-host (consult-gh--auth-account-host)
-                  (consult--read candidates
-                                 :prompt "Select File: "
-                                 :lookup #'consult--lookup-member
-                                 :state (funcall #'consult-gh--file-state)
-                                 :require-match t
-                                 :annotate (lambda (cand) (funcall (consult-gh--file-annotate) candidates cand))
-                                 :history t
-                                 :sort nil
-                                 :add-history (consult--async-split-thingatpt 'filename)
-                                 :history 'consult-gh--files-history
-                                 :category 'consult-gh-files
-                                 :preview-key consult-gh-preview-key
-                                 :initial initial))))
+                                    (consult--read candidates
+                                                   :prompt "Select File: "
+                                                   :lookup #'consult--lookup-member
+                                                   :state (funcall #'consult-gh--file-state)
+                                                   :require-match t
+                                                   :annotate (lambda (cand) (funcall (consult-gh--file-annotate) candidates cand))
+                                                   :history t
+                                                   :sort nil
+                                                   :add-history (consult--async-split-thingatpt 'filename)
+                                                   :history 'consult-gh--files-history
+                                                   :category 'consult-gh-files
+                                                   :preview-key consult-gh-preview-key
+                                                   :initial initial))))
 
     ;;add org and repo to known lists
-    (print sel)
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
