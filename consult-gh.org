@@ -864,7 +864,7 @@ If the string is shorter it adds whitespace to the string.
 If PREPEND is non-nil, it truncates or adds whitespace from
 the beginning of string, instead of the end."
   (let* ((string (format "%s" string))
-         (w (string-width string)))
+         (w (length string)))
     (when (< w width)
       (if prepend
           (setq string (format "%s%s" (make-string (- width w) ?\s) (substring string)))
@@ -882,8 +882,8 @@ It uses `consult-gh--set-string-width' and sets the width
 of the concatenated of STRING+PREFIX \(e.g. “\(concat prefix string\)”\)
 within MAXWIDTH or a fraction of MAXWIDTH.  This is used for aligning
  marginalia info in minibuffer when using `consult-gh'."
-  (let ((s (string-width string))
-        (w (string-width prefix)))
+  (let ((s (length string))
+        (w (length prefix)))
     (cond ((< (+ s w) (floor (/ maxwidth 2)))
            (consult-gh--set-string-width string (- (floor (/ maxwidth 2))  w) t))
           ((< (+ s w) (floor (/ maxwidth 1.8)))
