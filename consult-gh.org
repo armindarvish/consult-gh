@@ -4958,6 +4958,7 @@ INITIAL is an optional arg for the initial input in the minibuffer."
 
 ***** consult-gh-topics-comment-cancel
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-topics-comment-cancel ()
   "Cancel comment."
   (interactive)
@@ -4965,6 +4966,7 @@ INITIAL is an optional arg for the initial input in the minibuffer."
 #+end_src
 ***** consult-gh-topics-comment-submit
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-topics-comment-submit (&optional topic)
   "Submit comment on TOPIC."
   (interactive)
@@ -5019,6 +5021,7 @@ INITIAL is an optional arg for the initial input in the minibuffer."
 **** opening topic in the browser
 ***** consult-gh-topics-open-in-browser
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh-topics-open-in-browser (&optional topic)
   "Open the TOPIC of the current buffer in the browser.
 
@@ -5045,6 +5048,7 @@ Uses `consult-gh-browse-url-func'."
 
 
 #+begin_src emacs-lisp
+;;;###autoload
 (defun consult-gh (&rest args)
   "Convinient wrapper function for favorite interactive command.
 
@@ -5780,6 +5784,7 @@ default behavior of `ghub--host' to allow using
 (require 'transient)
 
 ;; Prefixes
+;;;###autoload
 (transient-define-prefix consult-gh-transient ()
   "Main transient menu for `consult-gh'."
   [:description

@@ -4410,11 +4410,13 @@ INITIAL is an optional arg for the initial input in the minibuffer."
       (and (stringp sel) (funcall consult-gh-notifications-action sel)
            (consult-gh--notifications-mark-as-read sel)))))
 
+;;;###autoload
 (defun consult-gh-topics-comment-cancel ()
   "Cancel comment."
   (interactive)
   (kill-buffer (current-buffer)))
 
+;;;###autoload
 (defun consult-gh-topics-comment-submit (&optional topic)
   "Submit comment on TOPIC."
   (interactive)
@@ -4465,6 +4467,7 @@ INITIAL is an optional arg for the initial input in the minibuffer."
       (with-no-warnings (outline-show-all)))
     (switch-to-buffer buffer)))
 
+;;;###autoload
 (defun consult-gh-topics-open-in-browser (&optional topic)
   "Open the TOPIC of the current buffer in the browser.
 
@@ -4487,6 +4490,7 @@ Uses `consult-gh-browse-url-func'."
          (funcall (or consult-gh-browse-url-func #'browse-url) url)
       (message "No topic to browse in this buffer!"))))
 
+;;;###autoload
 (defun consult-gh (&rest args)
   "Convinient wrapper function for favorite interactive command.
 
