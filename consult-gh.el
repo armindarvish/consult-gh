@@ -139,6 +139,22 @@ Common options include:
   :type '(choice (const :tag "Default Funciton" consult-gh-notifications-make-args)
                  (function :tag "Custom Function")))
 
+(defcustom consult-gh-browse-url-func #'browse-url
+  "What function to call browsing a url?
+
+Common options include:
+
+ - `browse-url'         Opens url in default browser
+ - `eww-browse-url'     Open url in eww
+ - `browse-url-firefox' Open url in firefox
+ - `browse-url-chrome'  Open url in chrome"
+  :group 'consult-gh
+  :type '(choice (function :tag "Browse URL in default browser" browse-url)
+                 (function :tag "Browse URL in EWW" eww-browse-url)
+                 (function :tag "Browse URL in Firefox" browse-url-firefoxn)
+                 (function :tag "Browse URL in Chrome" browse-url-chrome)
+                 (function :tag "Custom Function")))
+
 (defcustom consult-gh-dashboard-items-functions (list #'consult-gh--dashboard-collect-author #'consult-gh--dashboard-collect-assigned #'consult-gh--dashboard-collect-mentions #'consult-gh--dashboard-collect-involves)
   "A list of functions for collecting items in `consult-gh-dashboard'.
 
@@ -1370,13 +1386,13 @@ CONS is a list of files for example returned by
               (url (plist-get info :url))
               (str path))
     (add-text-properties 0 1 (list :repo repo
-                               :user user
-                               :package package
-                               :path path
-                               :url url
-                               :size size
-                               :branch branch
-                               :class class) str)
+                                   :user user
+                                   :package package
+                                   :path (substring-no-properties path)
+                                   :url url
+                                   :size size
+                                   :branch branch
+                                   :class class) str)
     str))
 
 (defun consult-gh--file-state ()
@@ -1460,9 +1476,9 @@ set `consult-gh-file-action' to `consult-gh--files-browse-url-action'."
          (path (get-text-property 0 :path cand))
          (branch (get-text-property 0 :branch cand))
          (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "/" path)))
-    (browse-url url)))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
-(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str)
+(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str branch)
   "Open file in an Emacs buffer.
 
 This is an internal function that gets the PATH to a file within a REPO
@@ -1484,10 +1500,13 @@ Description of Arguments:
   URL       the url of the file as retrieved from GitHub API
   NO-SELECT a boolean for whether to swith-to-buffer or not
   TEMPDIR   the directory where the temporary file is saved
+  BRANCH    is the branch of the repository
 
 Output is the buffer visiting the file."
   (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
-         (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir))))
+         (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir)))
+         (topic (format "%s/%s" repo path)))
+    (add-text-properties 0 1 (list :class "file" :repo repo :type "file" :path path :branch branch :title nil) topic)
     (unless (file-exists-p temp-file)
       (make-directory (file-name-directory temp-file) t)
       (with-temp-file temp-file
@@ -1505,6 +1524,7 @@ Output is the buffer visiting the file."
               (consult-gh-recenter 'middle))
           nil)
         (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
+        (setq-local consult-gh--topic topic)
         (current-buffer)))))
 
 (defun consult-gh--files-view-action (cand)
@@ -1532,7 +1552,7 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
           (setq confirm t)
         (setq confirm nil)))
     (if (and file-p confirm)
-        (consult-gh--files-view repo path url nil tempdir))))
+        (consult-gh--files-view repo path url nil tempdir nil branch))))
 
 (defun consult-gh--files-save-file-action (cand)
   "Save file candidate, CAND, to a file.
@@ -1664,7 +1684,7 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
          (response (consult-gh--call-process "browse" "--repo" (substring-no-properties repo) "--no-browser"))
          (url (string-trim (cadr response))))
     (if (eq (car response) 0)
-        (browse-url url)
+        (funcall (or consult-gh-browse-url-func #'browse-url) url)
       (message url))))
 
 (defun consult-gh--repo-insert-readme-markdown (repo)
@@ -2243,7 +2263,7 @@ see `consult-gh--issue-view-action'."
          (title (and (stringp title) (string-trim-left title "title:\t")))
          (text-comments (cadr (consult-gh--call-process "issue" "view" number "--repo" repo "--comments")))
          (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title) topic)
+    (add-text-properties 0 1 (list :class "issue" :repo repo :type "issue" :number number :title title) topic)
     (with-current-buffer buffer
       (erase-buffer)
       (insert (string-trim text-main))
@@ -2463,7 +2483,7 @@ see `consult-gh--pr-view-action'."
         (title (and (stringp title) (string-trim-left title "title:\t")))
         (text-comments (cadr (consult-gh--call-process "pr" "view" number "--repo" repo "--comments")))
         (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :repo repo :type "pr" :number number :title title) topic)
+    (add-text-properties 0 1 (list :class "pr" :repo repo :type "pr" :number number :title title) topic)
     (with-current-buffer buffer
       (erase-buffer)
       (insert (string-trim text-main))
@@ -2518,6 +2538,7 @@ Description of Arguments:
          (package (consult-gh--get-package repo))
          (path (format "%s" (cadr parts)))
          (url (format "repos/%s/contents/%s" repo path))
+         (branch "HEAD")
          (path (concat "./" path))
          (code (mapcar (lambda (x) (replace-regexp-in-string "\t" "\s\s" (replace-regexp-in-string "\n" "\\n" (format "%s" x)))) (cdr (cdr parts))))
          (code (string-join code ":"))
@@ -2533,7 +2554,7 @@ Description of Arguments:
           (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t)))))
-    (add-text-properties 0 1 (list :repo repo :user user :package package :code code :path path :url url :query query :class class) str)
+    (add-text-properties 0 1 (list :repo repo :user user :package package :code code :path path :url url :query query :class class :branch branch) str)
     str))
 
 (defun consult-gh--code-state ()
@@ -2603,7 +2624,7 @@ set `consult-gh-code-action' to `consult-gh--code-browse-url-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
          (path (substring-no-properties (get-text-property 0 :path cand)))
          (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
-    (browse-url url)))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
 (defun consult-gh--code-view-action (cand)
   "Open code candidate, CAND.
@@ -2622,7 +2643,7 @@ set `consult-gh-code-action' to `consult-gh--code-view-action'."
                                     (or consult-gh--current-tempdir (consult-gh--tempdir))))
          (path (get-text-property 0 :path cand))
          (url (get-text-property 0 :url cand)))
-    (consult-gh--files-view repo path url nil tempdir code)))
+    (consult-gh--files-view repo path url nil tempdir code branch)))
 
 (defun consult-gh--dashboard-format (string)
   "Format minibuffer candidates for dashboard items.
@@ -2779,7 +2800,7 @@ set `consult-gh-dashboard-action' to `consult-gh--dashboard-action'."
      ((equal type "pr")
       (funcall consult-gh-pr-action cand))
      (url
-      (browse-url url))
+      (funcall (or consult-gh-browse-url-func #'browse-url) url))
      (t
       (message "cannot open that with `consult-gh--dashboard-action'!")))))
 
@@ -2793,7 +2814,7 @@ in an external browser.
 To use this as the default action for issues,
 set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
   (let* ((url (substring-no-properties (get-text-property 0  :type cand))))
-    (if url (browse-url url))))
+    (if url (funcall (or consult-gh-browse-url-func #'browse-url) url))))
 
 (defun consult-gh-notifications-make-args ()
   "Make cmd aerguments for notifications."
@@ -2955,7 +2976,7 @@ Optional argument DATE is latest updated date of discussion."
          (query "query=query($filter: String!) {search(query: $filter, type: DISCUSSION, first: 1) { nodes { ... on Discussion { number }}}}")
          (id (consult-gh--command-to-string "api" "graphql" "--paginate" "--cache" "24h" "-F" filter "-f" query "--template" "{{(index .data.search.nodes 0).number}}"))
          (url (concat "https://" (consult-gh--auth-account-host) (format "/%s/discussions/%s" repo id))))
-    (when url (browse-url url))))
+    (when url (funcall (or consult-gh-browse-url-func #'browse-url) url))))
 
 (defun consult-gh--discussion-browse-url-action (cand)
   "Open the discussion of CAND thread in the browser CAND.
@@ -2993,7 +3014,7 @@ set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
      ("discussion"
       (funcall consult-gh-discussion-action cand))
      (_
-      (and url (browse-url url))))
+      (and url (funcall (or consult-gh-browse-url-func #'browse-url) url))))
     t))
 
 (defun consult-gh--notifications-browse-url-action (cand)
@@ -3008,7 +3029,7 @@ set `consult-gh-notificatios-action' to
 `consult-gh--notifications-browse-url-action'."
   (if-let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
             (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
-    (browse-url url)
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)
     (message "Cannot find the right url to open!")))
 
 (defun consult-gh--notifications-mark-as-read (cand)
@@ -3021,7 +3042,8 @@ from `consult-gh-notifications' and makrs it as read."
 
 (defvar-keymap consult-gh-issue-view-mode-map
   :doc "Consult-gh topics keymap."
-  "C-c C-r" #'consult-gh-topics-create-comment)
+  "C-c C-r" #'consult-gh-topics-create-comment
+  "C-c C-o" #'consult-gh-topics-open-in-browser)
 
 ;;;###autoload
 (define-minor-mode consult-gh-issue-view-mode
@@ -3034,7 +3056,8 @@ from `consult-gh-notifications' and makrs it as read."
 
 (defvar-keymap consult-gh-pr-view-mode-map
   :doc "Consult-gh topics keymap."
-  "C-c C-r" #'consult-gh-topics-create-comment)
+  "C-c C-r" #'consult-gh-topics-create-comment
+  "C-c C-o" #'consult-gh-topics-open-in-browser)
 
 ;;;###autoload
 (define-minor-mode consult-gh-pr-view-mode
@@ -4310,6 +4333,26 @@ INITIAL is an optional arg for the initial input in the minibuffer."
       (goto-char (point-max))
       (with-no-warnings (outline-show-all)))
     (switch-to-buffer buffer)))
+
+(defun consult-gh-topics-open-in-browser (&optional topic)
+  "Open the topic in the current buffer in browser."
+  (interactive)
+  (let* ((topic (or topic consult-gh--topic))
+         (type (and (stringp topic) (get-text-property 0 :type topic)))
+         (repo (and (stringp topic) (get-text-property 0 :repo topic)))
+         (branch (and (stringp topic) (get-text-property 0 :branch topic)))
+         (path (and (stringp topic) (get-text-property 0 :path topic)))
+         (number (and (stringp topic) (get-text-property 0 :number topic)))
+         (url (and class (pcase type
+                           ("file"
+                            (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" branch path)))
+                           ("issue"
+                            (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number)))
+                           ("pr"
+         (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pulls/%s" number)))))))
+    (if (stringp url)
+         (funcall (or consult-gh-browse-url-func #'browse-url) url)
+      (message "No topic to browse in this buffer!"))))
 
 (defun consult-gh (&rest args)
   "Convinient wrapper function for favorite interactive command.
