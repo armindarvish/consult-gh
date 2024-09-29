@@ -1343,9 +1343,10 @@ If TRANSFORM is non-nil, the CAND itself is returned."
 (defun consult-gh--split-command (input)
   "Return command argument and options list given INPUT string.
 
-It constructs built-in arguments for count and page, ..., and
-it also sets `consult-gh--override-group-by' if and argument
-for grouping is provided in options."
+It sets `consult-gh--override-group-by' if and argument
+for grouping is provided in options.
+
+See `consult--command-split' for more info."
   (pcase-let* ((`(,query . ,opts) (consult--command-split input)))
     (if (and opts (listp opts) (> (length opts) 0))
         (progn
