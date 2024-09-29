@@ -3419,7 +3419,6 @@ BUILDER is the command line builder function \(e.g.
   "Build gh command line for searching repositories with INPUT query.
 
 The command arguments such as \(e.g. “gh search repos INPUT”\)."
-  (setq my:test input)
   (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-repos-args))
                (cmd (consult--build-args consult-gh-args))
                (`(,arg . ,opts) (consult-gh--split-command input))
