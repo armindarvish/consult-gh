@@ -2462,8 +2462,10 @@ in an external browser.
 To use this as the default action for issues,
 set `consult-gh-issue-action' to `consult-gh--issue-browse-url-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
-         (number (substring-no-properties (get-text-property 0 :number cand))))
-    (consult-gh--call-process "issue" "view" "--repo" repo  "--web" number)))
+         (number (substring-no-properties (get-text-property 0 :number cand)))
+         (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")))
+         (url (and repo-url (concat repo-url "/issues/" number))))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 #+end_src
 
 ******* view issue
@@ -2708,8 +2710,10 @@ in an external browser.
 To use this as the default action for prs,
 set `consult-gh-pr-action' to `consult-gh--pr-browse-url-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
-         (number (substring-no-properties (get-text-property 0 :number cand))))
-    (consult-gh--call-process "pr" "view" "--repo" repo  "--web" number)))
+         (number (substring-no-properties (get-text-property 0 :number cand)))
+         (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")))
+         (url (and repo-url (concat repo-url "/pull/" number))))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 #+end_src
 
 ******* view pr
@@ -3136,7 +3140,6 @@ set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
   (list "api" (concat "notifications?sort=updated" (if consult-gh-notifications-show-unread-only "" "&all=true")) "--paginate" "--template" (concat "{{range .}}" "{{.id}}" "\t" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""\n" "{{end}}")))
 #+end_src
 ****** format
-
 #+begin_src emacs-lisp
 (defun consult-gh--notifications-format (string)
   "Format minibuffer candidates for notifications.
@@ -3150,7 +3153,10 @@ Description of Arguments:
          (parts (string-split string "\t"))
          (thread (car parts))
          (type (cadr parts))
-         (type (and (stringp type) (downcase type)))
+         (type (and (stringp type) (cond
+                                    ((equal (downcase type) "pullrequest") "pr")
+                                    ((equal (downcase type) "issue") "issue")
+                                    (t (downcase type)))))
          (repo (caddr parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
@@ -3169,6 +3175,7 @@ Description of Arguments:
          (reltime (cadddr (cdr (cdddr parts))))
          (url (cadddr (cddr (cdddr parts))))
          (url-parts (and (stringp url) (split-string url "/" t)))
+         (_ (print url))
          (number (and url-parts
                   (or
                    (cadr (member "issues" url-parts))
@@ -3351,10 +3358,11 @@ set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
   (let* ((repo (get-text-property 0 :repo cand))
          (type (get-text-property 0 :type cand))
          (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
+    (print cand)
     (pcase type
      ("issue"
       (funcall consult-gh-issue-action cand))
-     ("pr"
+     ((or "pr" "pullrequest")
       (funcall consult-gh-pr-action cand))
      ("discussion"
       (funcall consult-gh-discussion-action cand))
@@ -4895,7 +4903,7 @@ INITIAL is an optional arg for the initial input in the minibuffer."
                            ("issue"
                             (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number)))
                            ("pr"
-         (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pulls/%s" number)))))))
+         (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number)))))))
     (if (stringp url)
          (funcall (or consult-gh-browse-url-func #'browse-url) url)
       (message "No topic to browse in this buffer!"))))
