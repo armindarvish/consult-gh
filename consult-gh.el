@@ -1506,7 +1506,7 @@ Output is the buffer visiting the file."
   (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
          (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir)))
          (topic (format "%s/%s" repo path)))
-    (add-text-properties 0 1 (list :class "file" :repo repo :type "file" :path path :branch branch :title nil) topic)
+    (add-text-properties 0 1 (list :repo repo :type "file" :path path :branch branch :title nil) topic)
     (unless (file-exists-p temp-file)
       (make-directory (file-name-directory temp-file) t)
       (with-temp-file temp-file
@@ -2265,7 +2265,7 @@ see `consult-gh--issue-view-action'."
          (title (and (stringp title) (string-trim-left title "title:\t")))
          (text-comments (cadr (consult-gh--call-process "issue" "view" number "--repo" repo "--comments")))
          (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :class "issue" :repo repo :type "issue" :number number :title title) topic)
+    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title) topic)
     (with-current-buffer buffer
       (erase-buffer)
       (insert (string-trim text-main))
@@ -2487,7 +2487,7 @@ see `consult-gh--pr-view-action'."
         (title (and (stringp title) (string-trim-left title "title:\t")))
         (text-comments (cadr (consult-gh--call-process "pr" "view" number "--repo" repo "--comments")))
         (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :class "pr" :repo repo :type "pr" :number number :title title) topic)
+    (add-text-properties 0 1 (list :repo repo :type "pr" :number number :title title) topic)
     (with-current-buffer buffer
       (erase-buffer)
       (insert (string-trim text-main))
@@ -4352,7 +4352,7 @@ INITIAL is an optional arg for the initial input in the minibuffer."
          (branch (and (stringp topic) (get-text-property 0 :branch topic)))
          (path (and (stringp topic) (get-text-property 0 :path topic)))
          (number (and (stringp topic) (get-text-property 0 :number topic)))
-         (url (and class (pcase type
+         (url (and (stringp type) (pcase type
                            ("file"
                             (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" branch path)))
                            ("issue"
