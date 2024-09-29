@@ -3404,7 +3404,7 @@ from `consult-gh-notifications' and makrs it as read."
 (defvar-keymap consult-gh-issue-view-mode-map
   :doc "Consult-gh topics keymap."
   "C-c C-r" #'consult-gh-topics-create-comment
-  "C-c C-o" #'consult-gh-topics-open-in-browser)
+  "C-c o" #'consult-gh-topics-open-in-browser)
 
 ;;;###autoload
 (define-minor-mode consult-gh-issue-view-mode
@@ -3422,7 +3422,7 @@ from `consult-gh-notifications' and makrs it as read."
 (defvar-keymap consult-gh-pr-view-mode-map
   :doc "Consult-gh topics keymap."
   "C-c C-r" #'consult-gh-topics-create-comment
-  "C-c C-o" #'consult-gh-topics-open-in-browser)
+  "C-c o" #'consult-gh-topics-open-in-browser)
 
 ;;;###autoload
 (define-minor-mode consult-gh-pr-view-mode
