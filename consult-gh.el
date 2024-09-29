@@ -139,6 +139,22 @@ Common options include:
   :type '(choice (const :tag "Default Funciton" consult-gh-notifications-make-args)
                  (function :tag "Custom Function")))
 
+(defcustom consult-gh-browse-url-func #'browse-url
+  "What function to call browsing a url?
+
+Common options include:
+
+ - `browse-url'         Opens url in default browser
+ - `eww-browse-url'     Open url in eww
+ - `browse-url-firefox' Open url in firefox
+ - `browse-url-chrome'  Open url in chrome"
+  :group 'consult-gh
+  :type '(choice (function :tag "Browse URL in default browser" browse-url)
+                 (function :tag "Browse URL in EWW" eww-browse-url)
+                 (function :tag "Browse URL in Firefox" browse-url-firefoxn)
+                 (function :tag "Browse URL in Chrome" browse-url-chrome)
+                 (function :tag "Custom Function")))
+
 (defcustom consult-gh-dashboard-items-functions (list #'consult-gh--dashboard-collect-author #'consult-gh--dashboard-collect-assigned #'consult-gh--dashboard-collect-mentions #'consult-gh--dashboard-collect-involves)
   "A list of functions for collecting items in `consult-gh-dashboard'.
 
@@ -338,6 +354,25 @@ This is used for all categories \(issues, prs, codes, files, etc.\)"
                  (const :tag "No preview" nil)
                  (key :tag "Key")
                  (repeat :tag "List of keys" key)))
+
+(defcustom consult-gh-group-by t
+  "What field to use to group the results in the minibuffer?
+
+By default it is set to :repo, but can be any of:
+
+  t         Use headers for marginalia info
+  nil       Do not group
+  :user     group by repository owner
+  :type     group by candidate's type (e.g. issue, pr, ....)
+  :url      group by URL
+  symbol    group by another property of the candidate"
+  :type '(radio (const :tag "(Default) Use Headers of Marginalia Info" t)
+                (const :tag "Do Not Group" nil)
+                (const :tag "Repository's full name" :repo)
+                (const :tag "Repository's owner" :user)
+                (const :tag "Repository's package name" :package)
+                (const :tag "Type of Item" :type)
+                (const :tag "Custom other field (constant)")))
 
 (defcustom consult-gh-default-clone-directory "~/"
   "Where should GitHub repos be cloned to by default?"
@@ -697,6 +732,11 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)")
 (defvar-local consult-gh--topic nil
   "Topic in consult-gh prview buffers.")
 
+(defvar consult-gh--override-group-by nil
+  "Override grouping based on user input.
+
+This is used to change grouping dynamically.")
+
 ;;; Faces
 (defface consult-gh-success-face
   `((t :inherit 'success))
@@ -821,47 +861,50 @@ By default, inherits from `link'.")
    (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
                      string))))
 
-(defun consult-gh--set-string-width (string width &optional prepend)
+(defun consult-gh--set-string-width (string width &optional prepend char)
   "Set the STRING width to a fixed value, WIDTH.
 
 If the String is longer than WIDTH, it truncates
 the string and adds an ellipsis, “...”.
 If the string is shorter it adds whitespace to the string.
 If PREPEND is non-nil, it truncates or adds whitespace from
-the beginning of string, instead of the end."
+the beginning of string, instead of the end.
+if CHAR is non-nil, uses char instead of whitespace."
   (let* ((string (format "%s" string))
          (w (length string)))
     (when (< w width)
       (if prepend
-          (setq string (format "%s%s" (make-string (- width w) ?\s) (substring string)))
-        (setq string (format "%s%s" (substring string) (make-string (- width w) ?\s)))))
+          (setq string (format "%s%s" (make-string (- width w) (or char ?\s)) (substring string)))
+        (setq string (format "%s%s" (substring string) (make-string (- width w) (or char ?\s))))))
     (when (> w width)
       (if prepend
           (setq string (format "%s%s" (propertize (substring string 0 (- w (- width 3))) 'display "...") (substring string (- w (- width 3)) w)))
         (setq string (format "%s%s" (substring string 0 (- width (+ w 3))) (propertize (substring string (- width (+ w 3)) w) 'display "...")))))
     string))
 
-(defun consult-gh--justify-left (string prefix maxwidth)
+(defun consult-gh--justify-left (string prefix maxwidth &optional char)
   "Set the width of STRING+PREFIX justified from left.
 
 It uses `consult-gh--set-string-width' and sets the width
 of the concatenated of STRING+PREFIX \(e.g. “\(concat prefix string\)”\)
 within MAXWIDTH or a fraction of MAXWIDTH.  This is used for aligning
- marginalia info in minibuffer when using `consult-gh'."
+ marginalia info in minibuffer when using `consult-gh'.
+
+If optional argument CHAR is non-nil uses it insted of whitespace."
   (let ((s (length string))
         (w (length prefix)))
     (cond ((< (+ s w) (floor (/ maxwidth 2)))
-           (consult-gh--set-string-width string (- (floor (/ maxwidth 2))  w) t))
+           (consult-gh--set-string-width string (- (floor (/ maxwidth 2))  w) t char))
           ((< (+ s w) (floor (/ maxwidth 1.8)))
-           (consult-gh--set-string-width string (- (floor (/ maxwidth 1.8))  w) t))
+           (consult-gh--set-string-width string (- (floor (/ maxwidth 1.8))  w) t char))
           ((< (+ s w) (floor (/ maxwidth 1.6)))
-           (consult-gh--set-string-width string (- (floor (/ maxwidth 1.6))  w) t))
+           (consult-gh--set-string-width string (- (floor (/ maxwidth 1.6))  w) t char))
           ((< (+ s w) (floor (/ maxwidth 1.4)))
-           (consult-gh--set-string-width string (- (floor (/ maxwidth 1.4)) w) t))
+           (consult-gh--set-string-width string (- (floor (/ maxwidth 1.4)) w) t char))
           ((< (+ s w) (floor (/ maxwidth 1.2)))
-           (consult-gh--set-string-width string (- (floor (/ maxwidth 1.2)) w) t))
+           (consult-gh--set-string-width string (- (floor (/ maxwidth 1.2)) w) t char))
           ((< (+ s w) maxwidth)
-           (consult-gh--set-string-width string (- maxwidth w) t))
+           (consult-gh--set-string-width string (- maxwidth w) t char))
           (t string))))
 
 (defun consult-gh--highlight-match (regexp str ignore-case)
@@ -1169,6 +1212,44 @@ Returns a list where CAR is the user's name and CADR is the package name."
          consult-gh--current-tempdir
 (expand-file-name (make-temp-name (concat (format-time-string consult-gh-temp-tempdir-time-format  (current-time)) "-")) consult-gh-tempdir)))
 
+(defun consult-gh--group-function (cand transform &optional group-by)
+  "Group candidates by GROUP-BY keyword.
+
+This is passed as GROUP to `consult--read' on candidates
+and is used to define the grouping for CAND.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (if transform (substring cand)
+    (let* ((group-by (or consult-gh--override-group-by group-by consult-gh-group-by))
+           (group-by (if (stringp group-by) (if (not (keywordp (intern group-by))) (intern (concat ":" (format "%s" group-by))) (intern group-by)) group-by)))
+      (cond
+       ((member group-by '(nil :nil :none :no :not))
+        nil)
+       ((not (member group-by '(:t t)))
+        (if-let ((group (get-text-property 0 group-by cand)))
+            (format "%s" group)
+          "N/A"))
+       (t t)))))
+
+(defun consult-gh--split-command (input)
+  "Return command argument and options list given INPUT string.
+
+It sets `consult-gh--override-group-by' if and argument
+for grouping is provided in options.
+
+See `consult--command-split' for more info."
+  (pcase-let* ((`(,query . ,opts) (consult--command-split input)))
+    (if (and opts (listp opts) (> (length opts) 0))
+        (progn
+          (setq opts (cl-substitute ":group" ":g" opts :test 'equal))
+          (if (member ":group" opts)
+              (progn
+                (setq consult-gh--override-group-by (cadr (member ":group" opts)))
+                (setq opts (seq-difference opts (list ":group" (cadr (member ":group" opts))))))
+            (setq consult-gh--override-group-by nil)))
+      (setq consult-gh--override-group-by nil))
+    (append (list (or query input)) opts)))
+
 ;;; Backend functions for `consult-gh'.
 
 ;; Buffers
@@ -1370,13 +1451,13 @@ CONS is a list of files for example returned by
               (url (plist-get info :url))
               (str path))
     (add-text-properties 0 1 (list :repo repo
-                               :user user
-                               :package package
-                               :path path
-                               :url url
-                               :size size
-                               :branch branch
-                               :class class) str)
+                                   :user user
+                                   :package package
+                                   :path (substring-no-properties path)
+                                   :url url
+                                   :size size
+                                   :branch branch
+                                   :class class) str)
     str))
 
 (defun consult-gh--file-state ()
@@ -1460,9 +1541,9 @@ set `consult-gh-file-action' to `consult-gh--files-browse-url-action'."
          (path (get-text-property 0 :path cand))
          (branch (get-text-property 0 :branch cand))
          (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "/" path)))
-    (browse-url url)))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
-(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str)
+(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str branch)
   "Open file in an Emacs buffer.
 
 This is an internal function that gets the PATH to a file within a REPO
@@ -1484,10 +1565,13 @@ Description of Arguments:
   URL       the url of the file as retrieved from GitHub API
   NO-SELECT a boolean for whether to swith-to-buffer or not
   TEMPDIR   the directory where the temporary file is saved
+  BRANCH    is the branch of the repository
 
 Output is the buffer visiting the file."
   (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
-         (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir))))
+         (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir)))
+         (topic (format "%s/%s" repo path)))
+    (add-text-properties 0 1 (list :repo repo :type "file" :path path :branch branch :title nil) topic)
     (unless (file-exists-p temp-file)
       (make-directory (file-name-directory temp-file) t)
       (with-temp-file temp-file
@@ -1505,6 +1589,7 @@ Output is the buffer visiting the file."
               (consult-gh-recenter 'middle))
           nil)
         (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
+        (setq-local consult-gh--topic topic)
         (current-buffer)))))
 
 (defun consult-gh--files-view-action (cand)
@@ -1532,7 +1617,7 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
           (setq confirm t)
         (setq confirm nil)))
     (if (and file-p confirm)
-        (consult-gh--files-view repo path url nil tempdir))))
+        (consult-gh--files-view repo path url nil tempdir nil branch))))
 
 (defun consult-gh--files-save-file-action (cand)
   "Save file candidate, CAND, to a file.
@@ -1587,14 +1672,15 @@ Description of Arguments:
          (package (consult-gh--get-package repo))
          (description (cadr parts))
          (visibility (cadr (cdr parts)))
-         (date (substring (cadr (cdr (cdr parts))) 0 10))
+         (date (cadr (cdr (cdr parts))))
+         (date (if (length> date 9) (substring date 0 10) date))
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s"
                       (concat
-                       (propertize user 'face 'consult-gh-user-face )
-                       "/"
-                       (propertize package 'face 'consult-gh-package-face))
+                       (and user (propertize user 'face 'consult-gh-user-face))
+                       (and package "/")
+                       (and package (propertize package 'face 'consult-gh-package-face)))
                       (consult-gh--justify-left (propertize visibility 'face 'consult-gh-visibility-face) repo (frame-width))
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
                       (propertize description 'face 'consult-gh-description-face))))
@@ -1645,11 +1731,14 @@ in `consult-gh-search-repos' and is used
 to group repos by user\owner's names.
 
 If TRANSFORM is non-nil, return the CAND itself."
-  (let ((name (car
-               (string-split
-                (replace-regexp-in-string " " "" (format "%s" (car (remove " " (remove "" (string-split (substring-no-properties cand) "\s"))))))
-                "/"))))
-    (if transform (substring cand) name)))
+  (let* ((name (consult-gh--group-function cand transform)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat "Repository  "
+              (consult-gh--justify-left " Visibility " "Repository  " (frame-width) ?-)
+              (consult-gh--set-string-width " Date " 12 nil ?-)
+              " Description")))))
 
 (defun consult-gh--repo-browse-url-action (cand)
   "Browse the url for a repo candidate, CAND.
@@ -1664,7 +1753,7 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
          (response (consult-gh--call-process "browse" "--repo" (substring-no-properties repo) "--no-browser"))
          (url (string-trim (cadr response))))
     (if (eq (car response) 0)
-        (browse-url url)
+        (funcall (or consult-gh-browse-url-func #'browse-url) url)
       (message url))))
 
 (defun consult-gh--repo-insert-readme-markdown (repo)
@@ -2080,15 +2169,16 @@ Description of Arguments:
                  (_ 'consult-gh-issue-face)))
          (title (cadr (cdr parts)))
          (tags (cadr (cdr (cdr parts))))
-         (date (substring (cadr (cdr (cdr (cdr parts)))) 0 10))
+         (date (cadr (cdr (cdr (cdr parts)))))
+         (date (if (and (stringp date) (length> date 9)) (substring date 0 10) date))
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
                       (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
                       (propertize (consult-gh--set-string-width state 8) 'face face)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
-                      (propertize (consult-gh--set-string-width tags 24) 'face 'consult-gh-tags-face)
-                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40))))
+                      (propertize (consult-gh--set-string-width tags 18) 'face 'consult-gh-tags-face)
+                      (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user-face)) (and package "/") (and package (propertize package 'face 'consult-gh-package-face))) 40))))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -2096,7 +2186,7 @@ Description of Arguments:
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t)))))
     (add-text-properties 0 1 (list :repo repo :user user :package package :number number :state state :title title :tags tags :date date :query query :class class) str)
-str))
+    str))
 
 (defun consult-gh--search-issues-format (string input highlight)
   "Format candidates for issues.
@@ -2122,15 +2212,16 @@ Description of Arguments:
                  (_ 'consult-gh-issue-face)))
          (title (cadr (cdr (cdr parts))))
          (tags (cadr (cdr (cdr (cdr parts)))))
-         (date (substring (cadr (cdr (cdr (cdr (cdr parts))))) 0 10))
+         (date (cadr (cdr (cdr (cdr (cdr parts))))))
+         (date (if (and (stringp date) (length> date 9)) (substring date 0 10) date))
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 80)
+                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
                       (propertize (consult-gh--set-string-width state 8) 'face face)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
-                      (propertize (consult-gh--set-string-width tags 24) 'face 'consult-gh-tags-face)
-                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40))))
+                      (propertize (consult-gh--set-string-width tags 18) 'face 'consult-gh-tags-face)
+                      (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user-face )) (and package "/") (and package (propertize package 'face 'consult-gh-package-face))) 40))))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -2180,25 +2271,23 @@ and is used to preview or do other actions on the issue."
         ('return
          cand)))))
 
-(defun consult-gh--issue-group-by-state (cand transform)
-  "Group function for issue candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-issue-list'
-and is used to group issues by their state e.g. “OPEN” or “CLOSED”.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (replace-regexp-in-string " " "" (format "%s" (cadr (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s"))))))))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--issue-group-by-repo (cand transform)
+(defun consult-gh--issue-group (cand transform)
   "Group function for issue.
 
 This is passed as GROUP to `consult--read' in `consult-gh-issue-list'
-and is used to group issues by repository names.
+or `consult-gh-search-issues', and is used to group issues.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (car (last (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s")))))))
-    (if transform (substring cand) name)))
+  (let* ((name (consult-gh--group-function cand transform)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "Number:Title " 68 nil ?-)
+       (consult-gh--set-string-width " State " 10 nil ?-)
+       (consult-gh--set-string-width " Date " 12 nil ?-)
+       (consult-gh--set-string-width " Tags " 20 nil ?-)
+       (consult-gh--set-string-width " Repo " 40 nil ?-))))))
 
 (defun consult-gh--issue-browse-url-action (cand)
   "Browse the url for an issue candidate, CAND.
@@ -2210,8 +2299,10 @@ in an external browser.
 To use this as the default action for issues,
 set `consult-gh-issue-action' to `consult-gh--issue-browse-url-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
-         (number (substring-no-properties (get-text-property 0 :number cand))))
-    (consult-gh--call-process "issue" "view" "--repo" repo  "--web" number)))
+         (number (substring-no-properties (get-text-property 0 :number cand)))
+         (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")))
+         (url (and repo-url (concat repo-url "/issues/" number))))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
 (defun consult-gh--issue-view (repo number &optional buffer title)
   "Open ISSUE of REPO in an Emacs buffer, BUFFER.
@@ -2306,12 +2397,13 @@ Description of Arguments:
                  (_ 'consult-gh-pr-face)))
          (branch (cadr (cdr parts)))
          (title (cadr parts))
-         (date (substring (cadr (cdr (cdr (cdr parts)))) 0 10))
+         (date (cadr (cdr (cdr (cdr parts)))))
+         (date (if (and (stringp date) (length> date 9)) (substring date 0 10) date))
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
                       (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
-                      (propertize (consult-gh--set-string-width state 8) 'face face)
+                      (propertize (consult-gh--set-string-width state 6) 'face face)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
                       (propertize (consult-gh--set-string-width branch 24) 'face 'consult-gh-branch-face)
                       (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40))))
@@ -2350,14 +2442,15 @@ Description of Arguments:
                  (_ 'consult-gh-pr-face)))
          (title (cadr (cdr (cdr parts))))
          (tags (cadr (cdr (cdr (cdr parts)))))
-         (date (substring (cadr (cdr (cdr (cdr (cdr parts))))) 0 10))
+         (date (cadr (cdr (cdr (cdr (cdr parts))))))
+         (date (if (and (stringp date) (length> date 9)) (substring date 0 10) date))
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
                       (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
-                      (propertize (consult-gh--set-string-width state 8) 'face face)
+                      (propertize (consult-gh--set-string-width state 6) 'face face)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
-                      (propertize (consult-gh--set-string-width tags 40) 'face 'consult-gh-tags-face)
+                      (propertize (consult-gh--set-string-width tags 18) 'face 'consult-gh-tags-face)
                       (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40))))
     (if (and consult-gh-highlight-matches highlight)
         (cond
@@ -2399,26 +2492,41 @@ and is used to preview or do other actions on the pr."
             ('return
              cand))))))
 
-(defun consult-gh--pr-group-by-state (cand transform)
-  "Group function for pull request candidates.
+(defun consult-gh--pr-list-group (cand transform)
+  "Group function for pull requests.
 
-This is passed as GROUP to `consult--read' in `consult-gh-search-prs'
-and is used to group prs by their state
-e.g. “OPEN”, “MERGED”, or ”CLOSED”.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (replace-regexp-in-string " " "" (format "%s" (cadr (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s"))))))))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--pr-group-by-repo (cand transform)
-  "Group function for pull request candidates.
-
-This is passed as GROUP to `consult--read' in `consult-gh-search-prs'
-and is used to group prs by repository names.
+This is passed as GROUP to `consult--read' in `consult-gh-pr-list'
+or `consult-gh-search-prs', and is used to group prs.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (car (last (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s")))))))
-    (if transform (substring cand) name)))
+  (let* ((name (consult-gh--group-function cand transform)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "Number:Title " 68 nil ?-)
+       (consult-gh--set-string-width " State " 8 nil ?-)
+       (consult-gh--set-string-width " Date " 12 nil ?-)
+       (consult-gh--set-string-width " Branch " 26 nil ?-)
+       (consult-gh--set-string-width " Repo " 40 nil ?-))))))
+
+(defun consult-gh--pr-search-group (cand transform)
+  "Group function for pull requests.
+
+This is passed as GROUP to `consult--read' in `consult-gh-pr-list'
+or `consult-gh-search-prs', and is used to group prs.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let* ((name (consult-gh--group-function cand transform)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "Number:Title " 68 nil ?-)
+       (consult-gh--set-string-width " State " 8 nil ?-)
+       (consult-gh--set-string-width " Date " 12 nil ?-)
+       (consult-gh--set-string-width " Tags " 20 nil ?-)
+       (consult-gh--set-string-width " Repo " 40 nil ?-))))))
 
 (defun consult-gh--pr-browse-url-action (cand)
   "Browse the url for a pull request candidate, CAND.
@@ -2430,8 +2538,10 @@ in an external browser.
 To use this as the default action for prs,
 set `consult-gh-pr-action' to `consult-gh--pr-browse-url-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
-         (number (substring-no-properties (get-text-property 0 :number cand))))
-    (consult-gh--call-process "pr" "view" "--repo" repo  "--web" number)))
+         (number (substring-no-properties (get-text-property 0 :number cand)))
+         (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")))
+         (url (and repo-url (concat repo-url "/pull/" number))))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
 (defun consult-gh--pr-view (repo number &optional buffer title)
   "Open pull request, PR of REPO in an Emacs buffer, BUFFER.
@@ -2518,6 +2628,7 @@ Description of Arguments:
          (package (consult-gh--get-package repo))
          (path (format "%s" (cadr parts)))
          (url (format "repos/%s/contents/%s" repo path))
+         (branch "HEAD")
          (path (concat "./" path))
          (code (mapcar (lambda (x) (replace-regexp-in-string "\t" "\s\s" (replace-regexp-in-string "\n" "\\n" (format "%s" x)))) (cdr (cdr parts))))
          (code (string-join code ":"))
@@ -2533,7 +2644,7 @@ Description of Arguments:
           (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t)))))
-    (add-text-properties 0 1 (list :repo repo :user user :package package :code code :path path :url url :query query :class class) str)
+    (add-text-properties 0 1 (list :repo repo :user user :package package :code code :path path :url url :query query :class class :branch branch) str)
     str))
 
 (defun consult-gh--code-state ()
@@ -2584,12 +2695,17 @@ and is used to preview or do other actions on the code."
   "Group function for code candidates, CAND.
 
 This is passed as GROUP to `consult--read' in `consult-gh-search-code'
-and is used to group code results by repository names.
+and is used to group code results.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((repo (car (last (remove "" (string-split (substring-no-properties cand) "\t" t "\s*")))))
-        (path (replace-regexp-in-string "\t" "" (format "%s" (cadr (remove "\t" (remove "" (string-split (substring-no-properties cand) "\t" t "\s"))))))))
-    (if transform (substring cand) (format "%s -- %s" repo path))))
+  (let* ((name (consult-gh--group-function cand transform)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "Code " 98 nil ?-)
+       (consult-gh--set-string-width " Path " 8 nil ?-)
+       (consult-gh--set-string-width " > Repo " 40 nil ?-))))))
 
 (defun consult-gh--code-browse-url-action (cand)
   "Browse the url for a code candidate, CAND.
@@ -2603,7 +2719,7 @@ set `consult-gh-code-action' to `consult-gh--code-browse-url-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
          (path (substring-no-properties (get-text-property 0 :path cand)))
          (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
-    (browse-url url)))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
 (defun consult-gh--code-view-action (cand)
   "Open code candidate, CAND.
@@ -2622,7 +2738,7 @@ set `consult-gh-code-action' to `consult-gh--code-view-action'."
                                     (or consult-gh--current-tempdir (consult-gh--tempdir))))
          (path (get-text-property 0 :path cand))
          (url (get-text-property 0 :url cand)))
-    (consult-gh--files-view repo path url nil tempdir code)))
+    (consult-gh--files-view repo path url nil tempdir code branch)))
 
 (defun consult-gh--dashboard-format (string)
   "Format minibuffer candidates for dashboard items.
@@ -2719,6 +2835,21 @@ and is used to preview or do other actions on the code."
         ('return
          cand)))))
 
+(defun consult-gh--dashboard-no-group (cand transform)
+  "Group function for dashboard candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
+and is used to group items in the dashboard.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let* ((name (concat
+                  (consult-gh--set-string-width "Repo - Type Number: Title " 83 nil ?-)
+                  (consult-gh--set-string-width " Reason " 10 nil ?-)
+                  (consult-gh--set-string-width " Date " 12 nil ?-)
+                  (consult-gh--set-string-width " State " 8 nil ?-)
+                  " Tags ")))
+    (if transform (substring cand) name)))
+
 (defun consult-gh--dashboard-group-by-date (cand transform)
   "Group function for dashboard candidates, CAND.
 
@@ -2779,7 +2910,7 @@ set `consult-gh-dashboard-action' to `consult-gh--dashboard-action'."
      ((equal type "pr")
       (funcall consult-gh-pr-action cand))
      (url
-      (browse-url url))
+      (funcall (or consult-gh-browse-url-func #'browse-url) url))
      (t
       (message "cannot open that with `consult-gh--dashboard-action'!")))))
 
@@ -2793,7 +2924,7 @@ in an external browser.
 To use this as the default action for issues,
 set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
   (let* ((url (substring-no-properties (get-text-property 0  :type cand))))
-    (if url (browse-url url))))
+    (if url (funcall (or consult-gh-browse-url-func #'browse-url) url))))
 
 (defun consult-gh-notifications-make-args ()
   "Make cmd aerguments for notifications."
@@ -2811,7 +2942,10 @@ Description of Arguments:
          (parts (string-split string "\t"))
          (thread (car parts))
          (type (cadr parts))
-         (type (and (stringp type) (downcase type)))
+         (type (and (stringp type) (cond
+                                    ((equal (downcase type) "pullrequest") "pr")
+                                    ((equal (downcase type) "issue") "issue")
+                                    (t (downcase type)))))
          (repo (caddr parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
@@ -2819,13 +2953,13 @@ Description of Arguments:
          (reason (cadddr (cdr parts)))
          (unread (cadddr (cddr parts)))
          (face (pcase unread
-                 ("true" 'consult-gh-warning-face)
-                 ("false" 'default)
+                 ("true" 'consult-gh-default-face)
+                 ("false" 'consult-gh-tags-face)
                  (_ 'consult-gh-default-face)))
          (state (pcase unread
-                  ("true" "unread")
-                  ("false" "seen")
-                  (_ "unknown")))
+                  ("true" "Unread")
+                  ("false" "Seen")
+                  (_ "Unknown")))
          (date (substring (cadddr (cdddr parts)) 0 10))
          (reltime (cadddr (cdr (cdddr parts))))
          (url (cadddr (cddr (cdddr parts))))
@@ -2834,13 +2968,15 @@ Description of Arguments:
                   (or
                    (cadr (member "issues" url-parts))
                    (cadr (member "pulls" url-parts)))))
-         (str (format "%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width
-                       (concat (propertize (format "%s" repo) 'face 'consult-gh-repo-face)
-                               " - "
-                               (propertize (concat type (if number " #") number) 'face face)
-                               ": "
-                               (propertize (format "%s" title) 'face 'consult-gh-default-face)) 100)
+         (title-str (concat (propertize (format "%s" repo) 'face 'consult-gh-repo-face)
+                            (propertize " - " 'face face)
+                            (propertize (concat type (if number " #") number) 'face face)
+                            (propertize ": " 'face face)
+                            (propertize (format "%s" title) 'face face)))
+         (_ (if (equal unread "false") (add-face-text-property 0 (length title-str) '(:strike-through t) t title-str)))
+         (str (format "%s\s\s%s\s\s%s\s\s%s"
+                      (consult-gh--set-string-width title-str 80)
+                      (propertize (consult-gh--set-string-width reason 13) 'face 'consult-gh-visibility-face)
                       (consult-gh--set-string-width (propertize state 'face face) 7)
                       (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face))))
     (add-text-properties 0 1 (list :thread thread
@@ -2857,7 +2993,9 @@ Description of Arguments:
                      :type type
                      :url url
                      :reason reason
-                     :class class) str)
+                     :class class)
+                         str)
+
     str))
 
 (defun consult-gh--notifications-state ()
@@ -2883,6 +3021,20 @@ and is used to preview or do other actions on the code."
                                                             buffer)))))
         ('return
          cand)))))
+
+(defun consult-gh--notifications-no-group (cand transform)
+  "Group function for dashboard candidates, CAND.
+
+This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
+and is used to group items in the dashboard.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let* ((name (concat
+                  (consult-gh--set-string-width "Repo - Type Number: Title " 78 nil ?-)
+                  (consult-gh--set-string-width " Reason " 15 nil ?-)
+                  (consult-gh--set-string-width " State " 9 nil ?-)
+                  (consult-gh--set-string-width " Date " 11 nil ?-))))
+    (if transform (substring cand) name)))
 
 (defun consult-gh--notifications-group-by-date (cand transform)
   "Group function for notification candidates, CAND.
@@ -2955,7 +3107,7 @@ Optional argument DATE is latest updated date of discussion."
          (query "query=query($filter: String!) {search(query: $filter, type: DISCUSSION, first: 1) { nodes { ... on Discussion { number }}}}")
          (id (consult-gh--command-to-string "api" "graphql" "--paginate" "--cache" "24h" "-F" filter "-f" query "--template" "{{(index .data.search.nodes 0).number}}"))
          (url (concat "https://" (consult-gh--auth-account-host) (format "/%s/discussions/%s" repo id))))
-    (when url (browse-url url))))
+    (when url (funcall (or consult-gh-browse-url-func #'browse-url) url))))
 
 (defun consult-gh--discussion-browse-url-action (cand)
   "Open the discussion of CAND thread in the browser CAND.
@@ -2988,12 +3140,12 @@ set `consult-gh-notifications-action' to `consult-gh--notifications-action'."
     (pcase type
      ("issue"
       (funcall consult-gh-issue-action cand))
-     ("pr"
+     ((or "pr" "pullrequest")
       (funcall consult-gh-pr-action cand))
      ("discussion"
       (funcall consult-gh-discussion-action cand))
      (_
-      (and url (browse-url url))))
+      (and url (funcall (or consult-gh-browse-url-func #'browse-url) url))))
     t))
 
 (defun consult-gh--notifications-browse-url-action (cand)
@@ -3008,7 +3160,7 @@ set `consult-gh-notificatios-action' to
 `consult-gh--notifications-browse-url-action'."
   (if-let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
             (url (concat "https://" (consult-gh--auth-account-host) (format "/notifications?query=repo:%s" repo))))
-    (browse-url url)
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)
     (message "Cannot find the right url to open!")))
 
 (defun consult-gh--notifications-mark-as-read (cand)
@@ -3021,7 +3173,8 @@ from `consult-gh-notifications' and makrs it as read."
 
 (defvar-keymap consult-gh-issue-view-mode-map
   :doc "Consult-gh topics keymap."
-  "C-c C-r" #'consult-gh-topics-create-comment)
+  "C-c C-r" #'consult-gh-topics-create-comment
+  "C-c o" #'consult-gh-topics-open-in-browser)
 
 ;;;###autoload
 (define-minor-mode consult-gh-issue-view-mode
@@ -3034,7 +3187,8 @@ from `consult-gh-notifications' and makrs it as read."
 
 (defvar-keymap consult-gh-pr-view-mode-map
   :doc "Consult-gh topics keymap."
-  "C-c C-r" #'consult-gh-topics-create-comment)
+  "C-c C-r" #'consult-gh-topics-create-comment
+  "C-c o" #'consult-gh-topics-open-in-browser)
 
 ;;;###autoload
 (define-minor-mode consult-gh-pr-view-mode
@@ -3131,7 +3285,7 @@ INPUT must be a GitHub user or org as a string e.g. “armindarvish”."
 
   (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-repo-list-args))
                (cmd (consult--build-args consult-gh-args))
-               (`(,arg . ,opts) (consult--command-split input))
+               (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-repo-maxnum)))))
@@ -3268,7 +3422,7 @@ BUILDER is the command line builder function \(e.g.
 The command arguments such as \(e.g. “gh search repos INPUT”\)."
   (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-repos-args))
                (cmd (consult--build-args consult-gh-args))
-               (`(,arg . ,opts) (consult--command-split input))
+               (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-repo-maxnum)))))
@@ -3472,7 +3626,7 @@ INPUT must be the full name of a GitHub repository as a string
 e.g. “armindarvish/consult-gh”."
   (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-issue-list-args))
                (cmd (consult--build-args consult-gh-args))
-               (`(,arg . ,opts) (consult--command-split input))
+               (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
@@ -3519,7 +3673,7 @@ Description of Arguments:
          :lookup #'consult--lookup-member
          :state (funcall #'consult-gh--issue-state)
          :initial (consult--async-split-initial initial)
-         :group #'consult-gh--issue-group-by-state
+         :group #'consult-gh--issue-group
          :require-match t
          :category 'consult-gh-issues
          :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
@@ -3598,7 +3752,7 @@ BUILDER is the command line builder function \(e.g.
   "Build gh command line for searching issues of INPUT query."
   (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-issues-args))
                (cmd (consult--build-args consult-gh-args))
-               (`(,arg . ,opts) (consult--command-split input))
+               (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
@@ -3637,7 +3791,7 @@ Description of Arguments:
        :lookup #'consult--lookup-member
        :state (funcall #'consult-gh--issue-state)
        :initial (consult--async-split-initial initial)
-       :group #'consult-gh--issue-group-by-repo
+       :group #'consult-gh--issue-group
        :require-match t
        :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
                             consult-gh--known-repos-list)
@@ -3715,7 +3869,7 @@ INPUT must be the full name of a GitHub repository as a string
 e.g. “armindarvish/consult-gh”."
   (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-pr-list-args))
                (cmd (consult--build-args consult-gh-args))
-               (`(,arg . ,opts) (consult--command-split input))
+               (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
@@ -3761,7 +3915,7 @@ Description of Arguments:
          :lookup #'consult--lookup-member
          :state (funcall #'consult-gh--pr-state)
          :initial (consult--async-split-initial initial)
-         :group #'consult-gh--pr-group-by-state
+         :group #'consult-gh--pr-list-group
          :require-match t
          :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
                               consult-gh--known-repos-list)
@@ -3839,7 +3993,7 @@ BUILDER is the command line builder function \(e.g.
   "Build gh command line for searching pull requests of INPUT query."
   (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-prs-args))
                (cmd (consult--build-args consult-gh-args))
-               (`(,arg . ,opts) (consult--command-split input))
+               (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
@@ -3879,7 +4033,7 @@ Description of Arguments:
        :lookup #'consult--lookup-member
        :state (funcall #'consult-gh--pr-state)
        :initial (consult--async-split-initial initial)
-       :group #'consult-gh--pr-group-by-repo
+       :group #'consult-gh--pr-search-group
        :require-match t
        :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
                                   (consult--async-split-thingatpt 'symbol)))
@@ -3953,7 +4107,7 @@ BUILDER is the command line builder function \(e.g.
   "Build gh command line for searching code with INPUT query."
   (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-code-args))
                (cmd (consult--build-args consult-gh-args))
-               (`(,arg . ,opts) (consult--command-split input))
+               (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-code-maxnum)))))
@@ -4310,6 +4464,28 @@ INITIAL is an optional arg for the initial input in the minibuffer."
       (goto-char (point-max))
       (with-no-warnings (outline-show-all)))
     (switch-to-buffer buffer)))
+
+(defun consult-gh-topics-open-in-browser (&optional topic)
+  "Open the TOPIC of the current buffer in the browser.
+
+Uses `consult-gh-browse-url-func'."
+  (interactive)
+  (let* ((topic (or topic consult-gh--topic))
+         (type (and (stringp topic) (get-text-property 0 :type topic)))
+         (repo (and (stringp topic) (get-text-property 0 :repo topic)))
+         (branch (and (stringp topic) (get-text-property 0 :branch topic)))
+         (path (and (stringp topic) (get-text-property 0 :path topic)))
+         (number (and (stringp topic) (get-text-property 0 :number topic)))
+         (url (and (stringp type) (pcase type
+                           ("file"
+                            (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" branch path)))
+                           ("issue"
+                            (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number)))
+                           ("pr"
+         (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number)))))))
+    (if (stringp url)
+         (funcall (or consult-gh-browse-url-func #'browse-url) url)
+      (message "No topic to browse in this buffer!"))))
 
 (defun consult-gh (&rest args)
   "Convinient wrapper function for favorite interactive command.
