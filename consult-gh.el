@@ -366,7 +366,8 @@ By default it is set to :repo, but can be any of:
   :type     group by candidate's type (e.g. issue, pr, ....)
   :url      group by URL
   symbol    group by another property of the candidate"
-  :type '(radio (const :tag "(Default) Use Headers of Marginalia Info" t)
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
                 (const :tag "Do Not Group" nil)
                 (const :tag "Repository's full name" :repo)
                 (const :tag "Repository's owner" :user)
