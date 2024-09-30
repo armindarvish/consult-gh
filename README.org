@@ -222,28 +222,40 @@ Here is a good customization for great performance as well as functionality:
 For a detailed discussion and demo, see this blog post: [[https://www.armindarvish.com/en/post/consult-gh_working_with_github_inside_emacs_in_2023_/][consult-gh_working_with_github_inside_emacs_in_2023]].
 If you prefer demo videos, you can watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]].
 
-In the screenshots below,  I am using vanilla Emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], and [[https://github.com/oantolin/embark][embark]] and this repo with the following config:
+In the screenshots below,  I am generally using vanilla Emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], [[https://github.com/oantolin/embark][embark]], and this package with the following config:
 
 #+begin_src emacs-lisp
 (use-package consult-gh
-  :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
-  :after consult
+  :ensure t
+  :after embark-consult
   :custom
-  (consult-gh-repo-maxnum 30) ;;set max number of repos to 30
-  (consult-gh-issues-maxnum 100) ;;set max number of issues to 100
   (consult-gh-show-preview t) ;;show previews
-  (consult-gh-preview-key "M-o") ;;show previews on demand by hitting "M-o"
-  (consult-gh-repo-preview-mode 'org-mode) ;;show previews in org-mode
+  (consult-gh-preview-key "C-o") ;;show previews on demand by hitting "C-o"
+  (consult-gh-repo-preview-mode nil) ;;use the default README extension in preview
   (consult-gh-repo-action #'consult-gh--repo-browse-files-action) ;;open file tree of repo on selection
   (consult-gh-issue-action #'consult-gh--issue-view-action) ;;open issues in an emacs buffer
   (consult-gh-pr-action #'consult-gh--pr-view-action) ;;open pull requests in an emacs buffer
   (consult-gh-code-action #'consult-gh--code-view-action) ;;open files that contain code snippet in an emacs buffer
   (consult-gh-file-action #'consult-gh--files-view-action) ;;open files in an emacs buffer
+
+  (consult-gh-notifications-action #'consult-gh--notifications-action) ;;open notifications using default actions for issue/pr
+  (consult-gh-dashboard-action #'consult-gh--dashboard-action) ;;open dashbaord items using default actions for issue/pr
+  (consult-gh-default-interactive-command #'consult-gh-transient)
   :config
-  (add-to-list 'consult-gh-default-orgs-list "armindarvish") ;;add your GitHub user
-  (require 'consult-gh-embark)
+  ;; set default org list
+  (setq consult-gh-default-orgs-list (consult-gh--get-current-orgs t))
+  ;; add a hook to update default org ist after switching accounts
+  (add-hook 'consult-gh-auth-post-switch-hook (lambda (&rest args)
+                                                (setq consult-gh-default-orgs-list
+                                                      (consult-gh--get-current-orgs t))))
   (add-to-list 'savehist-additional-variables 'consult-gh--known-orgs-list) ;;keep record of searched orgs
-  (add-to-list 'savehist-additional-variables 'consult-gh--known-repos-list)) ;;keep record of searched repos
+  (add-to-list 'savehist-additional-variables 'consult-gh--known-repos-list) ;;keep record of searched repos
+  )
+
+;;; enable embark actions
+(use-package consult-gh-embark
+  :config
+  (consult-gh-embark-mode +1))
 #+end_src
 ** Search for Repositories
 In the screenshot below, I use =consult-gh-search-repos= to search for repositories. The screenshot shows the updated capabilities with consult-async:
@@ -271,13 +283,28 @@ In the screenshot below, I use =consult-gh-repo-list= to find repositories of a 
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-repo-list.gif]]
 
 
+** Switching between Accounts
+Since =gh= supports logging in with multiple accounts, you can log in with multiple accounts in the terminal and then in Emacs use =consult-gh-auth-switch= to switch between accounts. This also work for accounts on a different host (e.g. GitHub Enterprise accounts). Once you switch to a different account all consult-gh commands will be run with credentials of the selected account. The screenshot below shows switching between accounts:
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-auth-switch.gif]]
+
+Note that the =consult-gh-auth-switch= also has a hook, =consult-gh-auth-post-switch-hook=, that is run after switching accounts. This can be used for example to update the list of default users for runing =consult-gh-default-repos=. This is what I use for the hook myself:
+
+#+begin_src emacs-lisp
+(add-hook 'consult-gh-auth-post-switch-hook (lambda (&rest args) (setq consult-gh-default-orgs-list (consult-gh--get-current-orgs t))))
+#+end_src
+
+
 ** Browsing Files in a Repository
 In the screenshot below, I use =consult-gh-find-file= to browse files of a repository. The command first uses =consult-gh-search-repos= to get a repo, then asks the user to select a branch before showing a list of files in that repo and branch.
 
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
-[[./screenshots/consult-gh-find-file.gif]]
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-find-file.gif]]
 
 
 ** Searching/Viewing Issues or Pull Requests
@@ -294,6 +321,8 @@ In the screenshot below, I use =consult-gh-search-issues= to search for issues a
 
 Pull requests can be searched similarly by using =consult-gh-search-prs=.
 
+** Commenting on Issues and Pull Requests (without Forge Package)
+
 ** Searching for code
 In the screenshot below, I use =consult-gh-search-code= to search for some code on GitHub. For example I search for =deque=, then I add some command line arguments to limit the search to python files only (e.g. =deque -- --language==python=). When a preview is opened, consult-gh open the file containing the code and tries to find the region where the code is. This enables the user to interactively use the GitHub code search, find relevant files and jump right to where the relevant code is used in the file.
 
@@ -303,46 +332,45 @@ In the screenshot below, I use =consult-gh-search-code= to search for some code 
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-code.gif]]
 
 
+** Dynamic Grouping of candidates
+Since Version 2.0, you can dynamically change the grouping of candidates in all the async commands (e.g. `consult-gh-search-repos', `consult-gh-search-issues', ...) To do so you need to pass =-- :g {Group Header}= where group header is the name of the files that should be used for grouping. Here is a screenshjot showing the grouping.
+
+Youy can also customize the default grouping by using custom variables such as =consult-gh-group-by=, =consult-gh-group-repos-by=, =consult-gh-group-issues-by=, =consult-gh-group-prs-by=, etc. Refer to documentation for possible options.
+
+** Creating a New Repsitory on GitHub
+Since Version 2.0, you can also make a new repository on GitHub from inside Emacs by calling =consult-gh-repo-create=. This is similar to runing =gh repo create= in the terminal. It will walk you through steps to either make  new repository from scratch or from an existing folder, etc.
+
+Here is a screenshot showing making anew repository from scratch:
+
+
+*Pro Tip*: Consider using =consult-gh-repo-create= as your defualt function for defining new projects in other workflows for example with =projectile= or =project.el=. I personally use [[https://github.com/armindarvish/consult-omni][consult-omni]]'s =consult-omni-projects= for finding and switching to projects and I have customized that package to =consult-gh-repo-create= for making new projects. This way every time I make a new package it automatically is put on my github as well without me having to think about it!
+
+
+
 ** Embark Integration
-=consult-gh= also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu. For example, you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's URL in a browser, but then call embark on any item for running alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= etc. You can also call embark and select items with =embark-select= (by default bound to =SPC=) before running some commands on all of them, for example select multiple repos and run clone for all of them.
+=consult-gh= also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu.
+For example, you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's URL in a browser, but then call embark on any item for running alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= etc. You can also call embark and select items with =embark-select= (by default bound to =SPC=) before running some commands on all of them, for example select multiple repos and run clone for all of them.
 
-[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-embark.gif]]
+To enable embark integration you first need to instal =consult-gh-embark= from MELPA:
+#+begin_src emacs-lisp
+(use-package consult-gh-embark
+  :config
+  (consult-gh-embark-mode +1))
+#+end_src
 
-** Magit/Forge Integration
-If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub repositories, you can use the =consult-gh-forge= to directly open issues in a magit/forge buffer. In addition, you can edit issues in a forge buffer as you would normally do by =forge-edit-post=, =forge-create-post=, etc. Here it is in action:
+or if you use other package managers like Straight.el, add the following to the config:
+#+begin_src emacs-lisp
+(require 'consult-gh-embark)
+(consult-gh-embark-mode +1)
+#+end_src
+
+
+Here is a screenshot of calling embakr actions to clone a single repository or multiple repostiories at once using =embark select=:
 
 #+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
-[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-forge.gif]]
-
-*** Set Up and Customization of Forge Integration
-*Warning*: Before you decide to use =consult-gh-forge=, be aware that due the way magit/forge is implemented, it is deeply integrated with magit and its different components (like ghub) and everything is intended for a git repository with a =.git= folder path to work otherwise =magit= will show errors. As a result, I had to re-implement some of the functionalities in magit and forge, to ensure that =consult-gh-forge= works without those errors and also does not break magit or forge. *But this is still highly experimental and you may experience bugs and issues with magit and forge if you decide to integrate =consult-gh= with magit/forge*. Also, dependence on the =magit/forge= package may cause maintainability issues down the road. So use this at your own risk.
-
-To use =consult-gh-forge=, make sure that both [[https://github.com/magit/magit][magit]] and [[https://github.com/magit/forge][forge]] are installed and loaded before loading consult-gh and then add =require 'consult-gh-forge= to your config. An example of a minimal config:
-
-#+begin_src emacs-lisp
-(use-package consult-gh
-  :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
-  :after forge consult
-  :config
-  (require 'consult-gh-embark)
-  (require 'consult-gh-forge)
-  (setq consult-gh-preview-key "M-o")
-  (setq consult-gh-repo-action #'consult-gh--repo-browse-files-action)
-  (setq consult-gh-file-action #'consult-gh--files-view-action)
-  (setq consult-gh-forge-timeout-seconds 20) ;;maximum time inseconds for consult-gh to try opening issuers in forge, and then reverts back to opening in normal emacs buffer with consult-gh-issue--view.
-  (consult-gh-forge-mode +1)) ;;this enables consult-gh-forge-mode which uses forge buffers for viewing issues and pull-requests.
-
-#+end_src
-
-Note that we are trying to keep =consult-gh-forge= edits of forge database transparent. Therefore a list of all the repositories that are added to =forge-database= is stored under the variable =consult-gh-forge-added-repositories= and interactive commands are provided to remove them from =forge-databse= either all at once (by using =consult-gh-forge-remove-added-repositories=) or by interactive selection through =consult-gh-forge-remove-repository=. This can still be done by =forge-remove-repository= as well, but consult-gh versions provide a transparent way to only remove the forge repositories added by consult-gh.
-
-With =consult-gh-forge=, you get one more "customization" variable as well:
-
-**** =consult-gh-forge-timeout-seconds=
-This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal Emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before the reaching the timeout time!
-
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-embark.gif]]
 
 ** Transient Menu
 After the major update on October 2023, consult-gh now has a transient menu. It can be accessed by running =M-x consult-gh= after loading consult-gh-transient module. Just make sure that the transient package is installed before loading consult-gh-transient.
@@ -360,6 +388,34 @@ After the major update on October 2023, consult-gh now has a transient menu. It 
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-transient.gif]]
+
+** Magit/Forge Integration
+If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub repositories, you can use the =consult-gh-forge= to directly open issues in a magit/forge buffer. In addition, you can edit issues in a forge buffer as you would normally do by =forge-edit-post=, =forge-create-post=, etc. Here it is in action:
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-forge.gif]]
+
+*** Set Up and Customization of Forge Integration
+*Warning*: Before you decide to use =consult-gh-forge=, be aware that due the way magit/forge is implemented, it is deeply integrated with magit and its different components (like ghub) and everything is intended for a git repository with a =.git= folder path to work otherwise =magit= will show errors. As a result, I had to re-implement some of the functionalities in magit and forge, to ensure that =consult-gh-forge= works without those errors and also does not break magit or forge. *But this is still highly experimental and you may experience bugs and issues with magit and forge if you decide to integrate =consult-gh= with magit/forge*. Also, dependence on the =magit/forge= package may cause maintainability issues down the road. So use this at your own risk.
+
+To use =consult-gh-forge=, make sure that both [[https://github.com/magit/magit][magit]] and [[https://github.com/magit/forge][forge]] are installed and loaded before loading consult-gh and then add =require 'consult-gh-forge= to your config. An example of a minimal config:
+
+#+begin_src emacs-lisp
+(use-package consult-gh-forge
+  :config
+  (consult-gh-forge-mode +1)) ;;this enables consult-gh-forge-mode which uses forge buffers for viewing issues and pull-requests.
+
+#+end_src
+
+Note that we are trying to keep =consult-gh-forge= edits of forge database transparent. Therefore a list of all the repositories that are added to =forge-database= is stored under the variable =consult-gh-forge-added-repositories= and interactive commands are provided to remove them from =forge-databse= either all at once (by using =consult-gh-forge-remove-added-repositories=) or by interactive selection through =consult-gh-forge-remove-repository=. This can still be done by =forge-remove-repository= as well, but consult-gh versions provide a transparent way to only remove the forge repositories added by consult-gh.
+
+With =consult-gh-forge=, you get one more "customization" variable as well:
+
+**** =consult-gh-forge-timeout-seconds=
+This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal Emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before the reaching the timeout time!
+
 
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]] and see if there is an existing solution or add relevant comments and discussion under the same issue. If not file a new issue following these steps:
