@@ -358,20 +358,182 @@ This is used for all categories \(issues, prs, codes, files, etc.\)"
 (defcustom consult-gh-group-by t
   "What field to use to group the results in the minibuffer?
 
-By default it is set to :repo, but can be any of:
+By default it is set to t, but can be any of:
 
-  t         Use headers for marginalia info
-  nil       Do not group
-  :user     group by repository owner
-  :type     group by candidate's type (e.g. issue, pr, ....)
-  :url      group by URL
-  symbol    group by another property of the candidate"
+  t           Use headers for marginalia info
+  nil         Do not group
+  :user       Group by repository owner
+  :type       Group by candidate's type (e.g. issue, pr, ....)
+  :url        Group by URL
+  :date       Group by the last updated date
+  :visibility Group by visibility (e.g. public or private)
+  symbol    Group by another property of the candidate"
   :group 'consult-gh
   :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
                 (const :tag "Do Not Group" nil)
                 (const :tag "Repository's full name" :repo)
                 (const :tag "Repository's owner" :user)
                 (const :tag "Repository's package name" :package)
+                (const :tag "Type of Item" :type)
+                (const :tag "Custom other field (constant)")))
+
+(defcustom consult-gh-group-repos-by consult-gh-group-by
+  "What field to use to group results in repo search?
+
+This is used in `consult-gh-search-repos'.
+By default it is set to t, but can be any of:
+
+  t           Use headers for marginalia info
+  nil         Do not group
+  :user       Group by repository owner
+  :package    Group by package name
+  :date       Group by the last updated date
+  :visibility Group by visibility (e.g. public or private)
+  symbol      Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                (const :tag "Do Not Group" nil)
+                (const :tag "Repository's owner" :user)
+                (const :tag "Repository's package name" :package)
+                (const :tag "Date the repo was last updated" :date)
+                (const :tag "Visibility (i.e. public, private,...)" :visibility)
+                (const :tag "Custom other field (constant)")))
+
+(defcustom consult-gh-group-issues-by consult-gh-group-by
+  "What field to use to group results in issue search?
+
+This is used in `consult-gh-search-issues'.
+By default it is set to t, but can be any of:
+
+  t         Use headers for marginalia info
+  nil       Do not group
+  :repo     Group by repository full name
+  :state    Group by status og issue (i.e. open or closed)
+  :user     Group by repository owner
+  :package  Group by package name
+  :date     Group by the last updated date
+  symbol    Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                (const :tag "Do Not Group" nil)
+                (const :tag "Repository's full name" :repo)
+                (const :tag "State of issue (e.g. open or closes)" :state)
+                (const :tag "Repository's owner" :user)
+                (const :tag "Repository's package name" :package)
+                (const :tag "Date the repo was last updated" :date)
+                (const :tag "Custom other field (constant)")))
+
+(defcustom consult-gh-group-prs-by consult-gh-group-by
+  "What field to use to group results in pr search?
+
+This is used in `consult-gh-search-prs'.
+By default it is set to t, but can be any of:
+
+  t        Use headers for marginalia info
+  nil      Do not group
+  :repo    Group by repository full name
+  :state   Group by status og issue (i.e. open or closed)
+  :user    Group by repository owner
+  :package Group by package name
+  :date    Group by the last updated date
+  symbol   Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                (const :tag "Do Not Group" nil)
+                (const :tag "Repository's full name" :repo)
+                (const :tag "State of issue (e.g. open or closes)" :state)
+                (const :tag "Repository's owner" :user)
+                (const :tag "Repository's package name" :package)
+                (const :tag "Date the repo was last updated" :date)
+                (const :tag "Custom other field (constant)")))
+
+(defcustom consult-gh-group-files-by consult-gh-group-by
+  "What field to use to group results in code search?
+
+This is used in `consult-gh-search-codes'.
+By default it is set to t, but can be any of:
+
+  t        Use headers for marginalia info
+  nil      Do not group
+  :repo    Group by repository full name
+  :user    Group by repository owner
+  :package Group by package name
+  :path    Group by the file path
+  symbol   Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                (const :tag "Do Not Group" nil)
+                (const :tag "Repository's full name" :repo)
+                (const :tag "Repository's owner" :user)
+                (const :tag "Repository's package name" :package)
+                (const :tag "File path relative to repo's root" :path)
+                (const :tag "Custom other field (constant)")))
+
+(defcustom consult-gh-group-code-by consult-gh-group-by
+  "What field to use to group results in code search?
+
+This is used in `consult-gh-search-codes'.
+By default it is set to t, but can be any of:
+
+  t        Use headers for marginalia info
+  nil      Do not group
+  :repo    Group by repository full name
+  :user    Group by repository owner
+  :package Group by package name
+  :path    Group by the file path
+  symbol   Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                (const :tag "Do Not Group" nil)
+                (const :tag "Repository's full name" :repo)
+                (const :tag "Repository's owner" :user)
+                (const :tag "Repository's package name" :package)
+                (const :tag "File path relative to repo's root" :path)
+                (const :tag "Custom other field (constant)")))
+
+(defcustom consult-gh-group-dashboard-by consult-gh-group-by
+  "What field to use to group results in code search?
+
+This is used in `consult-gh-dashboard'.
+By default it is set to t, but can be any of:
+
+  t       Use headers for marginalia info
+  nil     Do not group
+  :repo   Group by repository full name
+  :reason Group by the reason (e.g. mentions)
+  :date   Group by the last updated date
+  :type   Group by candidate's type (e.g. issue, pr, ....)
+  symbol  Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                (const :tag "Do Not Group" nil)
+                (const :tag "Repository's full name" :repo)
+                (const :tag "The reason (e.g. mentions)" :reason)
+                (const :tag "Date the repo was last updated" :date)
+                (const :tag "Type of Item" :type)
+                (const :tag "Custom other field (constant)")))
+
+(defcustom consult-gh-group-notifications-by consult-gh-group-by
+  "What field to use to group results in notifications?
+
+This is used in `consult-gh-notifications'.
+By default it is set to t, but can be any of:
+
+  t       Use headers for marginalia info
+  nil     Do not group
+  :repo   Group by repository full name
+  :reason Group by the reason (e.g. mentions, comment, ...)
+  :date   Group by the last updated date
+  :type   Group by candidate's type (e.g. issue, pr, ....)
+  :state  Group by status of issue (i.e. unread or read)
+  symbol  Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                (const :tag "Do Not Group" nil)
+                (const :tag "Repository's full name" :repo)
+                (const :tag "The reason (e.g. mentions)" :reason)
+                (const :tag "Date the repo was last updated" :date)
+                (const :tag "State of issue (e.g. unread or read)" :state)
                 (const :tag "Type of Item" :type)
                 (const :tag "Custom other field (constant)")))
 
@@ -582,28 +744,6 @@ Common options include:
                  (const :tag "Open relevant notifications in the browser)" consult-gh--notifications-browse-url-action)
                  (function :tag "Custom Function")))
 
-(defcustom consult-gh-notifications-group-function #'consult-gh--notifications-group-by-date
-  "What function to use for grouping items in `consult-gh-notifications'?
-
-Common options include:
-
- - `consult-gh--notifications-group-by-date'   by date (e.g. latest first)
- - `consult-gh--notifications-group-by-reason' by reason of reason
-                                               (e.g. mentions)
- - `consult-gh--notifications-group-by-type'   by type (e.g. issue or pr)
- - `consult-gh--notifications-group-by-repo'   by repository's name
- - `consult-gh--notifications-group-by-state'  by status (e.g. read or unread)
- - A custom function:                          A function with similar
-                                               format as examples above"
-  :group 'consult-gh
-  :type '(choice (function :tag "Group by date (e.g. latest notification first)" consult-gh--notifications-group-by-date)
-                 (function :tag "Group by Reason (e.g. mentions, involves,...)" consult-gh--notifications-group-by-reason)
-                 (function :tag "Group by topic type (e.g. issue or pr)" consult-gh--notifications-group-by-type)
-                 (function :tag "Group by repository's name" consult-gh--notifications-group-by-repo)
-                 (function :tag "Group by state (e.g. read or unread notification" consult-gh--notifications-group-by-state)
-                 (function :tag "Custom Function")))
-
-
 (defcustom consult-gh-dashboard-action #'consult-gh--dashboard-action
   "What function to call when a dashboard item is selected?
 
@@ -619,24 +759,6 @@ Common options include:
   :group 'consult-gh
   :type '(choice (const :tag "Use Default Action of Item Type (e.g. issue, pr, ...)" consult-gh--dashboard-action)
                  (const :tag "Open Issue/PR in external browser" consult-gh--dashboard-browse-url-action)
-                 (function :tag "Custom Function")))
-
-(defcustom consult-gh-dashboard-group-function #'consult-gh--dashboard-group-by-reason
-  "What function to use for grouping items in `consult-gh-dashboard'?
-
-Common options include:
-
- - `consult-gh--dashboard-group-by-reason' by reason of reason
-                                              (e.g. mentions)
- - `consult-gh--dashboard-group-by-date'      by date of latest update
- - `consult-gh--dashboard-group-by-type'      by type (e.g. issue or pr)
- - `consult-gh--dashboard-group-by-repo'      by repository's name
- - A custom function:                         A function with similar
-                                              format as examples above"
-  :group 'consult-gh
-  :type '(choice (function :tag "Group by Reason (e.g. mentions, involves,...)" consult-gh--dashboard-group-by-reason)
-                 (function :tag "Group by topic type (e.g. issue or pr)" consult-gh--dashboard-group-by-type)
-                 (function :tag "Group by repository's name" consult-gh--dashboard-group-by-repo)
                  (function :tag "Custom Function")))
 
 (defcustom consult-gh-highlight-matches t
@@ -1527,8 +1649,14 @@ This is passed as GROUP to `consult--read' on file candidates
 and is used to group files by repository names.
 
 If TRANSFORM is non-nil, return CAND."
-  (let ((name (car (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s"))))))
-    (if transform (substring cand) name)))
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-files-by)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "File " 98 nil ?-)
+       (consult-gh--set-string-width " Path " 8 nil ?-)
+       (consult-gh--set-string-width " > Repo " 40 nil ?-))))))
 
 (defun consult-gh--files-browse-url-action (cand)
   "Browse the url for a file candidate, CAND.
@@ -1732,7 +1860,7 @@ in `consult-gh-search-repos' and is used
 to group repos by user\owner's names.
 
 If TRANSFORM is non-nil, return the CAND itself."
-  (let* ((name (consult-gh--group-function cand transform)))
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-repos-by)))
     (cond
      ((stringp name) name)
      ((equal name t)
@@ -2279,7 +2407,7 @@ This is passed as GROUP to `consult--read' in `consult-gh-issue-list'
 or `consult-gh-search-issues', and is used to group issues.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
-  (let* ((name (consult-gh--group-function cand transform)))
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-issues-by)))
     (cond
      ((stringp name) name)
      ((equal name t)
@@ -2500,7 +2628,7 @@ This is passed as GROUP to `consult--read' in `consult-gh-pr-list'
 or `consult-gh-search-prs', and is used to group prs.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
-  (let* ((name (consult-gh--group-function cand transform)))
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-prs-by)))
     (cond
      ((stringp name) name)
      ((equal name t)
@@ -2518,7 +2646,7 @@ This is passed as GROUP to `consult--read' in `consult-gh-pr-list'
 or `consult-gh-search-prs', and is used to group prs.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
-  (let* ((name (consult-gh--group-function cand transform)))
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-prs-by)))
     (cond
      ((stringp name) name)
      ((equal name t)
@@ -2699,7 +2827,7 @@ This is passed as GROUP to `consult--read' in `consult-gh-search-code'
 and is used to group code results.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
-  (let* ((name (consult-gh--group-function cand transform)))
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-code-by)))
     (cond
      ((stringp name) name)
      ((equal name t)
@@ -2836,62 +2964,23 @@ and is used to preview or do other actions on the code."
         ('return
          cand)))))
 
-(defun consult-gh--dashboard-no-group (cand transform)
+(defun consult-gh--dashboard-group (cand transform)
   "Group function for dashboard candidates, CAND.
 
 This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
 and is used to group items in the dashboard.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
-  (let* ((name (concat
-                  (consult-gh--set-string-width "Repo - Type Number: Title " 83 nil ?-)
-                  (consult-gh--set-string-width " Reason " 10 nil ?-)
-                  (consult-gh--set-string-width " Date " 12 nil ?-)
-                  (consult-gh--set-string-width " State " 8 nil ?-)
-                  " Tags ")))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--dashboard-group-by-date (cand transform)
-  "Group function for dashboard candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
-and is used to group issues by their update date.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (upcase (get-text-property 0 :date cand))))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--dashboard-group-by-type (cand transform)
-  "Group function for dashboard candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
-and is used to group issues by their state e.g. “Open”, “Closed”, “Merged”,
-etc.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (upcase (get-text-property 0 :type cand))))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--dashboard-group-by-reason (cand transform)
-  "Group function for dashboard candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
-and is used to group dashboard items by reason e.g. “Mentions”, “Assigned”,
-“Review Requested”, etc.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (get-text-property 0 :reason cand)))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--dashboard-group-by-repo (cand transform)
-  "Group function for dashboard candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
-and is used to group items in the dashboard by repository names.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (car (last (remove " " (remove "" (string-split (substring-no-properties cand) "\s\s")))))))
-    (if transform (substring cand) name)))
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-dashboard-by)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "Repo - Type Number: Title " 83 nil ?-)
+       (consult-gh--set-string-width " Reason " 10 nil ?-)
+       (consult-gh--set-string-width " Date " 12 nil ?-)
+       (consult-gh--set-string-width " State " 8 nil ?-)
+       " Tags ")))))
 
 (defun consult-gh--dashboard-action (cand)
   "View dashboard item, CAND.
@@ -3023,80 +3112,22 @@ and is used to preview or do other actions on the code."
         ('return
          cand)))))
 
-(defun consult-gh--notifications-no-group (cand transform)
-  "Group function for dashboard candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-dashboard'
-and is used to group items in the dashboard.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let* ((name (concat
-                  (consult-gh--set-string-width "Repo - Type Number: Title " 78 nil ?-)
-                  (consult-gh--set-string-width " Reason " 15 nil ?-)
-                  (consult-gh--set-string-width " State " 9 nil ?-)
-                  (consult-gh--set-string-width " Date " 11 nil ?-))))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--notifications-group-by-date (cand transform)
-  "Group function for notification candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-notification',
-and is used to group notifications by their update date.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (upcase (get-text-property 0 :date cand))))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--notifications-group-by-relative-timeago (cand transform)
-  "Group function for notification candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-notification',
-and is used to group notifications by their update date.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (upcase (get-text-property 0 :reltime cand))))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--notifications-group-by-type (cand transform)
-  "Group function for notification candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-notification',
-and is used to group notifications by their type e.g. “issue”, “pr”, etc.
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (upcase (get-text-property 0 :type cand))))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--notifications-group-by-reason (cand transform)
+(defun consult-gh--notifications-group (cand transform)
   "Group function for notifications candidates, CAND.
 
-This is passed as GROUP to `consult--read' in `consult-gh-notifications',
-and is used to group dashboard items by reason e.g. “subscribed” or
-“assigned”, etc.
+This is passed as GROUP to `consult--read' in `consult-gh-notifications'
+and is used to group items in the natofications.
 
 If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (get-text-property 0 :reason cand)))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--notifications-group-by-repo (cand transform)
-  "Group function for notification candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-notification',
-and is used to group notifications by their repository
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (upcase (get-text-property 0 :repo cand))))
-    (if transform (substring cand) name)))
-
-(defun consult-gh--notifications-group-by-state (cand transform)
-  "Group function for notification candidates, CAND.
-
-This is passed as GROUP to `consult--read' in `consult-gh-notification',
-and is used to group notifications by their state e.g. “unread” or “seen”
-
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (let ((name (upcase (get-text-property 0 :state cand))))
-    (if transform (substring cand) name)))
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-notifications-by)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "Repo - Type Number: Title " 78 nil ?-)
+       (consult-gh--set-string-width " Reason " 15 nil ?-)
+       (consult-gh--set-string-width " State " 9 nil ?-)
+       (consult-gh--set-string-width " Date " 11 nil ?-))))))
 
 (defun consult-gh--discussion-browse-url (repo title &optional date)
   "Browse the url for a discussion in REPO with TITLE.
@@ -4312,7 +4343,7 @@ Description of Arguments:
                              :lookup #'consult--lookup-member
                              :state (funcall #'consult-gh--dashboard-state)
                              :initial initial
-                             :group consult-gh-dashboard-group-function
+                             :group #'consult-gh--dashboard-group
                              :require-match t
                              :history 'consult-gh--search-issues-history
                              :category 'consult-gh-issues
@@ -4379,7 +4410,7 @@ Description of Arguments:
                              :lookup #'consult--lookup-member
                              :state (funcall #'consult-gh--notifications-state)
                              :initial initial
-                             :group consult-gh-notifications-group-function
+                             :group #'consult-gh--notifications-group
                              :require-match t
                              :history 'consult-gh--notifications-history
                              :category 'consult-gh-notifications

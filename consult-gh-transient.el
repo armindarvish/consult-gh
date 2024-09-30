@@ -84,7 +84,6 @@
 PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   (read-from-minibuffer prompt initial-input read-expression-map t history))
 
-;; Prefixes
 (transient-define-prefix consult-gh-transient-repos ()
   "Repo section for `consult-gh' transient menu."
   [:description "Repos"]
@@ -161,7 +160,6 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
              '("all" "open" "closed" "merged"))))
 
 ;; Suffixes
-
 (transient-define-suffix consult-gh-transient--suffix-repo-clone ()
   "Call `consult-gh-repo-clone' in `consult-gh' transient menu."
   :transient nil
