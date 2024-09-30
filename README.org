@@ -416,6 +416,7 @@ If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub rep
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-forge.gif]]
 
+
 *** Set Up and Customization of Forge Integration
 
 To use =consult-gh-forge=, you need to install =consult-gh-forge= from MELPA:
