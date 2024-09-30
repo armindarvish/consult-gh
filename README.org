@@ -132,7 +132,13 @@ or if you use =use-package= macro with straight, you can do:
 #+begin_src emacs-lisp
 (use-package consult-gh
   :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
-  :after consult)
+  :after consult
+  :config
+  (require 'consult-gh-transient)
+  (require 'consult-gh-embark)
+  (require 'consult-gh-forge)
+  (consult-gh-embark-mode +1)
+  (consult-gh-forge-mode +1))
 #+end_src
 
 You can also fork this repository and use your own repo.
@@ -172,6 +178,7 @@ For the full list and descriptios of the custom variables please refer to the do
 :PROPERTIES:
 :ID:       F7C9FF9F-80A3-4EEC-97CE-6EEC02B5DD75
 :END:
+
 Here is a good customization for great performance as well as functionality:
 
 #+begin_src emacs-lisp
@@ -203,14 +210,15 @@ Here is a good customization for great performance as well as functionality:
 
 ;; Install `consult-gh-embark' for embark actions
 (use-package consult-gh-embark
-:config
-(consult-gh-embark-mode +1))
+  :config
+  (consult-gh-embark-mode +1))
+
 
 ;; Install `consult-gh-forge' for forge actions
 (use-package consult-gh-forge
-:config
-(consult-gh-forge-mode +1)
-(setq consult-gh-forge-timeout-seconds 20))
+ :config
+ (consult-gh-forge-mode +1)
+ (setq consult-gh-forge-timeout-seconds 20))
 
 #+end_src
 
@@ -219,8 +227,7 @@ Here is a good customization for great performance as well as functionality:
 :ID:       0AAC346E-481A-48AB-B7DA-1569EBA4A145
 :END:
 
-For a detailed discussion and demo, see this blog post: [[https://www.armindarvish.com/en/post/consult-gh_working_with_github_inside_emacs_in_2023_/][consult-gh_working_with_github_inside_emacs_in_2023]].
-If you prefer demo videos, you can watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]].
+For background and context,  you can see this blog post: [[https://www.armindarvish.com/post/consult-gh_working_with_github_inside_emacs_in_2023_/][Working with GitHub inside Emacs in 2023]], and watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]]. Note that the blog post and some of the YouTube are out of date since the release of newer versions of consult-gh.
 
 In the screenshots below,  I am generally using vanilla Emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], [[https://github.com/oantolin/embark][embark]], and this package with the following config:
 
@@ -298,6 +305,39 @@ Note that the =consult-gh-auth-switch= also has a hook, =consult-gh-auth-post-sw
 #+end_src
 
 
+** Dynamic Grouping of candidates
+Since Version 2.0, you can dynamically change the grouping of candidates in all the async commands (e.g. `consult-gh-search-repos', `consult-gh-search-issues', ...) To do so you need to pass =-- :g {Group Header}= where group header is the name of the files that should be used for grouping. Here is a screenshot showing the grouping.
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-group-by.gif]]
+
+
+Youy can also customize the default grouping by using custom variables such as =consult-gh-group-by=, =consult-gh-group-repos-by=, =consult-gh-group-issues-by=, =consult-gh-group-prs-by=, etc. Refer to documentation for possible options.
+
+** Searching/Viewing Issues or Pull Requests
+In the screenshot below, I use =consult-gh-search-issues= to search for issues and then view them inside Emacs.
+Similar to searching repositories, the results are dynamically updated when the entry is changed. Command line arguments to =gh= can be added on demand from the minibuffer. For example entering =consult-gh -- --assignee=@me= shows the search results for the keyword *"consult-gh"* and then filters the results to issues assigned to current logged-in and selected user. Dynamic grouping can also be used as shown in the previous section and previews can be seen using =consult-gh-preview-key=. Search keywords are highlighted inside minibuffer (a visual guide to see what matches the search term) as well as in preview buffers. Furthermore, when an issue or pull request is selcted, it can be viewed inside and Emacs buffer (depending on custom variables =consult-gh-issue-action=, or =consult-gh-pr-action=). This buffer is by default in =markdown-mode= (if markdown-mode is available) but can be customized to show the buffer in =org-mode= as well. In addition, to see issues or pull requests of a single repository, =consult-gh-issue-list=, or =consult-gh-pr-list= can be used.
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-issues.gif]]
+
+To add comments on an issue or pull requests see the [[id:126D5B5E-E154-49B9-82FE-2C0FA4A717C2][next section]] (and also the section about [[id:F7E30167-C797-48AB-93DF-29FD63B63994][integration with magit/forge]]).
+
+** Commenting on Issues and Pull Requests
+:PROPERTIES:
+:ID:       126D5B5E-E154-49B9-82FE-2C0FA4A717C2
+:END:
+To open an issue or a pull requests inside Emacs, make sure =consult-gh-issue-action= and =consult-gh-pr-action= are set to =#'consult-gh--issue-view-action= and =#'consult-gh--pr-view-action= (This is the default setting). Then in the buffer that shows the issue ot pul lrequest, you can =consult-gh-topics-create-comment= (by default bound to =C-c C-r=) to add a new comment on the issue or pull request. Note that in case of pull requests, this adds a comment to the thread and not on specific commits. If you need more granulated options, you can use the [[id:F7E30167-C797-48AB-93DF-29FD63B63994][integration with magit/forge]].)
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-topics-create-comment.gif]]
+
 ** Browsing Files in a Repository
 In the screenshot below, I use =consult-gh-find-file= to browse files of a repository. The command first uses =consult-gh-search-repos= to get a repo, then asks the user to select a branch before showing a list of files in that repo and branch.
 
@@ -307,23 +347,7 @@ In the screenshot below, I use =consult-gh-find-file= to browse files of a repos
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-find-file.gif]]
 
 
-** Searching/Viewing Issues or Pull Requests
-In the screenshot below, I use =consult-gh-search-issues= to search for issues and then view them inside Emacs. The screenshot shows the updated capabilities with consult-async:
-- The results are dynamically updated when the entry is changed.
-- Command line arguments to =gh= can be added on demand from the minibuffer. For example entering =consult-gh -- --assignee=@me= shows the search results for the keyword "consult-gh" and then filters the results to issues assigned to me. adding another command line argument to sort =consult-gh -- --assignee=@me --sort created= further sorts the issues by the date they were created.
-- Search keywords are highlighted inside minibuffer (a visual guide to see what matches the search term)
-- Search keywords are also highlighted inside preview buffers.
-
-#+ATTR_ORG: :width 800px
-#+ATTR_LATEX: :width 800px
-#+ATTR_HTML: :width 800px
-[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-issues.gif]]
-
-Pull requests can be searched similarly by using =consult-gh-search-prs=.
-
-** Commenting on Issues and Pull Requests (without Forge Package)
-
-** Searching for code
+** Searching Codes
 In the screenshot below, I use =consult-gh-search-code= to search for some code on GitHub. For example I search for =deque=, then I add some command line arguments to limit the search to python files only (e.g. =deque -- --language==python=). When a preview is opened, consult-gh open the file containing the code and tries to find the region where the code is. This enables the user to interactively use the GitHub code search, find relevant files and jump right to where the relevant code is used in the file.
 
 #+ATTR_ORG: :width 800px
@@ -332,16 +356,14 @@ In the screenshot below, I use =consult-gh-search-code= to search for some code 
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-search-code.gif]]
 
 
-** Dynamic Grouping of candidates
-Since Version 2.0, you can dynamically change the grouping of candidates in all the async commands (e.g. `consult-gh-search-repos', `consult-gh-search-issues', ...) To do so you need to pass =-- :g {Group Header}= where group header is the name of the files that should be used for grouping. Here is a screenshjot showing the grouping.
-
-Youy can also customize the default grouping by using custom variables such as =consult-gh-group-by=, =consult-gh-group-repos-by=, =consult-gh-group-issues-by=, =consult-gh-group-prs-by=, etc. Refer to documentation for possible options.
-
 ** Creating a New Repsitory on GitHub
 Since Version 2.0, you can also make a new repository on GitHub from inside Emacs by calling =consult-gh-repo-create=. This is similar to runing =gh repo create= in the terminal. It will walk you through steps to either make  new repository from scratch or from an existing folder, etc.
 
 Here is a screenshot showing making anew repository from scratch:
-
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-repo-create.gif]]
 
 *Pro Tip*: Consider using =consult-gh-repo-create= as your defualt function for defining new projects in other workflows for example with =projectile= or =project.el=. I personally use [[https://github.com/armindarvish/consult-omni][consult-omni]]'s =consult-omni-projects= for finding and switching to projects and I have customized that package to =consult-gh-repo-create= for making new projects. This way every time I make a new package it automatically is put on my github as well without me having to think about it!
 
@@ -372,24 +394,10 @@ Here is a screenshot of calling embakr actions to clone a single repository or m
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-embark.gif]]
 
-** Transient Menu
-After the major update on October 2023, consult-gh now has a transient menu. It can be accessed by running =M-x consult-gh= after loading consult-gh-transient module. Just make sure that the transient package is installed before loading consult-gh-transient.
-
-#+begin_src emacs-lisp
-(use-package consult-gh
-  :straight (consult-gh :type git :host github :repo "armindarvish/consult-gh")
-  :after forge transient consult
-  :config
-  (require 'consult-gh-embark)
-  (require 'consult-gh-transient))
-#+end_src
-
-#+ATTR_ORG: :width 800px
-#+ATTR_LATEX: :width 800px
-#+ATTR_HTML: :width 800px
-[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-transient.gif]]
-
 ** Magit/Forge Integration
+:PROPERTIES:
+:ID:       F7E30167-C797-48AB-93DF-29FD63B63994
+:END:
 If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub repositories, you can use the =consult-gh-forge= to directly open issues in a magit/forge buffer. In addition, you can edit issues in a forge buffer as you would normally do by =forge-edit-post=, =forge-create-post=, etc. Here it is in action:
 
 #+ATTR_ORG: :width 800px
@@ -398,24 +406,38 @@ If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub rep
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-forge.gif]]
 
 *** Set Up and Customization of Forge Integration
-*Warning*: Before you decide to use =consult-gh-forge=, be aware that due the way magit/forge is implemented, it is deeply integrated with magit and its different components (like ghub) and everything is intended for a git repository with a =.git= folder path to work otherwise =magit= will show errors. As a result, I had to re-implement some of the functionalities in magit and forge, to ensure that =consult-gh-forge= works without those errors and also does not break magit or forge. *But this is still highly experimental and you may experience bugs and issues with magit and forge if you decide to integrate =consult-gh= with magit/forge*. Also, dependence on the =magit/forge= package may cause maintainability issues down the road. So use this at your own risk.
 
-To use =consult-gh-forge=, make sure that both [[https://github.com/magit/magit][magit]] and [[https://github.com/magit/forge][forge]] are installed and loaded before loading consult-gh and then add =require 'consult-gh-forge= to your config. An example of a minimal config:
-
+To use =consult-gh-forge=, you need to install =consult-gh-forge= from MELPA:
 #+begin_src emacs-lisp
 (use-package consult-gh-forge
   :config
-  (consult-gh-forge-mode +1)) ;;this enables consult-gh-forge-mode which uses forge buffers for viewing issues and pull-requests.
-
+  (consult-gh-forge-mode +1))
 #+end_src
+
+or if you use other package managers like Straight.el, add the following to the config:
+
+#+begin_src emacs-lisp
+(require 'consult-gh-forge)
+(consult-gh-forge-mode +1)
+#+end_src
+
+Make sure that both [[https://github.com/magit/magit][magit]] and [[https://github.com/magit/forge][forge]] are installed, loaded and properly configured before loading =consult-gh-forge=.
 
 Note that we are trying to keep =consult-gh-forge= edits of forge database transparent. Therefore a list of all the repositories that are added to =forge-database= is stored under the variable =consult-gh-forge-added-repositories= and interactive commands are provided to remove them from =forge-databse= either all at once (by using =consult-gh-forge-remove-added-repositories=) or by interactive selection through =consult-gh-forge-remove-repository=. This can still be done by =forge-remove-repository= as well, but consult-gh versions provide a transparent way to only remove the forge repositories added by consult-gh.
 
-With =consult-gh-forge=, you get one more "customization" variable as well:
+In addition, with =consult-gh-forge=, you get one more customization variable as well:
 
 **** =consult-gh-forge-timeout-seconds=
-This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal Emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before the reaching the timeout time!
+This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal Emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before reaching this timeout!
 
+
+** Transient Menu
+consult-gh provides a transient menu as well. It can be accessed by running =M-x consult-gh-transient= after loading consult-gh-transient module e.g. =(require 'consult-gh-transient)=. Here is a screenshot:
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-transient.gif]]
 
 * Bug reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]] and see if there is an existing solution or add relevant comments and discussion under the same issue. If not file a new issue following these steps:
@@ -448,4 +470,4 @@ While there are several packages for interacting with GitHub and GitHub API such
 Keep in mind that =consult-gh= is a wrapper around the [[https://github.com/cli/cli][GitHub cli]] tool (gh). While =gh= can do git operations on local repositories, the main purpose of =consult-gh= is not for enabling git operations (becuase that can already be done with the wonderful [[https://github.com/magit/magit][magit]] package). Rahter, the goal is to make it easier to interact with remote repositories, similar to how one would browse GitHub pages in a web browser (to see issues, pull requests, files, etc.) and also enable the basic operations like cloning, forking, viewing issues/PullRequests, ... from within emacs. In addition, with [[https://github.com/oantolin/embark][embark]] actions and integration with [[https://github.com/magit/forge][magit/forge]], one can pretty much manage all interactions with GitHub from within emcas using =consult-gh=.  Personally, I like to use =consult-gh= for searching repositories, browsing issues or view/download files without cloning entire repositories, and use integration with [[https://github.com/magit/forge][magit/forge]] for managing issues, pull requests, etc.
 
 * Acknowledgments
-Obviously this package would not have been possible without the fabulous [[https://github.com/minad/consult][Consult]] package. It also took inspiration from other packages related to consult as well as [[https://github.com/sigma/gh.el][gh.el]], [[https://github.com/magit/forge][magit/forge]] and some other GitHub related work. Special thanks to the maintainer of consult package, [[https://github.com/minad][Daniel Mendler]], for useful advice, feedback and discussion.
+Obviously this package would not have been possible without the fabulous [[https://github.com/minad/consult][Consult]] package. It also took inspiration from other packages related to consult as well as [[https://github.com/sigma/gh.el][gh.el]], [[https://github.com/magit/forge][magit/forge]] and some other GitHub related work. Special thanks to the maintainer of consult package, [[https://github.com/minad][Daniel Mendler]], for useful advice, feedback and discussion and also to [[https://github.com/tarsius][Jonas Bernoulli]], the maintainer of magit anf froge for helping with forge integration.
