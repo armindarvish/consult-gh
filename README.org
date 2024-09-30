@@ -193,10 +193,10 @@ Here is a good customization for great performance as well as functionality:
   :config
   (setq consult-gh-default-orgs-list (consult-gh--get-current-orgs t))
 
-  ;; Add a hook to chnage default organizations when the account is switched
+  ;; Add a hook to change default organizations when the account is switched
   (add-hook 'consult-gh-auth-post-switch-hook (lambda (&rest args) (setq consult-gh-default-orgs-list (consult-gh--get-current-orgs t))))
 
-;; Remeber visited orgs and repos across sessions
+;; Remember visited orgs and repos across sessions
 (add-to-list 'savehist-additional-variables 'consult-gh--known-orgs-list)
 (add-to-list 'savehist-additional-variables 'consult-gh--known-repos-list))
 
