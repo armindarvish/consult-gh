@@ -3753,7 +3753,7 @@ Description of Arguments:
                    :sort nil))))
 #+end_src
 
-****** Interactive async command
+****** interactive async command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-repo-list (&optional initial noaction)
@@ -3888,7 +3888,7 @@ Description of Arguments:
 
 #+end_src
 
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-search-repos (&optional initial noaction)
@@ -3940,7 +3940,7 @@ URL `https://github.com/minad/consult'."
 #+end_src
 
 **** consult-gh-orgs
-****** Non-interactive command
+****** non-interactive command
 #+begin_src emacs-lisp
 (defun consult-gh-orgs (&optional orgs noaction)
   "List repositories of ORGS.
@@ -3973,7 +3973,7 @@ if NOACTION is non-nil, return the candidate without runing action."
 #+end_src
 
 **** consult-gh-default-repos
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-default-repos ()
@@ -3986,7 +3986,7 @@ or any other favorite accounts whose repositories are frequently visited."
   (consult-gh-orgs consult-gh-default-orgs-list))
 #+end_src
 **** consult-gh-repo-fork
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-repo-fork (&optional repos)
@@ -4008,7 +4008,7 @@ If REPOS not supplied, interactively asks user to pick REPOS."
             repos)))
 #+end_src
 **** consult-gh-repo-clone
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-repo-clone (&optional repos targetdir)
@@ -4127,7 +4127,7 @@ Description of Arguments:
          :sort nil))))
 #+end_src
 
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-issue-list (&optional initial noaction)
@@ -4259,7 +4259,7 @@ Description of Arguments:
 
 #+end_src
 
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-search-issues (&optional initial repo noaction)
@@ -4398,7 +4398,7 @@ Description of Arguments:
          :sort nil))))
 #+end_src
 
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-pr-list (&optional initial noaction)
@@ -4531,7 +4531,7 @@ Description of Arguments:
 
 #+end_src
 
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-search-prs (&optional initial repo noaction)
@@ -4658,7 +4658,7 @@ Description of Arguments:
        :sort nil)))
 #+end_src
 
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-search-code (&optional initial repo noaction)
@@ -4714,7 +4714,7 @@ URL `https://github.com/minad/consult'."
 
 **** consult-gh-find-file
 This section deals with fetching file trees and file contents of repositories by using github API e.g. =gh api repos/armindarvish/consult-gh/git/trees/main:?recursive=1=
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-find-file (&optional repo branch initial noaction)
@@ -4855,7 +4855,7 @@ Description of Arguments:
 
 #+end_src
 
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-dashboard (&optional initial user noaction)
@@ -4934,7 +4934,7 @@ Description of Arguments:
 
 #+end_src
 
-****** Interactive command
+****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-notifications (&optional initial noaction)
