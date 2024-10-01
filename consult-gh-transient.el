@@ -43,10 +43,15 @@
      (let ((username (consult-gh--get-current-username))
            (repo (consult-gh--get-repo-from-directory)))
        (concat
-        (propertize "*CONSULT-GH* \n" 'face 'transient-heading)
-        (if username (concat (propertize "user: " 'face 'consult-gh-date-face) (propertize username 'face 'consult-gh-user-face) "\t"))
-        (if repo (concat (propertize "current repo: " 'face 'consult-gh-date-face) (propertize repo 'face 'consult-gh-user-face) "\t")))))
+        (propertize "*consult-gh: Consulting GitHub Client* \n" 'face 'transient-heading)
+        (if username (concat (propertize "Current User: " 'face 'consult-gh-date-face) (propertize username 'face 'consult-gh-user-face) "\n"))
+        (if repo (concat (propertize "Current Repo: " 'face 'consult-gh-date-face) (propertize repo 'face 'consult-gh-user-face) "\n")))))
    ""]
+
+  [:description "--Quick Access--"
+                (consult-gh-transient--suffix-switch-account)
+                (consult-gh-transient--suffix-dashboard)
+                (consult-gh-transient--suffix-notifications)]
 
   [:description "--Actions--"
                 ["Search"
@@ -57,6 +62,7 @@
 
                 ["Repos"
                  (consult-gh-transient--suffix-repo-list)
+                 (consult-gh-transient--suffix-repo-create)
                  (consult-gh-transient--suffix-repo-clone)
                  (consult-gh-transient--suffix-repo-fork)]
 
@@ -84,23 +90,6 @@
 PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   (read-from-minibuffer prompt initial-input read-expression-map t history))
 
-(transient-define-prefix consult-gh-transient-repos ()
-  "Repo section for `consult-gh' transient menu."
-  [:description "Repos"]
-  [["Actions"
-    (consult-gh-transient--suffix-search-repos)
-    (consult-gh-transient--suffix-repo-list)]
-   ["Parameters"
-    (consult-gh-transient--infix-repo-maxnum)]])
-
-(transient-define-prefix consult-gh-transient-issues ()
-  "Issue section for `consult-gh' transient menu."
-  [:description "Issues"]
-  [["Actions"
-    (consult-gh-transient--suffix-search-issues)
-    (consult-gh-transient--suffix-issue-list)]
-   ["Parameters"
-    (consult-gh-transient--infix-issue-maxnum)]])
 
 ;; Infixes
 (transient-define-infix consult-gh-transient--infix-repo-maxnum ()
@@ -160,10 +149,51 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
              '("all" "open" "closed" "merged"))))
 
 ;; Suffixes
+(transient-define-suffix consult-gh-transient--suffix-switch-account ()
+  "Call `consult-gh-dashbaord' in `consult-gh' transient menu."
+  :transient nil
+  :description "Switch Account"
+  :key "a"
+  (interactive)
+  (consult-gh-auth-switch))
+
+
+(transient-define-suffix consult-gh-transient--suffix-dashboard ()
+  "Call `consult-gh-dashbaord' in `consult-gh' transient menu."
+  :transient nil
+  :description "User's Dashbaord"
+  :key "d"
+  (interactive)
+  (consult-gh-dashboard))
+
+(transient-define-suffix consult-gh-transient--suffix-notifications ()
+  "Call `consult-gh-notifications' in `consult-gh' transient menu."
+  :transient nil
+  :description "User's Notifications"
+  :key "n"
+  (interactive)
+  (consult-gh-notifications))
+
+(transient-define-suffix consult-gh-transient--suffix-repo-create ()
+  "Call `consult-gh-repo-list' in `consult-gh' transient menu."
+  :transient nil
+  :description "Create a New Repo"
+  :key "r n"
+  (interactive)
+  (consult-gh-repo-create))
+
+(transient-define-suffix consult-gh-transient--suffix-repo-list ()
+  "Call `consult-gh-repo-list' in `consult-gh' transient menu."
+  :transient nil
+  :description "List Repos of a User"
+  :key "r l"
+  (interactive)
+  (consult-gh-repo-list))
+
 (transient-define-suffix consult-gh-transient--suffix-repo-clone ()
   "Call `consult-gh-repo-clone' in `consult-gh' transient menu."
   :transient nil
-  :description "clone a repo"
+  :description "Clone a Repo"
   :key "r c"
   (interactive)
   (consult-gh-repo-clone))
@@ -171,7 +201,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (transient-define-suffix consult-gh-transient--suffix-repo-fork ()
   "Call `consult-gh-repo-fork' in `consult-gh' transient menu."
   :transient nil
-  :description "fork a repo"
+  :description "Fork a Repo"
   :key "r f"
   (interactive)
   (consult-gh-repo-fork))
@@ -179,7 +209,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (transient-define-suffix consult-gh-transient--suffix-repo-list ()
   "Call `consult-gh-repo-list' in `consult-gh' transient menu."
   :transient nil
-  :description "list repos of a user"
+  :description "List Repos of a User"
   :key "r l"
   (interactive)
   (consult-gh-repo-list))
@@ -187,7 +217,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (transient-define-suffix consult-gh-transient--suffix-issue-list ()
   "Call `consult-gh-issue-list' in `consult-gh' transient menu."
   :transient nil
-  :description "list issues of a repo"
+  :description "List Issues of a Repo"
   :key "i l"
   (interactive)
   (consult-gh-issue-list))
@@ -195,7 +225,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (transient-define-suffix consult-gh-transient--suffix-pr-list ()
   "Call `consult-gh-pr-list' in `consult-gh' transient menu."
   :transient nil
-  :description "list prs of a repo"
+  :description "List PRs of a Repo"
   :key "p l"
   (interactive)
   (consult-gh-pr-list))
@@ -203,7 +233,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (transient-define-suffix consult-gh-transient--suffix-search-repos ()
   "Call `consult-gh-search-repos' in `consult-gh' transient menu."
   :transient nil
-  :description "search repos"
+  :description "Search Repos"
   :key "s r"
   (interactive)
   (consult-gh-search-repos))
@@ -211,7 +241,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (transient-define-suffix consult-gh-transient--suffix-search-issues ()
   "Call `consult-gh-search-issues' in `consult-gh' transient menu."
   :transient nil
-  :description "search issues"
+  :description "Search Issues"
   :key "s i"
   (interactive)
   (consult-gh-search-issues))
@@ -219,7 +249,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (transient-define-suffix consult-gh-transient--suffix-search-prs ()
   "Call `consult-gh-search-prs' in `consult-gh' transient menu."
   :transient nil
-  :description "search pull requests"
+  :description "Search Pull Requests"
   :key "s p"
   (interactive)
   (consult-gh-search-prs))
@@ -227,7 +257,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (transient-define-suffix consult-gh-transient--suffix-search-code ()
   "Call `consult-gh-search-code' in `consult-gh' transient menu."
   :transient nil
-  :description "search code"
+  :description "Search Code"
   :key "s c"
   (interactive)
   (consult-gh-search-code))
