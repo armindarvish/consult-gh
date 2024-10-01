@@ -336,7 +336,7 @@ To add comments on an issue or pull requests see the [[id:126D5B5E-E154-49B9-82F
 :PROPERTIES:
 :ID:       126D5B5E-E154-49B9-82FE-2C0FA4A717C2
 :END:
-To open an issue or a pull requests inside Emacs, make sure =consult-gh-issue-action= and =consult-gh-pr-action= are set to =#'consult-gh--issue-view-action= and =#'consult-gh--pr-view-action= (This is the default setting). Then in the buffer that shows the issue ot pul lrequest, you can =consult-gh-topics-create-comment= (by default bound to =C-c C-r=) to add a new comment on the issue or pull request. Note that in case of pull requests, this adds a comment to the thread and not on specific commits. If you need more granulated options, you can use the [[id:F7E30167-C797-48AB-93DF-29FD63B63994][integration with magit/forge]].)
+To open an issue or a pull requests inside Emacs, make sure =consult-gh-issue-action= and =consult-gh-pr-action= are set to =#'consult-gh--issue-view-action= and =#'consult-gh--pr-view-action= (This is the default setting). Then in the buffer that shows the issue ot pul lrequest, you can =consult-gh-topics-create-comment= (by default bound to =C-c C-r=) to add a new comment on the issue or pull request. Note that in case of pull requests, this adds a comment to the thread and not on specific commits.
 
 
 #+ATTR_ORG: :width 800px
