@@ -882,6 +882,12 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)")
   "Override grouping based on user input.
 
 This is used to change grouping dynamically.")
+
+(defvar consult-gh--issue-view-json-fields "assignees,author,body,closedAt,comments,createdAt,labels,milestone,number,projectItems,state,title,updatedAt,url"
+"String of comma separated json fields to retrive for viewing issues.")
+
+(defvar consult-gh--pr-view-json-fields "additions,assignees,author,baseRefName,body,closedAt,comments,commits,createdAt,deletions,files,headRefName,headRepository,headRepositoryOwner,labels,mergeable,milestone,number,projectItems,reviewDecision,reviewRequests,reviews,state,statusCheckRollup,title,updatedAt,url"
+"String of comma separated json fields to retrive for viewing prs.")
 #+end_src
 
 ** Define faces
@@ -1119,7 +1125,6 @@ Uses simple regexp replacements."
           (when (re-search-forward "^-\\{2\\}$" nil t)
             (delete-char -2)
             (insert "-----\n")
-
             (while (re-search-backward "\\(^[a-zA-Z]+:[[:blank:]]\\)" nil t)
               (replace-match "#+\\1" nil nil)))
           (while (re-search-forward "#\\|\\*\\{1,2\\}\\(?1:.+?\\)\\*\\{1,2\\}\\|_\\{1,2\\}\\(?2:.+?\\)_\\{1,2\\}\\|`\\(?3:[^`].+?\\)`\\|```\\(?4:.*\n\\)\\(?5:[[:ascii:][:nonascii:]]*?\\)```" nil t)
@@ -1159,7 +1164,7 @@ Uses simple regexp replacements."
       (save-mark-and-excursion
         (save-restriction
           (goto-char (point-min))
-          (while (re-search-forward "\\[\\(?1:.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(?2:.[^\\[]+?\\)\\]\\[\\(?3:.[^\\[]+?\\)\\]\\{1\\}\\|\\[\\(?4:.+?\\)\\]\(#\\(?5:.+?\\)\)\\{1\\}\\|.\\[\\(?6:.+?\\)\\]\(\\(?7:[^#].+?\\)\)\\{1\\}" nil t)
+          (while (re-search-forward "\\[\\(?1:.+?\\)\\]\\[\\]\\{1\\}\\|\\[\\(?2:.[^\\[]+?\\)\\]\\[\\(?3:.[^\\[]+?\\)\\]\\{1\\}\\|\\[\\(?4:.+?\\)\\]\(#\\(?5:.+?\\)\)\\{1\\}\\|.\\[\\(?6:.+?\\)\\]\(\\(?7:[^#].+?\\)\)\\{1\\}\\|\\[\\(?8:.+?\\)\\]\(\\(?9:.+?\\)\)\\{1\\}" nil t)
             (pcase (match-string-no-properties 0)
               ((pred (lambda (el) (string-match-p "\\[.+?\\]\\[\\]\\{1\\}" el)))
                (replace-match "[fn:\\1]"))
@@ -1174,7 +1179,10 @@ Uses simple regexp replacements."
                (replace-match "[[\\7][\\6]]"))
 
               ((pred (lambda (el) (string-match-p "[[:blank:]]\\[.*\\]\([^#].*\)" el)))
-               (replace-match " [[\\7][\\6]]"))))
+               (replace-match " [[\\7][\\6]]"))
+
+              ((pred (lambda (el) (string-match-p "\\[.+?\\]\(.+?\)\\{1\\}" el)))
+               (replace-match "[[*\\9][\\8]]"))))
 
           (goto-char (point-min))
           (while
@@ -1186,19 +1194,28 @@ Uses simple regexp replacements."
                  (replace-regexp-in-region "[[:blank:]]" "_" (match-beginning 1) (match-end 1)))))))))
     nil))
 #+end_src
+***** set comment headings
+#+begin_src emacs-lisp
+(defun consult-gh--markdown-to-org-comment-headings (&optional buffer)
+
+)
+#+end_src
 ***** convert everything
 #+begin_src emacs-lisp
-(defun consult-gh--markdown-to-org (&optional buffer)
+(defun consult-gh--markdown-to-org (&optional buffer is-issue)
   "Convert from markdown format to \='org-mode format in BUFFER.
 
 This is used for viewing repos \(a.k.a. fetching README file of repos\)
 or issue, when `consult-gh-repo-preview-mode' or
-`consult-gh-issue-preview-mode'  is set to \='org-mode."
+`consult-gh-issue-preview-mode'  is set to \='org-mode.
+
+when IS-ISSUE is non-nil sets 1 heading per comment."
   (let ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name))))
     (with-current-buffer buffer
       (consult-gh--markdown-to-org-footnotes buffer)
       (consult-gh--markdown-to-org-emphasis buffer)
       (consult-gh--markdown-to-org-links buffer)
+      (when is-issue (consult-gh--markdown-to-org-comment-headings buffer))
       (org-mode)
       (org-table-map-tables 'org-table-align t)
       (org-fold-show-all)
@@ -1227,6 +1244,31 @@ the text will be centered in the middle of the window."
       (_
        (recenter nil t)))))
 
+#+end_src
+**** formating time strings
+***** time ago
+#+begin_src emacs-lisp
+(defun consult-gh--time-ago (datetime)
+  "Convert DATETIME to human-radable time difference.
+
+DATETIME must be a time string in the past.
+It returns strings like “1 year ago”, “30 minutes ago”."
+  (when (stringp datetime) (setq datetime (date-to-time datetime)))
+  (let* ((delta (float-time (time-subtract (current-time) datetime)))
+         (years (format-seconds "%y" delta))
+         (days (and (<= (string-to-number years) 0) (format-seconds "%d" delta)))
+         (months (and days (>= (string-to-number days) 30) (number-to-string (/ (string-to-number days) 30))))
+         (hours (and days (<= (string-to-number days) 0) (format-seconds "%h" delta)))
+         (minutes (and hours (<= (string-to-number hours) 0) (format-seconds "%m" delta)))
+         (seconds (and minutes (<= (string-to-number minutes) 0) (format-seconds "%s" delta)))
+         )
+(or  (and seconds (concat seconds " second(s) ago"))
+     (and minutes (concat minutes " minute(s) ago"))
+     (and hours (concat hours " hour(s) ago"))
+     (and months (concat months " month(s) ago"))
+     (and days (concat days " day(s) ago"))
+     (and years (concat years " year(s) ago"))
+     "now")))
 #+end_src
 *** Calls to =gh=
 **** auth and account
@@ -1438,6 +1480,38 @@ Returns a list where CAR is the user's name and CADR is the package name."
          consult-gh--current-tempdir
 (expand-file-name (make-temp-name (concat (format-time-string consult-gh-temp-tempdir-time-format  (current-time)) "-")) consult-gh-tempdir)))
 
+#+end_src
+***** parse diff
+#+begin_src emacs-lisp
+
+(defun consult-gh--parse-diff (diff)
+  "Parse DIFF to extract sections per file.
+
+Returns an alist with key value pairs of (file . diff)"
+  (let ((chunks nil)
+        (p nil))
+    (with-temp-buffer
+      (save-match-data
+        (insert diff)
+        (goto-char (point-max))
+        (setq p (point))
+        (while (re-search-backward "^--- \\(?1:.*\\)\n\\+\\+\\+ \\(?2:.*\\)\n" nil t)
+          (let ((filea (match-string 1))
+                (fileb (match-string 2))
+                (start (or (match-end 2) (point)))
+                (file nil))
+            (when filea
+              (if (equal filea "/dev/null") (setq filea nil) (setq filea (string-trim-left filea "a/"))))
+            (when fileb
+              (if (equal fileb "/dev/null") (setq fileb nil) (setq fileb (string-trim-left fileb "b/"))))
+            (cond
+             ((and filea fileb (setq file (concat "modified\t" filea))))
+             (fileb (setq file (concat "new file\t" fileb)))
+             (filea (setq file (concat "deleted\s\t" filea))))
+            (when (looking-at "---") (push (list file (buffer-substring start p)) chunks))
+            (re-search-backward "diff --git" nil t)
+            (setq p (point))))))
+    chunks))
 #+end_src
 **** general
 ***** dynamic grouping
@@ -2669,6 +2743,134 @@ set `consult-gh-issue-action' to `consult-gh--issue-browse-url-action'."
 #+end_src
 
 ******* view issue
+********* read json
+#+begin_src emacs-lisp
+(defun consult-gh--issue-read-json (repo number)
+  "Get json response of issue of NUMBER in REPO.
+
+Runs an async shell command with the command:
+gh issue view NUMBER --repo REPO --json `consult-gh--issue-view-json-fields'
+, and returns the output as a hash-table."
+  (let* ((json-object-type 'hash-table)
+         (json-array-type 'list)
+         (json-key-type 'keyword)
+         (json-false :false))
+    (json-read-from-string (consult-gh--command-to-string "issue" "view" number "--repo" repo "--json" consult-gh--issue-view-json-fields))))
+#+end_src
+
+********* get commenters
+#+begin_src emacs-lisp
+(defun consult-gh--issue-get-commenters (table)
+  "Get list of commenters on an issue.
+
+Retrives a list of all commenters for the issue
+stored in TABLE, a hash-table output
+from `consult-gh--issue-read-json'."
+  (let* ((author (gethash :login (gethash :author table)))
+         (assignees (gethash :assignees table))
+         (assignees (and (listp assignees) (mapcar (lambda (item) (and (hash-table-p item) (gethash :login item))) assignees)))
+         (comments (gethash :comments table))
+         (commenters (and (listp comments) (mapcar (lambda (comment)
+                                                     (when (hash-table-p comment)
+                                                       (gethash :login (gethash :author comment))))
+                                                   comments))))
+    (cl-remove-duplicates (delq nil (append (list author) assignees commenters)) :test #'equal)))
+#+end_src
+
+********* format header
+#+begin_src emacs-lisp
+(defun consult-gh--issue-format-header (repo number table)
+  "Format a header for an issue of NUMBER in REPO.
+
+TABLE is a hash-table output containing issue information
+from `consult-gh--issue-read-json'.  Returns a formatted string containing
+the header section for `consult-gh--issue-view'."
+  (let* ((title (gethash :title table))
+         (author (gethash :login (gethash :author table)))
+         (state (gethash :state table))
+         (createdAt (gethash :createdAt table))
+         (updatedAt (gethash :updatedAt table))
+         (updatedAt (and updatedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time updatedAt))))
+         (url (gethash :url table))
+         (closedAt (gethash :closedAt table))
+         (closedAt (and closedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time closedAt))))
+         (labels (gethash :labels table))
+         (labels (and (listp labels) (mapconcat (lambda (item) (and (hash-table-p item) (gethash :name item))) labels "\s\s")))
+         (milestone (gethash :milestone table))
+         (milestone (and milestone (concat (format "%s-%s\s\s(%s)"
+                                                   (or (gethash :number milestone) "")
+                                                   (or (gethash :title milestone) "N/A")
+                                                   (or (gethash :description milestone) "no description")))))
+         (assignees (gethash :assignees table))
+         (assignees (and (listp assignees) (mapconcat (lambda (item) (and (hash-table-p item) (gethash :login item))) assignees ",\s"))))
+
+    (concat "title: " title "\n"
+            "author: " author "\n"
+            "repository: " repo "\n"
+            "number: " number "\n"
+            "state: " state "\n"
+            "lastUpdated: " updatedAt "\n"
+            (and url (concat "url: " url "\n"))
+            (and closedAt (concat "closed: " closedAt "\n"))
+            (and labels (concat "labels: " "[ " labels " ]""\n"))
+            (and milestone (concat "milestone: " milestone "\n"))
+            (and assignees (concat "assignees: " assignees "\n"))
+            "\n--\n")))
+
+#+end_src
+
+********* format comments
+#+begin_src emacs-lisp
+(defun consult-gh--issue-format-comments (table)
+  "Format a comments section for an issue.
+
+TABLE is a hash-table output containing issue information
+from `consult-gh--issue-read-json'.  Returns a formatted string containing
+the comments section for `consult-gh--issue-view'."
+  (let* ((author (gethash :login (gethash :author table)))
+         (body (gethash :body table))
+         (createdAt (gethash :createdAt table))
+         (url (gethash :url table))
+         (comments (gethash :comments table))
+         (comments (sort comments
+                         :key (lambda (k)
+                                (gethash :createdAt k))))
+
+         (header-marker "#"))
+    (concat author " " (consult-gh--time-ago createdAt)
+            " " (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)) "\n"
+            body "\n"
+            (when (listp comments)
+              (mapconcat (lambda (comment)
+                           (when (hash-table-p comment)
+                             (let* ((author (gethash :author comment))
+                                    (author (and author (gethash :login author)))
+                                    (authorAssociation (gethash :authorAssociation comment))
+                                    (authorAssociation (unless (equal authorAssociation "NONE")
+                                                         authorAssociation))
+                                    (createdAt (gethash :createdAt comment))
+                                    (createdAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)))
+                                    (body (gethash :body comment)))
+                               (save-match-data
+                                 (when (and body (string-match (concat "^" header-marker " .*$")  body ))
+                                   (setq body (with-temp-buffer
+                                                (insert body)
+                                                (goto-char (point-min))
+                                                (while (re-search-forward (concat "^" header-marker " +?.*$") nil t)
+                                                  (replace-match (concat header-marker "\\&")))
+                                                (buffer-string)))))
+                               (concat header-marker " "
+                                       (and author (concat author " "))
+                                       (and authorAssociation (concat "(" authorAssociation ")"))
+                                       (and createdAt (concat (consult-gh--time-ago createdAt) " " createdAt))
+                                       "\n"
+                                       (and body (concat body "\n"))
+                                       "\n----------\n"))))
+                         comments "\n")))))
+
+#+end_src
+
+********* issue-view
 #+begin_src emacs-lisp
 (defun consult-gh--issue-view (repo number &optional buffer title)
   "Open ISSUE of REPO in an Emacs buffer, BUFFER.
@@ -2695,32 +2897,36 @@ Description of Arguments:
 To use this as the default action for repos,
 see `consult-gh--issue-view-action'."
   (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-         (text-main (cadr (consult-gh--call-process "issue" "view" number "--repo" repo)))
-         (title (or title (and (stringp text-main) (car-safe (split-string text-main "\n" t)))))
-         (title (and (stringp title) (string-trim-left title "title:\t")))
-         (text-comments (cadr (consult-gh--call-process "issue" "view" number "--repo" repo "--comments")))
+         (table (consult-gh--issue-read-json repo number))
+         (users (consult-gh--issue-get-commenters table))
+         (header-text (consult-gh--issue-format-header repo number table))
+         (title (or title (car (split-string header-text "\n" t))))
+         (title (string-trim-left title "title: "))
+         (conversation-text (consult-gh--issue-format-comments table))
+         (comment-btn (buttonize "# Add New Comment" (lambda (&rest _) (consult-gh-topics-create-comment))))
          (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title) topic)
+    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title :users users :issues (consult-gh--topics-get-issue-list repo)) topic)
     (with-current-buffer buffer
-      (erase-buffer)
-      (insert (string-trim text-main))
-      (insert "\n--\n")
-      (insert (string-trim text-comments))
-      (goto-char (point-min-marker))
-      (pcase consult-gh-issue-preview-mode
-        ('markdown-mode
-         (if (featurep 'markdown-mode)
-             (progn
-               (markdown-mode)
-               (markdown-display-inline-images))
-           (message "markdown-mode not available")))
-        ('org-mode
-         (let ((org-display-remote-inline-images 'download))
-           (consult-gh--markdown-to-org buffer)))
-        (_ ()))
-      (consult-gh-issue-view-mode +1)
-      (setq-local consult-gh--topic topic)
-      (current-buffer))))
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert header-text)
+        (insert conversation-text)
+        (insert comment-btn)
+        (pcase consult-gh-issue-preview-mode
+          ('markdown-mode
+           (if (featurep 'markdown-mode)
+               (progn
+                 (markdown-mode)
+                 (markdown-display-inline-images))
+             (message "markdown-mode not available")))
+          ('org-mode
+           (let ((org-display-remote-inline-images 'download))
+             (consult-gh--markdown-to-org buffer))))
+        (goto-char (point-min))
+        (outline-hide-sublevels 1)
+        (consult-gh-issue-view-mode +1)
+        (setq-local consult-gh--topic topic)
+        (current-buffer)))))
 
 (defun consult-gh--issue-view-action (cand)
   "Open the preview of an issue candidate, CAND.
@@ -2734,9 +2940,17 @@ To use this as the default action for issues,
 set `consult-gh-issue-action' to `consult-gh--issue-view-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
          (number (substring-no-properties (format "%s" (get-text-property 0 :number cand))))
-         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/issues/" number "*")))
-    (switch-to-buffer (consult-gh--issue-view repo number))
-    (rename-buffer buffername t)))
+         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/issues/" number "*"))
+         (confirm (get-buffer buffername)))
+
+    (if (and confirm
+             (y-or-n-p "Issue is already open in another buffer.  Do you want to reload in the same buffer?"))
+        (switch-to-buffer (consult-gh--issue-view repo number (get-buffer buffername)))
+       (progn
+        (and confirm (message "Opening in a new buffer..."))
+        (switch-to-buffer (consult-gh--issue-view repo number))
+        (rename-buffer buffername t)))))
+
 #+end_src
 
 **** prs
@@ -2935,21 +3149,236 @@ set `consult-gh-pr-action' to `consult-gh--pr-browse-url-action'."
 #+end_src
 
 ******* view pr
+
+******** read json
+#+begin_src emacs-lisp
+(defun consult-gh--pr-read-json (repo number)
+  "Get json response of pull request of NUMBER in REPO.
+
+Runs an async shell command with the command:
+gh pr view NUMBER --REPO --json `consult-gh--pr-view-json-fields'
+, and returns the output as a hash-table."
+  (let* ((json-object-type 'hash-table)
+         (json-array-type 'list)
+         (json-key-type 'keyword)
+         (json-false :false))
+    (json-read-from-string (consult-gh--command-to-string "pr" "view" number "--repo" repo "--json" consult-gh--pr-view-json-fields))))
+#+end_src
+
+******** get comments
+#+begin_src emacs-lisp
+(defun consult-gh--pr-get-comments (table)
+  "Get comments and reviews of a pull request.
+
+Retrives a list of comments and reviews for PR stored in TABLE,
+a hash-table output from `consult-gh--pr-read-json'."
+  (let* ((comments (gethash :comments table))
+         (reviews (gethash :reviews table)))
+    (append comments reviews)))
+#+end_src
+
+******** get commenters
+#+begin_src emacs-lisp
+(defun consult-gh--pr-get-commenters (table)
+  "Get list of commenters on a pull request.
+
+Retrives a list of all commenters and reviewers for PR
+stored in TABLE, a hash-table output
+from `consult-gh--pr-read-json'."
+  (let* ((author (gethash :login (gethash :author table)))
+         (assignees (gethash :assignees table))
+         (assignees (and (listp assignees) (mapcar (lambda (item) (and (hash-table-p item) (gethash :login item))) assignees)))
+         (comments (consult-gh--pr-get-comments table))
+         (commenters (and (listp comments) (mapcar (lambda (comment)
+                                                     (when (hash-table-p comment)
+                                                       (gethash :login (gethash :author comment))))
+                                                   comments))))
+    (cl-remove-duplicates (delq nil (append (list author) assignees commenters)) :test #'equal)))
+#+end_src
+
+******** format header
+#+begin_src emacs-lisp
+(defun consult-gh--pr-format-header (repo number table)
+  "Format a header for a pull reqeust of NUMBER in REPO.
+
+TABLE is a hash-table output containing pull request information
+from `consult-gh--pr-read-json'.  Returns a formatted string containing
+the header section for `consult-gh--pr-view'."
+  (let* ((title (gethash :title table))
+         (author (gethash :login (gethash :author table)))
+         (baseRef (gethash :baseRefName table))
+         (head (gethash :headRepository table))
+         (headRepo (and head (gethash :name head)))
+         (headRepoOwner (gethash :headRepositoryOwner table))
+         (headRepoOwner (and headRepoOwner (gethash :login headRepoOwner)))
+         (headRef (gethash :headRefName table))
+         (state (gethash :state table))
+         (createdAt (gethash :createdAt table))
+         (updatedAt (gethash :updatedAt table))
+         (updatedAt (and updatedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time updatedAt))))
+         (url (gethash :url table))
+         (closedAt (gethash :closedAt table))
+         (closedAt (and closedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time closedAt))))
+         (labels (gethash :labels table))
+         (labels (and (listp labels) (mapconcat (lambda (item) (and (hash-table-p item) (gethash :name item))) labels "\s\s")))
+         (milestone (gethash :milestone table))
+         (milestone (and milestone (concat (format "%s-%s\s\s(%s)"
+                                                   (or (gethash :number milestone) "")
+                                                   (or (gethash :title milestone) "N/A")
+                                                   (or (gethash :description milestone) "no description")))))
+         (assignees (gethash :assignees table))
+         (assignees (and (listp assignees) (mapconcat (lambda (item) (and (hash-table-p item) (gethash :login item))) assignees ",\s"))))
+
+    (concat "title: " title "\n"
+            "author: " author "\n"
+            "repository: " (format "%s:%s" repo baseRef) "\n"
+            "number: " number "\n"
+            "ref: " repo ":" baseRef " <- " (and headRepoOwner (concat headRepoOwner "/")) (and headRepo (format "%s:" headRepo)) headRef "\n"
+            "state: " state "\n"
+            "lastUpdated: " updatedAt "\n"
+            (and url (concat "url: " url "\n"))
+            (and closedAt (concat "closed: " closedAt "\n"))
+            (and labels (concat "labels: " "[ " labels " ]""\n"))
+            (and milestone (concat "milestone: " milestone "\n"))
+            (and assignees (concat "assignees: " assignees "\n"))
+            "\n--\n")))
+
+#+end_src
+
+******** format commits
+#+begin_src emacs-lisp
+(defun consult-gh--pr-format-commits (table)
+  "Format the commits section for a pull request.
+
+TABLE is a hash-table output containing pull request information
+from `consult-gh--pr-read-json'.  Returns a formatted string containing
+the commits section for `consult-gh--pr-view'."
+  (let* ((commits (gethash :commits table))
+         (url (gethash :url table)))
+    (concat "# Commits\n"
+            (mapconcat (lambda (commit) (when (hash-table-p commit)
+                                          (let* ((oid  (gethash :oid commit))
+                                                 (authors (gethash :authors commit))
+                                                 (authors (and (listp authors) (mapconcat (lambda (author) (gethash :login author)) authors ",\s")))
+                                                 (date (gethash :committedDate commit))
+                                                 (date (and (stringp date) (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time date)))))
+                                            (concat "## " "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid) " by " authors " at " date "\n"))))
+                       commits)
+            "\n----------\n")))
+
+#+end_src
+
+******** format comments
+#+begin_src emacs-lisp
+(defun consult-gh--pr-format-comments (table)
+  "Format a comments section for a pull request.
+
+TABLE is a hash-table output containing pull request information
+from `consult-gh--pr-read-json'.  Returns a formatted string containing
+the comments section for `consult-gh--pr-view'."
+  (let* ((author (gethash :login (gethash :author table)))
+         (body (gethash :body table))
+         (createdAt (gethash :createdAt table))
+         (url (gethash :url table))
+         (comments (consult-gh--pr-get-comments table))
+         (comments (sort comments
+                         :key (lambda (k)
+                                (or (gethash :createdAt k) (gethash :submittedAt k)))))
+         (header-marker "#"))
+    (concat header-marker " Conversation\n"
+            header-marker header-marker " " author " " (consult-gh--time-ago createdAt)
+            " " (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)) "\n"
+            body "\n"
+            (when (listp comments)
+              (mapconcat (lambda (comment)
+                           (when (hash-table-p comment)
+                             (let* ((author (gethash :author comment))
+                                    (author (and author (gethash :login author)))
+                                    (authorAssociation (gethash :authorAssociation comment))
+                                    (authorAssociation (unless (equal authorAssociation "NONE")
+                                                         authorAssociation))
+                                    (createdAt (or (gethash :createdAt comment)
+                                                   (gethash :submittedAt comment)))
+                                    (commit (gethash :commit comment))
+                                    (oid (and commit (gethash :oid commit)))
+                                    (createdAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)))
+                                    (body (gethash :body comment)))
+                               (save-match-data
+                                 (when (and body (string-match (concat "^" header-marker "+?\s.*$")  body))
+                                   (setq body (with-current-buffer (get-buffer-create "consult-gh-test")
+                                                (erase-buffer)
+                                                (insert body)
+                                                (goto-char (point-min))
+                                                (while (re-search-forward (concat "^" header-marker "+?\s.*$") nil t)
+                                                  (replace-match (concat header-marker header-marker "\\&")))
+                                                (buffer-string)))))
+                               (concat header-marker header-marker " "
+                                       (and author (concat author " "))
+                                       (and authorAssociation (concat "(" authorAssociation ")"))
+                                       (and createdAt (concat (consult-gh--time-ago createdAt) " " createdAt))
+                                       "\n"
+                                       (and commit oid (concat "\ncommit: " "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid) "\n------"))
+                                       (and body (concat "\n" body "\n"))
+                                       "\n----------\n"))))
+                         comments "\n")))))
+
+#+end_src
+
+******** format files changed
+#+begin_src emacs-lisp
+(defun consult-gh--pr-format-files-changed (table)
+  "Format a changed files section for a pull request.
+
+TABLE is a hash-table output containing pull request information
+from `consult-gh--pr-read-json'.  Returns a formatted string containing
+the files changed section for `consult-gh--pr-view'."
+  (let ((files (gethash :files table))
+        (additions (gethash :additions table))
+        (deletions (gethash :deletions table)))
+    (and (listp files) (concat "# Files Changed - " (format "%s file(s)" (length files)) (and additions (format ", %s additions(+)" additions)) (and deletions (format ", %s deletions(-)" deletions)) "\n"))))
+#+end_src
+
+******** insert diffs
+#+begin_src emacs-lisp
+(defun consult-gh--pr-insert-diffs (diffs)
+  "Insert formtted DIFFS in PR view buffer.
+
+This is used in `consult-gh--pr-view'."
+  (mapcar (lambda (chunk)
+            (if (consp chunk)
+                (pcase consult-gh-issue-preview-mode
+                  ('markdown-mode (insert (concat "## " (car-safe chunk) "\n```diff\n" (cadr chunk) "\n```\n")))
+                  ('org-mode
+                   (insert (concat "** " (car-safe chunk) "\n"))
+                   (insert "#+begin_src diff\n")
+                   (let ((content (save-match-data
+                                    (with-temp-buffer
+                                      (and (stringp (cadr chunk)) (insert (cadr chunk)))
+                                      (goto-char (point-min))
+                                      (while (re-search-forward "#\\+begin_src\\|#\\+end_src" nil t)
+                                        (replace-match ",\\&" nil nil))
+                                      (buffer-string)))))
+                     (and (stringp content) (insert content)))
+                   (insert "\n#+end_src\n"))
+                  (_ (insert chunk)))))
+          diffs))
+#+end_src
+
+******** pr-view
 #+begin_src emacs-lisp
 (defun consult-gh--pr-view (repo number &optional buffer title)
-  "Open pull request, PR of REPO in an Emacs buffer, BUFFER.
+  "Open pull request, NUMBER of REPO in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of a repository
-\(e.g. “armindarvish/consult-gh”\) and PR, a pr number of that repository,
-and shows the contents of the pr in an Emacs buffer.
+\(e.g. “armindarvish/consult-gh”\) and NUMBER, a pr number of REPO,
+and shows the contents of the pull request in an Emacs buffer.
 
-It fetches the preview of the PR by runing “gh or view PR --repo REPO”
-using `consult-gh--call-process' and puts it as raw text in either
-BUFFER, or if BUFFER is nil, in a buffer named by
-`consult-gh-preview-buffer-name'.
-
-If `consult-gh-issue-preview-mode' is non-nil, uses it as
-major-mode, otherwise shows the raw text in \='fundamental-mode.
+It fetches the details of the pull request by calling
+`consult-gh--pr-read-json' and parses and formats it in markdown syntax,
+and puts it in either BUFFER, or if BUFFER is nil, in a buffer named by
+`consult-gh-preview-buffer-name'.  If `consult-gh-issue-preview-mode'
+is non-nil, uses it as major-mode for BUFFER, otherwise shows the raw text
+in \='text-mode.
 
 Description of Arguments:
 
@@ -2958,35 +3387,50 @@ Description of Arguments:
   BUFFER an optional buffer the preview should be shown in.
   TITLE  is an optional title string
 
-To use this as the default action for PRs,
-see `consult-gh--pr-view-action'."
+To use this as the default action for PRs, see
+`consult-gh--pr-view-action'."
   (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-        (text-main (cadr (consult-gh--call-process "pr" "view" number "--repo" repo)))
-        (title (or title (and (stringp text-main) (car-safe (split-string text-main "\n" t)))))
-        (title (and (stringp title) (string-trim-left title "title:\t")))
-        (text-comments (cadr (consult-gh--call-process "pr" "view" number "--repo" repo "--comments")))
-        (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :repo repo :type "pr" :number number :title title) topic)
+         (table (consult-gh--pr-read-json repo number))
+         (users (consult-gh--pr-get-commenters table))
+         (header-text (consult-gh--pr-format-header repo number table))
+         (title (or title (car (split-string header-text "\n" t))))
+         (title (string-trim-left title "title: "))
+         (commits-text (consult-gh--pr-format-commits table))
+         (conversation-text (consult-gh--pr-format-comments table))
+         (file-change-text (consult-gh--pr-format-files-changed table))
+         (diff (consult-gh--command-to-string "pr" "diff" number "--repo" repo))
+         (diff-chunks (and (stringp diff) (consult-gh--parse-diff diff)))
+         (comment-btn (buttonize "# Add New Comment" (lambda (&rest _) (consult-gh-topics-create-comment))))
+         (topic (format "%s/#%s" repo number)))
+    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title :users users :issues (consult-gh--topics-get-issue-list repo)) topic)
     (with-current-buffer buffer
-      (erase-buffer)
-      (insert (string-trim text-main))
-      (insert "\n--\n")
-      (insert (string-trim text-comments))
-      (goto-char (point-min-marker))
-      (pcase consult-gh-issue-preview-mode
-        ('markdown-mode
-         (if (featurep 'markdown-mode)
-             (progn
-               (markdown-mode)
-               (markdown-display-inline-images))
-           (message "markdown-mode not available")))
-        ('org-mode
-         (let ((org-display-remote-inline-images 'download))
-           (consult-gh--markdown-to-org buffer)))
-        (_ ()))
-      (consult-gh-pr-view-mode +1)
-      (setq-local consult-gh--topic topic)
-      (current-buffer))))
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert header-text)
+        (insert commits-text)
+        (insert conversation-text)
+        (insert file-change-text)
+        (save-excursion
+          (insert "\n")
+          (insert comment-btn)
+          (pcase consult-gh-issue-preview-mode
+            ('markdown-mode
+             (if (featurep 'markdown-mode)
+                 (progn
+                   (markdown-mode)
+                   (markdown-display-inline-images))
+               (message "markdown-mode not available")))
+            ('org-mode
+             (let ((org-display-remote-inline-images 'download))
+               (consult-gh--markdown-to-org buffer)))
+            (_ ())))
+        (consult-gh--pr-insert-diffs diff-chunks)
+        (insert "\n")
+        (goto-char (point-min))
+        (outline-hide-sublevels 1)
+        (consult-gh-pr-view-mode +1)
+        (setq-local consult-gh--topic topic)
+        (current-buffer)))))
 
 (defun consult-gh--pr-view-action (cand)
   "Opens the preview of a pull request candidate, CAND.
@@ -2999,9 +3443,16 @@ To use this as the default action for prs,
 set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
          (number (substring-no-properties (format "%s" (get-text-property 0 :number cand))))
-         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/pull/" number "*")))
-    (switch-to-buffer (consult-gh--pr-view repo number))
-    (rename-buffer buffername t)))
+         (buffername  (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/pull/" number "*"))
+         (confirm (get-buffer buffername)))
+    (if (and confirm
+             (y-or-n-p "PR is already open in another buffer.  Do you want to reload in the same buffer?"))
+        (switch-to-buffer (consult-gh--pr-view repo number (get-buffer buffername)))
+      (progn
+        (and confirm (message "Opening in a new buffer..."))
+        (switch-to-buffer (consult-gh--pr-view repo number))
+        (rename-buffer buffername t)))))
+
 #+end_src
 
 **** code
@@ -3537,6 +3988,28 @@ from `consult-gh-notifications' and makrs it as read."
   (when-let ((thread (get-text-property 0 :thread cand)))
     (consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH")))
 #+end_src
+** Completion Functions
+*** get all issues of repo
+#+begin_src emacs-lisp
+(defun consult-gh--topics-get-issue-list (&optional repo)
+  (let* ((repo (or repo
+                   (and consult-gh--topic (get-text-property 0 :repo consult-gh--topic))
+                   (consult-gh-search-repos nil t)))
+         (issues (consult-gh--command-to-string "issue" "list" "--repo" repo "--state" "all" "--json" "number,title" "--template" "{{range .}}#{{.number}} {{.title}}\n{{end}}"))
+         (issues (and (stringp issues) (split-string issues "\n")))
+         (prs (consult-gh--command-to-string "pr" "list" "--repo" repo "--state" "all" "--json" "number,title" "--template" "{{range .}}#{{.number}} {{.title}}\n{{end}}"))
+         (prs (and (stringp prs) (split-string prs "\n"))))
+   (append issues prs)))
+#+end_src
+*** capf in editing comments
+#+begin_src emacs-lisp
+(defun consult-gh--topics-edit-capf ()
+  "Complettion at point for editing pullrequest comments."
+  (let* ((begin (save-excursion (backward-word) (if (looking-back "@\\|#") (backward-char)) (point)))
+         (end (point)))
+    (list begin end (append (get-text-property 0 :users consult-gh--topic) (get-text-property 0 :issues consult-gh--topic))
+          :exclusive 'no)))
+#+end_src
 
 ** Minor Modes
 *** consult-gh-issue-view-mode
@@ -3553,7 +4026,8 @@ from `consult-gh-notifications' and makrs it as read."
   :global nil
   :group 'consult-gh
   :lighter " consult-gh-issue-view"
-  :keymap consult-gh-issue-view-mode-map)
+  :keymap consult-gh-issue-view-mode-map
+  (read-only-mode +1))
 #+end_src
 
 
@@ -3571,12 +4045,14 @@ from `consult-gh-notifications' and makrs it as read."
   :global nil
   :group 'consult-gh
   :lighter " consult-gh-pr-view"
-  :keymap consult-gh-pr-view-mode-map)
+  :keymap consult-gh-pr-view-mode-map
+  (read-only-mode +1))
 #+end_src
 
 
 
 *** consult-gh-topics-edit-comment-mode
+**** consult-gh-topics-edit-comment minor-mode
 #+begin_src emacs-lisp
 (defun consult-gh-topics-edit-comment-header-line ()
   "Create `header-line-format' for consult-gh-topics."
@@ -3603,6 +4079,20 @@ from `consult-gh-notifications' and makrs it as read."
   "C-c C-c" #'consult-gh-topics-comment-submit
   "C-c C-k" #'consult-gh-topics-comment-cancel)
 
+(defun consult-gh-topics-edit-comment-mode-on ()
+  "Enable `consult-gh-topics-edit-comment-mode'."
+  (setq-local header-line-format (consult-gh-topics-edit-comment-header-line))
+  (add-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf -100 t)
+  (add-to-list 'completion-at-point-functions #'consult-gh--topics-edit-capf)
+)
+
+(defun consult-gh-topics-edit-comment-mode-off ()
+    "Disable `consult-gh-topics-edit-comment-mode'."
+    (setq-local header-line-format nil)
+    (remove-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf)
+    (remove #'consult-gh--topics-edit-capf completion-at-point-functions)
+)
+
 ;;;###autoload
 (define-minor-mode consult-gh-topics-edit-comment-mode
   "Minor-mode for viewing topics."
@@ -3611,7 +4101,11 @@ from `consult-gh-notifications' and makrs it as read."
   :group 'consult-gh
   :lighter " consult-gh-topics-edit-comment"
   :keymap consult-gh-topics-edit-comment-mode-map
-  (setq-local header-line-format (consult-gh-topics-edit-comment-header-line)))
+  (cond (consult-gh-topics-edit-comment-mode
+         (consult-gh-topics-edit-comment-mode-on))
+        (t
+         (consult-gh-topics-edit-comment-mode-off)
+         )))
 #+end_src
 
 
