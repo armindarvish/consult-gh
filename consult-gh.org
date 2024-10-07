@@ -2898,14 +2898,14 @@ To use this as the default action for repos,
 see `consult-gh--issue-view-action'."
   (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
          (table (consult-gh--issue-read-json repo number))
-         (users (consult-gh--issue-get-commenters table))
+         (users (append (consult-gh--pr-get-commenters table) (list (consult-gh--get-username repo))))
          (header-text (consult-gh--issue-format-header repo number table))
          (title (or title (car (split-string header-text "\n" t))))
          (title (string-trim-left title "title: "))
          (conversation-text (consult-gh--issue-format-comments table))
          (comment-btn (buttonize "# Add New Comment" (lambda (&rest _) (consult-gh-topics-create-comment))))
          (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title :users users :issues (consult-gh--topics-get-issue-list repo)) topic)
+    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title :users (and (listp users) (mapcar (lambda (user) (concat "@" user)) users)) :issues (consult-gh--topics-get-issue-list repo)) topic)
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
         (erase-buffer)
@@ -3391,7 +3391,7 @@ To use this as the default action for PRs, see
 `consult-gh--pr-view-action'."
   (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
          (table (consult-gh--pr-read-json repo number))
-         (users (consult-gh--pr-get-commenters table))
+         (users (append (consult-gh--pr-get-commenters table) (list (consult-gh--get-username repo))))
          (header-text (consult-gh--pr-format-header repo number table))
          (title (or title (car (split-string header-text "\n" t))))
          (title (string-trim-left title "title: "))
@@ -3402,7 +3402,7 @@ To use this as the default action for PRs, see
          (diff-chunks (and (stringp diff) (consult-gh--parse-diff diff)))
          (comment-btn (buttonize "# Add New Comment" (lambda (&rest _) (consult-gh-topics-create-comment))))
          (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title :users users :issues (consult-gh--topics-get-issue-list repo)) topic)
+    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title :users (and (listp users) (mapcar (lambda (user) (concat "@" user)) users)) :issues (consult-gh--topics-get-issue-list repo)) topic)
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
         (erase-buffer)
@@ -3992,23 +3992,38 @@ from `consult-gh-notifications' and makrs it as read."
 *** get all issues of repo
 #+begin_src emacs-lisp
 (defun consult-gh--topics-get-issue-list (&optional repo)
-  (let* ((repo (or repo
+  (let* ((json-object-type 'hash-table)
+         (json-array-type 'list)
+         (json-key-type 'keyword)
+         (json-false :false)
+         (repo (or repo
                    (and consult-gh--topic (get-text-property 0 :repo consult-gh--topic))
                    (consult-gh-search-repos nil t)))
-         (issues (consult-gh--command-to-string "issue" "list" "--repo" repo "--state" "all" "--json" "number,title" "--template" "{{range .}}#{{.number}} {{.title}}\n{{end}}"))
-         (issues (and (stringp issues) (split-string issues "\n")))
-         (prs (consult-gh--command-to-string "pr" "list" "--repo" repo "--state" "all" "--json" "number,title" "--template" "{{range .}}#{{.number}} {{.title}}\n{{end}}"))
-         (prs (and (stringp prs) (split-string prs "\n"))))
+         (issues (json-read-from-string (consult-gh--command-to-string "issue" "list" "--repo" repo "--state" "all" "--limit" "1000" "--json" "number,title")))
+         (issues (and (listp issues) (mapcar (lambda (issue) (cons (format "#%s" (gethash :number issue)) (gethash :title issue))) issues)))
+         (prs (consult-gh--command-to-string "pr" "list" "--repo" repo "--state" "all" "--limit" "1000" "--json" "number,title"))
+         (prs (and (listp prs) (mapcar (lambda (pr) (cons (format "#%s" (gethash :number pr)) (gethash :title pr))) prs))))
    (append issues prs)))
 #+end_src
 *** capf in editing comments
 #+begin_src emacs-lisp
 (defun consult-gh--topics-edit-capf ()
   "Complettion at point for editing pullrequest comments."
-  (let* ((begin (save-excursion (backward-word) (if (looking-back "@\\|#") (backward-char)) (point)))
-         (end (point)))
-    (list begin end (append (get-text-property 0 :users consult-gh--topic) (get-text-property 0 :issues consult-gh--topic))
-          :exclusive 'no)))
+   (cond
+    ((looking-back "@.*?")
+    (let* ((begin (save-excursion (backward-word)  (- (point) 1)))
+            (end (point)))
+      (list begin end (get-text-property 0 :users consult-gh--topic)
+            :annotation-function (lambda (_) "" "\tuser\t[consult-gh]")
+            :exclusive 'no)))
+    ((looking-back "#.*?")
+     (let* ((begin (save-excursion (backward-word)  (- (point) 1)))
+            (end (point))
+            (candidates (get-text-property 0 :issues consult-gh--topic)))
+      (list begin end candidates
+            :annotation-function (lambda (str) "" (concat "\t" (consult-gh--set-string-width (cdr (assoc str (get-text-property 0 :issues consult-gh--topic))) 40 nil ?.) "\t[consult-gh]"))
+            :exclusive 'no)
+            ))))
 #+end_src
 
 ** Minor Modes
