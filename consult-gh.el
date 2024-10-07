@@ -3601,6 +3601,7 @@ from `consult-gh-notifications' and makrs it as read."
     (consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH")))
 
 (defun consult-gh--topics-get-issue-list (&optional repo)
+  "Get a list of all issues up to 1000 for REPO."
   (let* ((json-object-type 'hash-table)
          (json-array-type 'list)
          (json-key-type 'keyword)
@@ -3612,25 +3613,26 @@ from `consult-gh-notifications' and makrs it as read."
          (issues (and (listp issues) (mapcar (lambda (issue) (cons (format "#%s" (gethash :number issue)) (gethash :title issue))) issues)))
          (prs (consult-gh--command-to-string "pr" "list" "--repo" repo "--state" "all" "--limit" "1000" "--json" "number,title"))
          (prs (and (listp prs) (mapcar (lambda (pr) (cons (format "#%s" (gethash :number pr)) (gethash :title pr))) prs))))
-   (append issues prs)))
+    (append issues prs)))
 
 (defun consult-gh--topics-edit-capf ()
-  "Complettion at point for editing pullrequest comments."
-   (cond
-    ((looking-back "@.*?")
+  "Complettion at point for editing comments.
+
+Completes for issue/pr numbers or user names."
+  (cond
+   ((looking-back "@.*?" 10)
     (let* ((begin (save-excursion (backward-word)  (- (point) 1)))
-            (end (point)))
+           (end (point)))
       (list begin end (get-text-property 0 :users consult-gh--topic)
             :annotation-function (lambda (_) "" "\tuser\t[consult-gh]")
             :exclusive 'no)))
-    ((looking-back "#.*?")
-     (let* ((begin (save-excursion (backward-word)  (- (point) 1)))
-            (end (point))
-            (candidates (get-text-property 0 :issues consult-gh--topic)))
+   ((looking-back "#.*?" 6)
+    (let* ((begin (save-excursion (backward-word)  (- (point) 1)))
+           (end (point))
+           (candidates (get-text-property 0 :issues consult-gh--topic)))
       (list begin end candidates
             :annotation-function (lambda (str) "" (concat "\t" (consult-gh--set-string-width (cdr (assoc str (get-text-property 0 :issues consult-gh--topic))) 40 nil ?.) "\t[consult-gh]"))
-            :exclusive 'no)
-            ))))
+            :exclusive 'no)))))
 
 (defvar-keymap consult-gh-issue-view-mode-map
   :doc "Consult-gh topics keymap."
