@@ -336,6 +336,16 @@ Choices are:
                  (const :tag "Use org mode" org-mode)
                  (const :tag "Use text-mode" nil)))
 
+(defcustom consult-gh-topic-use-capf t
+  "Use `consult-gh--topics-edit-capf' for completion at point.
+
+When non-nil, `consult-gh--topics-edit-capf' ia used in `consult-gh-topic-comment-mode'
+buffer for autocompleting issue/pr numbers or user names."
+  :group 'consult-gh
+  :type '(choice (const :tag "Use autocompletion" t)
+                 (const :tag "Do not use autocompletion" nil)))
+
+
 (make-obsolete-variable 'consult-gh-preview-buffer-mode "Use `consult-gh-repo-preview-mode', or `consult-gh-issue-preview-mode' instead." "1.1")
 
 (defcustom consult-gh-default-orgs-list (list)
@@ -2898,14 +2908,13 @@ To use this as the default action for repos,
 see `consult-gh--issue-view-action'."
   (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
          (table (consult-gh--issue-read-json repo number))
-         (users (append (consult-gh--pr-get-commenters table) (list (consult-gh--get-username repo))))
          (header-text (consult-gh--issue-format-header repo number table))
          (title (or title (car (split-string header-text "\n" t))))
          (title (string-trim-left title "title: "))
          (conversation-text (consult-gh--issue-format-comments table))
          (comment-btn (buttonize "# Add New Comment" (lambda (&rest _) (consult-gh-topics-create-comment))))
          (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title :users (and (listp users) (mapcar (lambda (user) (concat "@" user)) users)) :issues (consult-gh--topics-get-issue-list repo)) topic)
+    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title) topic)
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
         (erase-buffer)
@@ -3129,7 +3138,7 @@ If TRANSFORM is non-nil, the CAND itself is returned."
        (consult-gh--set-string-width " Repo " 40 nil ?-))))))
 #+end_src
 ****** actions
-In this section we define action functions that cna be run on a issue candidate for example opening it in a browser or viewing it inside an emacs buffer.
+In this section we define action functions that can be run on a issue candidate for example opening it in a browser or viewing it inside an emacs buffer.
 ******* browse pr url
 #+begin_src emacs-lisp
 (defun consult-gh--pr-browse-url-action (cand)
@@ -3391,7 +3400,6 @@ To use this as the default action for PRs, see
 `consult-gh--pr-view-action'."
   (let* ((buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
          (table (consult-gh--pr-read-json repo number))
-         (users (append (consult-gh--pr-get-commenters table) (list (consult-gh--get-username repo))))
          (header-text (consult-gh--pr-format-header repo number table))
          (title (or title (car (split-string header-text "\n" t))))
          (title (string-trim-left title "title: "))
@@ -3402,7 +3410,7 @@ To use this as the default action for PRs, see
          (diff-chunks (and (stringp diff) (consult-gh--parse-diff diff)))
          (comment-btn (buttonize "# Add New Comment" (lambda (&rest _) (consult-gh-topics-create-comment))))
          (topic (format "%s/#%s" repo number)))
-    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title :users (and (listp users) (mapcar (lambda (user) (concat "@" user)) users)) :issues (consult-gh--topics-get-issue-list repo)) topic)
+    (add-text-properties 0 1 (list :repo repo :type "issue" :number number :title title) topic)
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
         (erase-buffer)
@@ -4002,7 +4010,7 @@ from `consult-gh-notifications' and makrs it as read."
                    (consult-gh-search-repos nil t)))
          (issues (json-read-from-string (consult-gh--command-to-string "issue" "list" "--repo" repo "--state" "all" "--limit" "1000" "--json" "number,title")))
          (issues (and (listp issues) (mapcar (lambda (issue) (cons (format "#%s" (gethash :number issue)) (gethash :title issue))) issues)))
-         (prs (consult-gh--command-to-string "pr" "list" "--repo" repo "--state" "all" "--limit" "1000" "--json" "number,title"))
+         (prs (json-read-from-string (consult-gh--command-to-string "pr" "list" "--repo" repo "--state" "all" "--limit" "1000" "--json" "number,title")))(
          (prs (and (listp prs) (mapcar (lambda (pr) (cons (format "#%s" (gethash :number pr)) (gethash :title pr))) prs))))
     (append issues prs)))
 #+end_src
@@ -4012,20 +4020,24 @@ from `consult-gh-notifications' and makrs it as read."
   "Complettion at point for editing comments.
 
 Completes for issue/pr numbers or user names."
-  (cond
-   ((looking-back "@.*?" 10)
-    (let* ((begin (save-excursion (backward-word)  (- (point) 1)))
+  (save-match-data
+    (cond
+   ((looking-back "@.*?" nil)
+    (let* ((begin (save-excursion (match-beginning 0)))
            (end (point)))
       (list begin end (get-text-property 0 :users consult-gh--topic)
-            :annotation-function (lambda (_) "" "\tuser\t[consult-gh]")
+            :annotation-function (lambda (_) "" "\tuser\s\s[consult-gh]")
             :exclusive 'no)))
-   ((looking-back "#.*?" 6)
-    (let* ((begin (save-excursion (backward-word)  (- (point) 1)))
+   ((looking-back "#[0-9]*?" nil)
+    (let* ((begin (save-excursion (match-beginning 0)))
            (end (point))
-           (candidates (get-text-property 0 :issues consult-gh--topic)))
+           (issues (get-text-property 0 :issues consult-gh--topic))
+           (candidates (and (listp issues) (mapcar #'car issues))))
       (list begin end candidates
-            :annotation-function (lambda (str) "" (concat "\t" (consult-gh--set-string-width (cdr (assoc str (get-text-property 0 :issues consult-gh--topic))) 40 nil ?.) "\t[consult-gh]"))
-            :exclusive 'no)))))
+            :annotation-function (lambda (str) "" (when-let ((cand (assoc str (get-text-property 0 :issues consult-gh--topic))))
+                                                    (if (consp cand)
+                                                        (concat "\t" (consult-gh--set-string-width (cdr cand) 40 nil ?.) "\s\s[consult-gh]"))))
+            :exclusive 'no))))))
 #+end_src
 
 ** Minor Modes
@@ -4098,17 +4110,11 @@ Completes for issue/pr numbers or user names."
 
 (defun consult-gh-topics-edit-comment-mode-on ()
   "Enable `consult-gh-topics-edit-comment-mode'."
-  (setq-local header-line-format (consult-gh-topics-edit-comment-header-line))
-  (add-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf -100 t)
-  (add-to-list 'completion-at-point-functions #'consult-gh--topics-edit-capf)
-)
+  (setq-local header-line-format (consult-gh-topics-edit-comment-header-line)))
 
 (defun consult-gh-topics-edit-comment-mode-off ()
     "Disable `consult-gh-topics-edit-comment-mode'."
-    (setq-local header-line-format nil)
-    (remove-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf)
-    (remove #'consult-gh--topics-edit-capf completion-at-point-functions)
-)
+    (setq-local header-line-format nil))
 
 ;;;###autoload
 (define-minor-mode consult-gh-topics-edit-comment-mode
@@ -4119,13 +4125,65 @@ Completes for issue/pr numbers or user names."
   :lighter " consult-gh-topics-edit-comment"
   :keymap consult-gh-topics-edit-comment-mode-map
   (cond (consult-gh-topics-edit-comment-mode
-         (consult-gh-topics-edit-comment-mode-on))
+         (consult-gh-topics-edit-comment-mode-on)
+         (when consult-gh-topic-use-capf
+           (consult-gh-topics-edit-capf-mode +1)))
         (t
          (consult-gh-topics-edit-comment-mode-off)
-         )))
+         (if consult-gh-topics-edit-capf-mode
+             (consult-gh-topics-edit-capf-mode -1)))))
 #+end_src
+**** consult-gh-topics-edit-capf minor-mode
+#+begin_src emacs-lisp
+(defun consult-gh--topics-edit-capf ()
+  "Completion at point function for editing comments.
 
+Completes for issue/pr numbers or usernames in `consult-gh-topics-create-comment'
+when `consult-gh-topics-edit-capf-mode' is on."
+  (save-match-data
+    (cond
+   ((looking-back "@.*?" nil)
+    (let* ((begin (save-excursion (match-beginning 0)))
+           (end (point)))
+      (list begin end (get-text-property 0 :users consult-gh--topic)
+            :annotation-function (lambda (_) "" "\tuser\s\s[consult-gh]")
+            :exclusive 'no)))
+   ((looking-back "#[0-9]*?" nil)
+    (let* ((begin (save-excursion (match-beginning 0)))
+           (end (point))
+           (issues (get-text-property 0 :issues consult-gh--topic))
+           (candidates (and (listp issues) (mapcar #'car issues))))
+      (list begin end candidates
+            :annotation-function (lambda (str) "" (when-let ((cand (assoc str (get-text-property 0 :issues consult-gh--topic))))
+                                                    (if (consp cand)
+                                                        (concat "\t" (consult-gh--set-string-width (cdr cand) 30 nil) "\s\s[consult-gh]"))))
+            :exclusive 'no))))))
 
+(defun consult-gh-topics-edit-capf-mode-on ()
+  "Enable `consult-gh-topics-edit-capf-mode'."
+  (add-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf -100 t)
+  (add-to-list 'completion-at-point-functions #'consult-gh--topics-edit-capf))
+
+(defun consult-gh-topics-edit-capf-mode-off ()
+    "Disable `consult-gh-topics-edit-capf-mode'."
+    (remove-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf)
+    (remove #'consult-gh--topics-edit-capf completion-at-point-functions))
+
+;;;###autoload
+(define-minor-mode consult-gh-topics-edit-capf-mode
+  "Minor-mode for completion at point in `consult-gh-topics-edit-comment-mode'.
+
+Helps with autocompleting username and issue numbers, etc."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-topics-edit-capf"
+  :keymap nil
+  (cond (consult-gh-topics-edit-capf-mode
+         (consult-gh-topics-edit-capf-mode-on))
+        (t
+         (consult-gh-topics-edit-capf-mode-off))))
+#+end_src
 ** Frontend Interactive Commands
 
 **** consult-gh-auth-switch
@@ -5515,7 +5573,12 @@ INITIAL is an optional arg for the initial input in the minibuffer."
          (type (get-text-property 0 :type topic))
          (number (get-text-property 0 :number topic))
          (buffer (get-buffer-create (format "*consult-gh-topics-comment: %s - %s #%s" repo type number)))
+         (table (cond
+                   ((equal type "issue") (consult-gh--issue-read-json repo number))
+                   ((equal type "pr") (consult-gh--pr-read-json repo number))))
+         (users (and table (append (consult-gh--pr-get-commenters table) (list (consult-gh--get-username repo)))))
          (existing nil))
+    (add-text-properties 0 1 (list :users (and (listp users) (mapcar (lambda (user) (concat "@" user)) (cl-remove-duplicates users :test #'equal))) :issues (consult-gh--topics-get-issue-list repo)) topic)
     (cond
      ((not (= (buffer-size buffer) 0))
       (when (y-or-n-p "Buffer already exists.  Would you like to resume editing comment in the same buffer?")
