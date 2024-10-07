@@ -4142,7 +4142,7 @@ Completes for issue/pr numbers or usernames in `consult-gh-topics-create-comment
 when `consult-gh-topics-edit-capf-mode' is on."
   (save-match-data
     (cond
-   ((looking-back "@.*?" nil)
+   ((looking-back "@[^\s]*?" nil)
     (let* ((begin (save-excursion (match-beginning 0)))
            (end (point)))
       (list begin end (get-text-property 0 :users consult-gh--topic)

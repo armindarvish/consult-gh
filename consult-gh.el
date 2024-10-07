@@ -3726,6 +3726,132 @@ Completes for issue/pr numbers or user names."
          (if consult-gh-topics-edit-capf-mode
              (consult-gh-topics-edit-capf-mode -1)))))
 
+(defun consult-gh--topics-edit-capf ()
+  "Completion at point function for editing comments.
+
+Completes for issue/pr numbers or usernames in `consult-gh-topics-create-comment'
+when `consult-gh-topics-edit-capf-mode' is on."
+  (save-match-data
+    (cond
+   ((looking-back "@[^\s]*?" nil)
+    (let* ((begin (save-excursion (match-beginning 0)))
+           (end (point)))
+      (list begin end (get-text-property 0 :users consult-gh--topic)
+            :annotation-function (lambda (_) "" "\tuser\s\s[consult-gh]")
+            :exclusive 'no)))
+   ((looking-back "#[0-9]*?" nil)
+    (let* ((begin (save-excursion (match-beginning 0)))
+           (end (point))
+           (issues (get-text-property 0 :issues consult-gh--topic))
+           (candidates (and (listp issues) (mapcar #'car issues))))
+      (list begin end candidates
+            :annotation-function (lambda (str) "" (when-let ((cand (assoc str (get-text-property 0 :issues consult-gh--topic))))
+                                                    (if (consp cand)
+                                                        (concat "\t" (consult-gh--set-string-width (cdr cand) 30 nil) "\s\s[consult-gh]"))))
+            :exclusive 'no))))))
+
+(defun consult-gh-topics-edit-capf-mode-on ()
+  "Enable `consult-gh-topics-edit-capf-mode'."
+  (add-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf -100 t)
+  (add-to-list 'completion-at-point-functions #'consult-gh--topics-edit-capf))
+
+(defun consult-gh-topics-edit-capf-mode-off ()
+    "Disable `consult-gh-topics-edit-capf-mode'."
+    (remove-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf)
+    (remove #'consult-gh--topics-edit-capf completion-at-point-functions))
+
+;;;###autoload
+(define-minor-mode consult-gh-topics-edit-capf-mode
+  "Minor-mode for completion at point in `consult-gh-topics-edit-comment-mode'.
+
+Helps with autocompleting username and issue numbers, etc."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-topics-edit-capf"
+  :keymap nil
+  (cond (consult-gh-topics-edit-capf-mode
+         (consult-gh-topics-edit-capf-mode-on))
+        (t
+         (consult-gh-topics-edit-capf-mode-off))))
+
+;;;###autoload
+(defun consult-gh-auth-switch (&optional host user)
+  "Switch between authenticated accounts.
+
+If the optional arguments, HOST and USER are non-nil, use them for
+authenticaiton otherwise query the user to select an account."
+  (interactive "P")
+  (unless (and host user)
+    (let* ((accounts (consult-gh--auth-accounts))
+           (sel (consult--read accounts
+                               :prompt "Select Account:"
+                               :lookup #'consult--lookup-cons
+                               :sort nil
+                               :annotate (lambda (cand)
+                                           (let* ((info (assoc cand accounts))
+                                                  (host (cadr info))
+                                                  (status (if (caddr info) "active" ""))
+                                                  (current (if (equal info consult-gh--auth-current-account) "selected" "")))
+                                             (format "\t\t%s\s\s%s\s\s%s"
+                                                     (propertize host 'face 'consult-gh-tags-face)
+                                                     (propertize status 'face 'consult-gh-user-face)
+                                                     (propertize current 'face 'consult-gh-visibility-face)))))))
+      (when (and sel (consp sel))
+        (setq user (car sel))
+        (setq host (cadr sel)))))
+  (consult-gh--auth-switch host user))
+
+(defun consult-gh--repo-list-transform (async &rest _)
+  "Add annotation to repo candidates in `consult-gh-repo-list'.
+
+Returns ASYNC function after formatting results with
+`consult-gh--repo-format'.
+BUILDER is the command line builder function \(e.g.
+`consult-gh--repo-list-builder'\)."
+  (let ((consult-gh--current-input nil))
+    `(lambda (action)
+       (cond
+        ((stringp action)
+         (setq consult-gh--current-input action)
+         (funcall ,async action))
+        (t (mapcar (lambda (string)
+                     (consult-gh--repo-format string consult-gh--current-input nil))
+                   (funcall ,async action)))))))
+
+(defun consult-gh--repo-list-builder (input)
+  "Build gh command line for listing repos of INPUT.
+
+INPUT must be a GitHub user or org as a string e.g. “armindarvish”."
+
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-repo-list-args))
+               (cmd (consult--build-args consult-gh-args))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-repo-maxnum)))))
+    (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
+      (when re
+        (cons (append cmd
+                      (list (string-join re " "))
+                      opts)
+              hl)))))
+
+(defun consult-gh--repo-list (org)
+  "List repos of ORG synchronously.
+
+This runs the command  “gh repo list ORG”
+using `consult-gh--command-to-string' to get a list of all repositories
+of ORG, and returns the results in a list.
+
+Each candidate is formatted by `consult-gh--repo-format'.
+
+ORG must be the name of a github account as a string e.g. “armindarvish”."
+  (let* ((maxnum (format "%s" consult-gh-repo-maxnum))
+         (repolist  (or (consult-gh--command-to-string "repo" "list" org "--limit" maxnum) ""))
+         (repos (split-string repolist "\n")))
+    (mapcar (lambda (src) (consult-gh--repo-format src org nil))  (remove "" repos))))
+
 (defun consult-gh--async-repo-list (prompt builder &optional initial)
   "List repos of GitHub users/organizations asynchronously.
 
@@ -3769,6 +3895,50 @@ Description of Arguments:
                    :category 'consult-gh-repos
                    :preview-key consult-gh-preview-key
                    :sort nil))))
+
+;;;###autoload
+(defun consult-gh-repo-list (&optional initial noaction)
+  "Interactive command to list repos of users/organizations asynchronously.
+
+This is an interactive wrapper function around `consult-gh--async-repo-list'.
+It queries the user to enter the name of a GitHub organization/username
+in the minibuffer, then fetches a list of repositories for the entered
+username and present them as a minibuffer completion table for selection.
+The list of candidates in the completion table are dynamically updated
+as the user changes the entry.
+
+Upon selection of a candidate:
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-repo-action'.
+
+Additional command line arguments can be passed in the minibuffer entry
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+armindarvish -- -L 100
+the async process will run the command “gh repo list armindarvish -L 100”,
+which sets the limit for the maximum number of results to 100.
+
+User selection is tracked in `consult-gh--known-orgs-list' for quick access
+in the future \(added to future history list\) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer.
+\(passed as INITITAL to `consult-gh--async-repo-list'\).
+
+For more details on consult--async functionalities,
+see `consult-grep' and the official manual of consult, here:
+URL `https://github.com/minad/consult'."
+  (interactive)
+  (if current-prefix-arg
+      (setq initial (or initial (format "%s" (car (string-split (car (consult-gh-search-repos initial t)) "/"))))))
+  (let* ((sel (consult-gh--async-repo-list "Enter Org Name:  " #'consult-gh--repo-list-builder initial)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (funcall consult-gh-repo-action sel))))
 
 (defun consult-gh--search-repos-transform (async &rest _)
   "Add annotation to repo candidates in `consult-gh-search-repos'.
@@ -3843,6 +4013,135 @@ Description of Arguments:
          :category 'consult-gh-repos
          :preview-key consult-gh-preview-key
          :sort nil))))
+
+;;;###autoload
+(defun consult-gh-search-repos (&optional initial noaction)
+  "Interactively search GitHub repositories.
+
+This is an interactive wrapper function around
+`consult-gh--async-search-repos'.  It queries the user to enter the name of
+a GitHub organization/username in the minibuffer, then fetches a list
+of repositories for the entered username.  The list of candidates in the
+completion table are dynamically updated as the user changes the input.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-repo-action'
+
+Additional commandline arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+consult-gh -- -L 100
+and the async process will run “gh search repos -L 100”,
+which sets the limit for the maximum number of results to 100.
+
+User selection is tracked in `consult-gh--known-orgs-list' for quick access
+in the future \(added to future history list\) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer.
+\(passed as INITITAL to `consult-gh--async-repo-list'\).
+
+For more details on consult--async functionalities,
+see `consult-grep' and the official manual of consult, here:
+URL `https://github.com/minad/consult'."
+  (interactive)
+  (let* ((host (consult-gh--auth-account-host))
+         (sel (if (stringp host)
+                  (with-environment-variables
+                      (("GH_HOST" (or host consult-gh-default-host)))
+          (consult-gh--async-search-repos "Search Repos:  " #'consult-gh--search-repos-builder initial))
+                (consult-gh--async-search-repos "Search Repos:  " #'consult-gh--search-repos-builder initial))))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (progn
+        (funcall consult-gh-repo-action sel)
+        sel))))
+
+(defun consult-gh-orgs (&optional orgs noaction)
+  "List repositories of ORGS.
+
+This is a wrapper function around `consult-gh--repo-list'.
+If ORGS is nil, this simply calls `consult-gh--repo-list'.
+If ORGS is a list, then it runs `consult-gh--repo-list' on every member
+of ORGS and returns the results \(repositories of all ORGS\).
+
+if NOACTION is non-nil, return the candidate without runing action."
+  (if (not orgs)
+      (consult-gh-repo-list nil noaction))
+  (let* ((candidates (consult--slow-operation "Collecting Repos ..." (apply #'append (mapcar (lambda (org) (consult-gh--repo-list org)) orgs))))
+         (sel (consult-gh-with-host (consult-gh--auth-account-host)
+                  (consult--read candidates
+                                 :prompt "Select Repo: "
+                                 :lookup #'consult--lookup-member
+                                 :state (funcall #'consult-gh--repo-state)
+                                 :group #'consult-gh--repo-group
+                                 :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
+                                                      consult-gh--known-repos-list)
+                                 :history 'consult-gh--repos-history
+                                 :require-match t
+                                 :category 'consult-gh-repos
+                                 :preview-key consult-gh-preview-key
+                                 :sort t))))
+    (if noaction
+        sel
+      (funcall consult-gh-repo-action sel))))
+
+;;;###autoload
+(defun consult-gh-default-repos ()
+  "List repositories of orgs in `consult-gh-default-orgs-list'.
+
+Passes `consult-gh-default-orgs-list' to `consult-gh-orgs',
+a useful command for quickly fetching a list of personal GitHub Repositories
+or any other favorite accounts whose repositories are frequently visited."
+  (interactive)
+  (consult-gh-orgs consult-gh-default-orgs-list))
+
+;;;###autoload
+(defun consult-gh-repo-fork (&optional repos)
+  "Interactively fork REPOS.
+
+It runs the command “gh fork repo ...” to fork a repository
+using the internal function `consult-gh--repo-fork'
+
+If REPOS not supplied, interactively asks user to pick REPOS."
+  (interactive)
+  (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
+         (repos (or repos (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos nil t))))))
+    (if (stringp repos)
+        (setq repos (list repos)))
+    (mapcar (lambda (repo)
+              (let* ((package (car (last (split-string repo "\/"))))
+                     (name (if consult-gh-confirm-name-before-fork (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
+                (consult-gh-with-host (consult-gh--auth-account-host) (consult-gh--repo-fork repo name))))
+            repos)))
+
+;;;###autoload
+(defun consult-gh-repo-clone (&optional repos targetdir)
+  "Interactively clone REPOS to TARGETDIR.
+
+It runs the command “gh clone repo ...” to fork a repository
+using the internal function `consult-gh--repo-clone'.
+
+If REPOS or TARGETDIR are not supplied, interactively asks user
+to pick them."
+  (interactive)
+  (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
+         (repos (or repos (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos nil t)))))
+         (targetdir (or targetdir consult-gh-default-clone-directory))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " (file-name-as-directory targetdir)) (or targetdir default-directory))))
+    (if (stringp repos)
+        (setq repos (list repos)))
+    (mapcar (lambda (repo)
+              (let* ((package (consult-gh--get-package repo))
+                     (name (if consult-gh-confirm-before-clone (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
+                (consult-gh-with-host (consult-gh--auth-account-host)
+                                      (consult-gh--repo-clone repo name clonedir))))
+            repos)))
 
 (defun consult-gh--issue-list-transform (async &rest _)
   "Add annotation to issue candidates in `consult-gh-issue-list'.
@@ -3925,6 +4224,54 @@ Description of Arguments:
          :preview-key consult-gh-preview-key
          :sort nil))))
 
+;;;###autoload
+(defun consult-gh-issue-list (&optional initial noaction)
+  "Interactively list issues of a GitHub repository.
+
+This is an interactive wrapper function around `consult-gh--async-issue-list'.
+With prefix ARG, first search for a repo using `consult-gh-search-repos',
+then list issues of that selected repo with `consult-gh--async-issue-list'.
+
+It queries the user to enter the full name of a GitHub repository in the
+minibuffer \(expected format is “OWNER/REPO”\), then fetches the list of
+issues of that repository and present them as a minibuffer completion
+table for selection.  The list of candidates in the completion table are
+dynamically updated as the user changes the minibuffer input.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil candidate is returned.
+ - if NOACTION is nil     candidate is passed to `consult-gh-issue-action'.
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+armindarvish/consult-gh -- -L 100
+and the async process will run
+“gh issue list --repo armindarvish/consult-gh -L 100”, which sets the limit
+for the maximum number of results to 100.
+
+User selection is tracked in `consult-gh--known-repos-list' for quick
+access in the future \(added to future history list\) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer.
+\(passed as INITITAL to `consult-gh--async-issue-list'\).
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'"
+  (interactive)
+  (if current-prefix-arg
+      (setq initial (or initial (format "%s" (car (consult-gh-search-repos initial t))))))
+  (let ((sel (consult-gh--async-issue-list "Enter Repo Name:  " #'consult-gh--issue-list-builder initial)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (funcall consult-gh-issue-action sel))))
+
 (defun consult-gh--search-issues-transform (async &rest _)
   "Add annotation to issue candidates in `consult-gh-search-issues'.
 
@@ -3993,6 +4340,51 @@ Description of Arguments:
        :category 'consult-gh-issues
        :preview-key consult-gh-preview-key
        :sort nil)))
+
+;;;###autoload
+(defun consult-gh-search-issues (&optional initial repo noaction)
+  "Interactively search GitHub issues of REPO.
+
+This is an interactive wrapper function around
+`consult-gh--async-search-issues'.  With prefix ARG, first search for a
+repo using `consult-gh-search-repos', then search issues of only that
+selected repo.
+
+It queries the user for a search term in the minibuffer, then fetches the
+list of possible GitHub issue for the entered query and presents them as a
+minibuffer completion table for selection.  The list of candidates in the
+completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-issue-action'
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+consult-gh -- -L 100
+and the async process will run “gh search issues consult-gh -L 100”,
+which sets the limit for the maximum number of results to 100.
+
+INITIAL is an optional arg for the initial input in the minibuffer
+\(passed as INITITAL to `consult-gh--async-repo-list'\).
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'."
+  (interactive)
+  (if current-prefix-arg
+      (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
+  (let* ((consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
+         (sel (consult-gh--async-search-issues "Search Issues:  " #'consult-gh--search-issues-builder initial)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (funcall consult-gh-issue-action sel))))
 
 (defun consult-gh--pr-list-transform (async &rest _)
   "Add annotation to issue candidates in `consult-gh-pr-list'.
@@ -4072,6 +4464,55 @@ Description of Arguments:
          :preview-key consult-gh-preview-key
          :sort nil))))
 
+;;;###autoload
+(defun consult-gh-pr-list (&optional initial noaction)
+  "Interactively list pull requests of a GitHub repository.
+
+This is an interactive wrapper function around `consult-gh--async-pr-list'.
+With prefix ARG, first search for a repo using `consult-gh-search-repos',
+then list prs of that selected repo with `consult-gh--async-pr-list'.
+
+It queries the user to enter the full name of a GitHub repository in
+the minibuffer (expected format is “OWNER/REPO”), then fetches the list
+of pull requests for that repository and presents them as a minibuffer
+completion table for selection.  The list of candidates in the completion
+table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil candidate is returned
+ - if NOACTION is nil     candidate is passed to `consult-gh-pr-action'
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+armindarvish/consult-gh -- -L 100
+and the async process will run
+“gh pr list --repo armindarvish/consult-gh -L 100”,
+which sets the limit for the maximum number of results to 100.
+
+User selection is tracked in `consult-gh--known-repos-list' for quick access
+in the future \(added to future history list\) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer
+\(passed as INITITAL to `consult-gh--async-issue-list'\).
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'."
+  (interactive)
+  (if current-prefix-arg
+      (setq initial (or initial (format "%s" (car (consult-gh-search-repos initial t))))))
+
+  (let ((sel (consult-gh--async-pr-list "Enter Repo Name:  " #'consult-gh--pr-list-builder initial)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (funcall consult-gh-pr-action sel))))
+
 (defun consult-gh--search-prs-transform (async &rest _)
   "Add annotation to pr candidates in `consult-gh-search-prs'.
 
@@ -4141,6 +4582,51 @@ Description of Arguments:
        :preview-key consult-gh-preview-key
        :sort nil)))
 
+;;;###autoload
+(defun consult-gh-search-prs (&optional initial repo noaction)
+  "Interactively search GitHub pull requests of REPO.
+
+This is an interactive wrapper function around
+`consult-gh--async-search-prs'.  With prefix ARG, first search for a repo
+using `consult-gh-search-repos', then search prs of only that selected repo.
+
+It queries the user for a search term in the minibuffer, then fetches
+the list of possible GitHub pr candidates for the entered query
+and presents them as a minibuffer completion table for selection.
+The list of candidates in the completion table are dynamically updated as
+the user changes the input.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil candidate is returned
+ - if NOACTION is nil     candidate is passed to `consult-gh-pr-action'
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+consult-gh -- -L 100
+and the async process will run “gh search prs consult-gh -L 100”,
+which sets the limit for the maximum number of results to 100.
+
+INITIAL is an optional arg for the initial input in the minibuffer
+\(passed as INITITAL to `consult-gh--async-repo-list'\).
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'."
+  (interactive)
+  (if current-prefix-arg
+      (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
+  (let* ((consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
+         (sel (consult-gh--async-search-prs "Search Pull-Requests:  " #'consult-gh--search-prs-builder initial)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (funcall consult-gh-pr-action sel))))
+
 (defun consult-gh--search-code-transform (async &rest _)
   "Add annotation to code candidates in `consult-gh-search-code'.
 
@@ -4208,6 +4694,103 @@ Description of Arguments:
        :history '(:input consult-gh--search-code-history)
        :preview-key consult-gh-preview-key
        :sort nil)))
+
+;;;###autoload
+(defun consult-gh-search-code (&optional initial repo noaction)
+  "Interactively search GitHub codes.
+
+This is an interactive wrapper function around
+`consult-gh--async-search-code'.  With prefix ARG, first search for a repo
+using `consult-gh-search-repos', then search for code only on that
+selected repo.
+
+If REPO is non-nil search for code in REPO.
+
+It queries the user for a search term in the minibuffer, then fetches
+the list of possible GitHub code candidates for the entered query and
+presents them as a minibuffer completion table for selection.
+The list of candidates in the completion table are dynamically updated
+as the user changes the input.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil candidate is returned
+ - if NOACTION is nil     candidate is passed to `consult-gh-pr-action'
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+react -- -L 100
+and the async process will run “gh search code react -L 100”,
+which sets the limit for the maximum number of results to 100.
+
+INITIAL is an optional arg for the initial input in the minibuffer
+\(passed as INITITAL to `consult-gh--async-search-code'\).
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'."
+  (interactive)
+  (setq consult-gh--open-files-list nil
+        consult-gh--current-tempdir (consult-gh--tempdir))
+  (if current-prefix-arg
+      (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
+  (let* ((consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
+         (sel (consult-gh--async-search-code "Search Code:  " #'consult-gh--search-code-builder initial)))
+    (setq consult-gh--open-files-list nil)
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (funcall consult-gh-code-action sel))))
+
+;;;###autoload
+(defun consult-gh-find-file (&optional repo branch initial noaction)
+  "Interactively find files of a REPO in BRANCH.
+
+Queries the user for name of a REPO, expected format is “OWNER/REPO”
+\(e.g. armindarvish/consult-gh\), then fetches all the branches on
+that repo and asks the user to select one BRANCH.  Then presents the
+file contents of the REPO and BRANCH for selection.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil candidate is returned
+ - if NOACTION is nil     candidate is passed to `consult-gh-file-action'
+
+INITIAL is an optional arg for the initial input in the minibuffer
+\(passed as INITITAL to `consult-read'\)."
+  (interactive)
+  (setq consult-gh--open-files-list nil
+        consult-gh--current-tempdir (consult-gh--tempdir))
+  (let* ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
+         (branch (or branch (format "%s" (cdr (consult-gh--read-branch repo)))))
+         (candidates (mapcar #'consult-gh--file-format (consult-gh--files-nodirectory-items repo branch)))
+         (sel (consult-gh-with-host (consult-gh--auth-account-host)
+                                    (consult--read candidates
+                                                   :prompt "Select File: "
+                                                   :lookup #'consult--lookup-member
+                                                   :state (funcall #'consult-gh--file-state)
+                                                   :require-match t
+                                                   :annotate (lambda (cand) (funcall (consult-gh--file-annotate) candidates cand))
+                                                   :history t
+                                                   :sort nil
+                                                   :add-history (consult--async-split-thingatpt 'filename)
+                                                   :history 'consult-gh--files-history
+                                                   :category 'consult-gh-files
+                                                   :preview-key consult-gh-preview-key
+                                                   :initial initial))))
+
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+
+    (if noaction
+        sel
+      (funcall consult-gh-file-action sel))))
 
 (defun consult-gh--dashboard-collect-assigned (&optional user &rest _)
   "Find all the Issues/PRs assigned to USER."
@@ -4279,6 +4862,29 @@ Description of Arguments:
                             (message "no items in the dashboard")
                             nil))))
 
+;;;###autoload
+(defun consult-gh-dashboard (&optional initial user noaction)
+  "Search GitHub for USER's work on GitHub.
+
+This is an interactive wrapper function around
+`consult-gh--dashboard'.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-issue-action'
+
+INITIAL is an optional arg for the initial input in the minibuffer."
+  (interactive)
+  (let* ((sel (consult-gh--dashboard "Search Dashboard:  " initial user)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0  :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (and (stringp sel) (funcall consult-gh-dashboard-action sel)))))
+
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
   (let* ((notifications (string-split (apply #'consult-gh--command-to-string (funcall consult-gh-notifications-args-func)) "\n\\|\r" t)))
@@ -4321,6 +4927,126 @@ Description of Arguments:
                              :sort nil)
                           (progn (message "No new notifications!") nil))))
 
+;;;###autoload
+(defun consult-gh-notifications (&optional initial noaction)
+  "Search GitHub for User's work on GitHub.
+
+This is an interactive wrapper function around
+`consult-gh--dashboard'.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-issue-action'
+
+INITIAL is an optional arg for the initial input in the minibuffer."
+  (interactive)
+  (let* ((sel (consult-gh--notifications "Select Notification:  " initial)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+    (if noaction
+        sel
+      (and (stringp sel) (funcall consult-gh-notifications-action sel)
+           (consult-gh--notifications-mark-as-read sel)))))
+
+;;;###autoload
+(defun consult-gh-topics-comment-cancel ()
+  "Cancel comment."
+  (interactive)
+  (kill-buffer (current-buffer)))
+
+;;;###autoload
+(defun consult-gh-topics-comment-submit (&optional topic)
+  "Submit comment on TOPIC."
+  (interactive)
+  (save-mark-and-excursion
+    (let* ((text (buffer-string))
+           (topic (or topic consult-gh--topic))
+           (repo (get-text-property 0 :repo topic))
+           (type (get-text-property 0 :type topic))
+           (number (get-text-property 0 :number topic)))
+      (when text
+        (if (string-empty-p text)
+            (message "Comment is empty!")
+          (pcase type
+            ((or "issue" "pr")
+             (and
+              (consult-gh--command-to-string "api" (format "repos/%s/issues/%s/comments" repo number) "-f" (format "body=%s" text))
+              (kill-buffer)))
+            ("discussion"
+             (message "Commenting on discussions is not supported, yet!"))))))))
+
+(defun consult-gh-topics-create-comment (&optional topic)
+  "Interactivel create a new comment post on TOPIC."
+  (interactive "P")
+  (let* ((topic (or topic consult-gh--topic))
+         (repo (get-text-property 0 :repo topic))
+         (type (get-text-property 0 :type topic))
+         (number (get-text-property 0 :number topic))
+         (buffer (get-buffer-create (format "*consult-gh-topics-comment: %s - %s #%s" repo type number)))
+         (table (cond
+                   ((equal type "issue") (consult-gh--issue-read-json repo number))
+                   ((equal type "pr") (consult-gh--pr-read-json repo number))))
+         (users (and table (append (consult-gh--pr-get-commenters table) (list (consult-gh--get-username repo)))))
+         (existing nil))
+    (add-text-properties 0 1 (list :users (and (listp users) (mapcar (lambda (user) (concat "@" user)) (cl-remove-duplicates users :test #'equal))) :issues (consult-gh--topics-get-issue-list repo)) topic)
+    (cond
+     ((not (= (buffer-size buffer) 0))
+      (when (y-or-n-p "Buffer already exists.  Would you like to resume editing comment in the same buffer?")
+        (setq existing t)))
+     (t (setq existing nil)))
+    (with-current-buffer buffer
+      (unless existing
+        (erase-buffer)
+        (cond
+         ((equal consult-gh-topic-comment-mode 'markdown-mode)
+          (markdown-mode))
+         ((equal consult-gh-topic-comment-mode 'org-mode)
+          (org-mode))
+         (t
+          (text-mode))))
+      (setq-local consult-gh--topic topic)
+      (consult-gh-topics-edit-comment-mode +1)
+      (goto-char (point-max))
+      (with-no-warnings (outline-show-all)))
+    (switch-to-buffer buffer)))
+
+;;;###autoload
+(defun consult-gh-topics-open-in-browser (&optional topic)
+  "Open the TOPIC of the current buffer in the browser.
+
+Uses `consult-gh-browse-url-func'."
+  (interactive)
+  (let* ((topic (or topic consult-gh--topic))
+         (type (and (stringp topic) (get-text-property 0 :type topic)))
+         (repo (and (stringp topic) (get-text-property 0 :repo topic)))
+         (branch (and (stringp topic) (get-text-property 0 :branch topic)))
+         (path (and (stringp topic) (get-text-property 0 :path topic)))
+         (number (and (stringp topic) (get-text-property 0 :number topic)))
+         (url (and (stringp type) (pcase type
+                           ("file"
+                            (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" branch path)))
+                           ("issue"
+                            (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number)))
+                           ("pr"
+         (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number)))))))
+    (if (stringp url)
+         (funcall (or consult-gh-browse-url-func #'browse-url) url)
+      (message "No topic to browse in this buffer!"))))
+
+;;;###autoload
+(defun consult-gh (&rest args)
+  "Convinient wrapper function for favorite interactive command.
+
+Calls the function in `consult-gh-default-interactive-command'
+and passes ARGS to it."
+  (interactive)
+  (apply (or consult-gh-default-interactive-command #'consult-gh-search-repos) args))
+
 ;;; provide `consult-gh' module
 
 (provide 'consult-gh)
+
+;;; consult-gh.el ends here
