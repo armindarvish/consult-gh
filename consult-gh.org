@@ -13,7 +13,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.0
-;; Package-Requires: ((emacs "29.1") (consult "1.0") (markdown-mode "2.6"))
+;; Package-Requires: ((emacs "29.1") (consult "1.0") (markdown-mode "2.6") (ox-gfm "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
@@ -53,7 +53,8 @@
 
 (require 'consult) ;; core dependency
 (require 'markdown-mode) ;; markdown-mode for viewing issues,prs, ...
-(require 'org)
+(require 'ox-gfm) ;; for exporting org-mode to github flavored markdown
+(require 'org) ;; for its awesomeness!
 #+end_src
 
 ** Define Group, Customs, Vars, etc.
@@ -1344,6 +1345,8 @@ FILTER-FUNC is passed as :filter to `make-process'."
                                     (buffer-substring-no-properties (pos-bol) (pos-eol)))))
                        (insert "<<<<< stderr <<<<<\n")))))
                (process-adaptive-read-buffering nil))
+          (with-current-buffer proc-buf
+            (set-buffer-file-coding-system 'unix))
           (make-process :name name
                         :buffer proc-buf
                         :noquery t
@@ -1368,11 +1371,10 @@ If gh is not found it returns \(127 “”\)
 and a message saying “gh” is not found."
   (if (executable-find "gh")
       (with-temp-buffer
-        (set-buffer-file-coding-system 'cp1047)
+        (set-buffer-file-coding-system 'unix)
         (consult-gh-with-host (consult-gh--auth-account-host)
           (list (apply #'call-process "gh" nil (current-buffer) nil args)
-                (replace-regexp-in-string "" "\n"
-                                        (buffer-string)))))
+                (buffer-string))))
     (progn
       (message (propertize "\"gh\" is not found on this system" 'face 'warning))
       '(127 ""))))
@@ -3039,7 +3041,11 @@ see `consult-gh--issue-view-action'."
           ('org-mode
            (let ((org-display-remote-inline-images 'download))
              (consult-gh--markdown-to-org buffer))))
+        (set-buffer-file-coding-system 'unix)
         (goto-char (point-min))
+        (save-excursion
+          (while (re-search-forward "\r\n" nil t)
+            (replace-match "\n")))
         (outline-hide-sublevels 1)
         (consult-gh-issue-view-mode +1)
         (setq-local consult-gh--topic topic)
@@ -3556,7 +3562,11 @@ To use this as the default action for PRs, see
             (_ ())))
         (consult-gh--pr-insert-diffs diff-chunks)
         (insert "\n")
+        (set-buffer-file-coding-system 'unix)
         (goto-char (point-min))
+        (save-excursion
+          (while (re-search-forward "\r\n" nil t)
+            (replace-match "\n")))
         (outline-hide-sublevels 1)
         (consult-gh-pr-view-mode +1)
         (setq-local consult-gh--topic topic)
@@ -5627,6 +5637,11 @@ INITIAL is an optional arg for the initial input in the minibuffer."
   "Submit comment on TOPIC."
   (interactive)
   (save-mark-and-excursion
+    (when (and (derived-mode-p 'org-mode))
+      (let ((org-export-with-toc nil)
+            (org-export-preserve-breaks t))
+        (ignore-errors (save-window-excursion (org-export-to-buffer 'gfm (buffer-name))))))
+
     (let* ((text (buffer-string))
            (topic (or topic consult-gh--topic))
            (repo (get-text-property 0 :repo topic))
