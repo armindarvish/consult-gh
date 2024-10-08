@@ -1640,19 +1640,19 @@ Completes for issue/pr numbers or user names."
   (save-match-data
     (cond
    ((looking-back "@.*?" nil)
-    (let* ((begin (save-excursion (match-beginning 0)))
+    (let* ((begin (match-beginning 0))
            (end (point)))
       (list begin end (get-text-property 0 :users consult-gh--topic)
             :annotation-function (lambda (_) "" "\tuser\s\s[consult-gh]")
             :exclusive 'no)))
    ((looking-back "#[0-9]*?" nil)
-    (let* ((begin (save-excursion (match-beginning 0)))
+    (let* ((begin (match-beginning 0))
            (end (point))
            (issues (get-text-property 0 :issues consult-gh--topic))
            (prs (get-text-property 0 :prs consult-gh--topic))
            (candidates (append (and (listp issues) (mapcar #'car issues)) (and (listp prs) (mapcar #'car prs)))))
       (list begin end candidates
-            :annotation-function (lambda (str) "" (when-let ((cand (assoc str (append (get-text-property 0 :issues consult-gh--topic) (get-text-property 0 :prs consult-gh--topic))))
+            :annotation-function (lambda (str) "" (when-let ((cand (assoc str (append (get-text-property 0 :issues consult-gh--topic) (get-text-property 0 :prs consult-gh--topic)))))
                                                     (if (consp cand)
                                                         (concat "\t" (consult-gh--set-string-width (cdr cand) 40 nil ?.) "\s\s[consult-gh]"))))
             :exclusive 'no))))))
