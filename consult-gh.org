@@ -3408,9 +3408,9 @@ set `consult-gh-issue-action' to `consult-gh--issue-view-action'."
              (y-or-n-p "Issue is already open in another buffer.  Do you want to reload in the same buffer?"))
         (funcall consult-gh-switch-buffer-func (consult-gh--issue-view repo number (get-buffer buffername)))
       (progn
-        (and confirm (message "Opening in a new buffer...")
+        (and confirm (message "Opening in a new buffer..."))
         (funcall consult-gh-switch-buffer-func (consult-gh--issue-view repo number))
-        (rename-buffer buffername t))))))
+        (rename-buffer buffername t)))))
 
 #+end_src
 
