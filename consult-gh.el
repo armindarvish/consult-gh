@@ -5223,6 +5223,9 @@ This mimicks the same interactive issue creation
 from “gh issue create” in the command line."
   (interactive "P")
   (let* ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+         (issueEnabled (gethash :hasIssuesEnabled (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" repo "--json" "hasIssuesEnabled"))))
+         (_ (unless (eq issueEnabled 't)
+              (error "Issue is not enabled for the repo %s" repo)))
          (templates (consult-gh--get-issue-templates repo))
          (template (and templates (consult--read templates
                                                  :prompt "Select a template: "
