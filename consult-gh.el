@@ -885,7 +885,7 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)")
   "Defualt host of GitHub.")
 
 (defvar-local consult-gh--topic nil
-  "Topic in consult-gh prview buffers.")
+  "Topic in consult-gh preview buffers.")
 
 (defvar consult-gh--override-group-by nil
   "Override grouping based on user input.
@@ -1189,8 +1189,6 @@ Uses simple regexp replacements."
                  (replace-regexp-in-region "[[:blank:]]" "_" (match-beginning 1) (match-end 1)))))))))
     nil))
 
-(defun consult-gh--markdown-to-org-comment-headings (&optional buffer))
-
 (defun consult-gh--markdown-to-org (&optional buffer is-issue)
   "Convert from markdown format to \='org-mode format in BUFFER.
 
@@ -1265,8 +1263,7 @@ It returns strings like “1 year ago”, “30 minutes ago”."
          (months (and days (>= (string-to-number days) 30) (number-to-string (/ (string-to-number days) 30))))
          (hours (and days (<= (string-to-number days) 0) (format-seconds "%h" delta)))
          (minutes (and hours (<= (string-to-number hours) 0) (format-seconds "%m" delta)))
-         (seconds (and minutes (<= (string-to-number minutes) 0) (format-seconds "%s" delta)))
-         )
+         (seconds (and minutes (<= (string-to-number minutes) 0) (format-seconds "%s" delta))))
     (or  (and seconds (concat seconds " second(s) ago"))
          (and minutes (concat minutes " minute(s) ago"))
          (and hours (concat hours " hour(s) ago"))
@@ -4602,8 +4599,7 @@ from `consult-gh-notifications' and makrs it as read."
                                ("issue"
                                 (funcall consult-gh-issue-action ,cand))
                                ("pr"
-                                (funcall consult-gh-pr-action ,cand))
-                               )))))
+                                (funcall consult-gh-pr-action ,cand)))))))
      ".  "
      (substitute-command-keys "When done, use `\\[consult-gh-topics-submit]' to submit or `\\[consult-gh-topics-cancel]' to cancel."))))
 

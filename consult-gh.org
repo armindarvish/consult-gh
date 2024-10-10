@@ -908,7 +908,7 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)")
   "Defualt host of GitHub.")
 
 (defvar-local consult-gh--topic nil
-  "Topic in consult-gh prview buffers.")
+  "Topic in consult-gh preview buffers.")
 
 (defvar consult-gh--override-group-by nil
   "Override grouping based on user input.
@@ -1234,10 +1234,6 @@ Uses simple regexp replacements."
                  (replace-regexp-in-region "[[:blank:]]" "_" (match-beginning 1) (match-end 1)))))))))
     nil))
 #+end_src
-***** set comment headings
-#+begin_src emacs-lisp
-(defun consult-gh--markdown-to-org-comment-headings (&optional buffer))
-#+end_src
 ***** convert everything
 #+begin_src emacs-lisp
 (defun consult-gh--markdown-to-org (&optional buffer is-issue)
@@ -1310,7 +1306,7 @@ etc. in org format."
       (consult-gh--org-to-markdown)
     (consult-gh--whole-buffer-string)))
 #+end_src
-**** formating time strings
+**** formatting time strings
 ***** time ago
 #+begin_src emacs-lisp
 (defun consult-gh--time-ago (datetime)
@@ -1325,8 +1321,7 @@ It returns strings like “1 year ago”, “30 minutes ago”."
          (months (and days (>= (string-to-number days) 30) (number-to-string (/ (string-to-number days) 30))))
          (hours (and days (<= (string-to-number days) 0) (format-seconds "%h" delta)))
          (minutes (and hours (<= (string-to-number hours) 0) (format-seconds "%m" delta)))
-         (seconds (and minutes (<= (string-to-number minutes) 0) (format-seconds "%s" delta)))
-         )
+         (seconds (and minutes (<= (string-to-number minutes) 0) (format-seconds "%s" delta))))
     (or  (and seconds (concat seconds " second(s) ago"))
          (and minutes (concat minutes " minute(s) ago"))
          (and hours (concat hours " hour(s) ago"))
@@ -1454,7 +1449,7 @@ ARGS are passed to `consult-gh-call-process'"
         (message (cadr out))
         nil))))
 #+end_src
-**** api calls
+**** API calls
 ***** get json
 #+begin_src emacs-lisp
 (defun consult-gh--api-get-json (arg)
@@ -1559,7 +1554,7 @@ Formats the output as “[HOST/]OWNER/REPO” if any, otherwise returns nil."
 *** Backend =consult-gh= functions
 This section contains all the functions that are used by the front-end interactive commands organized by the category of items (e.g. branches, files, repos, issues, ...) or the =gh= commands (e.g. search) that they use.
 
-Under each category we have subentries for different type of functions including but not limited to:
+Under each category we have sub-entries for different type of functions including but not limited to:
 - *list function(s):* get a list of items (formatted as list of propertized strings to pass to =consult--read= or =consult--multi=)
 - *action function(s):* that are used as action functions to be called on selected candidates
 - *narrow function(s):* define how narrowing would work for the items in this category
@@ -1567,7 +1562,7 @@ Under each category we have subentries for different type of functions including
 - *group function(s):* define how items are grouped for each category. For example when looking at files, we want to group them by the name of the repo and the branch that is being viewed.
 - *annotate function(s)*: define annotations for the items in each category for example for repositories we want annotations for the user, date and visibility, and for issues we want repo, status, tags and date
 
-Other functions can also be defined under appropriate subentries depending on the needs for each category.
+Other functions can also be defined under appropriate sub-entries depending on the needs for each category.
 **** utilities
 ***** split repo name
 #+begin_src emacs-lisp
@@ -2155,7 +2150,7 @@ for example “armindarvish/consult-gh”."
      (cons repo (format "%s" consult-gh-default-branch-to-load)))))
   #+end_src
 **** files
-This section deals with fetching file trees and file contents of repositories by using github API e.g. =gh api repos/armindarvish/consult-gh/git/trees/main:?recursive=1=
+This section deals with fetching file trees and file contents of repositories by using GitHub API e.g. =gh api repos/armindarvish/consult-gh/git/trees/main:?recursive=1=
 ****** list files
 #+begin_src emacs-lisp
 ;; Files
@@ -2344,7 +2339,7 @@ If TRANSFORM is non-nil, return CAND."
 
 
 ****** actions
-******* browse file url
+******* browse file URL
 #+begin_src emacs-lisp
 (defun consult-gh--files-browse-url-action (cand)
   "Browse the url for a file candidate, CAND.
@@ -2579,7 +2574,7 @@ If TRANSFORM is non-nil, return the CAND itself."
 #+end_src
 ****** actions
 In this section we define action functions that can be run on a repository candidate for example cloning, forking, viewing files, viewing issues, etc.
-******* browse repo url
+******* browse repo URL
 #+begin_src emacs-lisp
 (defun consult-gh--repo-browse-url-action (cand)
   "Browse the url for a repo candidate, CAND.
@@ -3157,7 +3152,7 @@ If TRANSFORM is non-nil, the CAND itself is returned."
 #+end_src
 ****** actions
 In this section we define action functions that can be run on an issue candidate for example opening it in a browser or viewing it inside an Emacs buffer.
-******* browse issue url
+******* browse issue URL
 #+begin_src emacs-lisp
 (defun consult-gh--issue-browse-url-action (cand)
   "Browse the url for an issue candidate, CAND.
@@ -3601,7 +3596,7 @@ Description of Arguments:
       (apply #'consult-gh--command-to-string "issue" "create" args))))
 
 #+end_src
-******* prepare issue for submiting
+******* prepare issue for submitting
 #+begin_src emacs-lisp
 (defun consult-gh-topics--issue-presubmit (issue)
   "Prepare ISSUE to submit.
@@ -3823,8 +3818,8 @@ If TRANSFORM is non-nil, the CAND itself is returned."
        (consult-gh--set-string-width " Repo " 40 nil ?-))))))
 #+end_src
 ****** actions
-In this section we define action functions that can be run on a issue candidate for example opening it in a browser or viewing it inside an emacs buffer.
-******* browse pr url
+In this section we define action functions that can be run on a issue candidate for example opening it in a browser or viewing it inside an Emacs buffer.
+******* browse pr URL
 #+begin_src emacs-lisp
 (defun consult-gh--pr-browse-url-action (cand)
   "Browse the url for a pull request candidate, CAND.
@@ -4586,7 +4581,7 @@ Description of Arguments:
 
 #+end_src
 **** code
-This section deals with searching codes on github e.g. =gh search codes=
+This section deals with searching codes on GitHub e.g. =gh search codes=
 ****** format
 ******* search code
 #+begin_src emacs-lisp
@@ -4697,8 +4692,8 @@ If TRANSFORM is non-nil, the CAND itself is returned."
 #+end_src
 
 ****** actions
-In this section we define action functions that cna be run on a issue candidate for example opening it in a browser or viewing it inside an emacs buffer.
-******* browse code url
+In this section we define action functions that can be run on a issue candidate for example opening it in a browser or viewing it inside an Emacs buffer.
+******* browse code URL
 #+begin_src emacs-lisp
 (defun consult-gh--code-browse-url-action (cand)
   "Browse the url for a code candidate, CAND.
@@ -4867,7 +4862,7 @@ If TRANSFORM is non-nil, the CAND itself is returned."
 #+end_src
 
 ****** actions
-In this section we define action functions that can be run on a dashboard candidate (e.g. an issue or a pr) for example opening it in a browser or viewing it inside an emacs buffer.
+In this section we define action functions that can be run on a dashboard candidate (e.g. an issue or a pr) for example opening it in a browser or viewing it inside an Emacs buffer.
 ******* use default actions for item type
 #+begin_src emacs-lisp
 (defun consult-gh--dashboard-action (cand)
@@ -4893,7 +4888,7 @@ set `consult-gh-dashboard-action' to `consult-gh--dashboard-action'."
       (message "cannot open that with `consult-gh--dashboard-action'!")))))
 
 #+end_src
-******* browse url
+******* browse URL
 #+begin_src emacs-lisp
 (defun consult-gh--dashboard-browse-url-action (cand)
   "Browse the url for a dashboard candidate, CAND.
@@ -5041,7 +5036,7 @@ If TRANSFORM is non-nil, the CAND itself is returned."
 ****** actions
 In this section we define action functions for notifications that are not issue/pr (e.g. discussions).
 ******* actions for discussion items
-******** browse discussion url
+******** browse discussion URL
 #+begin_src emacs-lisp
 (defun consult-gh--discussion-browse-url (repo title &optional date)
   "Browse the url for a discussion in REPO with TITLE.
@@ -5195,8 +5190,7 @@ from `consult-gh-notifications' and makrs it as read."
                                ("issue"
                                 (funcall consult-gh-issue-action ,cand))
                                ("pr"
-                                (funcall consult-gh-pr-action ,cand))
-                               )))))
+                                (funcall consult-gh-pr-action ,cand)))))))
      ".  "
      (substitute-command-keys "When done, use `\\[consult-gh-topics-submit]' to submit or `\\[consult-gh-topics-cancel]' to cancel."))))
 
@@ -6658,7 +6652,7 @@ URL `https://github.com/minad/consult'."
 #+end_src
 
 **** consult-gh-find-file
-This section deals with fetching file trees and file contents of repositories by using github API e.g. =gh api repos/armindarvish/consult-gh/git/trees/main:?recursive=1=
+This section deals with fetching file trees and file contents of repositories by using GitHub API e.g. =gh api repos/armindarvish/consult-gh/git/trees/main:?recursive=1=
 ****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
