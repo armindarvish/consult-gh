@@ -76,32 +76,32 @@
          (path (or (get-text-property 0 :path cand) nil)))
     (pcase class
       ("issue"
-      (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
+       (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
       ("file"
-      (funcall (or consult-gh-browse-url-func #'browse-url) (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
+       (funcall (or consult-gh-browse-url-func #'browse-url) (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/HEAD/" path)))
       ("pr"
-      (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
+       (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
       (_
-      (consult-gh--call-process "repo" "view" "--web" (substring repo))))))
+       (consult-gh--call-process "repo" "view" "--web" (substring repo))))))
 
 (defun consult-gh-embark-default-action (cand)
   "Open CAND link in an Emacs buffer."
   (let* ((class (get-text-property 0 :class cand)))
     (pcase class
       ("code"
-      (funcall consult-gh-code-action cand))
+       (funcall consult-gh-code-action cand))
       ("issue"
-      (funcall consult-gh-issue-action cand))
+       (funcall consult-gh-issue-action cand))
       ("pr"
-      (funcall consult-gh-pr-action cand))
+       (funcall consult-gh-pr-action cand))
       ("file"
-      (funcall consult-gh-file-action cand))
+       (funcall consult-gh-file-action cand))
       ("notification"
-      (funcall consult-gh-notifications-action cand))
+       (funcall consult-gh-notifications-action cand))
       ("dashboard"
-      (funcall consult-gh-dashboard-action cand))
+       (funcall consult-gh-dashboard-action cand))
       (_
-      (funcall consult-gh-repo-action cand)))))
+       (funcall consult-gh-repo-action cand)))))
 
 
 (defun consult-gh-embark-get-ssh-link (cand)
@@ -123,13 +123,13 @@ The candidate can be a repo, issue, PR, file path, or a branch."
          (branch (or (get-text-property 0 :branch cand) nil)))
     (pcase class
       ("issue"
-      (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number))))
+       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number))))
       ("file"
-      (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
+       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
       ("pr"
-      (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
+       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
       (_
-      (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))
+       (kill-new (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))
 
 (defun consult-gh-embark-get-org-link (cand)
   "Copy the org style link for the CAND url to `kill-ring'."
