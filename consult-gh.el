@@ -4633,30 +4633,6 @@ from `consult-gh-notifications' and makrs it as read."
          (if consult-gh-topics-edit-capf-mode
              (consult-gh-topics-edit-capf-mode -1)))))
 
-(defun consult-gh--topics-edit-capf ()
-  "Completion at point function for editing comments.
-
-Completes for issue/pr numbers or usernames in `consult-gh-comment-create'
-when `consult-gh-topics-edit-capf-mode' is on."
-  (save-match-data
-    (cond
-     ((looking-back "@[^\s]*?" nil)
-      (let* ((begin (save-excursion (match-beginning 0)))
-             (end (point)))
-        (list begin end (get-text-property 0 :users consult-gh--topic)
-              :annotation-function (lambda (_) "" "\tuser\s\s[consult-gh]")
-              :exclusive 'no)))
-     ((looking-back "#[0-9]*?" nil)
-      (let* ((begin (save-excursion (match-beginning 0)))
-             (end (point))
-             (issues (get-text-property 0 :issues consult-gh--topic))
-             (candidates (and (listp issues) (mapcar #'car issues))))
-        (list begin end candidates
-              :annotation-function (lambda (str) "" (when-let ((cand (assoc str (get-text-property 0 :issues consult-gh--topic))))
-                                                      (if (consp cand)
-                                                          (concat "\t" (consult-gh--set-string-width (cdr cand) 30 nil) "\s\s[consult-gh]"))))
-              :exclusive 'no))))))
-
 (defun consult-gh-topics-edit-capf-mode-on ()
   "Enable `consult-gh-topics-edit-capf-mode'."
   (add-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf -100 t)
