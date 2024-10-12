@@ -1778,6 +1778,7 @@ See `consult--command-split' for more info."
          (eq (consult-gh--json-to-hashtable json :viewerCanAdminister) 't))))
 
 #+end_src
+***** get line number inside diff
 **** buffers handling
 everything to do with handling buffers (such as preview buffers) that are created by consult-gh.
 
@@ -3985,7 +3986,7 @@ the commits section for `consult-gh--pr-view'."
                                                  (authors (and (listp authors) (mapconcat (lambda (author) (gethash :login author)) authors ",\s")))
                                                  (date (gethash :committedDate commit))
                                                  (date (and (stringp date) (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time date)))))
-                                            (concat "## " "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid) " by " authors " at " date "\n"))))
+                                            (propertize (concat "## " "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid) " by " authors " at " date "\n") :url (format "%s/commits/%s" url oid)))))
                        commits)
             "\n----------\n")))
 
@@ -4008,14 +4009,18 @@ the comments section for `consult-gh--pr-view'."
                          :key (lambda (k)
                                 (or (gethash :createdAt k) (gethash :submittedAt k)))))
          (header-marker "#"))
-    (concat header-marker " Conversation\n"
+
+     (concat (propertize (concat header-marker " Conversation\n"
             header-marker header-marker " " author " " (consult-gh--time-ago createdAt)
             " " (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)) "\n"
-            body "\n"
+            body "\n")
+              :author author
+              :url url)
             (when (listp comments)
               (mapconcat (lambda (comment)
                            (when (hash-table-p comment)
                              (let* ((author (gethash :author comment))
+                                    (comment-url (gethash :url comment))
                                     (author (and author (gethash :login author)))
                                     (authorAssociation (gethash :authorAssociation comment))
                                     (authorAssociation (unless (equal authorAssociation "NONE")
@@ -4028,21 +4033,21 @@ the comments section for `consult-gh--pr-view'."
                                     (body (gethash :body comment)))
                                (save-match-data
                                  (when (and body (string-match (concat "^" header-marker "+?\s.*$")  body))
-                                   (setq body (with-current-buffer (get-buffer-create "consult-gh-test")
-                                                (erase-buffer)
+                                   (setq body (with-temp-buffer
                                                 (insert body)
                                                 (goto-char (point-min))
                                                 (while (re-search-forward (concat "^" header-marker "+?\s.*$") nil t)
                                                   (replace-match (concat header-marker header-marker "\\&")))
                                                 (buffer-string)))))
-                               (concat header-marker header-marker " "
+                               (propertize (concat header-marker header-marker " "
                                        (and author (concat author " "))
                                        (and authorAssociation (concat "(" authorAssociation ")"))
                                        (and createdAt (concat (consult-gh--time-ago createdAt) " " createdAt))
                                        "\n"
                                        (and commit oid (concat "\ncommit: " "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid) "\n------"))
                                        (and body (concat "\n" body "\n"))
-                                       "\n----------\n"))))
+                                       "\n----------\n")
+                                           :author author :commit-url (format "%s/commits/%s" url oid) :comment-url comment-url))))
                          comments "\n")))))
 
 #+end_src
@@ -4213,7 +4218,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
 
 #+end_src
 
-******* consult-gh-topics--pr-get-branches
+******* get branches
 #+begin_src emacs-lisp
 (defun consult-gh-topics--pr-get-branches (repo)
   "Get a list of branches of REPO."
@@ -4221,7 +4226,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
 
 #+end_src
 
-******* consult-gh-topics--pr-get-forks
+******* get forks of repo
 #+begin_src emacs-lisp
 (defun consult-gh-topics--pr-get-forks (repo)
   "Get list of forks of REPO."
@@ -4231,7 +4236,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
 
 #+end_src
 
-******* consult-gh-topics--pr-get-parent
+******* get parent of a forked repo
 #+begin_src emacs-lisp
 (defun consult-gh-topics--pr-get-parent (repo)
   "Get the upstream parent of REPO."
@@ -4241,7 +4246,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
 
 #+end_src
 
-******* consult-gh-topics--pr-get-siblings
+******* get siblings  (other forks of the same parent) of repo
 #+begin_src emacs-lisp
 (defun consult-gh-topics--pr-get-siblings (repo)
   "Get the siblings of REPO."
@@ -4254,7 +4259,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
 
 #+end_src
 
-******* consult-gh-topics--pr-get-similar
+******* get similar repos (parent, forks, siblings, ...)
 #+begin_src emacs-lisp
 (defun consult-gh-topics--pr-get-similar (repo)
   "Get all the similar repositories to REPO."
@@ -4414,7 +4419,7 @@ This is used for creating new pull requests."
 #+end_src
 
 
-******* consult-gh--pr-submit
+******* submit pr
 #+begin_src emacs-lisp
 (defun consult-gh-topics--pr-submit (repo head base title body &optional reviewers assignees labels milestone projects draft fill web)
   "Create a new pull request in REPO with TITLE and BODY.
@@ -4487,7 +4492,7 @@ Description of Arguments:
       (apply #'consult-gh--command-to-string "pr" "create" args))))
 
 #+end_src
-******* consult-gh--pr-presubmit
+******* presubmit pr
 #+begin_src emacs-lisp
 (defun consult-gh-topics--pr-presubmit (pr)
   "Prepare PR to submit.
