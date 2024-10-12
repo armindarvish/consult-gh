@@ -3785,15 +3785,14 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
     (while-let ((parent (consult-gh-topics--pr-get-parent repo)))
       (setq forks (append forks (consult-gh-topics--pr-get-forks parent)))
       (setq repo parent))
-    (print current)
-    (cl-remove-duplicates (remove current (delq nil forks)) :test #'equal)))
+    (cl-remove-duplicates (delq nil (remove current (delq nil forks))) :test #'equal)))
 
 (defun consult-gh-topics--pr-get-similar (repo)
   "Get all the similar repositories to REPO."
   (let* ((parent (consult-gh-topics--pr-get-parent repo))
          (forks (consult-gh-topics--pr-get-forks repo))
          (siblings (consult-gh-topics--pr-get-siblings repo)))
-    (cl-remove-duplicates (append (list parent) forks siblings) :test #'equal)))
+    (cl-remove-duplicates (delq nil (append (list parent) forks siblings)) :test #'equal)))
 
 (defun consult-gh-topics--pr-get-metadata (&optional pr buffer)
   "Get metadata of PR in BUFFER.
