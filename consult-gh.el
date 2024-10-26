@@ -1945,6 +1945,7 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
       (when content
         (insert (base64-decode-string content))
         (set-buffer-file-coding-system 'raw-text))
+      (set-buffer-modified-p nil)
       (normal-mode)))
   nil)
 
