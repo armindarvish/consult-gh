@@ -6316,10 +6316,10 @@ ADMIN is a boolean, determining whether the commit message is for a merge
        (':commit
         (consult-gh-pr--merge-create-commit pr "merge" auto admin))
        (':submit
-        (and (y-or-n-p "This will merge the pull reqeust on GitHUB.  Do you want to continue??")
+        (and (y-or-n-p "This will merge the pull reqeust on GitHub.  Do you want to continue??")
              (consult-gh-pr--merge-submit pr :merge t :auto auto :admin admin)))))
     (':rebase
-     (and (y-or-n-p "This will merge the pull reqeust with a rebase commit on GitHUB.  Do you want to continue?")
+     (and (y-or-n-p "This will merge the pull reqeust with a rebase commit on GitHub.  Do you want to continue?")
           (consult-gh-pr--merge-submit pr :rebase t :auto auto :admin admin)))
     (':squash
      (pcase (consult--read (list (cons "Edit the commit subject and message" :commit)
@@ -6331,7 +6331,7 @@ ADMIN is a boolean, determining whether the commit message is for a merge
        (':commit
         (consult-gh-pr--merge-create-commit pr "squash" auto admin))
        (':submit
-        (and (y-or-n-p "This will merge the pull reqeust with a squash commit on GitHUB.  Do you want to continue?")
+        (and (y-or-n-p "This will merge the pull reqeust with a squash commit on GitHub.  Do you want to continue?")
              (consult-gh-pr--merge-submit pr :squash t :auto auto :admin admin)))))))
 
 #+end_src
@@ -6434,17 +6434,17 @@ For example, PR can be the text stored in the buffer-local variable
                    (action (get-text-property 0 :target pr)))
         (pcase action
           ("merge" (and
-                    (y-or-n-p "This will merge the pull reqeust on GitHUB.  Do you want to continue?")
+                    (y-or-n-p "This will merge the pull reqeust on GitHub.  Do you want to continue?")
                     (consult-gh-pr--merge-submit pr :merge t :auto auto :admin admin :subject subject :body body)
                     (message "%s Commit Submitted!" (propertize "Merge" 'face 'consult-gh-success-face))
                     (funcall consult-gh-quit-window-func t)))
           ("rebase" (and
-                     (y-or-n-p "This will merge the pull reqeust with a rebase commit on GitHUB.  Do you want to continue?")
+                     (y-or-n-p "This will merge the pull reqeust with a rebase commit on GitHub.  Do you want to continue?")
                      (consult-gh-pr--merge-submit pr :rebase t :auto auto :admin admin :subject subject :body body)
                      (message "%s Commit Submitted!" (propertize "Rebase" 'face 'consult-gh-success-face))
                      (funcall consult-gh-quit-window-func t)))
           ("squash"  (and
-                      (y-or-n-p "This will merge the pull reqeust with a squash commit on GitHUB.  Do you want to continue?")
+                      (y-or-n-p "This will merge the pull reqeust with a squash commit on GitHub.  Do you want to continue?")
                       (consult-gh-pr--merge-submit pr :squash t :auto auto :admin admin :subject subject :body body)
                       (message "%s Commit Submitted!"(propertize "Squash" 'face 'consult-gh-success-face))
                       (funcall consult-gh-quit-window-func t)))))
