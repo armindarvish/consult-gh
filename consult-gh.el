@@ -4479,7 +4479,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             (and assignees-text (concat "assignees: " assignees-text "\n"))
             "\n--\n")))
 
-(defun consult-gh--pr-format-body (table &optional preview topic)
+(defun consult-gh--pr-format-body (table &optional topic)
   "Format the body section for a pull request.
 
 TABLE is a hash-table output containing pull request information

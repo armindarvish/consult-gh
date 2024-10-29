@@ -5010,7 +5010,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
 
 ******** format body
 #+begin_src emacs-lisp
-(defun consult-gh--pr-format-body (table &optional preview topic)
+(defun consult-gh--pr-format-body (table &optional topic)
   "Format the body section for a pull request.
 
 TABLE is a hash-table output containing pull request information
