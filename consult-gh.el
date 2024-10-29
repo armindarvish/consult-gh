@@ -5567,16 +5567,16 @@ Description of Arguments:
                  (concat (consult-gh--get-username headrepo) "/" (get-text-property 0 :headbranch pr))))
          (subject (or subject
                       (cond
-                       ((equal action "merge") (format "Merge pull request #%s from %s" number head))
-                       ((equal action "squash") title)
+                       ((equal type "merge") (format "Merge pull request #%s from %s" number head))
+                       ((equal type "squash") title)
                        (t nil))))
          (body (or body
                    (cond
-                    ((equal action "merge") title)
-                    ((equal action "squash") (consult-gh--command-to-string "pr" "view" number "--repo" repo "--json" "commits" "--template" "{{range .commits}}-\s**{{.messageHeadline}}**\n{{.messageBody}}\n\n{{end}}"))
+                    ((equal type "merge") title)
+                    ((equal type "squash") (consult-gh--command-to-string "pr" "view" number "--repo" repo "--json" "commits" "--template" "{{range .commits}}-\s**{{.messageHeadline}}**\n{{.messageBody}}\n\n{{end}}"))
                     (t nil))))
          (newtopic (format "%s/%s merge commit" repo number))
-         (buffer (format "*consult-gh-pr-%s-commit: %s #%s" action repo number)))
+         (buffer (format "*consult-gh-pr-%s-commit: %s #%s" type repo number)))
 
     (add-text-properties 0 1 (text-properties-at 0 pr) newtopic)
     (add-text-properties 0 1 (list :type "merge commit" :isComment nil :new t :target type :auto auto :admin admin) newtopic)
