@@ -4701,7 +4701,7 @@ To use this as the default action for PRs, see
    (let* ((topic (format "%s/#%s" repo number))
           (canAdmin (consult-gh--user-canadmin repo))
           (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-          (_ (message "Collecting info from %s..." (propertize "GitHUB" 'face 'consult-gh-date-face)))
+          (_ (message "Collecting info from %s..." (propertize "GitHub" 'face 'consult-gh-date-face)))
           (table (consult-gh--pr-read-json repo number))
           (comments (unless preview (consult-gh--pr-filter-comments (consult-gh--pr-get-comments repo number))))
           (commenters (unless preview (and table (consult-gh--pr-get-commenters table comments))))
