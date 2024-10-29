@@ -435,6 +435,11 @@ This can be a list of orgs or a function returning a list"
   :group 'consult-gh
   :type 'string)
 
+(defcustom consult-gh-completion-branch-prefix "branch "
+  "Prefix label to use for milestones in `consult-gh--topics-edit-capf'."
+  :group 'consult-gh
+  :type 'string)
+
 (defcustom consult-gh-completion-label-prefix "label "
   "Prefix label to use for labels in `consult-gh--topics-edit-capf'."
   :group 'consult-gh
@@ -2101,6 +2106,30 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
                                                           ,topic))
                                   :cmd-args (list "repo" "view" repo "--json" "hasProjectsEnabled,projectsV2")))))
 
+(defun consult-gh--completion-get-branches-list (string)
+  "Filter function to parse STRING, json output of “gh view repo”.
+
+This is a filter function suitable for passing to
+`consult-gh--make-process'."
+  (let ((branches (consult-gh--json-to-hashtable string)))
+    (when (listp branches)
+      (cl-loop for branch in branches
+               collect
+               (when (hash-table-p branch) (gethash :name branch))))))
+
+(defun consult-gh--completion-set-branches (&optional topic repo)
+  "Make async process to get list of labels of REPO in TOPIC.
+
+When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
+  (let* ((topic (or topic consult-gh--topic))
+         (repo (or repo (get-text-property 0 :repo topic))))
+    (consult-gh--make-process "consult-gh-valid-branches"
+                              :when-done `(lambda (_ out)
+                                 (add-text-properties 0 1 (list
+                                                           :valid-branches (consult-gh--completion-get-branches-list out))
+                                                      ,topic))
+                              :cmd-args (list "api" (format "/repos/%s/branches" repo)))))
+
 (defun consult-gh--topics-edit-capf ()
   "Complettion at point for editing comments.
 
@@ -2147,6 +2176,22 @@ Completes for issue/pr numbers or user names."
                                (insert (or (car (split-string str "\t" t)) str)))
 
               :exclusive 'no
+              :category 'string)))
+     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}base_branch: .*" (pos-bol)))
+      (let* ((begin (if (looking-back " " (- (point) 1))
+                                        (point)
+                                      (save-excursion
+                                        (backward-word)
+                                        (point))))
+             (end (point))
+             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-branches consult-gh--topic)))))
+
+        (list begin end candidates
+              :affixation-function (lambda (list)
+                                     (mapcar (lambda (item)
+                                               (list item consult-gh-completion-branch-prefix ""))
+                                             list))
+              :exclusive 'yes
               :category 'string)))
      ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}assignees: .*" (pos-bol)))
       (let* ((begin (if (looking-back " " (- (point) 1))
@@ -2199,8 +2244,6 @@ Completes for issue/pr numbers or user names."
                                      (mapcar (lambda (item)
                                                (list item consult-gh-completion-milestone-prefix ""))
                                              list))
-              :exit-function (lambda (str _status) ""
-                               (insert ", "))
               :exclusive 'yes
               :category 'string)))
      ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}projects: .*" (pos-bol)))
@@ -2830,7 +2873,7 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
       (set-buffer-modified-p nil)))
   nil)
 
-(defun consult-gh--repo-view (repo &optional buffer)
+(defun consult-gh--repo-view (repo &optional buffer preview)
   "Open REPO's Readme in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of
@@ -2853,6 +2896,11 @@ BUFFER an optional buffer the preview should be shown in."
   (with-current-buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name))
     (let ((inhibit-read-only t)
           (topic (format "%s" repo)))
+
+      (unless preview
+      ;; collect list of repo branches for completion at point
+      (consult-gh--completion-set-branches topic repo))
+
       (add-text-properties 0 1 (list :repo repo :type "repo" :title repo) topic)
       (erase-buffer)
       (pcase consult-gh-repo-preview-major-mode
@@ -3595,6 +3643,9 @@ see `consult-gh--issue-view-action'."
 
       ;; collect mentionable users for completion at point
       (consult-gh--completion-set-mentionable-users topic repo)
+
+      ;; collect list of repo branches for completion at point
+      (consult-gh--completion-set-branches topic repo)
 
        (if canAdmin
         (progn
@@ -4733,6 +4784,9 @@ To use this as the default action for PRs, see
 
        ;; collect mentionable users for completion at point
        (consult-gh--completion-set-mentionable-users topic repo)
+
+       ;; collect list of repo branches for completion at point
+       (consult-gh--completion-set-branches topic repo)
 
        (if canAdmin
            (progn
@@ -8136,6 +8190,9 @@ in the terminal.  For more details refer to the manual with
 
      ;; collect mentionable users for completion at point
      (consult-gh--completion-set-mentionable-users topic repo)
+
+     ;; collect mentionable users for completion at point
+     (consult-gh--completion-set-branches topic repo)
 
 
      (if canAdmin
