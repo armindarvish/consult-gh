@@ -5265,7 +5265,7 @@ To use this as the default action for PRs, see
           (state (gethash :state table))
           (url (gethash :url table))
           (id (gethash :id table))
-          (_ (message "Formating the %s..." (propertize "content" 'face 'consult-gh-isue-face)))
+          (_ (message "Formating the %s..." (propertize "content" 'face 'consult-gh-issue-face)))
           (header-text (consult-gh--pr-format-header repo number table topic))
           (title (or title (car (split-string header-text "\n" t))))
           (title (string-trim-left title "title: "))
