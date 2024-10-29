@@ -8226,9 +8226,8 @@ in the terminal.  For more details refer to the manual with
 
                (insert (consult-gh-topics--format-field-header-string (concat header-marker "base_branch: ")))
                (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
-               (cond
-                ((stringp basebranch)
-                 (insert (consult-gh-topics--format-field-header-string basebranch))))
+               (when (stringp basebranch)
+                 (insert basebranch))
                (insert "\n")
 
                (when canAdmin
