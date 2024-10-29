@@ -5447,6 +5447,11 @@ Description of Arguments:
                (body (and (not (equal body original-body)) body))
                (base (when (and (not (equal base original-basebranch)) (stringp base)) base))
                (args (list "--repo" repo)))
+
+    (when (and add-reviewers (listp add-reviewers)) (setq add-reviewers (consult-gh--list-to-string add-reviewers)))
+
+    (when (and remove-reviewers (listp remove-reviewers)) (setq remove-reviewers (consult-gh--list-to-string remove-reviewers)))
+
     (when (and add-assignees (listp add-assignees)) (setq add-assignees (consult-gh--list-to-string add-assignees)))
 
     (when (and remove-assignees (listp remove-assignees)) (setq remove-assignees (consult-gh--list-to-string remove-assignees)))
@@ -8161,6 +8166,7 @@ in the terminal.  For more details refer to the manual with
                     (end nil))
 
                (insert (consult-gh-topics--format-field-header-string (concat header-marker "base_branch: ")))
+               (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
                (cond
                 ((stringp basebranch)
                  (insert (consult-gh-topics--format-field-header-string basebranch))))
@@ -8275,6 +8281,7 @@ For more details refer to the manual with “gh pr edit --help”."
                       (end nil))
 
                  (insert (consult-gh-topics--format-field-header-string (concat header-marker "base_branch: ")))
+                 (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
                  (cond
                   ((stringp basebranch)
                    (insert basebranch)))
@@ -8282,6 +8289,7 @@ For more details refer to the manual with “gh pr edit --help”."
 
                  (when canAdmin
                    (insert (consult-gh-topics--format-field-header-string (concat header-marker "reviewers: ")))
+                   (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
                    (cond
                     ((stringp reviewers)
                      (insert reviewers))
@@ -8293,6 +8301,7 @@ For more details refer to the manual with “gh pr edit --help”."
                    (insert "\n")
 
                    (insert (consult-gh-topics--format-field-header-string (concat header-marker "assignees: ")))
+                   (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
                    (cond
                     ((stringp assignees)
                      (insert assignees))
@@ -8304,6 +8313,7 @@ For more details refer to the manual with “gh pr edit --help”."
                    (insert "\n")
 
                    (insert (consult-gh-topics--format-field-header-string (concat header-marker "labels: ")))
+                   (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
                    (cond
                     ((stringp labels)
                      (insert labels))
@@ -8315,6 +8325,7 @@ For more details refer to the manual with “gh pr edit --help”."
                    (insert "\n")
 
                    (insert (consult-gh-topics--format-field-header-string (concat header-marker "milestone: ")))
+                   (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
                    (cond
                     ((stringp milestone)
                      (insert milestone))
@@ -8324,6 +8335,7 @@ For more details refer to the manual with “gh pr edit --help”."
                    (insert "\n")
 
                    (insert (consult-gh-topics--format-field-header-string (concat header-marker "projects: ")))
+                   (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
                    (cond
                     ((stringp projects)
                      (insert projects))
