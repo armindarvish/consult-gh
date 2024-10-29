@@ -5271,7 +5271,7 @@ To use this as the default action for PRs, see
           (title (string-trim-left title "title: "))
           (latest-commit (gethash :headRefOid table))
           (body-text (consult-gh--pr-format-body table topic))
-          (comments-text (when (and comments (listp comments)) (consult-gh--pr-format-comments comments repo number url topic)))
+          (comments-text (when (and comments (listp comments)) (consult-gh--pr-format-comments comments repo number url)))
           (file-change-text (consult-gh--pr-format-files-changed table))
           (_ (message "Working on some %s details..." (propertize "more" 'face 'consult-gh-issue-face)))
           (diff (consult-gh--command-to-string "pr" "diff" number "--repo" repo))
