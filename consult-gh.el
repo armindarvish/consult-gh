@@ -1531,7 +1531,8 @@ Description of Arguments:
             STATUS is the status of the process and STRING is the output
   CMD-ARGS  a list of strings; is passed as \=:command to `make-process'"
   (if (executable-find "gh")
-      (progn
+      (consult-gh-with-host
+       (consult-gh--auth-account-host)
         (when-let ((proc (get-process name)))
           (delete-process proc))
         (let* ((cmd-args (append (list "gh") cmd-args))
