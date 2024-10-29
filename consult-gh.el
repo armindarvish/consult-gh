@@ -7750,7 +7750,8 @@ For more details refer to the manual with “gh issue lock --help”."
                         (and (stringp reason) (not (string-empty-p reason))
                              (list "--reason" reason))))
      (consult-gh--make-process (format "consult-gh-issue-lock-%s-%s" repo number)
-                               :when-done (lambda (_ str) (message str))
+                               :when-done (lambda (_ str) (when str (message str))
+                                            (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" number) 'face 'consult-gh-issue-face)) (propertize repo 'face 'consult-gh-user-face) (propertize "locked" 'face 'consult-gh-error-face)))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -7771,7 +7772,8 @@ For more details refer to the manual with “gh issue unlock --help”."
                (error "Can only lock an issue.  Did not get one!")))
           (args (list "issue" "unlock" number "--repo" repo)))
      (consult-gh--make-process (format "consult-gh-issue-unlock-%s-%s" repo number)
-                               :when-done (lambda (_ str) (message str))
+                               :when-done (lambda (_ str) (when str (message str))
+                                            (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" number) 'face 'consult-gh-issue-face)) (propertize repo 'face 'consult-gh-user-face) (propertize "unlocked" 'face 'consult-gh-success-face)))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -8594,7 +8596,8 @@ For more details refer to the manual with “gh pr lock --help”."
                         (and (stringp reason) (not (string-empty-p reason))
                              (list "--reason" reason))))
      (consult-gh--make-process (format "consult-gh-pr-lock-%s-%s" repo number)
-                               :when-done (lambda (_ str) (message str))
+                               :when-done (lambda (_ str) (when str (message str))
+                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" number) 'face 'consult-gh-issue-face)) (propertize repo 'face 'consult-gh-user-face) (propertize "locked" 'face 'consult-gh-error-face)))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -8615,7 +8618,8 @@ For more details refer to the manual with “gh pr unlock --help”."
                (error "Can only lock a pull request.  Did not get one!")))
           (args (list "pr" "unlock" number "--repo" repo)))
      (consult-gh--make-process (format "consult-gh-pr-unlock-%s-%s" repo number)
-                               :when-done (lambda (_ str) (message str))
+                               :when-done (lambda (_ str) (when str (message str))
+                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" number) 'face 'consult-gh-issue-face)) (propertize repo 'face 'consult-gh-user-face) (propertize "unlocked" 'face 'consult-gh-success-face)))
                                :cmd-args args))))
 
 ;;;###autoload
