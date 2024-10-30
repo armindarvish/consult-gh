@@ -1137,7 +1137,7 @@ By default, inherits from `link'.")
 
 ;;; Utility functions
 
-(defun qconsult-gh--nonutf-cleanup (string)
+(defun consult-gh--nonutf-cleanup (string)
   "Remove non UTF-8 characters if any in the STRING."
   (string-join
    (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
@@ -2118,7 +2118,7 @@ This is a filter function suitable for passing to
                (when (hash-table-p branch) (gethash :name branch))))))
 
 (defun consult-gh--completion-set-branches (&optional topic repo)
-  "Make async process to get list of labels of REPO in TOPIC.
+  "Make async process to get list of branches of REPO in TOPIC.
 
 When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic))
@@ -2131,7 +2131,11 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
                               :cmd-args (list "api" (format "/repos/%s/branches" repo)))))
 
 (defun consult-gh--completion-get-pr-refs-list (string repo refonly)
-  "Filter function to parse STRING, json output of “gh view repo”.
+  "Filter function to parse STRING and get branches of REPO.
+
+STRING is the json output of “gh api repos/repo/branches”.
+When optional argument REFONLY is non-nil returns a list of branch naes only,
+otherwise returns “OWNER:BRANCH”.
 
 This is a filter function suitable for passing to
 `consult-gh--make-process'."
@@ -2143,8 +2147,10 @@ This is a filter function suitable for passing to
                                              (concat repo ":" (gethash :name branch))))))))
 
 (defun consult-gh--completion-set-pr-refs (&optional topic baserepo headrepo refonly)
-  "Make async process add brnaches of BASEREPO and HEADREPO in TOPIC.
+  "Make async process add branches of BASEREPO and HEADREPO in TOPIC.
 
+When optional argument REFONLY is non-nil returns a list of branch naes only,
+otherwise returns “OWNER:BRANCH”.
 When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic))
          (baserepo (or baserepo (get-text-property 0 :baserepo topic)))
@@ -5209,7 +5215,7 @@ This is used for creating new pull requests."
 (defun consult-gh-topics--pr-create-change-refs (&optional pr)
   "Change refs in PR topic.
 
-This is used for chging branch refs in a pull requests."
+This is used for changing ref branches in a pull requests."
   (let* ((pr (or pr consult-gh--topic))
          (meta (consult-gh-topics--pr-get-metadata pr))
          (baserepo (cdr (assoc "baserepo" meta)))
