@@ -2130,6 +2130,40 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
                                                       ,topic))
                               :cmd-args (list "api" (format "/repos/%s/branches" repo)))))
 
+(defun consult-gh--completion-get-pr-refs-list (string repo refonly)
+  "Filter function to parse STRING, json output of “gh view repo”.
+
+This is a filter function suitable for passing to
+`consult-gh--make-process'."
+  (let ((branches (consult-gh--json-to-hashtable string)))
+    (when (listp branches)
+      (cl-loop for branch in branches
+               collect
+               (when (hash-table-p branch) (if refonly (gethash :name branch)
+                                             (concat repo ":" (gethash :name branch))))))))
+
+(defun consult-gh--completion-set-pr-refs (&optional topic baserepo headrepo refonly)
+  "Make async process add brnaches of BASEREPO and HEADREPO in TOPIC.
+
+When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
+  (let* ((topic (or topic consult-gh--topic))
+         (baserepo (or baserepo (get-text-property 0 :baserepo topic)))
+         (headrepo (or headrepo (get-text-property 0 :headrepo topic))))
+    (when (stringp baserepo)
+    (consult-gh--make-process "consult-gh-valid-basebranches"
+                              :when-done `(lambda (_ out)
+                                 (add-text-properties 0 1 (list
+                                                           :valid-baserefs (consult-gh--completion-get-pr-refs-list out (substring-no-properties ,baserepo) ,refonly))
+                                                      ,topic))
+                              :cmd-args (list "api" (format "/repos/%s/branches" baserepo))))
+    (when (stringp headrepo)
+    (consult-gh--make-process "consult-gh-valid-headbranches"
+                              :when-done `(lambda (_ out)
+                                 (add-text-properties 0 1 (list
+                                                           :valid-headrefs (consult-gh--completion-get-pr-refs-list out (substring-no-properties ,headrepo) ,refonly))
+                                                      ,topic))
+                              :cmd-args (list "api" (format "/repos/%s/branches" headrepo))))))
+
 (defun consult-gh--topics-edit-capf ()
   "Complettion at point for editing comments.
 
@@ -2177,14 +2211,14 @@ Completes for issue/pr numbers or user names."
 
               :exclusive 'no
               :category 'string)))
-     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}base_branch: .*" (pos-bol)))
+     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}base: .*" (pos-bol)))
       (let* ((begin (if (looking-back " " (- (point) 1))
                                         (point)
                                       (save-excursion
                                         (backward-word)
                                         (point))))
              (end (point))
-             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-branches consult-gh--topic)))))
+             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-baserefs consult-gh--topic)))))
 
         (list begin end candidates
               :affixation-function (lambda (list)
@@ -2193,6 +2227,24 @@ Completes for issue/pr numbers or user names."
                                              list))
               :exclusive 'yes
               :category 'string)))
+
+     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}head: .*" (pos-bol)))
+      (let* ((begin (if (looking-back " " (- (point) 1))
+                                        (point)
+                                      (save-excursion
+                                        (backward-word)
+                                        (point))))
+             (end (point))
+             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-headrefs consult-gh--topic)))))
+
+        (list begin end candidates
+              :affixation-function (lambda (list)
+                                     (mapcar (lambda (item)
+                                               (list item consult-gh-completion-branch-prefix ""))
+                                             list))
+              :exclusive 'yes
+              :category 'string)))
+
      ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}assignees: .*" (pos-bol)))
       (let* ((begin (if (looking-back " " (- (point) 1))
                                         (point)
@@ -3736,7 +3788,7 @@ set `consult-gh-issue-action' to `consult-gh--issue-view-action'."
          (labels nil)
          (milestone nil)
          (projects nil))
-(when (and header (string-match "^.*\\(?:assignees:\\)\\(?1:[[:ascii:][:nonascii:]]*\\)\\(?:\n.*labels:\\)\\(?2:[[:ascii:][:nonascii:]]*\\)\\(?:\n.*milestone:\\)\\(?3:[[:ascii:][:nonascii:]]*\\)\\(?:\n.*projects:\\)\\(?4:[[:ascii:][:nonascii:]]*\\)\\(?:\n-+\\)" header))
+(when (and header (string-match "^.*\\(?:assignees:\\)\\(?1:.*\\)\\(?:\n.*labels:\\)?\\(?2:.*\\)?\\(?:\n.*milestone:\\)?\\(?3:.*\\)?\\(?:\n.*projects:\\)?\\(?4:.*\\)?\\(?:\n-+\\)" header))
 
   (setq assignees (match-string 1 header)
         labels (match-string 2 header)
@@ -5155,49 +5207,54 @@ This is used for creating new pull requests."
       (setq consult-gh--topic pr)))
 
 (defun consult-gh-topics--pr-create-change-refs (&optional pr)
-  "Add metadata to PR topic for REPO.
+  "Change refs in PR topic.
 
-This is used for creating new pull requests."
+This is used for chging branch refs in a pull requests."
   (let* ((pr (or pr consult-gh--topic))
          (meta (consult-gh-topics--pr-get-metadata pr))
          (baserepo (cdr (assoc "baserepo" meta)))
          (canAdmin (consult-gh--user-canadmin baserepo))
          (isAuthor (consult-gh--user-isauthor pr))
          (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
+
     (when (or canAdmin isAuthor)
 
       (let* ((baserepo (get-text-property 0 :repo (consult-gh-search-repos (consult-gh--get-package baserepo) t "Search for the target base repo you want to merge to: ")))
              (basebranch (consult--read (consult-gh-topics--pr-get-branches baserepo)
-                                     :prompt "Select the branch you want to merge to: "
-                                     :require-match t
-                                     :sort t))
+                                        :prompt "Select the branch you want to merge to: "
+                                        :require-match t
+                                        :sort t))
              (headrepo (get-text-property 0 :repo (consult-gh-search-repos (consult-gh--get-package baserepo) t "Search for the source head repo you want to merge from: ")))
              (headbranch (consult--read (cond
-                                      ((equal baserepo headrepo)
-                                       (remove basebranch (consult-gh-topics--pr-get-branches baserepo)))
-                                      (t (consult-gh-topics--pr-get-branches headrepo)))
-                                     :prompt "Select the head branch: "
-                                     :require-match t
-                                     :sort t)))
+                                         ((equal baserepo headrepo)
+                                          (remove basebranch (consult-gh-topics--pr-get-branches baserepo)))
+                                         (t (consult-gh-topics--pr-get-branches headrepo)))
+                                        :prompt "Select the head branch: "
+                                        :require-match t
+                                        :sort t)))
 
         (while (equal (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/compare/%s...%s" baserepo (concat (consult-gh--get-username baserepo) ":" basebranch) (concat (consult-gh--get-username headrepo) ":" headbranch))) :status) "identical")
           (when (y-or-n-p "Do you want to select a different head branch?"
-                         (setq headbranch (consult--read (cond
-                                      ((equal baserepo headrepo)
-                                       (remove basebranch (consult-gh-topics--pr-get-branches baserepo)))
-                                      (t (consult-gh-topics--pr-get-branches headrepo)))
-                                     :prompt "Select the head branch: "
-                                     :require-match t
-                                     :sort t)))))
+                          (setq headbranch (consult--read (cond
+                                                           ((equal baserepo headrepo)
+                                                            (remove basebranch (consult-gh-topics--pr-get-branches baserepo)))
+                                                           (t (consult-gh-topics--pr-get-branches headrepo)))
+                                                          :prompt "Select the head branch: "
+                                                          :require-match t
+                                                          :sort t)))))
 
-          (add-text-properties 0 1 (list :baserepo baserepo :basebranch basebranch :headrepo headrepo :headbranch headbranch) pr)
-          (save-excursion (goto-char (car header))
-                          (when (re-search-forward "^.*base: \\(?1:.*\\)?" (cdr header) t)
-                            (replace-match (concat (get-text-property 0 :baserepo pr) ":" (get-text-property 0 :basebranch pr)) nil nil nil 1)))
-          (save-excursion (goto-char (car header))
-                          (when (re-search-forward "^.*head: \\(?1:.*\\)?" (cdr header) t)
-                            (replace-match (concat (get-text-property 0 :headrepo pr) ":" (get-text-property 0 :headbranch pr)) nil nil nil 1)))
-      (setq consult-gh--topic pr)))))
+        (add-text-properties 0 1 (list :baserepo baserepo :basebranch basebranch :headrepo headrepo :headbranch headbranch) pr)
+
+        ;;collect valid refs for completion at point
+        (consult-gh--completion-set-pr-refs pr baserepo headrepo)
+
+        (save-excursion (goto-char (car header))
+                        (when (re-search-forward "^.*base: \\(?1:.*\\)?" (cdr header) t)
+                          (replace-match (concat (get-text-property 0 :baserepo pr) ":" (get-text-property 0 :basebranch pr)) nil nil nil 1)))
+        (save-excursion (goto-char (car header))
+                        (when (re-search-forward "^.*head: \\(?1:.*\\)?" (cdr header) t)
+                          (replace-match (concat (get-text-property 0 :headrepo pr) ":" (get-text-property 0 :headbranch pr)) nil nil nil 1)))
+        (setq consult-gh--topic pr)))))
 
 (defun consult-gh-topics--pr-create-submit (baserepo basebranch headrepo headbranch title body &optional reviewers assignees labels milestone projects draft fill web)
   "Create a new pull request in REPO with metadata.
@@ -8329,9 +8386,8 @@ in the terminal.  For more details refer to the manual with
      ;; collect mentionable users for completion at point
      (consult-gh--completion-set-mentionable-users topic repo)
 
-     ;; collect mentionable users for completion at point
-     (consult-gh--completion-set-branches topic repo)
-
+     ;; collect valid refs for completion at point
+     (consult-gh--completion-set-pr-refs topic baserepo headrepo nil)
 
      (if canAdmin
          (progn
@@ -8343,6 +8399,7 @@ in the terminal.  For more details refer to the manual with
            (consult-gh--completion-set-valid-milestones topic repo)
            ;; collect valid projects for completion at point
            (consult-gh--completion-set-valid-projects topic repo))
+
        (add-text-properties 0 1 (list :valid-labels nil :assignable-users nil :valid-milestones nil :valid-projects nil) topic))
 
      (add-text-properties 0 1 (list :number nil :type "pr" :isComment nil :new t :repo (substring-no-properties baserepo) :author author :headrepo (substring-no-properties repo) :headbranch (substring-no-properties headbranch) :baserepo (substring-no-properties baserepo) :basebranch (substring-no-properties basebranch)) topic)
@@ -8455,6 +8512,9 @@ For more details refer to the manual with “gh pr edit --help”."
             (basebranch (get-text-property 0 :basebranch pr))
             (buffer (format "*consult-gh-pr-edit: %s #%s" baserepo number))
             (type "pr"))
+
+       ;; collect valid refs for completion at point
+     (consult-gh--completion-set-pr-refs newtopic baserepo nil t)
 
        (if canAdmin
            ;; collect valid projects for completion at point
