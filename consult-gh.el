@@ -2921,7 +2921,6 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
          (content (consult-gh--json-to-hashtable readme :content)))
   (save-mark-and-excursion
       (setq-local buffer-file-name path)
-      (normal-mode)
       (insert ""
               (or comment-start "") "name:\t" (or name "") (or comment-end "") "\n"
               (or comment-start "") "description:\t" (or desc "") (or comment-end "") "\n"
