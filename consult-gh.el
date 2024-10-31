@@ -3784,7 +3784,7 @@ set `consult-gh-issue-action' to `consult-gh--issue-view-action'."
        ((eq confirm :replace)
         (message "Reloading issue in the existing buffer...")
         (funcall consult-gh-switch-to-buffer-func (consult-gh--issue-view repo number existing))
-        (set-buffer-modifed-p nil)
+        (set-buffer-modified-p nil)
         (buffer-name (current-buffer)))
        ((eq confirm :new)
         (message "Opening issue in a new buffer...")
