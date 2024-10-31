@@ -3010,7 +3010,9 @@ To use this as the default action for repos, set
           (funcall consult-gh-switch-to-buffer-func (consult-gh--repo-view repo (generate-new-buffer buffername nil)))))
       (progn
         (funcall consult-gh-switch-to-buffer-func (consult-gh--repo-view repo))
-        (rename-buffer buffername t)))))
+        (rename-buffer buffername t)
+        (set-buffer-modifed-p nil)
+        (buffer-name (current-buffer))))))
 
 (defun consult-gh--repo-browse-files-action (cand)
   "Browse file tree of a repo candidate, CAND.
@@ -3781,13 +3783,19 @@ set `consult-gh-issue-action' to `consult-gh--issue-view-action'."
        ((eq confirm :resume) (funcall consult-gh-switch-to-buffer-func existing))
        ((eq confirm :replace)
         (message "Reloading issue in the existing buffer...")
-        (funcall consult-gh-switch-to-buffer-func (consult-gh--issue-view repo number existing)))
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--issue-view repo number existing))
+        (set-buffer-modifed-p nil)
+        (buffer-name (current-buffer)))
        ((eq confirm :new)
         (message "Opening issue in a new buffer...")
-        (funcall consult-gh-switch-to-buffer-func (consult-gh--issue-view repo number (generate-new-buffer buffername nil)))))
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--issue-view repo number (generate-new-buffer buffername nil)))
+        (set-buffer-modifed-p nil)
+        (buffer-name (current-buffer))))
       (progn
         (funcall consult-gh-switch-to-buffer-func (consult-gh--issue-view repo number))
-        (rename-buffer buffername t)))))
+        (rename-buffer buffername t)
+        (set-buffer-modifed-p nil)
+        (buffer-name (current-buffer))))))
 
 (defun consult-gh-topics--issue-parse-metadata ()
   "Parse issue topic metadata."
@@ -4932,13 +4940,19 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
          ((eq confirm :resume) (funcall consult-gh-switch-to-buffer-func existing))
          ((eq confirm :replace)
           (message "Reloading pull request in the existing buffer...")
-          (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view repo number existing)))
+          (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view repo number existing))
+          (set-buffer-modifed-p nil)
+          (buffer-name (current-buffer)))
          ((eq confirm :new)
           (message "Opening pull request in a new buffer...")
-          (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view repo number (generate-new-buffer buffername nil)))))
+          (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view repo number (generate-new-buffer buffername nil)))
+          (set-buffer-modifed-p nil)
+          (buffer-name (current-buffer))))
       (progn
         (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view repo number))
-        (rename-buffer buffername t)))))
+        (rename-buffer buffername t)
+        (set-buffer-modifed-p nil)
+        (buffer-name (current-buffer))))))
 
 (defun consult-gh--get-pr-templates (repo)
   "Get pull request templates of REPO."
