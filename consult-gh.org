@@ -6873,7 +6873,7 @@ REVIEW-BUFFER defaults to value stored in text-properties of TOPIC."
        (body (consult-gh--whole-buffer-string))
        (info (get-text-property 0 :comment-info topic))
        (review-buffer (or review-buffer (get-text-property 0 :review-buffer topic))))
-  (if (buffer-live-p review-buffer)
+  (if (and review-buffer (buffer-live-p (get-buffer review-buffer)))
     (progn (and (consult-gh-topics--pr-review-insert-comment-in-buffer body info (get-buffer review-buffer))
    (message "Comment Added!")
    (funcall consult-gh-quit-window-func t))
