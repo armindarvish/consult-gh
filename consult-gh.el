@@ -1720,6 +1720,15 @@ Formats the output as “[HOST/]OWNER/REPO” if any, otherwise returns nil."
           nil)
       nil)))
 
+(defun consult-gh--get-repo-from-topic (&optional topic)
+  "Return the full name of the GitHub repository in topic.
+
+TOPIC should be a string with property field :repo, and defaults to
+`consult-gh--topic'."
+  (when-let* ((topic (or topic consult-gh--topic)))
+    (if (stringp topic)
+        (get-text-property 0 :repo topic))))
+
 (defun consult-gh--split-repo (repo &optional separators)
   "Split REPO string by SEPARATORS to get user and package name.
 
@@ -7432,7 +7441,9 @@ Description of Arguments:
          :state (funcall #'consult-gh--repo-state)
          :initial (consult--async-split-initial initial)
          :group #'consult-gh--repo-group
-         :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
+         :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
+                                    (consult--async-split-initial (consult-gh--get-repo-from-topic))
+                                    (consult--async-split-thingatpt 'symbol))
                               consult-gh--known-repos-list)
          :history '(:input consult-gh--search-repos-history)
          :require-match t
@@ -7511,7 +7522,9 @@ If PROMPT is non-nil, use it as the query prompt."
                                                    :lookup #'consult--lookup-member
                                                    :state (funcall #'consult-gh--repo-state)
                                                    :group #'consult-gh--repo-group
-                                                   :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
+                                                   :add-history (append (list (consult--async-split-initial (consult-gh--get-repo-from-directory))
+                                                                              (consult--async-split-initial (consult-gh--get-repo-from-topic))
+                                                                              (consult--async-split-thingatpt 'symbol))
                                                                         consult-gh--known-repos-list)
                                                    :history 'consult-gh--repos-history
                                                    :require-match t
@@ -7682,6 +7695,7 @@ Description of Arguments:
          :require-match t
          :category 'consult-gh-issues
          :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
+                                    (consult--async-split-initial (consult-gh--get-repo-from-topic))
                                     (consult--async-split-thingatpt 'symbol))
                               consult-gh--known-repos-list)
          :history '(:input consult-gh--repos-history)
@@ -8310,7 +8324,9 @@ Description of Arguments:
        :initial (consult--async-split-initial initial)
        :group #'consult-gh--issue-group
        :require-match t
-       :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
+       :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
+                                  (consult--async-split-initial (consult-gh--get-repo-from-topic))
+                                  (consult--async-split-thingatpt 'symbol))
                             consult-gh--known-repos-list)
        :history '(:input consult-gh--search-issues-history)
        :category 'consult-gh-issues
@@ -8437,7 +8453,9 @@ Description of Arguments:
          :initial (consult--async-split-initial initial)
          :group #'consult-gh--pr-list-group
          :require-match t
-         :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol))
+         :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
+                                    (consult--async-split-initial (consult-gh--get-repo-from-topic))
+                                    (consult--async-split-thingatpt 'symbol))
                               consult-gh--known-repos-list)
          :history '(:input consult-gh--repos-history)
          :preview-key consult-gh-preview-key
@@ -9107,6 +9125,7 @@ Description of Arguments:
        :group #'consult-gh--pr-search-group
        :require-match t
        :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
+                                  (consult--async-split-initial (consult-gh--get-repo-from-topic))
                                   (consult--async-split-thingatpt 'symbol)))
        :history '(:input consult-gh--search-prs-history)
        :preview-key consult-gh-preview-key
@@ -9223,7 +9242,9 @@ Description of Arguments:
        :initial (consult--async-split-initial initial)
        :group #'consult-gh--code-group
        :require-match t
-       :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory)) (consult--async-split-thingatpt 'symbol)))
+       :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
+                                  (consult--async-split-initial (consult-gh--get-repo-from-topic))
+                                  (consult--async-split-thingatpt 'symbol)))
        :history '(:input consult-gh--search-code-history)
        :preview-key consult-gh-preview-key
        :sort nil)))
