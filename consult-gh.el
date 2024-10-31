@@ -6265,9 +6265,9 @@ URL `https://docs.github.com/en/rest/pulls/reviews?apiVersion=2022-11-28#create-
   (let ((args (list "-X" "POST" "-H" "Accept: application/vnd.github+json")))
     (setq args (append args
                        (list (format "repos/%s/pulls/%s/reviews" repo number))
-                       (and body (list "-F" (concat "body=" body)))
-                       (and event (list "-F" (concat "event=" event)))
-                       (and commit-id (list "-F" (concat "commit_id=" commit-id)))
+                       (and body (list "-f" (concat "body=" body)))
+                       (and event (list "-f" (concat "event=" event)))
+                       (and commit-id (list "-f" (concat "commit_id=" commit-id)))
                        (and comments (apply #'append (cl-loop for comment in comments
                                                               collect (let* ((path (plist-get comment :path))
                                                                              (line (plist-get comment :line))
