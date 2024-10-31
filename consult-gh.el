@@ -3011,7 +3011,7 @@ To use this as the default action for repos, set
       (progn
         (funcall consult-gh-switch-to-buffer-func (consult-gh--repo-view repo))
         (rename-buffer buffername t)
-        (set-buffer-modifed-p nil)
+        (set-buffer-modified-p nil)
         (buffer-name (current-buffer))))))
 
 (defun consult-gh--repo-browse-files-action (cand)
@@ -3789,12 +3789,12 @@ set `consult-gh-issue-action' to `consult-gh--issue-view-action'."
        ((eq confirm :new)
         (message "Opening issue in a new buffer...")
         (funcall consult-gh-switch-to-buffer-func (consult-gh--issue-view repo number (generate-new-buffer buffername nil)))
-        (set-buffer-modifed-p nil)
+        (set-buffer-modified-p nil)
         (buffer-name (current-buffer))))
       (progn
         (funcall consult-gh-switch-to-buffer-func (consult-gh--issue-view repo number))
         (rename-buffer buffername t)
-        (set-buffer-modifed-p nil)
+        (set-buffer-modified-p nil)
         (buffer-name (current-buffer))))))
 
 (defun consult-gh-topics--issue-parse-metadata ()
@@ -4941,17 +4941,17 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
          ((eq confirm :replace)
           (message "Reloading pull request in the existing buffer...")
           (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view repo number existing))
-          (set-buffer-modifed-p nil)
+          (set-buffer-modified-p nil)
           (buffer-name (current-buffer)))
          ((eq confirm :new)
           (message "Opening pull request in a new buffer...")
           (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view repo number (generate-new-buffer buffername nil)))
-          (set-buffer-modifed-p nil)
+          (set-buffer-modified-p nil)
           (buffer-name (current-buffer))))
       (progn
         (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view repo number))
         (rename-buffer buffername t)
-        (set-buffer-modifed-p nil)
+        (set-buffer-modified-p nil)
         (buffer-name (current-buffer))))))
 
 (defun consult-gh--get-pr-templates (repo)
