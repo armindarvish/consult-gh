@@ -4657,7 +4657,7 @@ Description of Arguments:
                    (if preview
                        (insert "\n")
                      (when (cdr chunk)
-                     (insert (concat (propertize  "\n```diff\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil)) (propertize (cdr chunk) :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code t)) (propertize  "```\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil))))))))
+                     (insert (concat (propertize  "\n```diff\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil)) (propertize (cdr chunk) :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code t)) (propertize  "\n```\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil))))))))
       (consult-gh--whole-buffer-string))))
 
 (defun consult-gh--pr-filter-comments (comments &optional maxnum)
