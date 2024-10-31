@@ -6889,7 +6889,7 @@ REVIEW-BUFFER defaults to value stored in text-properties of TOPIC."
 
 REVIEW defaults to `consult-gh--topic'.
 BUFFER defaults to the current buffer."
-  (with-curernt-buffer (or buffer (current-buffer))
+  (with-current-buffer (or buffer (current-buffer))
                        (let* ((review (or review consult-gh--topic))
                               (comments (get-text-property 0 :comments review))
                               (regions (consult-gh--get-region-with-prop :consult-gh-comments))
