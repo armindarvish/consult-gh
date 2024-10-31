@@ -6967,7 +6967,7 @@ BODY is a string for comment text.  When BODY is nil, the value of \=:body key s
               (message "Review Submitted!")
               (or id nil)
             (funcall consult-gh-quit-window-func t)
-            (if (and targte-buffer (buffer-live-p target-buffer))
+            (if (and target-buffer (buffer-live-p target-buffer))
                 (funcall consult-gh-pop-to-buffer-func target-buffer)))))
        ((= (car response) 422)
         (let* ((table (consult-gh--json-to-hashtable (cadr response)))
