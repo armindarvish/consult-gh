@@ -1242,7 +1242,7 @@ Uses simple regexp replacements."
       (save-mark-and-excursion
         (save-restriction
           (goto-char (point-min))
-          (while (re-search-forward "#\\|^\\*\s\\|\\*\\{1,2\\}\\(?1:[^\s].+?\\)\\*\\{1,2\\}\\|\\(?1:\\*+?\\)\s\\|_\\{1,2\\}\\(?2:[^\s].+?\\)_\\{1,2\\}\\|~\\{1,2\\}\\(?2:[^\s].+?\\)~\\{1,2\\}\\|`\\(?3:[^`].+?\\)`\\|```\\(?4:.*\n\\)\\(?5:[[:ascii:][:nonascii:]]*?\\)```" nil t)
+          (while (re-search-forward "#\\|^\\*\s\\|\\*\\{1,2\\}\\(?1:[^\s].+?\\)\\*\\{1,2\\}\\|\\(?1:^\\*+?\\)\s\\|_\\{1,2\\}\\(?2:[^\s].+?\\)_\\{1,2\\}\\|~\\{1,2\\}\\(?2:[^\s].+?\\)~\\{1,2\\}\\|`\\(?3:[^`].+?\\)`\\|```\\(?4:.*\n\\)\\(?5:[[:ascii:][:nonascii:]]*?\\)```" nil t)
             (pcase (match-string-no-properties 0)
               ("#" (cond
                     ((looking-at "#\\|[[:blank:]]")
@@ -1263,7 +1263,7 @@ Uses simple regexp replacements."
                                (propertize "#+end_src\n" :consult-gh (get-text-property 0 :consult-gh (match-string 4))))
                               nil t))
 
-              ((pred (lambda (el) (string-match-p "\\*+\s" el)))
+              ((pred (lambda (el) (string-match-p "^\\*+\s" el)))
                (replace-match (propertize (concat (make-string (length (match-string 1)) ?-) " ")
 :consult-gh (get-text-property 0 :consult-gh (match-string 1)))
                               nil t))
@@ -3605,11 +3605,11 @@ Queries the user for how to filter the comments."
                             :sort nil)
         (':last-week
          (setq comments (cl-remove-if-not (lambda (k)
-                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time)) (make-decoded-time :day -7))) (date-to-time (gethash :createdAt k))))
+                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time) t) (make-decoded-time :day -7))) (date-to-time (gethash :createdAt k))))
                                           comments)))
         (':last-month
          (setq comments (cl-remove-if-not (lambda (k)
-                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time)) (make-decoded-time :day -30))) (date-to-time (gethash :createdAt k))))
+                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time) t) (make-decoded-time :day -30))) (date-to-time (gethash :createdAt k))))
                                           comments)))
         (':last-maxnum
          (setq comments (cl-subseq comments 0 (min (length comments) maxnum))))
@@ -4532,7 +4532,7 @@ a hash-table output from `consult-gh--pr-read-json'."
          (review-comments (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s/comments" repo number))))
          (all-comments (append comments reviews review-comments)))
     (sort all-comments :key (lambda (k)
-                              (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k))))))
+                              (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))))
 
 (defun consult-gh--pr-get-commenters (table &optional comments)
   "Get list of relevant users on a pull request.
@@ -4693,24 +4693,24 @@ Queries the user for how to filter the comments."
                             :sort nil)
         (':last-week
          (setq comments (cl-remove-if-not (lambda (k)
-                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time)) (make-decoded-time :day -7))) (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k)))))
+                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time) t) (make-decoded-time :day -7))) (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
                                           comments)))
         (':last-month
          (setq comments (cl-remove-if-not (lambda (k)
-                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time)) (make-decoded-time :day -30))) (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k)))))
+                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time) t) (make-decoded-time :day -30))) (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
                                           comments)))
         (':last-maxnum
          (setq comments (cl-subseq comments (max 0 (- (length comments) maxnum)))))
         (':date
          (let ((d (org-read-date nil t)))
            (setq comments (cl-remove-if-not (lambda (k)
-                                              (time-less-p d (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k)))))
+                                              (time-less-p d (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k)) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t))))))
                                             comments))))
         (':daterange
          (let ((begin-date (org-read-date nil t nil "Select Beginning"))
                (end-date (org-read-date nil t nil "Select End")))
            (setq comments (cl-remove-if-not (lambda (k)
-                                              (let ((date (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k)))))
+                                              (let ((date (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
                                                 (or (time-less-p begin-date date)
                                                     (time-less-p end-date ed))))
 
@@ -4740,15 +4740,15 @@ The optional argument URL, is the web url for the pull request on GitHub."
                                              authorAssociation))
                         (createdAt (or (gethash :updated_at comment)
                                        (gethash :created_at comment)
-                                       (gethash :submitted_at comment)))
+                                       (gethash :submitted_at comment)
+                                       (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))
                         (createdAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)))
                         (state (gethash :state comment))
                         (state (cond
                                 ((equal state "COMMENTED") (propertize "COMMENTED" 'face 'default))
                                 ((equal state "CHANGES_REQUESTED") (propertize "REQUESTED CHANGES" 'face 'consult-gh-warning-face))
-                                ((equal state "APPROVE") (propertize "APPROVED" 'face 'consult-gh-success-face))
-                                ((equal state "DRAFT") (propertize "CONVERTED to DRAFT" 'face 'consult-gh-issue-face))
-                                (t nil)))
+                                ((equal state "APPROVED") (propertize "APPROVED" 'face 'consult-gh-success-face))
+                                (t state)))
                         (oid (gethash :commit_id comment))
                         (diff (gethash :diff_hunk comment))
                         (path (gethash :path comment))
@@ -6354,7 +6354,7 @@ the buffer generated by `consult-gh-pr-review'."
                  (event (consult--read '(("Comment" . "COMMENT")
                                          ("Request Changes" . "REQUEST_CHANGES")
                                          ("Approve" . "APPROVE")
-                                         ("Draft" . nil))
+                                         ("Submit Review as Pending Draft" . nil))
                                        :prompt "Select Action: "
                                        :lookup #'consult--lookup-cdr
                                        :require-match t
