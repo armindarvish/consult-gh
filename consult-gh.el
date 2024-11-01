@@ -1618,6 +1618,13 @@ Passes the ARG \(e.g. a GitHub API URL\) to
 “gh api -H Accept:application/vnd.github+json” command."
   (consult-gh--call-process "api" "-H" "Accept: application/vnd.github+json" "--paginate" arg))
 
+(defun consult-gh--api-command-string (arg)
+  "Return the output of an api call with ARG.
+
+Passes the ARG \(e.g. a GitHub API URL\) to
+“gh api -H Accept:application/vnd.github+json” command."
+  (consult-gh--command-to-string "api" "-H" "Accept: application/vnd.github+json" "--paginate" arg))
+
 (defun consult-gh--json-to-hashtable (json &optional keys)
   "Convert a JSON object to a hash table.
 
@@ -4520,9 +4527,9 @@ Optional argument JSON, defaults to `consult-gh--pr-view-json-fields'."
 
 Retrives a list of comments and reviews for pull request stored in TABLE,
 a hash-table output from `consult-gh--pr-read-json'."
-  (let* ((comments (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/issues/%s/comments" repo number))))
-         (reviews (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/pulls/%s/reviews" repo number))))
-         (review-comments (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/pulls/%s/comments" repo number))))
+  (let* ((comments (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/issues/%s/comments" repo number))))
+         (reviews (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s/reviews" repo number))))
+         (review-comments (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s/comments" repo number))))
          (all-comments (append comments reviews review-comments)))
     (sort all-comments :key (lambda (k)
                               (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k))))))
@@ -4734,8 +4741,15 @@ The optional argument URL, is the web url for the pull request on GitHub."
                         (createdAt (or (gethash :updated_at comment)
                                        (gethash :created_at comment)
                                        (gethash :submitted_at comment)))
-                        (oid (gethash :commit_id comment))
                         (createdAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)))
+                        (state (gethash :state comment))
+                        (state (cond
+                                ((equal state "COMMENTED") (propertize "COMMENTED" 'face 'default))
+                                ((equal state "CHANGES_REQUESTED") (propertize "REQUESTED CHANGES" 'face 'consult-gh-warning-face))
+                                ((equal state "APPROVE") (propertize "APPROVED" 'face 'consult-gh-success-face))
+                                ((equal state "DRAFT") (propertize "CONVERTED to DRAFT" 'face 'consult-gh-issue-face))
+                                (t nil)))
+                        (oid (gethash :commit_id comment))
                         (diff (gethash :diff_hunk comment))
                         (path (gethash :path comment))
                         (diff-chunks (when (and (stringp diff) (stringp path))
@@ -4757,7 +4771,7 @@ The optional argument URL, is the web url for the pull request on GitHub."
                                                                       "[review-comment] ")
                                                                    (issue-url "[comment] ")
                                                                    (t "[review] "))
-                                                                                 author " "))
+                                                                                 author (and state (concat " " state))  " "))
                                                              (and authorAssociation (concat "(" authorAssociation ")"))
                                                              (and createdAt (concat (consult-gh--time-ago createdAt) " " createdAt))
                                                              "\n"
@@ -4980,7 +4994,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
 
 (defun consult-gh-topics--pr-get-forks (repo)
   "Get list of forks of REPO."
-  (let* ((table (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "repos/%s/forks" repo)))))
+  (let* ((table (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "repos/%s/forks" repo)))))
     (and (listp table)  (mapcar (lambda (item) (gethash :full_name item)) table))))
 
 (defun consult-gh-topics--pr-get-parent (repo)
@@ -5264,7 +5278,7 @@ This is used for changing ref branches in a pull requests."
                                         :require-match t
                                         :sort t)))
 
-        (while (equal (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/compare/%s...%s" baserepo (concat (consult-gh--get-username baserepo) ":" basebranch) (concat (consult-gh--get-username headrepo) ":" headbranch))) :status) "identical")
+        (while (equal (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/compare/%s...%s" baserepo (concat (consult-gh--get-username baserepo) ":" basebranch) (concat (consult-gh--get-username headrepo) ":" headbranch))) :status) "identical")
           (when (y-or-n-p "Do you want to select a different head branch?"
                           (setq headbranch (consult--read (cond
                                                            ((equal baserepo headrepo)
@@ -6598,7 +6612,7 @@ Description of Arguments:
           nil)
       (pcase target
         ((or "issue" "pr")
-          (consult-gh--command-to-string "api" (format "repos/%s/issues/%s/comments" repo number) "-f" (format "body=%s" comment)))
+          (consult-gh--api-command-string (format "repos/%s/issues/%s/comments" repo number) "-f" (format "body=%s" comment)))
         ("discussion"
          (message "Commenting on discussions is not supported, yet!")
          nil)))))
@@ -7066,7 +7080,7 @@ set `consult-gh-notificatios-action' to
 This is an internal action function that gets a notification candidate, CAND,
 from `consult-gh-notifications' and makrs it as read."
   (when-let ((thread (get-text-property 0 :thread cand)))
-    (when (consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH")
+    (when (consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH" "--paginate")
       (message "marked as read!"))))
 
 (defun consult-gh--notifications-unsubscribe (cand)
@@ -7075,7 +7089,7 @@ from `consult-gh-notifications' and makrs it as read."
 This is an internal action function that gets a notification candidate, CAND,
 from `consult-gh-notifications' and unsubscribes from the thread."
   (when-let ((thread (get-text-property 0 :thread cand)))
-    (when (consult-gh--command-to-string "api" "--method" "PUT" "-H" "Accept: application/vnd.github+json"  (format "/notifications/threads/%s/subscription" thread) "-F" "ignored=true")
+    (when (consult-gh--command-to-string "api" "--method" "PUT" "-H" "Accept: application/vnd.github+json" "--paginate" "-F" "ignored=true"(format "/notifications/threads/%s/subscription" thread))
       (message "Unsubscribed!"))))
 
 (defun consult-gh--notifications-subscribe (cand)
@@ -7084,7 +7098,7 @@ from `consult-gh-notifications' and unsubscribes from the thread."
 This is an internal action function that gets a notification candidate, CAND,
 from `consult-gh-notifications' and unsubscribes from the thread."
   (when-let ((thread (get-text-property 0 :thread cand)))
-    (when (consult-gh--command-to-string "api" "--method" "PUT" "-H" "Accept: application/vnd.github+json"  (format "/notifications/threads/%s/subscription" thread) "-F" "ignored=false")
+    (when (consult-gh--command-to-string "api" "--method" "PUT" "-H" "Accept: application/vnd.github+json" "--paginate" "-F" "ignored=false" (format "/notifications/threads/%s/subscription" thread))
       (message "Subscribed!"))))
 
 (defvar-keymap consult-gh-repo-view-mode-map
