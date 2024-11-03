@@ -68,7 +68,7 @@
     (let* ((org (get-text-property 0 :user cand)))
       (add-to-list 'consult-gh-favorite-orgs-list (format "%s" org)))))
 
-(make-obsolete #'consult-gh-embark-add-org-to-default-list #'consult-gh-embark-add-org-to-favorite-list "2.0")
+(define-obsolete-function-alias #'consult-gh-embark-add-org-to-default-list #'consult-gh-embark-add-org-to-favorite-list "2.0")
 
 (defun consult-gh-embark-remove-org-from-favorite-list (cand)
   "Remove CAND org from `consult-gh--known-orgs-list'."
@@ -76,7 +76,7 @@
     (let* ((org (get-text-property 0 :user cand)))
       (setq consult-gh-favorite-orgs-list (delete org consult-gh-favorite-orgs-list)))))
 
-(make-obsolete #'consult-gh-embark-remove-org-from-default-list #'consult-gh-embark-remove-org-from-favorite-list "2.0")
+(define-obsolete-function-alias #'consult-gh-embark-remove-org-from-default-list #'consult-gh-embark-remove-org-from-favorite-list "2.0")
 
 (defun consult-gh-embark-default-action (cand)
   "Open CAND link in an Emacs buffer."
