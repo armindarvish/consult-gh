@@ -62,17 +62,21 @@
     (let* ((org (get-text-property 0 :user cand)))
       (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list)))))
 
-(defun consult-gh-embark-add-org-to-default-list (cand)
+(defun consult-gh-embark-add-org-to-favorite-list (cand)
   "Add CAND org to `consult-gh--known-orgs-list'."
   (when (stringp cand)
     (let* ((org (get-text-property 0 :user cand)))
-      (add-to-list 'consult-gh-default-orgs-list (format "%s" org)))))
+      (add-to-list 'consult-gh-favorite-orgs-list (format "%s" org)))))
 
-(defun consult-gh-embark-remove-org-from-default-list (cand)
+(make-obsolete #'consult-gh-embark-add-org-to-default-list #'consult-gh-embark-add-org-to-favorite-list "2.0")
+
+(defun consult-gh-embark-remove-org-from-favorite-list (cand)
   "Remove CAND org from `consult-gh--known-orgs-list'."
   (when (stringp cand)
     (let* ((org (get-text-property 0 :user cand)))
-      (setq consult-gh-default-orgs-list (delete org consult-gh-default-orgs-list)))))
+      (setq consult-gh-favorite-orgs-list (delete org consult-gh-favorite-orgs-list)))))
+
+(make-obsolete #'consult-gh-embark-remove-org-from-default-list #'consult-gh-embark-remove-org-from-favorite-list "2.0")
 
 (defun consult-gh-embark-default-action (cand)
   "Open CAND link in an Emacs buffer."
@@ -524,8 +528,8 @@ CAND can be a repo, issue, PR, file path, ..."
   "b r k" #'consult-gh-embark-remove-repo-from-known-repos
   "b o o" #'consult-gh-embark-add-org-to-known-orgs
   "b o k" #'consult-gh-embark-remove-org-from-known-orgs
-  "b o d" #'consult-gh-embark-add-org-to-default-list
-  "b o D" #'consult-gh-embark-remove-org-from-default-list
+  "b o d" #'consult-gh-embark-add-org-to-favorite-list
+  "b o D" #'consult-gh-embark-remove-org-from-favorite-list
   "c i" #'consult-gh-embark-create-issue
   "c p" #'consult-gh-embark-create-pr
   "f f" #'consult-gh-embark-view-files-of-repo

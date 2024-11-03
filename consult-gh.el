@@ -408,12 +408,14 @@ issue/pr numbers or user names."
 
 (make-obsolete-variable 'consult-gh-preview-buffer-mode "Use `consult-gh-repo-preview-major-mode', or `consult-gh-issue-preview-major-mode' instead." "1.1")
 
-(defcustom consult-gh-default-orgs-list (list)
+(defcustom consult-gh-favorite-orgs-list (list)
   "List of default GitHub orgs.
 
 This can be a list of orgs or a function returning a list"
   :group 'consult-gh
   :type '(repeat (string :tag "GitHub Organization (i.e. Username)")))
+
+(make-obsolete 'consult-gh-default-orgs-list 'consult-gh-favorite-orgs-list "2.0")
 
 (defcustom consult-gh-preview-buffer-name "*consult-gh-preview*"
   "Default name for preview buffers."
@@ -893,7 +895,7 @@ Common options include:
   "Which command should `consult-gh' call?"
   :group 'consult-gh
   :type '(choice (function :tag "(Default) Search Rpositories"  consult-gh-search-repos)
-                 (function :tag "List default repos of user" consult-gh-default-repos)
+                 (function :tag "List default repos of user" consult-gh-favorite-repos)
                  (function :tag "Open transient menu" consult-gh-transient)
                  (function :tag "Other custom interactive command")))
 
@@ -7550,14 +7552,26 @@ If PROMPT is non-nil, use it as the query prompt."
       (funcall consult-gh-repo-action sel))))
 
 ;;;###autoload
-(defun consult-gh-default-repos ()
-  "List repositories of orgs in `consult-gh-default-orgs-list'.
+(defun consult-gh-user-repos (&optional user)
+  "List all repos for USER.
 
-Passes `consult-gh-default-orgs-list' to `consult-gh-orgs',
+This includes repos of orgs of USER. It uses
+`consult-gh--get-current-orgs' to get all
+orgs of USER."
+  (interactive)
+  (consult-gh-orgs (consult-gh--get-current-orgs t)))
+
+;;;###autoload
+(defun consult-gh-favorite-repos ()
+  "List repositories of orgs in `consult-gh-favorite-orgs-list'.
+
+Passes `consult-gh-favorite-orgs-list' to `consult-gh-orgs',
 a useful command for quickly fetching a list of personal GitHub Repositories
 or any other favorite accounts whose repositories are frequently visited."
   (interactive)
-  (consult-gh-orgs consult-gh-default-orgs-list))
+  (consult-gh-orgs consult-gh-favorite-orgs-list))
+
+(make-obsolete #'consult-gh-default-repos #'consult-gh-favorite-repos "2.0")
 
 ;;;###autoload
 (defun consult-gh-repo-fork (&optional repos)
