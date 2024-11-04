@@ -955,6 +955,9 @@ This is used in `consult-gh-notifications'.")
 (defvar consult-gh--files-history nil
   "History variable for files used in `consult-gh-find-file'.")
 
+(defvar consult-gh--current-user-orgs nil
+  "List of repos of current user.")
+
 (defvar consult-gh--known-orgs-list nil
   "List of previously visited orgs.")
 
@@ -1020,9 +1023,6 @@ This is used to change grouping dynamically.")
                                                         ("C-c C-k" . consult-gh-topics-cancel))
 
   "Keymap alist for `consult-gh-topics-edit-mode'.")
-
-(defvar consult-gh--current-user-orgs nil
-  "List of repos of current user.")
 
 ;;; Faces
 (defface consult-gh-success-face
