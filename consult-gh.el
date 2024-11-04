@@ -1021,6 +1021,9 @@ This is used to change grouping dynamically.")
 
   "Keymap alist for `consult-gh-topics-edit-mode'.")
 
+(defvar consult-gh--current-user-orgs nil
+  "List of repos of current user.")
+
 ;;; Faces
 (defface consult-gh-success-face
   `((t :inherit 'success))
@@ -1672,22 +1675,22 @@ If optional argument KEYS is non-nil, returns only the value of KEYS."
 Runs “gh api user” and returns the login field of json data."
   (consult-gh--json-to-hashtable (cadr (consult-gh--api-get-json "user")) :login))
 
-(defun consult-gh--get-current-orgs (&optional include-user)
-  "Get the organizations for currently logged in user.
+(defun consult-gh--get-current-user-orgs (&optional user include-user)
+  "Get the organizations for USER.
 
-Runs “gh api user/orgs” and returns the login field of json data.
-When INCLUDE-USER is non-nil, add the name of the user the list."
-  (let ((data (consult-gh--api-get-json "user/orgs")))
-    (if (eq (car data) 0)
-        (let ((table (consult-gh--json-to-hashtable (cadr data))))
-          (cond
-           ((listp table)
-            (append (mapcar (lambda (tab) (gethash :login tab)) table)
-                    (if include-user (list (consult-gh--get-current-username)))))
-           ((hash-table-p table)
-            (append (list (gethash :login table))
-                    (if include-user (list (consult-gh--get-current-username)))))
-           (t (if include-user (list (consult-gh--get-current-username)))))))))
+USER defaults to currently logged in user.
+When INCLUDE-USER is non-nil, add the name of the user to the list."
+  (when-let* ((data (if user  (consult-gh--api-get-json (format "users/%s/orgs" user)) (consult-gh--api-get-json "user/orgs")))
+              (table (when (eq (car data) 0)
+                       (consult-gh--json-to-hashtable (cadr data) :login)))
+              (user (or user (consult-gh--get-current-username))))
+    (cond
+     ((listp table)
+      (append table (if include-user (list user))))
+     ((stringp table)
+      (append (list table)
+              (if include-user (list user))))
+     (t (if include-user (list user))))))
 
 (defun consult-gh--get-gitignore-template-list ()
   "List name of .gitignore templates."
@@ -2405,7 +2408,7 @@ For interactive use see `consult-gh-auth-switch'."
   (let ((str (consult-gh--command-to-string "auth" "switch" "-h" host "-u" user)))
     (when (stringp str)
       (setq consult-gh--auth-current-account `(,user ,host t))
-      (run-hook-with-args 'consult-gh-auth-post-switch-hook host user)
+      (run-hook-with-args 'consult-gh-auth-post-switch-hook user host)
       (message str)))
   (message "%s" (concat (propertize "HOST" 'face 'warning) "and " (propertize "USER" 'face 'warning) "need to be provided as strings."))))
 
@@ -2420,6 +2423,15 @@ USERNAME and HOST default to `consult-gh--auth-current-account'."
         (string-match (format "Logged in to %s account %s \(.*\)\n.*Active account: true[[:ascii:][:nonascii:]]*?Token scopes: \\(?1:.+\\)?" host username) str)
       (let ((m (match-string 1 str)))
         (and (stringp m) (split-string m ", " t "['\s\n\t]"))))))
+
+(defun consult-gh--set-current-user-orgs (&rest _args)
+  "Set `consult-gh--user-repos' to list of repos for current user."
+  (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)))
+
+(consult-gh--set-current-user-orgs)
+
+;; add hook to set user orgs after switching accounts
+(add-hook 'consult-gh-auth-post-switch-hook #'consult-gh--set-current-user-orgs)
 
 (defun consult-gh--files-get-branches (repo)
   "List branches of REPO, in json format.
@@ -3145,7 +3157,7 @@ Description of Arguments:
  GITIGNORE-TEMPLATE name of gitignore template
  LICENSE-KEY        key for license template"
   (let* ((name (or name (read-string "Repository name: ")))
-         (owner (or owner (consult--read (consult-gh--get-current-orgs t)
+         (owner (or owner (consult--read (consult-gh--get-current-user-orgs nil t)
                                          :prompt "Repository owner: "
                                          :initial nil
                                          :sort nil
@@ -3208,7 +3220,7 @@ Description of Arguments:
  VISIBILITY  private|public|internal
  TEMPLATE    Full name of template repo \(e.g. user/repo\)"
   (let* ((name (or name (read-string "Repository name: ")))
-         (owner (or owner (consult--read (consult-gh--get-current-orgs t)
+         (owner (or owner (consult--read (consult-gh--get-current-user-orgs nil t)
                                          :prompt "Repository owner: "
                                          :initial nil
                                          :sort nil
@@ -3274,7 +3286,7 @@ Description of arguments:
     (cond
      (directory
       (let* ((name (or name (read-string "Repository name: " (file-name-nondirectory (string-trim-right directory "/")))))
-             (owner (or owner (consult--read (consult-gh--get-current-orgs t)
+             (owner (or owner (consult--read (consult-gh--get-current-user-orgs nil t)
                                              :prompt "Repository owner: "
                                              :initial nil
                                              :sort nil
@@ -7556,10 +7568,12 @@ If PROMPT is non-nil, use it as the query prompt."
   "List all repos for USER.
 
 This includes repos of orgs of USER. It uses
-`consult-gh--get-current-orgs' to get all
+`consult-gh--get-current-user-orgs' to get all
 orgs of USER."
   (interactive)
-  (consult-gh-orgs (consult-gh--get-current-orgs t)))
+  (if user
+      (consult-gh-orgs (consult-gh--get-current-user-orgs user t))
+    (consult-gh-orgs (or consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)))))
 
 ;;;###autoload
 (defun consult-gh-favorite-repos ()
