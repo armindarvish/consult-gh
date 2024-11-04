@@ -1789,10 +1789,10 @@ Runs “gh api user” and returns the login field of json data."
 
 USER defaults to currently logged in user.
 When INCLUDE-USER is non-nil, add the name of the user to the list."
-  (when-let* ((data (if user  (consult-gh--api-get-json (format "users/%s/orgs" user)) (consult-gh--api-get-json "user/orgs")))
-              (table (when (eq (car data) 0)
-                       (consult-gh--json-to-hashtable (cadr data) :login)))
-              (user (or user (consult-gh--get-current-username))))
+  (let* ((data (if user (consult-gh--api-get-json (format "users/%s/orgs" user)) (consult-gh--api-get-json "user/orgs")))
+         (table (when (eq (car data) 0)
+                  (consult-gh--json-to-hashtable (cadr data) :login)))
+         (user (or user (consult-gh--get-current-username))))
     (cond
      ((listp table)
       (append table (if include-user (list user))))
