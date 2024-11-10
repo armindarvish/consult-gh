@@ -367,6 +367,22 @@ default behavior of `ghub--host' to allow using
         (funcall consult-gh-switch-to-buffer-func (funcall func reponame number)))
       (message "There is no Github Pullrequest at point!"))))
 
+;;;###autoload
+(defun consult-gh-topics-open-in-forge (&optional topic)
+  "Open the consult-gh TOPIC in forge."
+  (interactive nil consult-gh-pr-view-mode consult-gh-issue-view-mode)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((topic (or topic consult-gh--topic))
+          (type (and (stringp topic) (get-text-property 0 :type topic)))
+          (repo (and (stringp topic) (get-text-property 0 :repo topic)))
+          (number (and (stringp topic) (get-text-property 0 :number topic))))
+          (pcase type
+            ("issue"
+             (consult-gh-forge--issue-view repo number))
+            ("pr"
+             (consult-gh-forge--pr-view repo number))))))
+
 ;;; Provide `consult-gh-forge' module
 
 (provide 'consult-gh-forge)
