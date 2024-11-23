@@ -1725,12 +1725,12 @@ Passes the ARG \(e.g. a GitHub API URL\) to
 #+end_src
 ***** api command string
 #+begin_src emacs-lisp
-(defun consult-gh--api-command-string (arg)
-  "Return the output of an api call with ARG.
+(defun consult-gh--api-command-string (url &rest args)
+  "Return the output of an api call to URL with ARGS.
 
-Passes the ARG \(e.g. a GitHub API URL\) to
-“gh api -H Accept:application/vnd.github+json” command."
-  (consult-gh--command-to-string "api" "-H" "Accept: application/vnd.github+json" "--paginate" arg))
+Passes the ARGS to a GitHub API URL using
+“gh api -H Accept:application/vnd.github+json URL ARGS” command."
+  (apply #'consult-gh--command-to-string "api" "-H" "Accept: application/vnd.github+json" "--paginate" url args))
 #+end_src
 ***** json to table conversion
 #+begin_src emacs-lisp

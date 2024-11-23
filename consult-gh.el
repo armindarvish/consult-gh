@@ -1623,12 +1623,12 @@ Passes the ARG \(e.g. a GitHub API URL\) to
 “gh api -H Accept:application/vnd.github+json” command."
   (consult-gh--call-process "api" "-H" "Accept: application/vnd.github+json" "--paginate" arg))
 
-(defun consult-gh--api-command-string (arg)
-  "Return the output of an api call with ARG.
+(defun consult-gh--api-command-string (url &rest args)
+  "Return the output of an api call to URL with ARGS.
 
-Passes the ARG \(e.g. a GitHub API URL\) to
-“gh api -H Accept:application/vnd.github+json” command."
-  (consult-gh--command-to-string "api" "-H" "Accept: application/vnd.github+json" "--paginate" arg))
+Passes the ARGS to a GitHub API URL using
+“gh api -H Accept:application/vnd.github+json URL ARGS” command."
+  (apply #'consult-gh--command-to-string "api" "-H" "Accept: application/vnd.github+json" "--paginate" url args))
 
 (defun consult-gh--json-to-hashtable (json &optional keys)
   "Convert a JSON object to a hash table.
