@@ -1893,7 +1893,8 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
         (progn
           (require 'markdown-mode nil t)
           (markdown-mode)
-          (markdown-display-inline-images))
+          (if (display-images-p)
+              (markdown-display-inline-images)))
       (normal-mode))
     nil))
 
@@ -2475,7 +2476,8 @@ see `consult-gh--issue-view-action'."
          (if (featurep 'markdown-mode)
              (progn
                (markdown-mode)
-               (markdown-display-inline-images))
+               (if (display-images-p)
+                   (markdown-display-inline-images)))
            (message "markdown-mode not available")))
         ('org-mode
          (let ((org-display-remote-inline-images 'download))
@@ -2714,7 +2716,8 @@ see `consult-gh--pr-view-action'."
          (if (featurep 'markdown-mode)
              (progn
                (markdown-mode)
-               (markdown-display-inline-images))
+               (if (display-images-p)
+                   (markdown-display-inline-images)))
            (message "markdown-mode not available")))
         ('org-mode
          (let ((org-display-remote-inline-images 'download))
