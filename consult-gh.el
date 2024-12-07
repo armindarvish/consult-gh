@@ -1430,12 +1430,13 @@ It returns strings like “1 year ago”, “30 minutes ago”."
 When optional arguments BEG and END are no-nil, limit the search between
 BEG and END positions."
   (with-current-buffer (or buffer (current-buffer))
+    (unless  (= (buffer-size buffer) 0)
     (save-excursion
       (goto-char (or beg (point-min)))
       (let* ((regions nil)
              (begin (point))
              (isProp (get-text-property (point) prop)))
-        (while-let ((next (and (< begin (or end (point-max))) (next-single-property-change  begin prop nil end))))
+        (while-let ((next (and (< begin (or end (point-max))) (next-single-property-change begin prop nil end))))
           (goto-char next)
           (when (and (get-text-property (- (point) 1) prop) isProp)
             (push (cons (set-marker (make-marker) begin) (point-marker)) regions))
@@ -1444,7 +1445,7 @@ BEG and END positions."
         (goto-char (or end (point-max)))
         (when (and (get-text-property (- (point) 1) prop) isProp)
           (push (cons (set-marker (make-marker) begin) (point-marker)) regions))
-        (nreverse regions)))))
+        (nreverse regions))))))
 
 (defun consult-gh--delete-region-with-prop (prop &optional buffer beg end)
   "Remove any text with property PROP from BUFFER.
