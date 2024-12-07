@@ -2906,7 +2906,8 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
     (insert readme)
     (set-buffer-modified-p nil)
     (markdown-mode)
-    (markdown-display-inline-images)
+    (when (display-images-p)
+      (markdown-display-inline-images))
     (set-buffer-modified-p nil))
   nil))
 
@@ -3726,7 +3727,6 @@ see `consult-gh--issue-view-action'."
          (title (string-trim-left title "title: "))
          (body-text (consult-gh--issue-format-body table topic))
          (comments-text (unless preview (consult-gh--issue-format-comments comments repo number topic))))
-
     (unless preview
       ;; collect issues of repo for completion at point
       (consult-gh--completion-set-issues topic repo)
@@ -3764,10 +3764,12 @@ see `consult-gh--issue-view-action'."
         (pcase consult-gh-issue-preview-major-mode
           ('gfm-mode
            (gfm-mode)
-           (markdown-display-inline-images))
+           (when (display-images-p)
+             (markdown-display-inline-images))))
           ('markdown-mode
            (markdown-mode)
-           (markdown-display-inline-images))
+           (when (display-images-p)
+             (markdown-display-inline-images)))
           ('org-mode
            (let ((org-display-remote-inline-images 'download))
              (consult-gh--markdown-to-org)))
@@ -3782,7 +3784,7 @@ see `consult-gh--issue-view-action'."
         (outline-hide-sublevels 1)
         (consult-gh-issue-view-mode +1)
         (setq-local consult-gh--topic topic)
-        (current-buffer)))))
+        (current-buffer))))
 
 (defun consult-gh--issue-view-action (cand)
   "Open the preview of an issue candidate, CAND.
@@ -4930,10 +4932,12 @@ To use this as the default action for PRs, see
            (pcase consult-gh-issue-preview-major-mode
              ('gfm-mode
               (gfm-mode)
-              (markdown-display-inline-images))
+              (when (display-images-p)
+                (markdown-display-inline-images)))
              ('markdown-mode
               (markdown-mode)
-              (markdown-display-inline-images))
+              (when (display-images-p)
+                (markdown-display-inline-images)))
              ('org-mode
               (let ((org-display-remote-inline-images 'download))
                 (consult-gh--markdown-to-org buffer)))
