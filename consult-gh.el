@@ -1629,7 +1629,8 @@ Passes the ARG \(e.g. a GitHub API URL\) to
 
 Passes the ARGS to a GitHub API URL using
 “gh api -H Accept:application/vnd.github+json URL ARGS” command."
-  (apply #'consult-gh--command-to-string "api" "-H" "Accept: application/vnd.github+json" "--paginate" url args))
+  (let ((args (append `("api" "-H" "Accept: application/vnd.github+json" "--paginate" ,url) (if (listp args) args (list args)))))
+  (apply #'consult-gh--command-to-string args)))
 
 (defun consult-gh--json-to-hashtable (json &optional keys)
   "Convert a JSON object to a hash table.
