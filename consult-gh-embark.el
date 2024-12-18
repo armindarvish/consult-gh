@@ -131,9 +131,9 @@
            (number (get-text-property 0 :number cand))
            (path (get-text-property 0 :path cand))
            (title (pcase class
-                    ("file" or "code"
+                    ((or "file" "code")
                      (format ("#%s" path)))
-                    ("issue" or "pr"
+                    ((or "issue" "pr")
                      (format ("#%s: %s" number title)))
                     (_ (format "%s" repo)))))
       (string-trim title))))
@@ -533,7 +533,7 @@ CAND can be a repo, issue, PR, file path, ..."
   "c i" #'consult-gh-embark-create-issue
   "c p" #'consult-gh-embark-create-pr
   "f f" #'consult-gh-embark-view-files-of-repo
-  "i t"  #'consult-gh-embark-insert-title
+  "i t" #'consult-gh-embark-insert-title
   "i u" #'consult-gh-embark-insert-url-link
   "l h" #'consult-gh-embark-copy-https-link-as-kill
   "l s" #'consult-gh-embark-copy-ssh-link-as-kill
