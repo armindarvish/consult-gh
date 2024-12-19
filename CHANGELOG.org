@@ -3,11 +3,13 @@
 #+language: en
 
 * Development
-- Package is now on MELPA
+
+* Version 2.0 (2024-12-18)
 - Adds support for switching accounts (multi-account)
 - Adds support for alternative hosts (e.g. GitHub Enterprise)
-- Adds support for a minimal setup for adding comments to issues/PRs without the forge package
-- Adds support for creating repositories from within emacs (e.g. support  =gh repo create=)
+- Adds built-in support for adding comments to issues/PRs without the forge package
+- Adds built-in support for code review (comments on PRs, comments on code lines in a PR, ...)
+- Adds support for creating repositories, issues or pull requests from within emacs (e.g. support  =gh repo create=)
 - Introduces minor modes:
    =consult-gh-embark-mode=: for enabling/disabling embark actions
    =consult-gh-forge-mode=: for enabling/diabling forge integration
@@ -18,7 +20,7 @@
 - Improves file browsing (reusing downloaded files)
 - Cleans up the code to removes unnecessary redundancy
 - Cleans up the code (for MELPA compatibility)
-
+- Package is now on MELPA
 
 * Version 1.0 (2024-07-28)
 
