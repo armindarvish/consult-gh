@@ -306,7 +306,7 @@ default behavior of `ghub--username' to allow using
 `consult-gh' user name instead if the user chooses to."
 
   (let ((ghub-user (cl-call-next-method))
-        (consult-gh-user (or (car-safe (consult-gh--auth-current-active-account (if (equal host "api.github.com") "github.com" (or host consult-gh-default-host)))) (car-safe consult-gh--auth-current-account))))
+        (consult-gh-user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account (if (equal host "api.github.com") "github.com" (or host consult-gh-default-host)))))))
     (cond
      ((equal ghub-user consult-gh-user) ghub-user)
      (t
@@ -347,6 +347,41 @@ default behavior of `ghub--host' to allow using
         (if (and host (not (string-empty-p host))) host
           (cl-call-next-method)))))))
 
+
+;;;###autoload
+(defun consult-gh-forge-open-topic-in-consult-gh ()
+  "Open the  forge at point with `consult-gh--pr-view'."
+  (interactive nil magit-mode forge-topic-mode)
+  (let* ((topic (or (forge-pullreq-at-point) (forge-current-topic)))
+         (_ (unless topic (error "Not on a forge issue or pullrequest!")))
+         (repo    (forge-get-repository topic))
+         (func (cond ((forge-pullreq-p topic) #'consult-gh--pr-view)
+                     ((forge-issue-p topic) #'consult-gh--issue-view))))
+    (if (forge-github-repository-p repo)
+          (when-let* ((owner (oref repo owner))
+                     (name (oref repo name))
+                     (reponame (concat owner "/" name))
+                     (number (oref topic number))
+                     (number (cond ((numberp number) (number-to-string number))
+                                   ((stringp number) number))))
+        (funcall consult-gh-switch-to-buffer-func (funcall func reponame number)))
+      (message "There is no Github Pullrequest at point!"))))
+
+;;;###autoload
+(defun consult-gh-topics-open-in-forge (&optional topic)
+  "Open the consult-gh TOPIC in forge."
+  (interactive nil consult-gh-pr-view-mode consult-gh-issue-view-mode)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((topic (or topic consult-gh--topic))
+          (type (and (stringp topic) (get-text-property 0 :type topic)))
+          (repo (and (stringp topic) (get-text-property 0 :repo topic)))
+          (number (and (stringp topic) (get-text-property 0 :number topic))))
+          (pcase type
+            ("issue"
+             (consult-gh-forge--issue-view repo number))
+            ("pr"
+             (consult-gh-forge--pr-view repo number))))))
 
 ;;; Provide `consult-gh-forge' module
 
