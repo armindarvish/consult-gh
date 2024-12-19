@@ -329,7 +329,7 @@ The possible options are “open”, “closed”, “merged”, or “all”."
                  (const :tag "Show closed pull requests only" "closed")
                  (const :tag "Show all pull requests" "all")))
 
-(defcustom consult-gh-prs-show-commtis-in-view t
+(defcustom consult-gh-prs-show-commits-in-view t
   "Whether to include all commits in `consult-gh--pr-view'?
 
 Not including all commits make viewing long PRs faster."
@@ -5468,7 +5468,7 @@ To use this as the default action for PRs, see
           (diff (consult-gh--command-to-string "pr" "diff" number "--repo" repo))
           (chunks (when (and diff (stringp diff)) (consult-gh--parse-diff diff)))
           (diff-text (when (and chunks (listp chunks)) (consult-gh--pr-format-diffs chunks repo number latest-commit 1 (format "%s/commits/%s" url latest-commit) preview)))
-          (commits (when consult-gh-prs-show-commtis-in-view
+          (commits (when consult-gh-prs-show-commits-in-view
                      (gethash :commits table)))
           (commits-text (when (and commits (listp commits)) (consult-gh--pr-format-commits commits repo number url preview))))
 
