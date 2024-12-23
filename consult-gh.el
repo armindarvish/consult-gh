@@ -5957,7 +5957,7 @@ ADMIN is a boolean, determining whether the commit message is for a merge
        (':commit
         (consult-gh-pr--merge-create-commit pr "merge" auto admin))
        (':submit
-        (and (y-or-n-p "This will merge the pull reqeust on GitHub.  Do you want to continue??")
+        (and (y-or-n-p "This will merge the pull reqeust on GitHub.  Do you want to continue?")
              (consult-gh-pr--merge-submit pr :merge t :auto auto :admin admin)))))
     (':rebase
      (and (y-or-n-p "This will merge the pull reqeust with a rebase commit on GitHub.  Do you want to continue?")
