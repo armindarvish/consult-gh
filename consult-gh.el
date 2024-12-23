@@ -3766,7 +3766,7 @@ see `consult-gh--issue-view-action'."
           ('gfm-mode
            (gfm-mode)
            (when (display-images-p)
-             (markdown-display-inline-images))))
+             (markdown-display-inline-images)))
           ('markdown-mode
            (markdown-mode)
            (when (display-images-p)
@@ -3774,7 +3774,7 @@ see `consult-gh--issue-view-action'."
           ('org-mode
            (let ((org-display-remote-inline-images 'download))
              (consult-gh--markdown-to-org)))
-          (-
+          (_
            (consult-gh--markdown-to-org-emphasis)
            (outline-mode)))
         (set-buffer-file-coding-system 'unix)
@@ -3785,7 +3785,7 @@ see `consult-gh--issue-view-action'."
         (outline-hide-sublevels 1)
         (consult-gh-issue-view-mode +1)
         (setq-local consult-gh--topic topic)
-        (current-buffer))))
+        (current-buffer)))))
 
 (defun consult-gh--issue-view-action (cand)
   "Open the preview of an issue candidate, CAND.
@@ -5957,7 +5957,7 @@ ADMIN is a boolean, determining whether the commit message is for a merge
        (':commit
         (consult-gh-pr--merge-create-commit pr "merge" auto admin))
        (':submit
-        (and (y-or-n-p "This will merge the pull reqeust on GitHub.  Do you want to continue??")
+        (and (y-or-n-p "This will merge the pull reqeust on GitHub.  Do you want to continue?")
              (consult-gh-pr--merge-submit pr :merge t :auto auto :admin admin)))))
     (':rebase
      (and (y-or-n-p "This will merge the pull reqeust with a rebase commit on GitHub.  Do you want to continue?")
