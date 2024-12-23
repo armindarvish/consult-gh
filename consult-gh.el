@@ -7397,7 +7397,7 @@ see `consult-grep' and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
   (if current-prefix-arg
-      (setq initial (or initial (format "%s" (car (string-split (car (consult-gh-search-repos initial t)) "/"))))))
+      (setq initial (or initial (consult-gh--get-username (substring-no-properties (get-text-property 0 :repo  (consult-gh-search-repos initial t)))))))
   (let* ((prompt (or prompt "Enter Org Name:  "))
          (sel (consult-gh--async-repo-list prompt #'consult-gh--repo-list-builder initial)))
     ;;add org and repo to known lists
@@ -7789,7 +7789,7 @@ and the official manual of consult, here:
 URL `https://github.com/minad/consult'"
   (interactive)
   (if current-prefix-arg
-      (setq initial (or initial (format "%s" (car (consult-gh-search-repos initial t))))))
+      (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-issue-list prompt #'consult-gh--issue-list-builder initial)))
     ;;add org and repo to known lists
@@ -8416,7 +8416,7 @@ and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
   (if current-prefix-arg
-      (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
+      (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
   (let* ((prompt (or prompt "Search Issues:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-issues prompt #'consult-gh--search-issues-builder initial)))
@@ -8548,7 +8548,7 @@ and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
   (if current-prefix-arg
-      (setq initial (or initial (format "%s" (car (consult-gh-search-repos initial t))))))
+      (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
          (sel (consult-gh--async-pr-list prompt #'consult-gh--pr-list-builder initial)))
     ;;add org and repo to known lists
@@ -9214,7 +9214,7 @@ and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
   (if current-prefix-arg
-      (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
+      (setq repo (or repo (substring-no-properties (get-text-property 0 :repo  (consult-gh-search-repos repo t))))))
   (let* ((prompt (or prompt "Search Pull-Requests:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-prs prompt #'consult-gh--search-prs-builder initial)))
@@ -9337,7 +9337,7 @@ URL `https://github.com/minad/consult'."
   (setq consult-gh--open-files-list nil
         consult-gh--current-tempdir (consult-gh--tempdir))
   (if current-prefix-arg
-      (setq repo (or repo (substring-no-properties (car (consult-gh-search-repos repo t))))))
+      (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
   (let* ((prompt (or prompt "Search Code:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-code prompt #'consult-gh--search-code-builder initial)))
