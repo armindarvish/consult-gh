@@ -1,5 +1,5 @@
 #+title: consult-gh - Changelog
-#+author: Armin DArvish
+#+author: Armin Darvish
 #+language: en
 
 * Development
