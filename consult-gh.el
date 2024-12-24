@@ -899,6 +899,19 @@ Common options include:
                  (function :tag "Open transient menu" consult-gh-transient)
                  (function :tag "Other custom interactive command")))
 
+
+(defcustom consult-gh-use-search-to-find-name nil
+  "Whether to use `consult-gh-search-repos' to find repo name.
+
+If this is set to non-nil, consult-gh calls `cosnult-gh-search-repos'
+to get the repo name before runing `consult-gh-issue-list',
+`consult-gh-pr-list', etc.
+
+This is useful if you do not remember package names and want to do a
+search first."
+  :group 'consult-gh
+  :type 'boolean)
+
 ;;; Other Variables
 (defvar consult-gh-category 'consult-gh
   "Category symbol for the `consult-gh' package.")
@@ -7396,7 +7409,7 @@ For more details on consult--async functionalities,
 see `consult-grep' and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
-  (if current-prefix-arg
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (consult-gh--get-username (substring-no-properties (get-text-property 0 :repo  (consult-gh-search-repos initial t)))))))
   (let* ((prompt (or prompt "Enter Org Name:  "))
          (sel (consult-gh--async-repo-list prompt #'consult-gh--repo-list-builder initial)))
@@ -7788,7 +7801,7 @@ For more details on consult--async functionalities, see `consult-grep'
 and the official manual of consult, here:
 URL `https://github.com/minad/consult'"
   (interactive)
-  (if current-prefix-arg
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-issue-list prompt #'consult-gh--issue-list-builder initial)))
@@ -8415,7 +8428,7 @@ For more details on consult--async functionalities, see `consult-grep'
 and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
-  (if current-prefix-arg
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
   (let* ((prompt (or prompt "Search Issues:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
@@ -8547,7 +8560,7 @@ For more details on consult--async functionalities, see `consult-grep'
 and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
-  (if current-prefix-arg
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
          (sel (consult-gh--async-pr-list prompt #'consult-gh--pr-list-builder initial)))
@@ -9213,7 +9226,7 @@ For more details on consult--async functionalities, see `consult-grep'
 and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
-  (if current-prefix-arg
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo  (consult-gh-search-repos repo t))))))
   (let* ((prompt (or prompt "Search Pull-Requests:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
@@ -9336,7 +9349,7 @@ URL `https://github.com/minad/consult'."
   (interactive)
   (setq consult-gh--open-files-list nil
         consult-gh--current-tempdir (consult-gh--tempdir))
-  (if current-prefix-arg
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
   (let* ((prompt (or prompt "Search Code:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
