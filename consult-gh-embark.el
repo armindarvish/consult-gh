@@ -579,8 +579,6 @@ CAND can be a repo, issue, PR, file path, ..."
   "g P" #'consult-gh-embark-toggle-issue-pin
   "g T" #'consult-gh-embark-transfer-issue)
 
-
-
 (defvar-keymap consult-gh-embark-prs-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map

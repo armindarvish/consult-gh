@@ -240,12 +240,9 @@ In the screenshots below,  I am generally using vanilla Emacs and a minimal conf
   (consult-gh-dashboard-action #'consult-gh--dashboard-action) ;;open dashbaord items using default actions for issue/pr
   (consult-gh-default-interactive-command #'consult-gh-transient)
   :config
-  ;; set default org list
-  (setq consult-gh-default-orgs-list (consult-gh--get-current-orgs t))
-  ;; add a hook to update default org ist after switching accounts
-  (add-hook 'consult-gh-auth-post-switch-hook (lambda (&rest args)
-                                                (setq consult-gh-default-orgs-list
-                                                      (consult-gh--get-current-orgs t))))
+  ;; optionally set favorite orgs
+  ;; (setq consult-gh-favorite-orgs-list '("minad" "oantolin" "karthink" "alphapapa" "systemcrafters"))
+
   (add-to-list 'savehist-additional-variables 'consult-gh--known-orgs-list) ;;keep record of searched orgs
   (add-to-list 'savehist-additional-variables 'consult-gh--known-repos-list) ;;keep record of searched repos
   )
@@ -362,7 +359,7 @@ Here is a screenshot showing making anew repository from scratch:
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-repo-create.gif]]
 
 
-*Pro Tip*: Consider using =consult-gh-repo-create= as your default function for defining new projects in other workflows for example with =projectile= or =project.el=. I personally use [[https://github.com/armindarvish/consult-omni][consult-omni]]'s =consult-omni-projects= for finding and switching to projects and I have customized that package to =consult-gh-repo-create= for making new projects. This way every time I make a new package it automatically is put on my GitHub as well without me having to think about it!
+*Pro Tip*: Consider using =consult-gh-repo-create= as your default function for defining new projects in other workflows for example with =projectile= or =project.el=. I personally use [[https://github.com/armindarvish/consult-omni][consult-omni]]'s =consult-omni-projects= for finding and switching to projects and I have customized that package to use =consult-gh-repo-create= for making new projects. This way every time I make a new package it is automatically put on my GitHub as well without me having to think about it!
 
 Similarly you can use =consult-gh-issue-create= or =consult-gh-pr-create= to create new issues or pull requests.
 
