@@ -3486,7 +3486,7 @@ ARGS are ignored."
                                             (message "repo %s was cloned to %s" (propertize ,repo 'face 'font-lock-keyword-face) (propertize (expand-file-name ,name ,targetdir) 'face 'font-lock-type-face)))))
                             :cmd-args (list "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))))
     (let ((inhibit-message t))
-       (expand-file-name ,name ,targetdir)))
+       (expand-file-name name targetdir)))
 #+end_src
 ******** clone action
 #+begin_src emacs-lisp
