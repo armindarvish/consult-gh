@@ -3097,7 +3097,7 @@ ARGS are ignored."
                                             (message "repo %s was cloned to %s" (propertize ,repo 'face 'font-lock-keyword-face) (propertize (expand-file-name ,name ,targetdir) 'face 'font-lock-type-face)))))
                             :cmd-args (list "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))))
     (let ((inhibit-message t))
-       (expand-file-name ,name ,targetdir)))
+       (expand-file-name name targetdir)))
 
 (defun consult-gh--repo-clone-action (cand)
   "Clones a repo candidate, CAND.
