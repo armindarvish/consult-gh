@@ -4,6 +4,10 @@
 
 * Development
 
+* Vesrion 2.1 (2025-01-07)
+- Fixes bugs/issues in v2.0 (issues #178, #183, ...)
+- Listing commands like issue-list now have a customization option to chasnge the effect of c-u prefix (see issue #175)
+
 * Version 2.0 (2024-12-18)
 - Adds support for switching accounts (multi-account)
 - Adds support for alternative hosts (e.g. GitHub Enterprise)
