@@ -13,7 +13,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.0
-;; Package-Requires: ((emacs "29.1") (consult "1.0") (markdown-mode "2.6") (ox-gfm "1.0"))
+;; Package-Requires: ((emacs "30.0") (consult "1.0") (markdown-mode "2.6") (ox-gfm "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
@@ -11119,7 +11119,7 @@ and passes ARGS to it."
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.0
-;; Package-Requires: ((emacs "29.1") (consult-gh "2.0") (embark-consult "1.1"))
+;; Package-Requires: ((emacs "30.0") (consult-gh "2.0") (embark-consult "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -11792,7 +11792,7 @@ CAND can be a repo, issue, PR, file path, ..."
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.0
-;; Package-Requires: ((emacs "29.1") (consult "1.0") (forge "0.3.3") (consult-gh "2.0"))
+;; Package-Requires: ((emacs "30.0") (consult "1.0") (forge "0.3.3") (consult-gh "2.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
