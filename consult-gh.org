@@ -8566,7 +8566,7 @@ or any other favorite accounts whose repositories are frequently visited."
   (interactive)
   (consult-gh-orgs consult-gh-favorite-orgs-list))
 
-(define-obsolete-function-alias #'consult-gh-default-repos #'consult-gh-favorite-repos "2.0")
+(define-obsolete-function-alias 'consult-gh-default-repos #'consult-gh-favorite-repos "2.0")
 #+end_src
 **** consult-gh-repo-fork
 ****** interactive command
@@ -11186,7 +11186,7 @@ This section includes additional useful embark actions as well as possible keyma
     (let* ((org (get-text-property 0 :user cand)))
       (add-to-list 'consult-gh-favorite-orgs-list (format "%s" org)))))
 
-(define-obsolete-function-alias #'consult-gh-embark-add-org-to-default-list #'consult-gh-embark-add-org-to-favorite-list "2.0")
+(define-obsolete-function-alias 'consult-gh-embark-add-org-to-default-list #'consult-gh-embark-add-org-to-favorite-list "2.0")
 
 (defun consult-gh-embark-remove-org-from-favorite-list (cand)
   "Remove CAND org from `consult-gh--known-orgs-list'."
@@ -11194,7 +11194,7 @@ This section includes additional useful embark actions as well as possible keyma
     (let* ((org (get-text-property 0 :user cand)))
       (setq consult-gh-favorite-orgs-list (delete org consult-gh-favorite-orgs-list)))))
 
-(define-obsolete-function-alias #'consult-gh-embark-remove-org-from-default-list #'consult-gh-embark-remove-org-from-favorite-list "2.0")
+(define-obsolete-function-alias 'consult-gh-embark-remove-org-from-default-list #'consult-gh-embark-remove-org-from-favorite-list "2.0")
 
 (defun consult-gh-embark-default-action (cand)
   "Open CAND link in an Emacs buffer."
@@ -11234,7 +11234,7 @@ This section includes additional useful embark actions as well as possible keyma
          ("file"
           (funcall (consult-gh--file-state) 'preview cand))
          ("notification"
-          (funcall (consult-gh--notification-state) 'preview cand))
+          (funcall (consult-gh--notifications-state) 'preview cand))
          ("dashboard"
           (funcall (consult-gh--dashboard-state) 'preview cand))
          (_
@@ -11601,8 +11601,8 @@ CAND can be a repo, issue, PR, file path, ..."
                (state (when (and repo number)
                   (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s" repo number)) :locked))))
      (if (eq state 't)
-         (funcall #'consult-gh-issue-unlock cand)
-       (funcall #'consult-gh-issue-lock cand))))))
+         (funcall #'consult-gh-pr-unlock cand)
+       (funcall #'consult-gh-pr-lock cand))))))
 
 (defun consult-gh-embark-toggle-pr-draft (cand)
   "Toggle the pull request in CAND as draft/ready"
@@ -11614,8 +11614,8 @@ CAND can be a repo, issue, PR, file path, ..."
          (state (when (and repo number)
                   (consult-gh--json-to-hashtable  (consult-gh--command-to-string "pr" "view" number "--repo" repo "--json" "isDraft") :isDraft))))
      (if (eq state 't)
-         (funcall #'consult-gh-issue-mark-ready cand)
-       (funcall #'consult-gh-issue-mark-draft cand))))))
+         (funcall #'consult-gh-pr-mark-ready cand)
+       (funcall #'consult-gh-pr-mark-draft cand))))))
 
 
 (defun consult-gh-embark-toggle-notification-read (cand)
