@@ -7604,7 +7604,7 @@ or any other favorite accounts whose repositories are frequently visited."
   (interactive)
   (consult-gh-orgs consult-gh-favorite-orgs-list))
 
-(define-obsolete-function-alias #'consult-gh-default-repos #'consult-gh-favorite-repos "2.0")
+(define-obsolete-function-alias 'consult-gh-default-repos #'consult-gh-favorite-repos "2.0")
 
 ;;;###autoload
 (defun consult-gh-repo-fork (&optional repos)
