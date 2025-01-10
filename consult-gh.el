@@ -1507,8 +1507,8 @@ Splits the difference and returns a list where:
   (cond
    ((and (listp new) (listp old) (not (equal new old)))
    (list
-    (seq-difference new old)
-    (seq-difference old new)))
+    (seq-uniq (seq-difference new old))
+    (seq-uniq (seq-difference old new))))
    (t
     (list nil nil))))
 
