@@ -13,7 +13,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.0
-;; Package-Requires: ((emacs "30.0") (consult "1.0") (markdown-mode "2.6") (ox-gfm "1.0"))
+;; Package-Requires: ((emacs "30.0") (consult "1.9") (markdown-mode "2.6") (ox-gfm "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
@@ -11783,7 +11783,7 @@ CAND can be a repo, issue, PR, file path, ..."
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.0
-;; Package-Requires: ((emacs "30.0") (consult "1.0") (forge "0.3.3") (consult-gh "2.0"))
+;; Package-Requires: ((emacs "30.0") (consult "1.9") (forge "0.3.3") (consult-gh "2.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -12441,4 +12441,23 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (provide 'consult-gh-transient)
 
 ;;; consult-gh-transient.el ends here
+#+end_src
+* consult-gh-pkg.el
+:PROPERTIES:
+:header-args:emacs-lisp: :results none :mkdirp yes :link yes :tangle ./consult-gh-pkg.el
+:END:
+** Header
+#+begin_src emacs-lisp
+;; -*- no-byte-compile: t; lexical-binding: nil -*-
+#+end_src
+** Define Package
+#+begin_src emacs-lisp
+(define-package "consult-gh" "2.2"
+  "Consulting GitHub Client."
+  '((emacs         "30.0")
+    (consult       "1.9")
+    (markdown-mode "2.6")
+    (ox-gfm        "1.0"))
+  :url "https://github.com/armindarvish/consult-gh"
+  :keywords '("convenience" "matching" "tools" "vc"))
 #+end_src

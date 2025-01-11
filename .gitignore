@@ -6,7 +6,6 @@
 
 # Packaging
 .cask
-*-pkg.el
 
 # Backup files
 *~
