@@ -123,7 +123,9 @@
           (funcall (consult-gh--repo-state) 'preview cand)))))))
 
 (defun consult-gh-embark-get-title (cand)
-  "Get the title of CAND."
+  "Get the title of CAND.
+
+When `current-prefix-args' is non-nil, add repository's name at the front."
   (when (stringp cand)
     (let* ((class (get-text-property 0 :class cand))
            (repo (get-text-property 0 :repo cand))
@@ -132,9 +134,13 @@
            (path (get-text-property 0 :path cand))
            (title (pcase class
                     ((or "file" "code")
-                     (format ("#%s" path)))
+                     (if current-prefix-arg
+                         (format "%s/%s" repo path)
+                     (format "%s" path)))
                     ((or "issue" "pr")
-                     (format ("#%s: %s" number title)))
+                     (if current-prefix-arg
+                         (format "%s/#%s: %s" repo number title)
+                     (concat "#" (format "%s: %s" number title))))
                     (_ (format "%s" repo)))))
       (string-trim title))))
 
@@ -166,7 +172,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
        ("issue"
         (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number))))
        ((or "file" "code")
-        (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
+        (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
        ("pr"
         (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
        (_
@@ -210,6 +216,7 @@ CAND can be a repo, issue, PR, file path, ..."
   "Copy the org-format url link of CAND to `kill-ring'."
   (when (stringp cand)
     (let* ((class (get-text-property 0 :class cand))
+           (repo (get-text-property 0 :repo cand))
            (url (consult-gh-embark-get-url-link cand))
            (title (consult-gh-embark-get-title cand))
            (path (or (get-text-property 0 :path cand) nil))
@@ -218,9 +225,9 @@ CAND can be a repo, issue, PR, file path, ..."
 
       (pcase class
         ((or "issue" "pr")
-          (setq title (concat repo "/" title)))
+          (when (not current-prefix-arg) (setq title (concat repo "/" title))))
         ((or "file" "code")
-         (setq title (concat repo ":" branch "/" path))))
+         (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
 
       (when url
         (setq str
@@ -236,6 +243,7 @@ CAND can be a repo, issue, PR, file path, ..."
   "Insert the url of CAND at point."
   (when (stringp cand)
     (let* ((class (get-text-property 0 :class cand))
+           (repo (get-text-property 0 :repo cand))
            (url (consult-gh-embark-get-url-link cand))
            (title (consult-gh-embark-get-title cand))
            (path (or (get-text-property 0 :path cand) nil))
@@ -243,9 +251,9 @@ CAND can be a repo, issue, PR, file path, ..."
 
       (pcase class
         ((or "issue" "pr")
-          (setq title (concat repo "/" title)))
+          (when (not current-prefix-arg) (setq title (concat repo "/" title))))
         ((or "file" "code")
-         (setq title (concat repo ":" branch "/" path))))
+         (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
 
       (when url
         (cond
