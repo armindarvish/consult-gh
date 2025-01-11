@@ -318,7 +318,7 @@ default behavior of `ghub--username' to allow using
                                      :prompt "Which account do you want to use?"
                                      :sort nil
                                      :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
-                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
+                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags)))))
                     (or consult-gh-user ghub-user))))
         (if (and user (not (string-empty-p user))) user
           (cl-call-next-method)))))))
@@ -342,7 +342,7 @@ default behavior of `ghub--host' to allow using
                                      :prompt "Which account do you want to use?"
                                      :sort nil
                                      :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
-                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
+                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags)))))
                     (or consult-gh-host ghub-host))))
         (if (and host (not (string-empty-p host))) host
           (cl-call-next-method)))))))

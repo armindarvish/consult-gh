@@ -44,8 +44,8 @@
            (repo (consult-gh--get-repo-from-directory)))
        (concat
         (propertize "*consult-gh: Consulting GitHub Client* \n" 'face 'transient-heading)
-        (if username (concat (propertize "Current User: " 'face 'consult-gh-date-face) (propertize username 'face 'consult-gh-user-face) "\n"))
-        (if repo (concat (propertize "Current Repo: " 'face 'consult-gh-date-face) (propertize repo 'face 'consult-gh-user-face) "\n")))))
+        (if username (concat (propertize "Current User: " 'face 'consult-gh-date) (propertize username 'face 'consult-gh-user) "\n"))
+        (if repo (concat (propertize "Current Repo: " 'face 'consult-gh-date) (propertize repo 'face 'consult-gh-user) "\n")))))
    ""]
 
   [:description "--Quick Access--"

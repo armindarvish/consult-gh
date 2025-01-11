@@ -398,7 +398,7 @@ Choices are:
 (defcustom consult-gh-topic-use-capf t
   "Use `consult-gh--topics-edit-capf' for `completion-at-point'.
 
-When non-nil, `consult-gh--topics-edit-capf' ia used in
+When non-nil, `consult-gh--topics-edit-capf' is used in
 `consult-gh-topic-major-mode' buffer for autocompleting
 issue/pr numbers or user names."
   :group 'consult-gh
@@ -1038,7 +1038,7 @@ This is used to change grouping dynamically.")
   "Keymap alist for `consult-gh-topics-edit-mode'.")
 
 ;;; Faces
-(defface consult-gh-success-face
+(defface consult-gh-success
   `((t :inherit 'success))
   "The face used to show issues or PRS that are successfully dealt with.
 
@@ -1047,25 +1047,25 @@ issues and PRS with `consult-gh'.
 
 By default inherits from `success'.")
 
-(defface consult-gh-warning-face
+(defface consult-gh-warning
   `((t :inherit 'warning))
   "The face to show currently open issues or PRS.
 
 By default inherits from `warning'.")
 
-(defface consult-gh-error-face
+(defface consult-gh-error
   `((t :inherit 'error))
   "The face to show closed PRS.
 
 By default inherits from `error'.")
 
-(defface consult-gh-highlight-match-face
+(defface consult-gh-highlight-match
   `((t :inherit 'consult-highlight-match))
   "Highlight match face in preview buffers.
 
 By default, inherits from `consult-highlight-match'.")
 
-(defface consult-gh-preview-match-face
+(defface consult-gh-preview-match
   `((t :inherit 'consult-preview-match))
   "Highlight match face in preview buffers.
 
@@ -1074,80 +1074,80 @@ This face is for example used to highlight the matches to the user's
 search queries \(e.g. when using `consult-gh-search-repos')\ or
 code snippets \(e.g. when using `consult-gh-search-code')\ in preview buffer.")
 
-(defface consult-gh-default-face
+(defface consult-gh-default
   `((t :inherit 'default))
   "Default face in minibuffer annotations.
 
 By default, inherits from `default'.")
 
-(defface consult-gh-user-face
+(defface consult-gh-user
   `((t :inherit 'font-lock-constant-face))
   "User face in minibuffer annotations.
 
 By default, inherits from `font-lock-constant-face'.")
 
-(defface consult-gh-package-face
+(defface consult-gh-package
   `((t :inherit 'font-lock-type-face))
   "Packageface in minibuffer annotations.
 
 By default, inherits from `font-lock-type-face'.")
 
-(defface consult-gh-repo-face
+(defface consult-gh-repo
   `((t :inherit 'font-lock-type-face))
   "Repository face in minibuffer annotations.
 
 By default, inherits from `font-lock-type-face'.")
 
-(defface consult-gh-issue-face
+(defface consult-gh-issue
   `((t :inherit 'warning))
   "Issue number face in minibuffer annotations.
 
 By default, inherits from `warning'.")
 
-(defface consult-gh-pr-face
+(defface consult-gh-pr
   `((t :inherit 'warning))
   "Pull request number face in minibuffer annotations.
 
 By default, inherits from `warning'.")
 
 
-(defface consult-gh-branch-face
+(defface consult-gh-branch
   `((t :inherit 'font-lock-string-face))
   "Branch face in minibuffer annotations.
 
 By default, inherits from `font-lock-string-face'.")
 
-(defface consult-gh-visibility-face
+(defface consult-gh-visibility
   `((t :inherit 'font-lock-warning-face))
   "Visibility face in minibuffer annotations.
 
 By default, inherits from `font-lock-warning-face'.")
 
-(defface consult-gh-date-face
+(defface consult-gh-date
   `((t :inherit 'font-lock-keyword-face))
   "Date face in minibuffer annotations.
 
 By default, inherits from `font-lock-keyword-face'.")
 
-(defface consult-gh-tags-face
+(defface consult-gh-tags
   `((t :inherit 'font-lock-comment-face))
   "Tags/Comments face in minibuffer annotations.
 
 By default, inherits from `font-lock-comment-face'.")
 
-(defface consult-gh-description-face
+(defface consult-gh-description
   `((t :inherit 'font-lock-builtin-face))
   "Repository description face in minibuffer annotations.
 
 By default, inherits from `font-lock-builtin-face'.")
 
-(defface consult-gh-code-face
+(defface consult-gh-code
   `((t :inherit 'font-lock-variable-use-face))
   "Code snippets face in minibuffer annotations.
 
 By default, inherits from `font-lock-vairable-use-face'.")
 
-(defface consult-gh-url-face
+(defface consult-gh-url
   `((t :inherit 'link))
   "URL face in minibuffer annotations.
 
@@ -1224,7 +1224,7 @@ if IGNORE-CASE is non-nil.
         (while m
           (when (car m)
             (add-face-text-property (car m) (cadr m)
-                                    'consult-gh-highlight-match-face nil str))
+                                    'consult-gh-highlight-match nil str))
           (setq m (cddr m))))))
   str)
 
@@ -1589,7 +1589,7 @@ Description of Arguments:
                (process-adaptive-read-buffering t))
           (with-current-buffer proc-buf
             (set-buffer-file-coding-system 'unix))
-          (consult-gh--async-log "consult-gh--make-process started %S\n" cmd-args)
+          (consult-gh--async-log "consult-gh--make-process started %s\n" cmd-args)
           (make-process :name name
                         :buffer proc-buf
                         :noquery t
@@ -2492,13 +2492,13 @@ If PROMPT is non-nil, use it as the query prompt"
          (cons repo "HEAD")
        (cons repo (completing-read
                     (or prompt (concat "Select Branch for "
-                           (propertize (format "\"%s\"" repo) 'face 'consult-gh-default-face)
+                           (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
                            ": "))
                    (consult-gh--files-branches-list-items repo)))))
     ('ask
      (cons repo (completing-read
                  (or prompt (concat "Select Branch for "
-                         (propertize (format "\"%s\"" repo) 'face 'consult-gh-default-face)
+                         (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
                          ": "))
                  (consult-gh--files-branches-list-items repo))))
     ('nil
@@ -2581,7 +2581,7 @@ CONS is a list of files for example returned by
   (when-let* ((class "file")
               (type "file")
               (path (car cons))
-              (path (string-join (mapcar #'identity (string-split path "/")) (propertize "/" 'face 'consult-gh-default-face)))
+              (path (string-join (mapcar #'identity (string-split path "/")) (propertize "/" 'face 'consult-gh-default)))
               (info (cdr cons))
               (repo (plist-get info :repo))
               (user (consult-gh--get-username repo))
@@ -2652,12 +2652,12 @@ For more info on annotation refer to the manual, particularly
               (branch (format "%s" (get-text-property 0 :branch obj)))
               (url (format "%s" (get-text-property 0 :url obj)))
               (str (format "\s%s\s\s%s -- "
-                           (propertize size 'face 'consult-gh-visibility-face)
-                           (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face) "@" (propertize branch 'face 'consult-gh-branch-face))))
+                           (propertize size 'face 'consult-gh-visibility)
+                           (concat (propertize user 'face 'consult-gh-user ) "/" (propertize package 'face 'consult-gh-package) "@" (propertize branch 'face 'consult-gh-branch))))
               (cand (substring-no-properties cand)))
         (concat
          (consult-gh--justify-left str cand  (* 1.5 (frame-width)))
-         (propertize url 'face 'consult-gh-url-face))
+         (propertize url 'face 'consult-gh-url))
       nil)))
 
 (defun consult-gh--file-group (cand transform)
@@ -2811,7 +2811,7 @@ Description of Arguments:
   INPUT     a query from the user
             \(a.k.a. command line argument passed to the gh call\).
   HIGHLIGHT if non-nil, input is highlighted with
-            `consult-gh-highlight-match-face' in the minibuffer."
+            `consult-gh-highlight-match' in the minibuffer."
   (let* ((class "repo")
          (type "repo")
          (parts (string-split string "\t"))
@@ -2826,12 +2826,12 @@ Description of Arguments:
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s"
                       (concat
-                       (and user (propertize user 'face 'consult-gh-user-face))
+                       (and user (propertize user 'face 'consult-gh-user))
                        (and package "/")
-                       (and package (propertize package 'face 'consult-gh-package-face)))
-                      (consult-gh--justify-left (propertize visibility 'face 'consult-gh-visibility-face) repo (frame-width))
-                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
-                      (propertize description 'face 'consult-gh-description-face))))
+                       (and package (propertize package 'face 'consult-gh-package)))
+                      (consult-gh--justify-left (propertize visibility 'face 'consult-gh-visibility) repo (frame-width))
+                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date)
+                      (propertize description 'face 'consult-gh-description))))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -2863,9 +2863,9 @@ to preview or do other actions on the repo."
                      (cond
                       ((listp match-str)
                        (mapc (lambda (item)
-                                 (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
+                                 (highlight-regexp item 'consult-gh-preview-match)) match-str))
                       ((stringp match-str)
-                       (highlight-regexp match-str 'consult-gh-preview-match-face)))))
+                       (highlight-regexp match-str 'consult-gh-preview-match)))))
                (funcall preview action
                         buffer))))
         ('return
@@ -3197,11 +3197,11 @@ Description of Arguments:
                                                                                                :require-match t)))))
          (license (if (not license-key) (y-or-n-p "Would you like to add a license?") t))
          (license-key (or license-key (and license (consult--read (consult-gh--get-license-template-list)
-                                                                  :prompt (format "Select %s template" (propertize "license " 'face 'consult-gh-warning-face))
+                                                                  :prompt (format "Select %s template" (propertize "license " 'face 'consult-gh-warning))
                                                                   :lookup #'consult--lookup-cdr
                                                                   :require-match t
                                                                   :sort nil))))
-         (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo-face) (propertize visibility 'face 'warning))))
+         (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo) (propertize visibility 'face 'warning))))
          (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
          (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or directory (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
          (default-directory (or clonedir default-directory))
@@ -3261,7 +3261,7 @@ Description of Arguments:
          (use-scratch (if (not template) (y-or-n-p "No template selected.  Would you like to make the repo without template?"))))
     (cond
      (template
-      (let* ((confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo-face) (propertize visibility 'face 'warning))))
+      (let* ((confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo) (propertize visibility 'face 'warning))))
              (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
              (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
              (default-directory (or clonedir default-directory))
@@ -3318,7 +3318,7 @@ Description of arguments:
                                                                  :prompt "Visibility: "
                                                                  :sort nil
                                                                  :require-match t))))
-             (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo-face) (propertize visibility 'face 'warning))))
+             (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo) (propertize visibility 'face 'warning))))
              (remote (and confirm (y-or-n-p "Add a remote?") (read-string "What should the new remote be called? " "origin")))
              (remote (and (stringp remote) (not (string-empty-p remote)) remote))
              (args '("repo" "create"))
@@ -3348,7 +3348,7 @@ Description of Arguments:
   INPUT     the query from the user
             \(a.k.a. command line argument passed to the gh call\).
   HIGHLIGHT if non-nil, input is highlighted
-            with `consult-gh-highlight-match-face' in the minibuffer."
+            with `consult-gh-highlight-match' in the minibuffer."
   (let* ((class "issue")
          (type "issue")
          (parts (string-split string "\t"))
@@ -3358,9 +3358,9 @@ Description of Arguments:
          (number (car parts))
          (state (upcase (cadr parts)))
          (face (pcase state
-                 ("CLOSED" 'consult-gh-success-face)
-                 ("OPEN" 'consult-gh-warning-face)
-                 (_ 'consult-gh-issue-face)))
+                 ("CLOSED" 'consult-gh-success)
+                 ("OPEN" 'consult-gh-warning)
+                 (_ 'consult-gh-issue)))
          (title (cadr (cdr parts)))
          (tags (cadr (cdr (cdr parts))))
          (date (cadr (cdr (cdr (cdr parts)))))
@@ -3368,11 +3368,11 @@ Description of Arguments:
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
+                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default)) 70)
                       (propertize (consult-gh--set-string-width state 8) 'face face)
-                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
-                      (propertize (consult-gh--set-string-width tags 18) 'face 'consult-gh-tags-face)
-                      (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user-face)) (and package "/") (and package (propertize package 'face 'consult-gh-package-face))) 40))))
+                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date)
+                      (propertize (consult-gh--set-string-width tags 18) 'face 'consult-gh-tags)
+                      (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user)) (and package "/") (and package (propertize package 'face 'consult-gh-package))) 40))))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -3392,7 +3392,7 @@ Description of Arguments:
   INPUT  the query from the user
          \(a.k.a. command line argument passed to the gh call\).
   HIGHLIGHT if non-nil, input is highlighted
-           with `consult-gh-highlight-match-face' in the minibuffer."
+           with `consult-gh-highlight-match' in the minibuffer."
   (let* ((class "issue")
          (type "issue")
          (parts (string-split string "\t"))
@@ -3402,9 +3402,9 @@ Description of Arguments:
          (number (cadr parts))
          (state (upcase (cadr (cdr parts))))
          (face (pcase state
-                 ("CLOSED" 'consult-gh-success-face)
-                 ("OPEN" 'consult-gh-warning-face)
-                 (_ 'consult-gh-issue-face)))
+                 ("CLOSED" 'consult-gh-success)
+                 ("OPEN" 'consult-gh-warning)
+                 (_ 'consult-gh-issue)))
          (title (cadr (cdr (cdr parts))))
          (tags (cadr (cdr (cdr (cdr parts)))))
          (date (cadr (cdr (cdr (cdr (cdr parts))))))
@@ -3412,11 +3412,11 @@ Description of Arguments:
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
+                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face face) ":" (propertize (format "%s" title) 'face 'consult-gh-default)) 70)
                       (propertize (consult-gh--set-string-width state 8) 'face face)
-                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
-                      (propertize (consult-gh--set-string-width tags 18) 'face 'consult-gh-tags-face)
-                      (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user-face )) (and package "/") (and package (propertize package 'face 'consult-gh-package-face))) 40))))
+                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date)
+                      (propertize (consult-gh--set-string-width tags 18) 'face 'consult-gh-tags)
+                      (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user )) (and package "/") (and package (propertize package 'face 'consult-gh-package))) 40))))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -3459,9 +3459,9 @@ and is used to preview or do other actions on the issue."
                      (cond
                       ((listp match-str)
                        (mapc (lambda (item)
-                                 (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
+                                 (highlight-regexp item 'consult-gh-preview-match)) match-str))
                       ((stringp match-str)
-                       (highlight-regexp match-str 'consult-gh-preview-match-face)))))
+                       (highlight-regexp match-str 'consult-gh-preview-match)))))
                (funcall preview action
                         buffer))))
         ('return
@@ -4383,7 +4383,7 @@ Description of Arguments:
   INPUT     the query from the user
             \(a.k.a. command line argument passed to the gh call\)
   HIGHLIGHT if non-nil, input is highlighted
-            with `consult-gh-highlight-match-face' in the minibuffer."
+            with `consult-gh-highlight-match' in the minibuffer."
   (let* ((class "pr")
          (type "pr")
          (parts (string-split string "\t"))
@@ -4393,10 +4393,10 @@ Description of Arguments:
          (number (car parts))
          (state (upcase (cadr (cdr (cdr parts)))))
          (face (pcase state
-                 ("CLOSED" 'consult-gh-error-face)
-                 ("MERGED" 'consult-gh-success-face)
-                 ("OPEN" 'consult-gh-repo-face)
-                 (_ 'consult-gh-pr-face)))
+                 ("CLOSED" 'consult-gh-error)
+                 ("MERGED" 'consult-gh-success)
+                 ("OPEN" 'consult-gh-repo)
+                 (_ 'consult-gh-pr)))
          (branch (cadr (cdr parts)))
          (title (cadr parts))
          (date (cadr (cdr (cdr (cdr parts)))))
@@ -4404,11 +4404,11 @@ Description of Arguments:
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
+                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default)) 70)
                       (propertize (consult-gh--set-string-width state 6) 'face face)
-                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
-                      (propertize (consult-gh--set-string-width branch 24) 'face 'consult-gh-branch-face)
-                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40))))
+                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date)
+                      (propertize (consult-gh--set-string-width branch 24) 'face 'consult-gh-branch)
+                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user ) "/" (propertize package 'face 'consult-gh-package)) 40))))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -4428,7 +4428,7 @@ Description of Arguments:
   INPUT     the query from the user
             \(a.k.a. command line argument passed to the gh call\).
   HIGHLIGHT if non-nil, input is highlighted
-            with `consult-gh-highlight-match-face' in the minibuffer."
+            with `consult-gh-highlight-match' in the minibuffer."
 
   (let* ((class "pr")
          (type "pr")
@@ -4439,10 +4439,10 @@ Description of Arguments:
          (number (cadr parts))
          (state (upcase (cadr (cdr parts))))
          (face (pcase state
-                 ("CLOSED" 'consult-gh-error-face)
-                 ("MERGED" 'consult-gh-success-face)
-                 ("OPEN" 'consult-gh-repo-face)
-                 (_ 'consult-gh-pr-face)))
+                 ("CLOSED" 'consult-gh-error)
+                 ("MERGED" 'consult-gh-success)
+                 ("OPEN" 'consult-gh-repo)
+                 (_ 'consult-gh-pr)))
          (title (cadr (cdr (cdr parts))))
          (tags (cadr (cdr (cdr (cdr parts)))))
          (date (cadr (cdr (cdr (cdr (cdr parts))))))
@@ -4450,11 +4450,11 @@ Description of Arguments:
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
-                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default-face)) 70)
+                      (consult-gh--set-string-width (concat (propertize (format "%s" number) 'face  face) ":" (propertize (format "%s" title) 'face 'consult-gh-default)) 70)
                       (propertize (consult-gh--set-string-width state 6) 'face face)
-                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)
-                      (propertize (consult-gh--set-string-width tags 18) 'face 'consult-gh-tags-face)
-                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40))))
+                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date)
+                      (propertize (consult-gh--set-string-width tags 18) 'face 'consult-gh-tags)
+                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user ) "/" (propertize package 'face 'consult-gh-package)) 40))))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -4487,9 +4487,9 @@ and is used to preview or do other actions on the pr."
                          (cond
                           ((listp match-str)
                            (mapc (lambda (item)
-                                     (highlight-regexp item 'consult-gh-preview-match-face)) match-str))
+                                     (highlight-regexp item 'consult-gh-preview-match)) match-str))
                           ((stringp match-str)
-                           (highlight-regexp match-str 'consult-gh-preview-match-face)))))
+                           (highlight-regexp match-str 'consult-gh-preview-match)))))
                    (funcall preview action
                             buffer))))
             ('return
@@ -4786,8 +4786,8 @@ The optional argument URL, is the web url for the pull request on GitHub."
                         (state (gethash :state comment))
                         (state (cond
                                 ((equal state "COMMENTED") (propertize "COMMENTED" 'face 'default))
-                                ((equal state "CHANGES_REQUESTED") (propertize "REQUESTED CHANGES" 'face 'consult-gh-warning-face))
-                                ((equal state "APPROVED") (propertize "APPROVED" 'face 'consult-gh-success-face))
+                                ((equal state "CHANGES_REQUESTED") (propertize "REQUESTED CHANGES" 'face 'consult-gh-warning))
+                                ((equal state "APPROVED") (propertize "APPROVED" 'face 'consult-gh-success))
                                 (t state)))
                         (oid (gethash :commit_id comment))
                         (diff (gethash :diff_hunk comment))
@@ -4881,13 +4881,13 @@ To use this as the default action for PRs, see
    (let* ((topic (format "%s/#%s" repo number))
           (canAdmin (consult-gh--user-canadmin repo))
           (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-          (_ (message "Collecting info from %s..." (propertize "GitHub" 'face 'consult-gh-date-face)))
+          (_ (message "Collecting info from %s..." (propertize "GitHub" 'face 'consult-gh-date)))
           (table (consult-gh--pr-read-json repo number))
           (comments (unless preview (consult-gh--pr-filter-comments (consult-gh--pr-get-comments repo number))))
           (commenters (unless preview (and table (consult-gh--pr-get-commenters table comments))))
           (state (gethash :state table))
           (url (gethash :url table))
-          (_ (message "Formating the %s..." (propertize "content" 'face 'consult-gh-issue-face)))
+          (_ (message "Formating the %s..." (propertize "content" 'face 'consult-gh-issue)))
           (header-text (consult-gh--pr-format-header repo number table topic))
           (title (or title (car (split-string header-text "\n" t))))
           (title (string-trim-left title "title: "))
@@ -4895,7 +4895,7 @@ To use this as the default action for PRs, see
           (body-text (consult-gh--pr-format-body table topic))
           (comments-text (when (and comments (listp comments)) (consult-gh--pr-format-comments comments repo number url)))
           (file-change-text (consult-gh--pr-format-files-changed table))
-          (_ (message "Working on some %s details..." (propertize "more" 'face 'consult-gh-issue-face)))
+          (_ (message "Working on some %s details..." (propertize "more" 'face 'consult-gh-issue)))
           (diff (consult-gh--command-to-string "pr" "diff" number "--repo" repo))
           (chunks (when (and diff (stringp diff)) (consult-gh--parse-diff diff)))
           (diff-text (when (and chunks (listp chunks)) (consult-gh--pr-format-diffs chunks repo number latest-commit 1 (format "%s/commits/%s" url latest-commit) preview)))
@@ -4947,7 +4947,7 @@ To use this as the default action for PRs, see
          (insert "# Commits\n")
          (when commits-text (insert commits-text))
          (insert "\n")
-         (message "Putting %s together..." (propertize "everything" 'face 'consult-gh-repo-face))
+         (message "Putting %s together..." (propertize "everything" 'face 'consult-gh-repo))
          (save-excursion
            (pcase consult-gh-issue-preview-major-mode
              ('gfm-mode
@@ -5861,9 +5861,9 @@ buffer generated by `consult-gh--pr-view'."
               (':base (consult-gh-pr--edit-change-base nil basebranch))
               (':submit
                (and (consult-gh-topics--edit-pr-submit pr title body basebranch reviewers assignees labels projects milestone)
-                    (message "Edits %s" (propertize "Submitted!" 'face 'consult-gh-success-face))
+                    (message "Edits %s" (propertize "Submitted!" 'face 'consult-gh-success))
                     (funcall consult-gh-quit-window-func t)))))))
-    (message "% in a %s buffer!" (propertize "Not" 'face 'consult-gh-error-face) (propertize "pull request editing" 'face 'consult-gh-error-face))))
+    (message "% in a %s buffer!" (propertize "Not" 'face 'consult-gh-error) (propertize "pull request editing" 'face 'consult-gh-error))))
 
 (defun consult-gh-pr--merge-create-commit (pr type &optional auto admin subject body)
   "Create a merge commit message of TYPE for PR.
@@ -6108,19 +6108,19 @@ For example, PR can be the text stored in the buffer-local variable
           ("merge" (and
                     (y-or-n-p "This will merge the pull reqeust on GitHub.  Do you want to continue?")
                     (consult-gh-pr--merge-submit pr :merge t :auto auto :admin admin :subject subject :body body)
-                    (message "%s Commit Submitted!" (propertize "Merge" 'face 'consult-gh-success-face))
+                    (message "%s Commit Submitted!" (propertize "Merge" 'face 'consult-gh-success))
                     (funcall consult-gh-quit-window-func t)))
           ("rebase" (and
                      (y-or-n-p "This will merge the pull reqeust with a rebase commit on GitHub.  Do you want to continue?")
                      (consult-gh-pr--merge-submit pr :rebase t :auto auto :admin admin :subject subject :body body)
-                     (message "%s Commit Submitted!" (propertize "Rebase" 'face 'consult-gh-success-face))
+                     (message "%s Commit Submitted!" (propertize "Rebase" 'face 'consult-gh-success))
                      (funcall consult-gh-quit-window-func t)))
           ("squash"  (and
                       (y-or-n-p "This will merge the pull reqeust with a squash commit on GitHub.  Do you want to continue?")
                       (consult-gh-pr--merge-submit pr :squash t :auto auto :admin admin :subject subject :body body)
-                      (message "%s Commit Submitted!"(propertize "Squash" 'face 'consult-gh-success-face))
+                      (message "%s Commit Submitted!"(propertize "Squash" 'face 'consult-gh-success))
                       (funcall consult-gh-quit-window-func t)))))
-    (message "%s in a %s buffer!" (propertize "Not" 'face 'consult-gh-error-face) (propertize "pull request editing" 'face 'consult-gh-error-face))))
+    (message "%s in a %s buffer!" (propertize "Not" 'face 'consult-gh-error) (propertize "pull request editing" 'face 'consult-gh-error))))
 
 (defun consult-gh-topics--pr-review-add-comment (&optional review)
   "Add a comment to a REVIEW.
@@ -6436,7 +6436,7 @@ the buffer generated by `consult-gh-pr-review'."
                                                        (when url
                                                          (funcall consult-gh-browse-url-func url))))
                                         :cmd-args (list "api" "-H" "Accept: application/vnd.github.json" (format "repos/%s/pulls/%s/reviews/%s" repo number id))))))))
-    (message "%s in a %s buffer!" (propertize "Not" 'face 'consult-gh-error-face) (propertize "pull request editing" 'face 'consult-gh-error-face))))
+    (message "%s in a %s buffer!" (propertize "Not" 'face 'consult-gh-error) (propertize "pull request editing" 'face 'consult-gh-error))))
 
 (defun consult-gh-topics--get-buffer-create (name subject topic)
   "Get or create a buffer with NAME for SUBJECT and TOPIC.
@@ -6685,7 +6685,7 @@ Description of Arguments:
   INPUT     the query from the user
             \(a.k.a. command line argument passed to the gh call\).
   HIGHLIGHT if non-nil, input is highlighted
-            with `consult-gh-highlight-match-face' in the minibuffer."
+            with `consult-gh-highlight-match' in the minibuffer."
   (let* ((class "code")
          (type "code")
          (parts (string-split string ":"))
@@ -6701,9 +6701,9 @@ Description of Arguments:
          (query input)
          (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
          (str (format "%s\t%s\t%s"
-                      (consult-gh--set-string-width (propertize code 'face  'consult-gh-code-face) 100)
-                      (propertize path 'face 'consult-gh-url-face)
-                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user-face ) "/" (propertize package 'face 'consult-gh-package-face)) 40))))
+                      (consult-gh--set-string-width (propertize code 'face  'consult-gh-code) 100)
+                      (propertize path 'face 'consult-gh-url)
+                      (consult-gh--set-string-width (concat (propertize user 'face 'consult-gh-user ) "/" (propertize package 'face 'consult-gh-package)) 40))))
     (if (and consult-gh-highlight-matches highlight)
         (cond
          ((listp match-str)
@@ -6747,7 +6747,7 @@ and is used to preview or do other actions on the code."
                    (when buffer
                      (with-current-buffer buffer
                        (if consult-gh-highlight-matches
-                           (highlight-regexp (string-trim code) 'consult-gh-preview-match-face))
+                           (highlight-regexp (string-trim code) 'consult-gh-preview-match))
                        (goto-char (point-min))
                        (search-forward code nil t)
                        (add-to-list 'consult-gh--preview-buffers-list buffer)
@@ -6839,27 +6839,27 @@ Description of Arguments:
          (face (pcase isPR
                  ("false"
                   (pcase state
-                    ("CLOSED" 'consult-gh-success-face)
-                    ("OPEN" 'consult-gh-warning-face)
-                    (_ 'consult-gh-issue-face)))
+                    ("CLOSED" 'consult-gh-success)
+                    ("OPEN" 'consult-gh-warning)
+                    (_ 'consult-gh-issue)))
                  ("true"
                   (pcase state
-                    ("CLOSED" 'consult-gh-error-face)
-                    ("MERGED" 'consult-gh-success-face)
-                    ("OPEN" 'consult-gh-warning-face)
-                    (_ 'consult-gh-pr-face)))
-                 (_ 'consult-gh-issue-face)))
+                    ("CLOSED" 'consult-gh-error)
+                    ("MERGED" 'consult-gh-success)
+                    ("OPEN" 'consult-gh-warning)
+                    (_ 'consult-gh-pr)))
+                 (_ 'consult-gh-issue)))
          (str (concat (consult-gh--set-string-width
-                       (concat (propertize (format "%s" user) 'face 'consult-gh-user-face)
+                       (concat (propertize (format "%s" user) 'face 'consult-gh-user)
                                "/"
-                               (propertize (format "%s" package) 'face 'consult-gh-package-face)
+                               (propertize (format "%s" package) 'face 'consult-gh-package)
 
                                (propertize (format " - %s #%s: " (upcase (substring type 0 2)) number) 'face face)
-                               (propertize (format "%s" title) 'face 'consult-gh-default-face)) 85)
-                      (when reason-str (concat "\s\s" (propertize (consult-gh--set-string-width reason-str 8) 'face 'consult-gh-visibility-face)))
-                      (when date (concat "\s\s" (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face)))
+                               (propertize (format "%s" title) 'face 'consult-gh-default)) 85)
+                      (when reason-str (concat "\s\s" (propertize (consult-gh--set-string-width reason-str 8) 'face 'consult-gh-visibility)))
+                      (when date (concat "\s\s" (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date)))
                       (when state (concat "\s\s" (propertize (consult-gh--set-string-width state 6) 'face face)))
-                      (when tags (concat "\s\s" (propertize tags 'face 'consult-gh-tags-face))))))
+                      (when tags (concat "\s\s" (propertize tags 'face 'consult-gh-tags))))))
     (add-text-properties 0 1 (list :repo repo
                                    :user user
                                    :package package
@@ -6980,9 +6980,9 @@ Description of Arguments:
          (reason (cadddr (cdr parts)))
          (unread (cadddr (cddr parts)))
          (face (pcase unread
-                 ("true" 'consult-gh-default-face)
-                 ("false" 'consult-gh-tags-face)
-                 (_ 'consult-gh-default-face)))
+                 ("true" 'consult-gh-default)
+                 ("false" 'consult-gh-tags)
+                 (_ 'consult-gh-default)))
          (state (pcase unread
                   ("true" "Unread")
                   ("false" "Seen")
@@ -6995,7 +6995,7 @@ Description of Arguments:
                       (or
                        (cadr (member "issues" url-parts))
                        (cadr (member "pulls" url-parts)))))
-         (title-str (concat (propertize (format "%s" repo) 'face 'consult-gh-repo-face)
+         (title-str (concat (propertize (format "%s" repo) 'face 'consult-gh-repo)
                             (propertize " - " 'face face)
                             (propertize (concat type (if number " #") number) 'face face)
                             (propertize ": " 'face face)
@@ -7003,9 +7003,9 @@ Description of Arguments:
          (_ (if (equal unread "false") (add-face-text-property 0 (length title-str) '(:strike-through t) t title-str)))
          (str (format "%s\s\s%s\s\s%s\s\s%s"
                       (consult-gh--set-string-width title-str 80)
-                      (propertize (consult-gh--set-string-width reason 13) 'face 'consult-gh-visibility-face)
+                      (propertize (consult-gh--set-string-width reason 13) 'face 'consult-gh-visibility)
                       (consult-gh--set-string-width (propertize state 'face face) 7)
-                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date-face))))
+                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date))))
     (add-text-properties 0 1 (list :thread thread
                                    :repo repo
                                    :user user
@@ -7298,9 +7298,9 @@ If PROMPT is non-nil, use it as the query prompt."
                                                   (status (if (caddr info) "active" ""))
                                                   (current (if (equal info consult-gh--auth-current-account) "selected" "")))
                                              (format "\t\t%s\s\s%s\s\s%s"
-                                                     (propertize host 'face 'consult-gh-tags-face)
-                                                     (propertize status 'face 'consult-gh-user-face)
-                                                     (propertize current 'face 'consult-gh-visibility-face)))))))
+                                                     (propertize host 'face 'consult-gh-tags)
+                                                     (propertize status 'face 'consult-gh-user)
+                                                     (propertize current 'face 'consult-gh-visibility)))))))
       (when (and sel (consp sel))
         (setq user (car sel))
         (setq host (cadr sel)))))
@@ -7374,11 +7374,11 @@ Description of Arguments:
 
   PROMPT  the prompt in the minibuffer
           \(passed as PROMPT to `consult--red'\)
-  BUILDER an async builder function passed to `consult--async-command'.
+  BUILDER an async builder function passed to `consult--process-collection'.
   INITIAL an optional arg for the initial input
           \\(passed as INITITAL to `consult--read'\)"
-  (let* ((candidates (consult--async-command builder
-                       (consult-gh--repo-list-transform builder)))
+  (let* ((candidates (consult--process-collection builder
+                       :transform (consult-gh--repo-list-transform builder)))
          (current-repo (consult-gh--get-repo-from-directory))
          (initial (or initial
                       (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-username current-repo)))))
@@ -7387,12 +7387,12 @@ Description of Arguments:
                    :prompt prompt
                    :lookup #'consult--lookup-member
                    :state (funcall #'consult-gh--repo-state)
-                   :initial (consult--async-split-initial initial)
+                   :initial initial
                    :group #'consult-gh--repo-group
                    :add-history (append (list
-                                         (if current-repo
-                                             (consult--async-split-initial (consult-gh--get-username current-repo)))
-                                         (consult--async-split-thingatpt 'symbol))
+                                         (when current-repo
+                                             (consult-gh--get-username current-repo))
+                                         (thing-at-point 'symbol))
                                         consult-gh--known-orgs-list)
                    :history '(:input consult-gh--orgs-history)
                    :require-match t
@@ -7440,9 +7440,9 @@ URL `https://github.com/minad/consult'."
          (sel (consult-gh--async-repo-list prompt #'consult-gh--repo-list-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
       (funcall consult-gh-repo-action sel))))
@@ -7484,44 +7484,44 @@ The command arguments such as \(e.g. “gh search repos INPUT”\)."
 (defun consult-gh--async-search-repos (prompt builder &optional initial)
   "Seacrhes GitHub repositories asynchronously.
 
-This is a non-interactive internal function.
-For the interactive version see `consult-gh-search-repos'.
+This is a non-interactive internal function.  For the interactive version
+see `consult-gh-search-repos'.
 
-It runs the command line from `consult-gh--search-repos-builder'
-in an async process and returns the results (list of search results
-for the minibuffer input) as a completion table in minibuffer that will
-be passed to `consult--read'.  The completion table gets dynamically updated
-as the user types in the minibuffer.  Each candidate in the minibuffer
-is formatted by `consult-gh--search-repos-transform'
-to add annotation and other info to the candidate.
+It runs the command line from `consult-gh--search-repos-builder' in an
+async process and returns the results \(list of search results for the
+minibuffer input\) as a completion table in minibuffer that will be passed
+to `consult--read'.  The completion table gets dynamically updated as the
+user types in the minibuffer.  Each candidate in the minibuffer is
+formatted by `consult-gh--search-repos-transform' to add annotation and
+other info to the candidate.
 
 Description of Arguments:
 
   PROMPT  the prompt in the minibuffer
-          \(passed as PROMPT to `consult--red'.\)
-  BUILDER an async builder function passed to `consult--async-command'.
-  INITIAL an optional arg for the initial input in the minibuffer
-          \\(passed as INITITAL to `consult--read'.\)"
+          \(passed as PROMPT to `consult--red'\)
+  BUILDER an async builder function passed to `consult--process-collection'
+  INITIAL an optional arg for the initial input in the minibuffer \(passed
+          as INITITAL to `consult--read'\)."
   (let* ((initial (or initial
                       (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-repo-from-directory) nil))))
     (consult-gh-with-host (consult-gh--auth-account-host)
-        (consult--read
-         (consult--async-command builder
-           (consult-gh--search-repos-transform builder))
-         :prompt prompt
-         :lookup #'consult--lookup-member
-         :state (funcall #'consult-gh--repo-state)
-         :initial (consult--async-split-initial initial)
-         :group #'consult-gh--repo-group
-         :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
-                                    (consult--async-split-initial (consult-gh--get-repo-from-topic))
-                                    (consult--async-split-thingatpt 'symbol))
-                              consult-gh--known-repos-list)
-         :history '(:input consult-gh--search-repos-history)
-         :require-match t
-         :category 'consult-gh-repos
-         :preview-key consult-gh-preview-key
-         :sort nil))))
+                          (consult--read
+                           (consult--process-collection builder
+                                                        :transform (consult-gh--search-repos-transform builder))
+                           :prompt prompt
+                           :lookup #'consult--lookup-member
+                           :state (funcall #'consult-gh--repo-state)
+                           :initial initial
+                           :group #'consult-gh--repo-group
+                           :add-history (append (list (consult-gh--get-repo-from-directory)
+                                                      (consult-gh--get-repo-from-topic)
+                                                      (thing-at-point 'symbol))
+                                                consult-gh--known-repos-list)
+                           :history '(:input consult-gh--search-repos-history)
+                           :require-match t
+                           :category 'consult-gh-repos
+                           :preview-key consult-gh-preview-key
+                           :sort nil))))
 
 ;;;###autoload
 (defun consult-gh-search-repos (&optional initial noaction prompt)
@@ -7565,9 +7565,9 @@ URL `https://github.com/minad/consult'."
                 (consult-gh--async-search-repos prompt #'consult-gh--search-repos-builder initial))))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
       (progn
@@ -7594,9 +7594,9 @@ If PROMPT is non-nil, use it as the query prompt."
                                                    :lookup #'consult--lookup-member
                                                    :state (funcall #'consult-gh--repo-state)
                                                    :group #'consult-gh--repo-group
-                                                   :add-history (append (list (consult--async-split-initial (consult-gh--get-repo-from-directory))
-                                                                              (consult--async-split-initial (consult-gh--get-repo-from-topic))
-                                                                              (consult--async-split-thingatpt 'symbol))
+                                                   :add-history (append (list (consult-gh--get-repo-from-directory)
+(consult-gh--get-repo-from-topic)
+(thing-at-point 'symbol))
                                                                         consult-gh--known-repos-list)
                                                    :history 'consult-gh--repos-history
                                                    :require-match t
@@ -7640,13 +7640,12 @@ using the internal function `consult-gh--repo-fork'
 
 If REPOS not supplied, interactively asks user to pick REPOS."
   (interactive)
-  (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
-         (repos (or repos (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos nil t))))))
+  (let* ((repos (or repos (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos nil t))))))
     (if (stringp repos)
         (setq repos (list repos)))
     (mapcar (lambda (repo)
-              (let* ((package (car (last (split-string repo "\/"))))
-                     (name (if consult-gh-confirm-name-before-fork (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
+              (let* ((package (consult-gh--get-package repo))
+                     (name (if consult-gh-confirm-name-before-fork (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'consult-gh-repo)) package) package)))
                 (consult-gh-with-host (consult-gh--auth-account-host) (consult-gh--repo-fork repo name))))
             repos)))
 
@@ -7660,20 +7659,19 @@ using the internal function `consult-gh--repo-clone'.
 If REPOS or TARGETDIR are not supplied, interactively asks user
 to pick them."
   (interactive)
-  (let* ((consult-gh-prioritize-local-folder (if (eq consult-gh-prioritize-local-folder 'suggest) consult-gh-prioritize-local-folder nil))
-         (repos (or repos (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos nil t)))))
-         (targetdir (or targetdir consult-gh-default-clone-directory))
-         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " (file-name-as-directory targetdir)) (or targetdir default-directory))))
+  (let* ((repos (or repos (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos nil t)))))
+         (targetdir (or targetdir consult-gh-default-clone-directory default-directory))
+         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " (file-name-as-directory targetdir)) targetdir)))
     (if (stringp repos)
         (setq repos (list repos)))
     (mapcar (lambda (repo)
               (let* ((package (consult-gh--get-package repo))
-                     (name (if consult-gh-confirm-before-clone (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'font-lock-keyword-face)) package) package)))
+                     (name (if consult-gh-confirm-before-clone (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'consult-gh-repo)) package) package)))
                 (consult-gh-with-host (consult-gh--auth-account-host)
                                       (consult-gh--repo-clone repo name clonedir))))
             repos)))
 
-(defun consult-gh-repo-create (&optional name local-repo owner description visibility make-readme gitignore-template license-key template)
+(defun consult-gh-repo-create (&optional name local-path owner description visibility make-readme gitignore-template license-key template)
   "Create a new repo with NAME and metadata on GitHub.
 
 This mimicks the same interactive repo creation
@@ -7682,7 +7680,7 @@ from “gh repo create” in the command line.
 Description of Arguments:
 
  NAME               a string; name of repository
- LOCAL-REPO         a string; path to local directory of git repository
+ LOCAL-PATH         a string; path to local directory of git repository
  OWNER              a string; user/organization owning the repo
  DESCRIPTION        a string; description for the repo
  VISIBILITY         a string; private|public|internal
@@ -7703,9 +7701,9 @@ backend functions, `consult-gh--repo-create-scratch',
                                :lookup #'consult--lookup-cdr
                                :sort nil)))
     (pcase answer
-      (':scratch (consult-gh--repo-create-scratch name local-repo owner description visibility make-readme gitignore-template license-key))
+      (':scratch (consult-gh--repo-create-scratch name local-path owner description visibility make-readme gitignore-template license-key))
       (':template (consult-gh--repo-create-template name owner description visibility template))
-      (':existing (consult-gh--repo-create-push-existing name local-repo owner description visibility)))))
+      (':existing (consult-gh--repo-create-push-existing name local-path owner description visibility)))))
 
 (defun consult-gh--issue-list-transform (async &rest _)
   "Add annotation to issue candidates in `consult-gh-issue-list'.
@@ -7763,7 +7761,7 @@ Description of Arguments:
 
   PROMPT  the prompt in the minibuffer
           \(passed as PROMPT to `consult--red'\)
-  BUILDER an async builder function passed to `consult--async-command'.
+  BUILDER an async builder function passed to `consult--process-collection'.
   INITIAL an optional arg for the initial input in the minibuffer
           \(passed as INITITAL to `consult--read'\)"
   (let* ((initial (or initial
@@ -7772,18 +7770,18 @@ Description of Arguments:
                         nil))))
     (consult-gh-with-host (consult-gh--auth-account-host)
         (consult--read
-         (consult--async-command builder
-           (consult-gh--issue-list-transform builder))
+         (consult--process-collection builder
+           :transform (consult-gh--issue-list-transform builder))
          :prompt prompt
          :lookup #'consult--lookup-member
          :state (funcall #'consult-gh--issue-state)
-         :initial (consult--async-split-initial initial)
+         :initial initial
          :group #'consult-gh--issue-group
          :require-match t
          :category 'consult-gh-issues
-         :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
-                                    (consult--async-split-initial (consult-gh--get-repo-from-topic))
-                                    (consult--async-split-thingatpt 'symbol))
+         :add-history (append (list (consult-gh--get-repo-from-directory)
+                                    (consult-gh--get-repo-from-topic)
+                                    (thing-at-point 'symbol))
                               consult-gh--known-repos-list)
          :history '(:input consult-gh--repos-history)
          :preview-key consult-gh-preview-key
@@ -7833,9 +7831,9 @@ URL `https://github.com/minad/consult'"
         (sel (consult-gh--async-issue-list prompt #'consult-gh--issue-list-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
       (funcall consult-gh-issue-action sel))))
@@ -7958,10 +7956,9 @@ For more details refer to the manual with “gh issue edit --help”."
        (let* ((repo (or (and issue (get-text-property 0 :repo issue))
                         (get-text-property 0 :repo (consult-gh-search-repos nil t))))
               (canAdmin (consult-gh--user-canadmin repo))
-              (sep (when (and (not (eq consult-async-split-style 'nil))
-                              (consult--async-split-style))
-                     (or (plist-get (consult--async-split-style) :initial)
-                         (char-to-string (plist-get (consult--async-split-style) :separator)))))
+              (style (or consult-async-split-style 'none))
+              (sep (or (plist-get (alist-get style consult-async-split-styles-alist) :initial)
+                         (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :separator))))
               (issue (or issue (consult-gh-issue-list (if canAdmin
                                                           repo
                                                         (concat repo " -- " "--author " "@me" sep))
@@ -7969,7 +7966,7 @@ For more details refer to the manual with “gh issue edit --help”."
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
               (isAuthor (consult-gh--user-isauthor issue)))
          (if (not (or canAdmin isAuthor))
-             (message "The curent user, %s, %s to edit this issue" (propertize user 'face 'consult-gh-error-face) (propertize "does not have permission" 'face 'consult-gh-error-face))
+             (message "The curent user, %s, %s to edit this issue" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
            (funcall #'consult-gh--issue-view-action issue)
            (consult-gh-issue-edit)))
      (let* ((issue consult-gh--topic)
@@ -7978,7 +7975,7 @@ For more details refer to the manual with “gh issue edit --help”."
             (canAdmin (consult-gh--user-canadmin repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (if (not (or canAdmin isAuthor))
-                   (message "The curent user, %s, %s to edit this issue" (propertize user 'face 'consult-gh-error-face) (propertize "does not have permission" 'face 'consult-gh-error-face))))
+                   (message "The curent user, %s, %s to edit this issue" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
             (number (get-text-property 0 :number issue))
             (title (get-text-property 0 :title issue))
             (body (get-text-property 0 :body issue))
@@ -8202,7 +8199,7 @@ For more details refer to the manual with “gh issue lock --help”."
                              (list "--reason" reason))))
      (consult-gh--make-process (format "consult-gh-issue-lock-%s-%s" repo number)
                                :when-done `(lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
-                                            (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue-face)) (propertize ,repo 'face 'consult-gh-user-face) (propertize "locked" 'face 'consult-gh-error-face))))
+                                            (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "locked" 'face 'consult-gh-error))))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -8223,7 +8220,7 @@ For more details refer to the manual with “gh issue unlock --help”."
           (args (list "issue" "unlock" number "--repo" repo)))
      (consult-gh--make-process (format "consult-gh-issue-unlock-%s-%s" repo number)
                                :when-done `(lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
-                                            (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue-face)) (propertize ,repo 'face 'consult-gh-user-face) (propertize "unlocked" 'face 'consult-gh-success-face))))
+                                            (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "unlocked" 'face 'consult-gh-success))))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -8309,7 +8306,7 @@ For more details refer to the manual with “gh issue develop --help”."
                     "issue"))
           (issueEnabled (if (not (stringp topic)) (gethash :hasIssuesEnabled (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" repo "--json" "hasIssuesEnabled"))) t))
           (_ (unless (eq issueEnabled 't)
-               (error "Issue is not enabled for the repo %s" (propertize repo 'face 'consult-gh-repo-face))))
+               (error "Issue is not enabled for the repo %s" (propertize repo 'face 'consult-gh-repo))))
           (number (or (and (stringp topic) (get-text-property 0 :number topic))
                       (get-text-property 0 :number (consult-gh-issue-list repo t))))
           (_ (unless (equal type "issue")
@@ -8397,22 +8394,22 @@ Description of Arguments:
 
   PROMPT  the prompt in the minibuffer
           \(passed as PROMPT to `consult--red'\)
-  BUILDER an async builder function passed to `consult--async-command'.
+  BUILDER an async builder function passed to `consult--process-collection'.
   INITIAL an optional arg for the initial input in the minibuffer.
           \(passed as INITITAL to `consult--read'\)"
   (consult-gh-with-host (consult-gh--auth-account-host)
       (consult--read
-       (consult--async-command builder
-         (consult-gh--search-issues-transform builder))
+       (consult--process-collection builder
+         :transform (consult-gh--search-issues-transform builder))
        :prompt prompt
        :lookup #'consult--lookup-member
        :state (funcall #'consult-gh--issue-state)
-       :initial (consult--async-split-initial initial)
+       :initial initial
        :group #'consult-gh--issue-group
        :require-match t
-       :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
-                                  (consult--async-split-initial (consult-gh--get-repo-from-topic))
-                                  (consult--async-split-thingatpt 'symbol))
+       :add-history (append (list (consult-gh--get-repo-from-directory)
+                                  (consult-gh--get-repo-from-topic)
+                                  (thing-at-point 'symbol))
                             consult-gh--known-repos-list)
        :history '(:input consult-gh--search-issues-history)
        :category 'consult-gh-issues
@@ -8460,9 +8457,9 @@ URL `https://github.com/minad/consult'."
          (sel (consult-gh--async-search-issues prompt #'consult-gh--search-issues-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
       (funcall consult-gh-issue-action sel))))
@@ -8521,7 +8518,7 @@ Description of Arguments:
 
   PROMPT  the prompt in the minibuffer
           \(passed as PROMPT to `consult--red'\)
-  BUILDER an async builder function passed to `consult--async-command'.
+  BUILDER an async builder function passed to `consult--process-collection'.
   INITIAL an optional arg for the initial input in the minibuffer
           \(passed as INITITAL to `consult--read'\)"
   (let* ((initial (or initial
@@ -8530,18 +8527,18 @@ Description of Arguments:
                         nil))))
     (consult-gh-with-host (consult-gh--auth-account-host)
         (consult--read
-         (consult--async-command builder
-           (consult-gh--pr-list-transform builder))
+         (consult--process-collection builder
+           :transform (consult-gh--pr-list-transform builder))
          :prompt prompt
          :category 'consult-gh-prs
          :lookup #'consult--lookup-member
          :state (funcall #'consult-gh--pr-state)
-         :initial (consult--async-split-initial initial)
+         :initial initial
          :group #'consult-gh--pr-list-group
          :require-match t
-         :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
-                                    (consult--async-split-initial (consult-gh--get-repo-from-topic))
-                                    (consult--async-split-thingatpt 'symbol))
+         :add-history (append (list (consult-gh--get-repo-from-directory)
+                                    (consult-gh--get-repo-from-topic)
+                                    (thing-at-point 'symbol))
                               consult-gh--known-repos-list)
          :history '(:input consult-gh--repos-history)
          :preview-key consult-gh-preview-key
@@ -8591,9 +8588,9 @@ URL `https://github.com/minad/consult'."
          (sel (consult-gh--async-pr-list prompt #'consult-gh--pr-list-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
       (funcall consult-gh-pr-action sel))))
@@ -8755,10 +8752,9 @@ For more details refer to the manual with “gh pr edit --help”."
        (let* ((baserepo (or (and pr (get-text-property 0 :baserepo pr))
                         (get-text-property 0 :repo (consult-gh-search-repos nil t))))
               (canAdmin (consult-gh--user-canadmin baserepo))
-              (sep (when (and (not (eq consult-async-split-style 'nil))
-                              (consult--async-split-style))
-                     (or (plist-get (consult--async-split-style) :initial)
-                         (char-to-string (plist-get (consult--async-split-style) :separator)))))
+              (style (or consult-async-split-style 'none))
+              (sep (or (plist-get (alist-get style consult-async-split-styles-alist) :initial)
+                         (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :separator))))
               (pr (or pr (consult-gh-pr-list (if canAdmin
                                                  baserepo
                                                (concat baserepo " -- " "--author " "@me" sep))
@@ -8766,7 +8762,7 @@ For more details refer to the manual with “gh pr edit --help”."
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
               (isAuthor (consult-gh--user-isauthor pr)))
          (if (not (or canAdmin isAuthor))
-             (message "The curent user, %s, %s to edit this pull request" (propertize user 'face 'consult-gh-error-face) (propertize "does not have permission" 'face 'consult-gh-error-face))
+             (message "The curent user, %s, %s to edit this pull request" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
            (funcall #'consult-gh--pr-view-action pr)
            (consult-gh-pr-edit)))
      (let* ((pr consult-gh--topic)
@@ -8775,7 +8771,7 @@ For more details refer to the manual with “gh pr edit --help”."
             (canAdmin (consult-gh--user-canadmin baserepo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (if (not (or canAdmin isAuthor))
-                   (message "The curent user, %s, %s to edit this pull request" (propertize user 'face 'consult-gh-error-face) (propertize "does not have permission" 'face 'consult-gh-error-face))))
+                   (message "The curent user, %s, %s to edit this pull request" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
             (number (get-text-property 0 :number pr))
             (newtopic (format "%s/#%s" baserepo number))
             (title (get-text-property 0 :title pr))
@@ -8920,7 +8916,7 @@ buffer created by `consult-gh--pr-view'."
               (canAdmin (consult-gh--user-canadmin repo))
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
               (_ (if (not canAdmin)
-                     (message "The user, %s, %s to merege PRs in that repository" (propertize user 'face 'consult-gh-user-face) (propertize "does not have permissions" 'face 'consult-gh-error-face))))
+                     (message "The user, %s, %s to merege PRs in that repository" (propertize user 'face 'consult-gh-user) (propertize "does not have permissions" 'face 'consult-gh-error))))
               (pr (or pr (consult-gh-pr-list repo t))))
          (funcall #'consult-gh--pr-view-action pr)
          (consult-gh-pr-merge))
@@ -8930,13 +8926,13 @@ buffer created by `consult-gh--pr-view'."
             (canAdmin (consult-gh--user-canadmin repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (if (not canAdmin)
-                   (message "The user, %s, %s to merege PRs in that repository" (propertize user 'face 'consult-gh-user-face) (propertize "does not have permissions" 'face 'consult-gh-error-face))))
+                   (message "The user, %s, %s to merege PRs in that repository" (propertize user 'face 'consult-gh-user) (propertize "does not have permissions" 'face 'consult-gh-error))))
             (number (get-text-property 0 :number pr))
             (state (get-text-property 0 :state pr)))
 
        (cond
         ((not (equal state "OPEN"))
-         (message "Pull request is already %s!" (propertize (downcase state) 'face 'consult-gh-error-face)))
+         (message "Pull request is already %s!" (propertize (downcase state) 'face 'consult-gh-error)))
         (t
          (let* ((auto-merge-state (consult-gh--json-to-hashtable (consult-gh--command-to-string "pr" "view" number "--repo" repo "--json" "autoMergeRequest") :autoMergeRequest))
                 (action (consult--read (append (list (cons "Merge the pull request" :merge))
@@ -9074,7 +9070,7 @@ For more details refer to the manual with “gh pr lock --help”."
                              (list "--reason" reason))))
      (consult-gh--make-process (format "consult-gh-pr-lock-%s-%s" repo number)
                                :when-done `(lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
-                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue-face)) (propertize ,repo 'face 'consult-gh-user-face) (propertize "locked" 'face 'consult-gh-error-face))))
+                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "locked" 'face 'consult-gh-error))))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -9095,7 +9091,7 @@ For more details refer to the manual with “gh pr unlock --help”."
           (args (list "pr" "unlock" number "--repo" repo)))
      (consult-gh--make-process (format "consult-gh-pr-unlock-%s-%s" repo number)
                                :when-done `(lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
-                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue-face)) (propertize ,repo 'face 'consult-gh-user-face) (propertize "unlocked" 'face 'consult-gh-success-face))))
+                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "unlocked" 'face 'consult-gh-success))))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -9188,26 +9184,27 @@ Description of Arguments:
 
   PROMPT  the prompt in the minibuffer
           \(passed as PROMPT to `consult--red'\)
-  BUILDER an async builder function passed to `consult--async-command'.
+  BUILDER an async builder function passed to `consult--process-collection'.
   INITIAL an optional arg for the initial input in the minibuffer.
           \(passed as INITITAL to `consult--read'\)"
   (consult-gh-with-host (consult-gh--auth-account-host)
-      (consult--read
-       (consult--async-command builder
-         (consult-gh--search-prs-transform builder))
-       :prompt prompt
-       :category 'consult-gh-prs
-       :lookup #'consult--lookup-member
-       :state (funcall #'consult-gh--pr-state)
-       :initial (consult--async-split-initial initial)
-       :group #'consult-gh--pr-search-group
-       :require-match t
-       :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
-                                  (consult--async-split-initial (consult-gh--get-repo-from-topic))
-                                  (consult--async-split-thingatpt 'symbol)))
-       :history '(:input consult-gh--search-prs-history)
-       :preview-key consult-gh-preview-key
-       :sort nil)))
+                        (consult--read
+                         (consult--process-collection builder
+                                                      :transform (consult-gh--search-prs-transform builder))
+                         :prompt prompt
+                         :category 'consult-gh-prs
+                         :lookup #'consult--lookup-member
+                         :state (funcall #'consult-gh--pr-state)
+                         :initial initial
+                         :group #'consult-gh--pr-search-group
+                         :require-match t
+                         :add-history (append (list (consult-gh--get-repo-from-directory)
+                                                    (consult-gh--get-repo-from-topic)
+                                                    (thing-at-point 'symbol))
+                                              consult-gh--known-repos-list)
+                         :history '(:input consult-gh--search-prs-history)
+                         :preview-key consult-gh-preview-key
+                         :sort nil)))
 
 ;;;###autoload
 (defun consult-gh-search-prs (&optional initial repo noaction prompt)
@@ -9250,9 +9247,9 @@ URL `https://github.com/minad/consult'."
          (sel (consult-gh--async-search-prs prompt #'consult-gh--search-prs-builder initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
       (funcall consult-gh-pr-action sel))))
@@ -9306,23 +9303,24 @@ Description of Arguments:
 
   PROMPT  the prompt in the minibuffer
           \(passed as PROMPT to `consult--red'\)
-  BUILDER an async builder function passed to `consult--async-command'.
+  BUILDER an async builder function passed to `consult--process-collection'.
   INITIAL an optional arg for the initial input in the minibuffer.
           \(passed as INITITAL to `consult--read'\)"
   (consult-gh-with-host (consult-gh--auth-account-host)
       (consult--read
-       (consult--async-command builder
+       (consult--process-collection builder
          (consult-gh--search-code-transform builder))
        :prompt prompt
        :category 'consult-gh-codes
        :lookup #'consult--lookup-member
        :state (funcall #'consult-gh--code-state)
-       :initial (consult--async-split-initial initial)
+       :initial initial
        :group #'consult-gh--code-group
        :require-match t
-       :add-history (append (list (consult--async-split-initial  (consult-gh--get-repo-from-directory))
-                                  (consult--async-split-initial (consult-gh--get-repo-from-topic))
-                                  (consult--async-split-thingatpt 'symbol)))
+       :add-history (append (list (consult-gh--get-repo-from-directory)
+                                  (consult-gh--get-repo-from-topic)
+                                  (thing-at-point 'symbol))
+                            consult-gh--known-repos-list)
        :history '(:input consult-gh--search-code-history)
        :preview-key consult-gh-preview-key
        :sort nil)))
@@ -9374,9 +9372,9 @@ URL `https://github.com/minad/consult'."
     (setq consult-gh--open-files-list nil)
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
       (funcall consult-gh-code-action sel))))
@@ -9413,7 +9411,7 @@ INITIAL is an optional arg for the initial input in the minibuffer
                               :annotate (lambda (cand) (funcall (consult-gh--file-annotate) candidates cand))
                               :history t
                               :sort nil
-                              :add-history (consult--async-split-thingatpt 'filename)
+                              :add-history (thing-at-point 'filename)
                               :history 'consult-gh--files-history
                               :category 'consult-gh-files
                               :preview-key consult-gh-preview-key
@@ -9421,9 +9419,9 @@ INITIAL is an optional arg for the initial input in the minibuffer
 
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
 
     (if noaction
         sel
@@ -9519,9 +9517,9 @@ If PROMPT is non-nil, use it as the query prompt."
          (sel (consult-gh--dashboard prompt initial user)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0  :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
       (and (stringp sel) (funcall consult-gh-dashboard-action sel)))))
@@ -9549,7 +9547,7 @@ Description of Arguments:
 
   PROMPT  the prompt in the minibuffer
           \(passed as PROMPT to `consult--red'\)
-  BUILDER an async builder function passed to `consult--async-command'.
+  BUILDER an async builder function passed to `consult--process-collection'.
   INITIAL an optional arg for the initial input in the minibuffer.
           \(passed as INITITAL to `consult--read'\)"
   (consult-gh-with-host
@@ -9588,9 +9586,9 @@ If PROMPT is non-nil, use it as the query prompt."
          (sel (consult-gh--notifications prompt initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list (consult--async-split-initial reponame)))
+      (add-to-history 'consult-gh--known-repos-list reponame))
     (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list (consult--async-split-initial username)))
+      (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
       (and (stringp sel) (funcall consult-gh-notifications-action sel)
@@ -9752,7 +9750,7 @@ then the user is asked to chose the TOPIC interactively."
                   (info (get-text-property 0 :comment-info topic))
                   (comment-id (plist-get info :comment-id))
                   (reply-url (plist-get info :reply-url)))
-             (and (consult-gh-topics--reply-comment-submit comment repo number comment-id reply-url)
+             (and (consult-gh-topics--reply-comment-submit comment comment-id reply-url)
                   (message "Comment Submitted!")
                   (funcall consult-gh-quit-window-func t))))
           ((and isComment (equal target "review-comment"))
