@@ -1978,6 +1978,15 @@ USER defaults to `consult-gh--auth-current-active-account'."
            do
            (keymap-unset map (car k) t)))
 
+(defun consult-gh--get-split-style-character (&optional style)
+"Get the character for consult async split STYLE.
+
+STYLE defaults to `consult-async-split-style'."
+(let ((style (or style consult-async-split-style 'none)))
+  (or (plist-get (alist-get style consult-async-split-styles-alist) :initial)
+      (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :separator))
+      "")))
+
 ;;; Backend functions for `consult-gh'.
 
 ;; Buffers and Windows
@@ -7306,22 +7315,14 @@ If PROMPT is non-nil, use it as the query prompt."
         (setq host (cadr sel)))))
   (consult-gh--auth-switch host user))
 
-(defun consult-gh--repo-list-transform (async &rest _)
+(defun consult-gh--repo-list-transform (input)
   "Add annotation to repo candidates in `consult-gh-repo-list'.
 
-Returns ASYNC function after formatting results with
-`consult-gh--repo-format'.
-BUILDER is the command line builder function \(e.g.
-`consult-gh--repo-list-builder'\)."
-  (let ((consult-gh--current-input nil))
-    `(lambda (action)
-       (cond
-        ((stringp action)
-         (setq consult-gh--current-input action)
-         (funcall ,async action))
-        (t (mapcar (lambda (string)
-                     (consult-gh--repo-format string consult-gh--current-input nil))
-                   (funcall ,async action)))))))
+Format each candidates with `consult-gh--repo-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--repo-format cand input nil))))
 
 (defun consult-gh--repo-list-builder (input)
   "Build gh command line for listing repos of INPUT.
@@ -7377,28 +7378,28 @@ Description of Arguments:
   BUILDER an async builder function passed to `consult--process-collection'.
   INITIAL an optional arg for the initial input
           \\(passed as INITITAL to `consult--read'\)"
-  (let* ((candidates (consult--process-collection builder
-                       :transform (consult-gh--repo-list-transform builder)))
-         (current-repo (consult-gh--get-repo-from-directory))
+  (let* ((current-repo (consult-gh--get-repo-from-directory))
          (initial (or initial
                       (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-username current-repo)))))
     (consult-gh-with-host (consult-gh--auth-account-host)
-        (consult--read candidates
-                   :prompt prompt
-                   :lookup #'consult--lookup-member
-                   :state (funcall #'consult-gh--repo-state)
-                   :initial initial
-                   :group #'consult-gh--repo-group
-                   :add-history (append (list
-                                         (when current-repo
-                                             (consult-gh--get-username current-repo))
-                                         (thing-at-point 'symbol))
-                                        consult-gh--known-orgs-list)
-                   :history '(:input consult-gh--orgs-history)
-                   :require-match t
-                   :category 'consult-gh-repos
-                   :preview-key consult-gh-preview-key
-                   :sort nil))))
+                          (consult--read (consult--process-collection builder
+                                           :transform (consult--async-transform-by-input #'consult-gh--repo-list-transform))
+                                         :prompt prompt
+                                         :lookup #'consult--lookup-member
+                                         :state (funcall #'consult-gh--repo-state)
+                                         :initial initial
+                                         :group #'consult-gh--repo-group
+                                         :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                                                               (append (list
+                                                               (when current-repo
+                                                                 (consult-gh--get-username current-repo))
+                                                               (thing-at-point 'symbol))
+                                                              consult-gh--known-orgs-list))
+                                         :history '(:input consult-gh--orgs-history)
+                                         :require-match t
+                                         :category 'consult-gh-repos
+                                         :preview-key consult-gh-preview-key
+                                         :sort nil))))
 
 ;;;###autoload
 (defun consult-gh-repo-list (&optional initial noaction prompt)
@@ -7447,22 +7448,14 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-repo-action sel))))
 
-(defun consult-gh--search-repos-transform (async &rest _)
+(defun consult-gh--search-repos-transform (input)
   "Add annotation to repo candidates in `consult-gh-search-repos'.
 
-Returns ASYNC function after formatting results with
-`consult-gh--repo-format'.
-BUILDER is the command line builder function \(e.g.
-`consult-gh--search-repos-builder'\)."
-  (let ((consult-gh--current-input nil))
-    `(lambda (action)
-       (cond
-        ((stringp action)
-         (setq consult-gh--current-input action)
-         (funcall ,async action))
-        (t (mapcar (lambda (string)
-                     (consult-gh--repo-format string consult-gh--current-input t))
-                   (funcall ,async action)))))))
+Format each candidates with `consult-gh--repo-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--repo-format cand input t))))
 
 (defun consult-gh--search-repos-builder (input)
   "Build gh command line for searching repositories with INPUT query.
@@ -7507,16 +7500,17 @@ Description of Arguments:
     (consult-gh-with-host (consult-gh--auth-account-host)
                           (consult--read
                            (consult--process-collection builder
-                                                        :transform (consult-gh--search-repos-transform builder))
+                             :transform (consult--async-transform-by-input #'consult-gh--search-repos-transform))
                            :prompt prompt
                            :lookup #'consult--lookup-member
                            :state (funcall #'consult-gh--repo-state)
                            :initial initial
                            :group #'consult-gh--repo-group
-                           :add-history (append (list (consult-gh--get-repo-from-directory)
+                           :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                                                 (append (list (consult-gh--get-repo-from-directory)
                                                       (consult-gh--get-repo-from-topic)
                                                       (thing-at-point 'symbol))
-                                                consult-gh--known-repos-list)
+                                                consult-gh--known-orgs-list))
                            :history '(:input consult-gh--search-repos-history)
                            :require-match t
                            :category 'consult-gh-repos
@@ -7594,10 +7588,11 @@ If PROMPT is non-nil, use it as the query prompt."
                                                    :lookup #'consult--lookup-member
                                                    :state (funcall #'consult-gh--repo-state)
                                                    :group #'consult-gh--repo-group
-                                                   :add-history (append (list (consult-gh--get-repo-from-directory)
+                                                   :add-history (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                                                                         (append (list (consult-gh--get-repo-from-directory)
 (consult-gh--get-repo-from-topic)
 (thing-at-point 'symbol))
-                                                                        consult-gh--known-repos-list)
+                                                                        consult-gh--known-repos-list))
                                                    :history 'consult-gh--repos-history
                                                    :require-match t
                                                    :category 'consult-gh-repos
@@ -7705,22 +7700,14 @@ backend functions, `consult-gh--repo-create-scratch',
       (':template (consult-gh--repo-create-template name owner description visibility template))
       (':existing (consult-gh--repo-create-push-existing name local-path owner description visibility)))))
 
-(defun consult-gh--issue-list-transform (async &rest _)
-  "Add annotation to issue candidates in `consult-gh-issue-list'.
+(defun consult-gh--issue-list-transform (input)
+"Add annotation to issue candidates in `consult-gh-issue-list'.
 
-Returns ASYNC function after formatting results with
-`consult-gh--issue-list-format'.
-BUILDER is the command line builder function \(e.g.
-`consult-gh--issue-list-builder'\)."
-  (let ((consult-gh--current-input nil))
-    `(lambda (action)
-       (cond
-        ((stringp action)
-         (setq consult-gh--current-input action)
-         (funcall ,async action))
-        (t (mapcar (lambda (string)
-                     (consult-gh--issue-list-format string consult-gh--current-input nil))
-                   (funcall ,async action)))))))
+Format each candidates with `consult-gh--issue-list-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--issue-list-format cand input nil))))
 
 (defun consult-gh--issue-list-builder (input)
   "Build gh command line for listing issues the INPUT repository.
@@ -7771,7 +7758,7 @@ Description of Arguments:
     (consult-gh-with-host (consult-gh--auth-account-host)
         (consult--read
          (consult--process-collection builder
-           :transform (consult-gh--issue-list-transform builder))
+           :transform (consult--async-transform-by-input #'consult-gh--issue-list-transform))
          :prompt prompt
          :lookup #'consult--lookup-member
          :state (funcall #'consult-gh--issue-state)
@@ -7779,10 +7766,11 @@ Description of Arguments:
          :group #'consult-gh--issue-group
          :require-match t
          :category 'consult-gh-issues
-         :add-history (append (list (consult-gh--get-repo-from-directory)
+         :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                               (append (list (consult-gh--get-repo-from-directory)
                                     (consult-gh--get-repo-from-topic)
                                     (thing-at-point 'symbol))
-                              consult-gh--known-repos-list)
+                              consult-gh--known-repos-list))
          :history '(:input consult-gh--repos-history)
          :preview-key consult-gh-preview-key
          :sort nil))))
@@ -7956,9 +7944,7 @@ For more details refer to the manual with “gh issue edit --help”."
        (let* ((repo (or (and issue (get-text-property 0 :repo issue))
                         (get-text-property 0 :repo (consult-gh-search-repos nil t))))
               (canAdmin (consult-gh--user-canadmin repo))
-              (style (or consult-async-split-style 'none))
-              (sep (or (plist-get (alist-get style consult-async-split-styles-alist) :initial)
-                         (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :separator))))
+              (sep (consult-gh--get-split-style-character))
               (issue (or issue (consult-gh-issue-list (if canAdmin
                                                           repo
                                                         (concat repo " -- " "--author " "@me" sep))
@@ -8345,22 +8331,14 @@ For more details refer to the manual with “gh issue develop --help”."
       ((stringp (cadr branch))
        (consult-gh-find-file repo (car branch)))))))
 
-(defun consult-gh--search-issues-transform (async &rest _)
+(defun consult-gh--search-issues-transform (input)
   "Add annotation to issue candidates in `consult-gh-search-issues'.
 
-Returns ASYNC function after formatting results with
-`consult-gh--search-issues-format'.
-BUILDER is the command line builder function \(e.g.
-`consult-gh--search-issues-builder'\)."
-  (let ((consult-gh--current-input nil))
-    `(lambda (action)
-       (cond
-        ((stringp action)
-         (setq consult-gh--current-input action)
-         (funcall ,async action))
-        (t (mapcar (lambda (string)
-                     (consult-gh--search-issues-format string consult-gh--current-input t))
-                   (funcall ,async action)))))))
+Format each candidates with `consult-gh--search-issues-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--search-issues-format cand input nil))))
 
 (defun consult-gh--search-issues-builder (input)
   "Build gh command line for searching issues of INPUT query."
@@ -8400,17 +8378,18 @@ Description of Arguments:
   (consult-gh-with-host (consult-gh--auth-account-host)
       (consult--read
        (consult--process-collection builder
-         :transform (consult-gh--search-issues-transform builder))
+         :transform (consult--async-transform-by-input #'consult-gh--search-issues-transform))
        :prompt prompt
        :lookup #'consult--lookup-member
        :state (funcall #'consult-gh--issue-state)
        :initial initial
        :group #'consult-gh--issue-group
        :require-match t
-       :add-history (append (list (consult-gh--get-repo-from-directory)
+       :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                             (append (list (consult-gh--get-repo-from-directory)
                                   (consult-gh--get-repo-from-topic)
                                   (thing-at-point 'symbol))
-                            consult-gh--known-repos-list)
+                            consult-gh--known-repos-list))
        :history '(:input consult-gh--search-issues-history)
        :category 'consult-gh-issues
        :preview-key consult-gh-preview-key
@@ -8464,22 +8443,14 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-issue-action sel))))
 
-(defun consult-gh--pr-list-transform (async &rest _)
+(defun consult-gh--pr-list-transform (input)
   "Add annotation to issue candidates in `consult-gh-pr-list'.
 
-Returns ASYNC function after formatting results with
-`consult-gh--pr-list-format'.
-BUILDER is the command line builder function \(e.g.
-`consult-gh--pr-list-builder'\)."
-  (let ((consult-gh--current-input nil))
-    `(lambda (action)
-       (cond
-        ((stringp action)
-         (setq consult-gh--current-input action)
-         (funcall ,async action))
-        (t (mapcar (lambda (string)
-                     (consult-gh--pr-list-format string consult-gh--current-input nil))
-                   (funcall ,async action)))))))
+Format each candidates with `consult-gh--pr-list-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--pr-list-format cand input nil))))
 
 (defun consult-gh--pr-list-builder (input)
   "Build gh command line for listing pull requests of the INPUT repository.
@@ -8528,7 +8499,7 @@ Description of Arguments:
     (consult-gh-with-host (consult-gh--auth-account-host)
         (consult--read
          (consult--process-collection builder
-           :transform (consult-gh--pr-list-transform builder))
+           :transform (consult--async-transform-by-input #'consult-gh--pr-list-transform))
          :prompt prompt
          :category 'consult-gh-prs
          :lookup #'consult--lookup-member
@@ -8536,10 +8507,11 @@ Description of Arguments:
          :initial initial
          :group #'consult-gh--pr-list-group
          :require-match t
-         :add-history (append (list (consult-gh--get-repo-from-directory)
+         :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                               (append (list (consult-gh--get-repo-from-directory)
                                     (consult-gh--get-repo-from-topic)
                                     (thing-at-point 'symbol))
-                              consult-gh--known-repos-list)
+                              consult-gh--known-repos-list))
          :history '(:input consult-gh--repos-history)
          :preview-key consult-gh-preview-key
          :sort nil))))
@@ -8753,8 +8725,7 @@ For more details refer to the manual with “gh pr edit --help”."
                         (get-text-property 0 :repo (consult-gh-search-repos nil t))))
               (canAdmin (consult-gh--user-canadmin baserepo))
               (style (or consult-async-split-style 'none))
-              (sep (or (plist-get (alist-get style consult-async-split-styles-alist) :initial)
-                         (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :separator))))
+              (sep (consult-gh--get-split-style-character))
               (pr (or pr (consult-gh-pr-list (if canAdmin
                                                  baserepo
                                                (concat baserepo " -- " "--author " "@me" sep))
@@ -9135,22 +9106,14 @@ This mimicks the same function as runing “gh pr ready” with the switch
                                :when-done (lambda (_ str) (message str))
                                :cmd-args args))))
 
-(defun consult-gh--search-prs-transform (async &rest _)
+(defun consult-gh--search-prs-transform (input)
   "Add annotation to pr candidates in `consult-gh-search-prs'.
 
-Returns ASYNC function after formatting results with
-`consult-gh--search-prs-format'.
-BUILDER is the command line builder function \(e.g.
-`consult-gh--search-prs-builder'\)."
-  (let ((consult-gh--current-input nil))
-    `(lambda (action)
-       (cond
-        ((stringp action)
-         (setq consult-gh--current-input action)
-         (funcall ,async action))
-        (t (mapcar (lambda (string)
-                     (consult-gh--search-prs-format string consult-gh--current-input t))
-                   (funcall ,async action)))))))
+Format each candidates with `consult-gh--search-prs-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--search-prs-format cand input nil))))
 
 (defun consult-gh--search-prs-builder (input)
   "Build gh command line for searching pull requests of INPUT query."
@@ -9190,7 +9153,7 @@ Description of Arguments:
   (consult-gh-with-host (consult-gh--auth-account-host)
                         (consult--read
                          (consult--process-collection builder
-                                                      :transform (consult-gh--search-prs-transform builder))
+                                                      :transform (consult--async-transform-by-input #'consult-gh--search-prs-transform))
                          :prompt prompt
                          :category 'consult-gh-prs
                          :lookup #'consult--lookup-member
@@ -9198,10 +9161,11 @@ Description of Arguments:
                          :initial initial
                          :group #'consult-gh--pr-search-group
                          :require-match t
-                         :add-history (append (list (consult-gh--get-repo-from-directory)
+                         :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                                               (append (list (consult-gh--get-repo-from-directory)
                                                     (consult-gh--get-repo-from-topic)
                                                     (thing-at-point 'symbol))
-                                              consult-gh--known-repos-list)
+                                              consult-gh--known-repos-list))
                          :history '(:input consult-gh--search-prs-history)
                          :preview-key consult-gh-preview-key
                          :sort nil)))
@@ -9254,22 +9218,14 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-pr-action sel))))
 
-(defun consult-gh--search-code-transform (async &rest _)
+(defun consult-gh--search-code-transform (input)
   "Add annotation to code candidates in `consult-gh-search-code'.
 
-Returns ASYNC function after formatting results with
-`consult-gh--search-code-format'.
-BUILDER is the command line builder function \(e.g.
-`consult-gh--search-code-builder'\)."
-  (let ((consult-gh--current-input nil))
-    `(lambda (action)
-       (cond
-        ((stringp action)
-         (setq consult-gh--current-input action)
-         (funcall ,async action))
-        (t (mapcar (lambda (string)
-                     (consult-gh--search-code-format string consult-gh--current-input t))
-                   (funcall ,async action)))))))
+Format each candidates with `consult-gh--search-code-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--search-code-format cand input nil))))
 
 (defun consult-gh--search-code-builder (input)
   "Build gh command line for searching code with INPUT query."
@@ -9309,7 +9265,7 @@ Description of Arguments:
   (consult-gh-with-host (consult-gh--auth-account-host)
       (consult--read
        (consult--process-collection builder
-         (consult-gh--search-code-transform builder))
+         :transform (consult--async-transform-by-input #'consult-gh--search-code-transform))
        :prompt prompt
        :category 'consult-gh-codes
        :lookup #'consult--lookup-member
@@ -9317,10 +9273,11 @@ Description of Arguments:
        :initial initial
        :group #'consult-gh--code-group
        :require-match t
-       :add-history (append (list (consult-gh--get-repo-from-directory)
+       :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                             (append (list (consult-gh--get-repo-from-directory)
                                   (consult-gh--get-repo-from-topic)
                                   (thing-at-point 'symbol))
-                            consult-gh--known-repos-list)
+                            consult-gh--known-repos-list))
        :history '(:input consult-gh--search-code-history)
        :preview-key consult-gh-preview-key
        :sort nil)))
@@ -9411,7 +9368,7 @@ INITIAL is an optional arg for the initial input in the minibuffer
                               :annotate (lambda (cand) (funcall (consult-gh--file-annotate) candidates cand))
                               :history t
                               :sort nil
-                              :add-history (thing-at-point 'filename)
+                              :add-history (concat (consult-gh--get-split-style-character) (thing-at-point 'filename))
                               :history 'consult-gh--files-history
                               :category 'consult-gh-files
                               :preview-key consult-gh-preview-key
