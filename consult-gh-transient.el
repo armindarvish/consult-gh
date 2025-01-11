@@ -1,11 +1,11 @@
-;;; consult-gh-transient.el --- Emabrk Actions for consult-gh -*- lexical-binding: t -*-
+;;; consult-gh-transient.el --- Transient Menu for consult-gh -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Armin Darvish
 
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.0
+;; Version: 2.2
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 

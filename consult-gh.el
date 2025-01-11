@@ -7827,8 +7827,8 @@ URL `https://github.com/minad/consult'"
       (funcall consult-gh-issue-action sel))))
 
 ;;;###autoload
-(defun consult-gh-issue-create (&optional repo title)
-  "Create a new issue with TITLE for REPO.
+(defun consult-gh-issue-create (&optional repo title body)
+  "Create a new issue with TITLE and BODY for REPO.
 
 This mimicks the same interactive issue creation from “gh issue create” in
 the terminal.
@@ -7845,15 +7845,13 @@ For more details refer to the manual with “gh issue create --help”."
           (templates (consult-gh--get-issue-templates repo))
           (template (and templates (consult--read templates
                                                   :prompt "Select a template: "
-                                                  :require-match t
+                                                  :require-match nil
                                                   :lookup #'consult--lookup-cdr
                                                   :sort t)))
-          (template-title (and template (plistp template) (plist-get template :title)))
-          (template-title (and (not (string-empty-p template-title)) template-title))
-          (title (or template-title title))
-          (body (and template (plistp template) (plist-get template :body)))
-          (body (and (not (string-empty-p body)) body))
-
+          (title (or title (and template (plistp template) (plist-get template :title))))
+          (title (and title (stringp title) (not (string-empty-p title)) title))
+          (body (or body (and template (plistp template) (plist-get template :body))))
+          (body (and body (stringp body) (not (string-empty-p body)) body))
           (buffer (format "*consult-gh-issue-create: %s" repo))
           (topic (or repo "new issue"))
           (type "issue"))
@@ -8567,8 +8565,8 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-pr-action sel))))
 
-(defun consult-gh-pr-create (&optional repo title)
-  "Create a new pull request with TITLE for REPO.
+(defun consult-gh-pr-create (&optional repo title body)
+  "Create a new pull request with TITLE and BODY for REPO.
 
 This mimicks the same interactive pr creation from “gh pr create”
 in the terminal.  For more details refer to the manual with
@@ -8611,13 +8609,14 @@ in the terminal.  For more details refer to the manual with
           (canAdmin (consult-gh--user-canadmin baserepo))
           (author (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (templates (consult-gh--get-pr-templates baserepo))
-          (body (if (and templates (length= templates 1))
-                    (cdar templates)
+          (body (or body
+                    (if (and templates (length= templates 1))
+                        (cdar templates)
                   (and templates (consult--read templates
                                                 :prompt "Select a template: "
                                                 :require-match t
                                                 :lookup #'consult--lookup-cdr
-                                                :sort t))))
+                                                :sort t)))))
 
           (topic (or repo "new pr"))
           (type "pr")
