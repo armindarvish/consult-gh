@@ -8723,7 +8723,6 @@ For more details refer to the manual with “gh pr edit --help”."
        (let* ((baserepo (or (and pr (get-text-property 0 :baserepo pr))
                         (get-text-property 0 :repo (consult-gh-search-repos nil t))))
               (canAdmin (consult-gh--user-canadmin baserepo))
-              (style (or consult-async-split-style 'none))
               (sep (consult-gh--get-split-style-character))
               (pr (or pr (consult-gh-pr-list (if canAdmin
                                                  baserepo
