@@ -206,14 +206,6 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   (interactive)
   (consult-gh-repo-fork))
 
-(transient-define-suffix consult-gh-transient--suffix-repo-list ()
-  "Call `consult-gh-repo-list' in `consult-gh' transient menu."
-  :transient nil
-  :description "List Repos of a User"
-  :key "r l"
-  (interactive)
-  (consult-gh-repo-list))
-
 (transient-define-suffix consult-gh-transient--suffix-issue-list ()
   "Call `consult-gh-issue-list' in `consult-gh' transient menu."
   :transient nil
