@@ -11432,7 +11432,7 @@ CAND can be a repo, issue, PR, file path, ..."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
-     (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--nonutf-cleanup cand))))
+     (let ((repo (or (get-text-property 0 :repo cand) (substring-no-properties cand))))
        (consult-gh-search-code nil repo)))))
 
 (defun consult-gh-embark-clone-repo (cand)
@@ -11640,7 +11640,9 @@ CAND can be a repo, issue, PR, file path, ..."
          (funcall #'consult-gh-pr-mark-draft cand))))))
 
 (defun consult-gh-embark-link-pr-to-issue (cand)
-  "Toggle the pull request in CAND as draft/ready"
+  "Link CAND to Issue or PR.
+
+CAND can be a PR or an issue."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
