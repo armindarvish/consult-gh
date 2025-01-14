@@ -4570,8 +4570,13 @@ a hash-table output from `consult-gh--pr-read-json'."
          (reviews (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s/reviews" repo number))))
          (review-comments (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s/comments" repo number))))
          (all-comments (append comments reviews review-comments)))
+    (if (version< emacs-version "30.0") ;;temp for backward compatibility
+        (sort all-comments (lambda (x y)
+                               (let ((x_date (date-to-time (or (gethash :updated_at x) (gethash :created_at x) (gethash :submitted_at x) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t))))))
+                                 (y_date (date-to-time (or (gethash :updated_at y) (gethash :created_at y) (gethash :submitted_at y) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
+                                 (if (time-less-p x_date y_date) t nil))))
     (sort all-comments :key (lambda (k)
-                              (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))))
+                              (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t))))))))))
 
 (defun consult-gh--pr-get-commenters (table &optional comments)
   "Get list of relevant users on a pull request.
