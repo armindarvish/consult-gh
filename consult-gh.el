@@ -31,7 +31,7 @@
 ;; This package provides an interactive interface to GitHub command-line
 ;; client (see URL `https://cli.github.com/').  It uses a consult-based minibuffer
 ;; completion for searching and selecting GitHub repositories, issues,
-;; pull erquests, codes, and etc.
+;; pull requests, codes, and etc.
 
 ;;; Code:
 
@@ -124,7 +124,7 @@ Can be either a string, or a list of strings or expressions."
   :type '(choice string (repeat (choice string sexp))))
 
 (defcustom consult-gh-notifications-show-unread-only t
-  "Whether to hide reacd notifications?"
+  "Whether to hide read notifications?"
   :group 'consult-gh
   :type 'boolean)
 
@@ -137,7 +137,7 @@ Common options include:
  - A custom function                    A function that takes
                                         no input argument."
   :group 'consult-gh
-  :type '(choice (const :tag "Default Funciton" consult-gh-notifications-make-args)
+  :type '(choice (const :tag "Default Function" consult-gh-notifications-make-args)
                  (function :tag "Custom Function")))
 
 (defcustom consult-gh-browse-url-func #'browse-url
@@ -237,7 +237,7 @@ pulling files for viewing."
   "Tme FORMAT-STRING for temporary directories.
 
 This is passed as FORMAT-STRING to `format-time-string' for naming
-temporary diretories."
+temporary directories."
   :group 'consult-gh
   :type 'string)
 
@@ -324,7 +324,7 @@ Files larger than this value in size will require user confirmation
 before previewing, opening or saving the file.
 
 Default value is set by `large-file-warning-threshold'.
-If nil, no cofnirmation is required."
+If nil, no confirmation is required."
   :group 'consult-gh
   :type '(choice integer (const :tag "Never request confirmation" nil)))
 
@@ -357,7 +357,7 @@ no initial input is provided."
   "Major mode to preview repository READMEs.
 
 Choices are:
-  - \='nil            Use major-mode associated with orginal file extension
+  - \='nil            Use major-mode associated with original file extension
   - \='gfm-mode       Use `gfm-mode'
   - \='markdown-mode  Use `markdown-mode'
   - \='org-mode       Use `org-mode'"
@@ -711,7 +711,7 @@ Possible values are:
                If not, then the user can choose a different branch.
   - \='ask:      Asks the user to select a branch.
   - \='nil:      load the “HEAD” branch, no questions asked.
-  - A symbol:  loads the branch naemd in this variable.
+  - A symbol:  loads the branch named in this variable.
 
 Note that when this is set to a specific branch,
 it is used for any repository that is fetched and if the branch does not exist,
@@ -747,7 +747,7 @@ Common options include:
   :group 'consult-gh
   :type '(choice (function :tag "Browse the Repository URL in default browser" #'consult-gh--repo-browse-url-action)
                  (function :tag "Open the Repository's README in an Emacs buffer" #'consult-gh--repo-view-action)
-                 (function :tag "Browse Brnaches and Files inside Emacs" #'consult-gh--repo-browse-files-action)
+                 (function :tag "Browse Branches and Files inside Emacs" #'consult-gh--repo-browse-files-action)
                  (function :tag "Clone Repository to local folder" #'consult-gh--repo-clone-action)
                  (function :tag "Fork Repository" #'consult-gh--repo-fork-action)
                  (function :tag "Custom Function")))
@@ -846,7 +846,7 @@ Common options include:
                                               only 1 input argument,
                                               the notification candidate."
   :group 'consult-gh
-  :type '(choice (const :tag "Browse the Discussion URL" consult-gh--discussion-browse-url-actionn)
+  :type '(choice (const :tag "Browse the Discussion URL" consult-gh--discussion-browse-url-action)
                  (function :tag "Custom Function")))
 
 (defcustom consult-gh-notifications-action #'consult-gh--notifications-action
@@ -894,7 +894,7 @@ Common options include:
 (defcustom consult-gh-default-interactive-command #'consult-gh-search-repos
   "Which command should `consult-gh' call?"
   :group 'consult-gh
-  :type '(choice (function :tag "(Default) Search Rpositories"  consult-gh-search-repos)
+  :type '(choice (function :tag "(Default) Search Repositories"  consult-gh-search-repos)
                  (function :tag "List default repos of user" consult-gh-favorite-repos)
                  (function :tag "Open transient menu" consult-gh-transient)
                  (function :tag "Other custom interactive command")))
@@ -903,8 +903,8 @@ Common options include:
 (defcustom consult-gh-use-search-to-find-name nil
   "Whether to use `consult-gh-search-repos' to find repo name.
 
-If this is set to non-nil, consult-gh calls `cosnult-gh-search-repos'
-to get the repo name before runing `consult-gh-issue-list',
+If this is set to non-nil, consult-gh calls `consult-gh-search-repos'
+to get the repo name before running `consult-gh-issue-list',
 `consult-gh-pr-list', etc.
 
 This is useful if you do not remember package names and want to do a
@@ -998,7 +998,7 @@ This is used in `consult-gh-notifications'.")
 This is a list of \='(USERNAME HOST IF-ACTIVE)")
 
 (defvar consult-gh-default-host "github.com"
-  "Defualt host of GitHub.")
+  "Default host of GitHub.")
 
 (defvar-local consult-gh--topic nil
   "Topic in consult-gh preview buffers.")
@@ -1009,10 +1009,10 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)")
 This is used to change grouping dynamically.")
 
 (defvar consult-gh--issue-view-json-fields "assignees,author,body,closedAt,createdAt,labels,milestone,number,projectItems,state,title,updatedAt,url"
-  "String of comma separated json fields to retrive for viewing issues.")
+  "String of comma separated json fields to retrieve for viewing issues.")
 
 (defvar consult-gh--pr-view-json-fields "additions,assignees,author,baseRefName,body,closedAt,commits,createdAt,deletions,files,headRefName,headRepository,headRepositoryOwner,headRefOid,labels,mergeable,milestone,number,projectItems,reviewDecision,reviewRequests,state,statusCheckRollup,title,updatedAt,url"
-  "String of comma separated json fields to retrive for viewing prs.")
+  "String of comma separated json fields to retrieve for viewing prs.")
 
 (defvar consult-gh--issue-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-topics-comment-create)
                                                        ("C-c C-e" . consult-gh-issue-edit)
@@ -3526,19 +3526,19 @@ Optional argument JSON defaults to `consult-gh--issue-view-json-fields'."
 (defun consult-gh--issue-get-comments (repo number)
   "Get comments of issue NUMBER in REPO.
 
-Retrives a list of comments issue with id NUMBER in REPO.
+Retrieves a list of comments issue with id NUMBER in REPO.
 Optional argument maxnum limits the number of comments retrieved."
   (consult-gh--json-to-hashtable (consult-gh--command-to-string "issue" "view" number "--repo" repo "--json" "comments") :comments))
 
 (defun consult-gh--issue-get-commenters (table &optional comments)
   "Get a list of related users to an issue.
 
-Retrives a list of all related commenter users for the issue
+Retrieves a list of all related commenter users for the issue
 stored in TABLE, a hash-table output
 from `consult-gh--issue-read-json'.
 
 Optional argument COMMENTS is a list o comments, for example
-from runing “gh issue view” with argument “--json comments”"
+from running “gh issue view” with argument “--json comments”"
   (let* ((author (gethash :login (gethash :author table)))
          (assignees (gethash :assignees table))
          (assignees (and (listp assignees) (mapcar (lambda (item) (and (hash-table-p item) (gethash :login item))) assignees)))
@@ -3717,7 +3717,7 @@ repository \(e.g. “armindarvish/consult-gh”\) and ISSUE,
 a issue number of that repository, and shows
 the contents of the issue in an Emacs buffer.
 
-It fetches the preview of the ISSUE by runing the command
+It fetches the preview of the ISSUE by running the command
 “gh issue view ISSUE --repo REPO” using `consult-gh--call-process'
 and put it as raw text in either BUFFER or if BUFFER is nil,
 in a buffer named by `consult-gh-preview-buffer-name'.
@@ -4573,7 +4573,7 @@ Optional argument JSON, defaults to `consult-gh--pr-view-json-fields'."
 (defun consult-gh--pr-get-comments (repo number)
   "Get comments and reviews of pull request NUMBER in REPO.
 
-Retrives a list of comments and reviews for pull request stored in TABLE,
+Retrieves a list of comments and reviews for pull request stored in TABLE,
 a hash-table output from `consult-gh--pr-read-json'."
   (let* ((comments (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/issues/%s/comments" repo number))))
          (reviews (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s/reviews" repo number))))
@@ -4585,7 +4585,7 @@ a hash-table output from `consult-gh--pr-read-json'."
 (defun consult-gh--pr-get-commenters (table &optional comments)
   "Get list of relevant users on a pull request.
 
-Retrives a list of all relevant users (commenters, reviewers, etc.) for
+Retrieves a list of all relevant users (commenters, reviewers, etc.) for
 a pull request stored in TABLE, a hash-table output from
 `consult-gh--pr-read-json'.
 
@@ -6036,7 +6036,7 @@ overriding requirements with admin permissions."
   "Merge PR.
 
 PR is a propertized string describing a pull request.  For example,PR can be
-   the text stored in the buffer-local variable `cosnult-gh--topic' in a
+   the text stored in the buffer-local variable `consult-gh--topic' in a
    buffer created by `consult-gh--pr-view'.
 
 If AUTO is non-nil enables auto-merge.
@@ -6082,7 +6082,7 @@ If ADMIN is non-nil overrides requirements with admin premissions."
   "Enable auto-merge for PR.
 
 PR is a propertized string describing a pull request.  For example,PR can be
-the text stored in the buffer-local variable `cosnult-gh--topic' in a
+the text stored in the buffer-local variable `consult-gh--topic' in a
 buffer created by `consult-gh--pr-view'."
   (consult-gh-pr--merge-merge pr t))
 
@@ -6090,7 +6090,7 @@ buffer created by `consult-gh--pr-view'."
   "Disable auto-merge for PR.
 
 PR is a propertized string describing a pull request.  For example,PR can be
-the text stored in the buffer-local variable `cosnult-gh--topic' in a
+the text stored in the buffer-local variable `consult-gh--topic' in a
 buffer created by `consult-gh--pr-view'."
   (consult-gh-pr--merge-submit pr :disable-auto t))
 
@@ -6100,7 +6100,7 @@ buffer created by `consult-gh--pr-view'."
 This runs some interactive queries to determine how to merge the pull
 request, PR, which is a propertized string describing the pull request.
 For example, PR can be the text stored in the buffer-local variable
-`cosnult-gh--topic' in a buffer created by `consult-gh--pr-view'."
+`consult-gh--topic' in a buffer created by `consult-gh--pr-view'."
   (if consult-gh-topics-edit-mode
       (pcase-let* ((auto (get-text-property 0 :auto pr))
                    (admin (get-text-property 0 :admin pr))
@@ -7576,7 +7576,7 @@ If ORGS is nil, this simply calls `consult-gh--repo-list'.
 If ORGS is a list, then it runs `consult-gh--repo-list' on every member
 of ORGS and returns the results \(repositories of all ORGS\).
 
-If NOACTION is non-nil, return the candidate without runing action.
+If NOACTION is non-nil, return the candidate without running action.
 If PROMPT is non-nil, use it as the query prompt."
   (if (not orgs)
       (consult-gh-repo-list nil noaction))
@@ -8054,7 +8054,7 @@ For more details refer to the manual with “gh issue edit --help”."
 (defun consult-gh-issue-close (&optional issue reason comment)
   "Close the ISSUE with an optional REASON and/or COMMENT.
 
-This mimicks the same function as runing “gh issue close” in the terminal.
+This mimicks the same function as running “gh issue close” in the terminal.
 For more details refer to the manual with “gh issue close --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8089,7 +8089,7 @@ For more details refer to the manual with “gh issue close --help”."
 (defun consult-gh-issue-reopen (&optional issue comment)
   "Close the ISSUE with an optional COMMENT.
 
-This mimicks the same function as runing “gh issue reopen” in the terminal.
+This mimicks the same function as running “gh issue reopen” in the terminal.
 For more details refer to the manual with “gh issue reopen --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8115,7 +8115,7 @@ For more details refer to the manual with “gh issue reopen --help”."
 (defun consult-gh-issue-pin (&optional issue)
   "Pin the ISSUE.
 
-This mimicks the same function as runing “gh issue pin” in the terminal.
+This mimicks the same function as running “gh issue pin” in the terminal.
 For more details refer to the manual with “gh issue pin --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8136,7 +8136,7 @@ For more details refer to the manual with “gh issue pin --help”."
 (defun consult-gh-issue-unpin (&optional issue)
   "Unpin the ISSUE.
 
-This mimicks the same function as runing “gh issue unpin” in the terminal.
+This mimicks the same function as running “gh issue unpin” in the terminal.
 For more details refer to the manual with “gh issue unpin --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8158,7 +8158,7 @@ For more details refer to the manual with “gh issue unpin --help”."
 (defun consult-gh-issue-lock (&optional issue reason)
   "Lock the ISSUE with and optional REASON.
 
-This mimicks the same function as runing “gh issue lock” in the terminal.
+This mimicks the same function as running “gh issue lock” in the terminal.
 For more details refer to the manual with “gh issue lock --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8190,7 +8190,7 @@ For more details refer to the manual with “gh issue lock --help”."
 (defun consult-gh-issue-unlock (&optional issue)
   "Unlock the ISSUE.
 
-This mimicks the same function as runing “gh issue unlock” in the terminal.
+This mimicks the same function as running “gh issue unlock” in the terminal.
 For more details refer to the manual with “gh issue unlock --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8211,7 +8211,7 @@ For more details refer to the manual with “gh issue unlock --help”."
 (defun consult-gh-issue-transfer (&optional issue target-repo)
   "Transfer the ISSUE to TARGET-REPO.
 
-This mimicks the same function as runing “gh issue transfer” in the terminal.
+This mimicks the same function as running “gh issue transfer” in the terminal.
 For more details refer to the manual with “gh issue transfer --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8241,7 +8241,7 @@ For more details refer to the manual with “gh issue transfer --help”."
 
 When the optional argument, NO-CONFIRM, is non-nil, do not ask for
 confirmation.
-This mimicks the same function as runing “gh issue delete” in the terminal.
+This mimicks the same function as running “gh issue delete” in the terminal.
 For more details refer to the manual with “gh issue delete --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8278,7 +8278,7 @@ The optional argument BASE is a base branch to develop off of.
 The optional argument BRANCH-REPO is the repo's full name where a branch
 should be created (if not in the same repo).
 
-This mimicks the same function as runing “gh issue develop” in the terminal.
+This mimicks the same function as running “gh issue develop” in the terminal.
 For more details refer to the manual with “gh issue develop --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8714,7 +8714,7 @@ in the terminal.  For more details refer to the manual with
 (defun consult-gh-pr-edit (&optional pr)
   "Edit the PR.
 
-This mimicks the same function as runing “gh pr edit” in the terminal.
+This mimicks the same function as running “gh pr edit” in the terminal.
 For more details refer to the manual with “gh pr edit --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8870,11 +8870,11 @@ For more details refer to the manual with “gh pr edit --help”."
 (defun consult-gh-pr-merge (&optional pr)
   "Merge the PR.
 
-This mimicks the same function as runing “gh pr merge” in the terminal.
+This mimicks the same function as running “gh pr merge” in the terminal.
 For more details refer to the manual with “gh pr merge --help”.
 
 PR is a propertized string describing a pull request.  For example, PR can
-be the text stored in the buffer-local variable `cosnult-gh--topic' in a
+be the text stored in the buffer-local variable `consult-gh--topic' in a
 buffer created by `consult-gh--pr-view'."
   (interactive "P")
   (consult-gh-with-host
@@ -8958,7 +8958,7 @@ asked to chose it interactively."
 If the optional argument DELETE-BRANCH is non-nil, deletes
 the local and remote branch after close.
 
-This mimicks the same function as runing “gh pr close” in the terminal.
+This mimicks the same function as running “gh pr close” in the terminal.
 For more details refer to the manual with “gh pr close --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -8988,7 +8988,7 @@ For more details refer to the manual with “gh pr close --help”."
 (defun consult-gh-pr-reopen (&optional pr comment)
   "Close the PR with an optional COMMENT.
 
-This mimicks the same function as runing “gh pr reopen” in the terminal.
+This mimicks the same function as running “gh pr reopen” in the terminal.
 For more details refer to the manual with “gh pr reopen --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -9014,7 +9014,7 @@ For more details refer to the manual with “gh pr reopen --help”."
 (defun consult-gh-pr-lock (&optional pr reason)
   "Lock the PR with and optional REASON.
 
-This mimicks the same function as runing “gh pr lock” in the terminal.
+This mimicks the same function as running “gh pr lock” in the terminal.
 For more details refer to the manual with “gh pr lock --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -9046,7 +9046,7 @@ For more details refer to the manual with “gh pr lock --help”."
 (defun consult-gh-pr-unlock (&optional pr)
   "Unlock the PR.
 
-This mimicks the same function as runing “gh pr unlock” in the terminal.
+This mimicks the same function as running “gh pr unlock” in the terminal.
 For more details refer to the manual with “gh pr unlock --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -9067,7 +9067,7 @@ For more details refer to the manual with “gh pr unlock --help”."
 (defun consult-gh-pr-mark-ready (&optional pr)
   "Mark the PR as ready for review.
 
-This mimicks the same function as runing “gh pr ready” in the terminal.
+This mimicks the same function as running “gh pr ready” in the terminal.
 For more details refer to the manual with “gh pr ready --help”."
   (interactive "P")
   (consult-gh-with-host
@@ -9087,7 +9087,7 @@ For more details refer to the manual with “gh pr ready --help”."
 (defun consult-gh-pr-mark-draft (&optional pr)
   "Mark the PR as draft.
 
-This mimicks the same function as runing “gh pr ready” with the switch
+This mimicks the same function as running “gh pr ready” with the switch
 “--undo” in the terminal.  For more details refer to the manual with
 “gh pr ready --help”."
   (interactive "P")
@@ -9769,7 +9769,7 @@ browser."
 
 ;;;###autoload
 (defun consult-gh-enable-default-keybindings ()
-  "Enable default keybindings for all minor modes in cosnult-gh."
+  "Enable default keybindings for all minor modes in consult-gh."
   (interactive)
   ;; consult-gh-repo-view-mode-map
   (consult-gh--enable-keybindings-alist consult-gh-repo-view-mode-map  consult-gh--repo-view-mode-keybinding-alist)
@@ -9786,7 +9786,7 @@ browser."
 
 ;;;###autoload
 (defun consult-gh-disable-default-keybindings ()
-  "Disable default keybindings for minor modes in cosnult-gh."
+  "Disable default keybindings for minor modes in consult-gh."
   (interactive)
   ;; consult-gh-repo-view-mode-map
   (consult-gh--disable-keybindings-alist consult-gh-repo-view-mode-map  consult-gh--repo-view-mode-keybinding-alist)
