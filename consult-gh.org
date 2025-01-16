@@ -984,6 +984,11 @@ This is used in `consult-gh-issue-list' and `consult-gh-pr-list'.")
 
 This is used in `consult-gh-notifications'.")
 
+(defvar consult-gh--dashboard-history nil
+  "History variable for dashboard.
+
+This is used in `consult-gh-dashboard'.")
+
 (defvar consult-gh--search-repos-history nil
   "History variable for searching repos in `consult-gh-search-repos'.")
 
