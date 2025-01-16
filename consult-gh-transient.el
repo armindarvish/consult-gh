@@ -1,11 +1,11 @@
-;;; consult-gh-transient.el --- Emabrk Actions for consult-gh -*- lexical-binding: t -*-
+;;; consult-gh-transient.el --- Transient Menu for consult-gh -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Armin Darvish
 
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.0
+;; Version: 2.2
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -44,8 +44,8 @@
            (repo (consult-gh--get-repo-from-directory)))
        (concat
         (propertize "*consult-gh: Consulting GitHub Client* \n" 'face 'transient-heading)
-        (if username (concat (propertize "Current User: " 'face 'consult-gh-date-face) (propertize username 'face 'consult-gh-user-face) "\n"))
-        (if repo (concat (propertize "Current Repo: " 'face 'consult-gh-date-face) (propertize repo 'face 'consult-gh-user-face) "\n")))))
+        (if username (concat (propertize "Current User: " 'face 'consult-gh-date) (propertize username 'face 'consult-gh-user) "\n"))
+        (if repo (concat (propertize "Current Repo: " 'face 'consult-gh-date) (propertize repo 'face 'consult-gh-user) "\n")))))
    ""]
 
   [:description "--Quick Access--"
@@ -150,7 +150,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 
 ;; Suffixes
 (transient-define-suffix consult-gh-transient--suffix-switch-account ()
-  "Call `consult-gh-dashbaord' in `consult-gh' transient menu."
+  "Call `consult-gh-dashboard' in `consult-gh' transient menu."
   :transient nil
   :description "Switch Account"
   :key "a"
@@ -159,7 +159,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 
 
 (transient-define-suffix consult-gh-transient--suffix-dashboard ()
-  "Call `consult-gh-dashbaord' in `consult-gh' transient menu."
+  "Call `consult-gh-dashboard' in `consult-gh' transient menu."
   :transient nil
   :description "User's Dashbaord"
   :key "d"
