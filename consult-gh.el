@@ -9571,7 +9571,7 @@ If PROMPT is non-nil, use it as the query prompt."
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
-      (and (stringp sel) (funcall consult-gh-dashboard-action sel)))))
+      (and (stringp (car sel)) (funcall consult-gh-dashboard-action (car sel))))))
 
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
