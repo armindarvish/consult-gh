@@ -366,15 +366,17 @@ no initial input is provided."
   "Major mode to preview repository READMEs.
 
 Choices are:
-  - \='nil            Use major-mode associated with original file extension
-  - \='gfm-mode       Use `gfm-mode'
-  - \='markdown-mode  Use `markdown-mode'
-  - \='org-mode       Use `org-mode'"
+- nil:              Use major mode associated with original file extension
+- \='gfm-mode:      Use `gfm-mode'
+- \='markdown-mode: Use `markdown-mode'
+- \='org-mode:      Use `org-mode'
+
+When nil, the major mode is automatically detected based on the README's file extension."
   :group 'consult-gh
-  :type '(choice (const :tag "(Default) Guess major mode based on file format " nil)
-                 (const :tag "Use GitHub flavor markdown mode" gfm-mode)
-                 (const :tag "Use markdown mode" markdown-mode)
-                 (const :tag "Use org mode" org-mode)))
+  :type '(choice (const :tag "Guess major mode" nil)
+                 (const :tag "GitHub Flavored Markdown" gfm-mode)
+                 (const :tag "Markdown Mode" markdown-mode)
+                 (const :tag "Org Mode" org-mode)))
 
 (defcustom consult-gh-issue-preview-major-mode 'gfm-mode
   "Major mode to preview issues and pull requests.
