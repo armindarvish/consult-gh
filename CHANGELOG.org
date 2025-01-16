@@ -4,6 +4,13 @@
 
 * Development
 
+* Version 2.2 (2025-01-16)
+- improve embark keybindings (issue #174)
+- improve embark actions (see #190)
+- improve backward compatibility (issue #183)
+- remove dependency on dash.el (see #188)
+- fix minor issues nad typos, ...
+
 * Vesrion 2.1 (2025-01-07)
 - Fixes bugs/issues in v2.0 (issues #178, #183, ...)
 - Listing commands like issue-list now have a customization option to chasnge the effect of c-u prefix (see issue #175)
