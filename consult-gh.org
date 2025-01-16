@@ -5121,7 +5121,7 @@ a hash-table output from `consult-gh--pr-read-json'."
          (reviews (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s/reviews" repo number))))
          (review-comments (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s/comments" repo number))))
          (all-comments (append comments reviews review-comments)))
-    (if (version< emacs-version "30.0") ;;temp for backward compatibility
+    (if (< emacs-major-version 30) ;;temp for backward compatibility
         (sort all-comments (lambda (x y)
                                (let ((x_date (date-to-time (or (gethash :updated_at x) (gethash :created_at x) (gethash :submitted_at x) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t))))))
                                  (y_date (date-to-time (or (gethash :updated_at y) (gethash :created_at y) (gethash :submitted_at y) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
