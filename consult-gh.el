@@ -961,6 +961,11 @@ This is used in `consult-gh-issue-list' and `consult-gh-pr-list'.")
 
 This is used in `consult-gh-notifications'.")
 
+(defvar consult-gh--dashboard-history nil
+  "History variable for dashboard.
+
+This is used in `consult-gh-dashboard'.")
+
 (defvar consult-gh--search-repos-history nil
   "History variable for searching repos in `consult-gh-search-repos'.")
 
@@ -6845,13 +6850,13 @@ Description of Arguments:
          (tags (cadddr (cdddr parts)))
          (tags (and (stringp tags) (progn (string-match "\\[map\\[\\(.*\\)\\]" tags)
                                           (concat "[" (match-string 1 tags) "]"))))
-         (reason (cadddr (cddr (cdddr parts))))
+         (commentscount (cadddr (cddr (cdddr parts))))
+         (reason (cadddr (cddr (cddddr parts))))
          (reason-str (cond
                       ((string-prefix-p "Assigned to" reason) "assigned")
-                      ((string-prefix-p "Authored by" reason) "owned")
+                      ((string-prefix-p "Authored by" reason) "authored")
                       ((string-prefix-p "Mentions " reason) "mentions")
-                      ((string-prefix-p "Involves " reason) "involves")
-                      ((string-prefix-p "Involves " reason) "request")))
+                      ((string-prefix-p "Involves " reason) "involves")))
          (url (cadddr (cdddr (cdddr parts))))
          (face (pcase isPR
                  ("false"
@@ -6872,15 +6877,17 @@ Description of Arguments:
                                (propertize (format "%s" package) 'face 'consult-gh-package)
 
                                (propertize (format " - %s #%s: " (upcase (substring type 0 2)) number) 'face face)
-                               (propertize (format "%s" title) 'face 'consult-gh-default)) 85)
+                               (propertize (format "%s" title) 'face 'consult-gh-default)) 80)
                       (when reason-str (concat "\s\s" (propertize (consult-gh--set-string-width reason-str 8) 'face 'consult-gh-visibility)))
                       (when date (concat "\s\s" (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date)))
                       (when state (concat "\s\s" (propertize (consult-gh--set-string-width state 6) 'face face)))
+                      (when commentscount (concat "\s\s" (propertize (consult-gh--set-string-width commentscount 5) 'face ' consult-gh-visibility)))
                       (when tags (concat "\s\s" (propertize tags 'face 'consult-gh-tags))))))
     (add-text-properties 0 1 (list :repo repo
                                    :user user
                                    :package package
                                    :number number
+                                   :comm commentscount
                                    :state state
                                    :title title
                                    :tags tags
@@ -6930,10 +6937,11 @@ If TRANSFORM is non-nil, the CAND itself is returned."
      ((stringp name) name)
      ((equal name t)
       (concat
-       (consult-gh--set-string-width "Repo - Type Number: Title " 83 nil ?-)
+       (consult-gh--set-string-width "Repo - Type Number: Title " 78 nil ?-)
        (consult-gh--set-string-width " Reason " 10 nil ?-)
        (consult-gh--set-string-width " Date " 12 nil ?-)
        (consult-gh--set-string-width " State " 8 nil ?-)
+       (consult-gh--set-string-width " Comm " 7 nil ?-)
        " Tags ")))))
 
 (defun consult-gh--dashboard-action (cand)
@@ -9390,80 +9398,158 @@ INITIAL is an optional arg for the initial input in the minibuffer
         sel
       (funcall consult-gh-file-action sel))))
 
-(defun consult-gh--dashboard-collect-assigned (&optional user &rest _)
-  "Find all the Issues/PRs assigned to USER."
-  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--assignee" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Assigned to %s" (or user "me")) "\n" "{{end}}")))
-        (prs (consult-gh--command-to-string "search" "prs" "--state" consult-gh-prs-state-to-show "--sort" "updated" "--review-requested" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Review Requested from %s" (or user "me")) "\n" "{{end}}"))))
-    (append (and (stringp issues)
-                 (cl-delete-duplicates (delq nil (split-string issues "\n\\|\r" t))))
-            (and (stringp prs)
-                 (cl-delete-duplicates (delq nil (split-string prs "\n\\|\r" t)))))))
+(defun consult-gh--search-dashboard-transform (cands)
+  "Add annotation to dashboard CANDS in `consult-gh-dashboard'.
 
-(defun consult-gh--dashboard-collect-author (&optional user &rest _)
-  "Find all the Issues/PRs authored by USER."
-  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--author" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Authored by %s" (or user "me")) "\n" "{{end}}"))))
-    (and (stringp issues)
-         (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
+Format each candidate with `dashboard-format'."
+  (cl-loop for cand in cands
+           collect (if (and (stringp cand) (not (string-empty-p cand)))
+                       (consult-gh--dashboard-format cand))))
 
-(defun consult-gh--dashboard-collect-involves (&optional user &rest _)
-  "Find all the Issues/PRs that involve USER."
-  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--involves" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--" (concat "-author:" (or user "@me")))))
-    (and (stringp issues)
-         (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
+(defun consult-gh--dashboard-issues-assigned-builder (input)
+  "Find all the Issues/PRs assigned to `consult-gh--get-current-username'.
 
-(defun consult-gh--dashboard-collect-mentions (&optional user &rest _)
-  "Find all the Issues/PRs that mention USER."
-  (let ((issues (consult-gh--command-to-string "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--mentions" (or user "@me") "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}"  "\t" (format "Mentions %s" (or user "me")) "\n" "{{end}}"))))
-    (and (stringp issues)
-         (cl-delete-duplicates (delq nil (string-split issues "\n\\|\r" t))))))
+INPUT is passed as extra arguments to “gh search issues”."
+  (pcase-let* ((cmd
+                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--assignee" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t"
+ (format "Assigned to %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
+    (cons (append cmd opts (remove nil (list arg))) nil)))
 
-(defun consult-gh--dashboard-items (&optional user &rest args)
-  "Find all the relevant Issues/PRs for USER.
-ARGS are extra arguments that will be passed to each funciton
-in `consult-gh-dashboard-items-functions'."
-  (let* ((items (list)))
-    (cl-loop for func in consult-gh-dashboard-items-functions
-             do (setq items (append items (cl-delete-duplicates (delq nil (apply func user args))))))
-    (mapcar #'consult-gh--dashboard-format items)))
+(defun consult-gh--dashboard-issues-authored-builder (input)
+  "Find all the Issues/PRs authored by `consult-gh--get-current-username'.
 
-(defun consult-gh--dashboard (prompt &optional initial user)
-  "Search USER's work on GitHub.
+INPUT is passed as extra arguments to “gh search issues”."
+  (pcase-let* ((cmd
+                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--author" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Authored by %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
+    (cons (append cmd opts (remove nil (list arg))) nil)))
+
+(defun consult-gh--dashboard-issues-mentions-builder (input)
+  "Find all the Issues/PRs that mentions `consult-gh--get-current-username'.
+
+INPUT is passed as extra arguments to “gh search issues”."
+  (pcase-let* ((cmd
+                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--mentions" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Mentions %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
+    (cons (append cmd opts (remove nil (list arg))) nil)))
+
+(defun consult-gh--dashboard-issues-involves-builder (input)
+  "Find all the Issues/PRs that involves `consult-gh--get-current-username'.
+
+INPUT is passed as extra arguments to “gh search issues”."
+  (pcase-let* ((user (consult-gh--get-current-username))
+               (cmd
+                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--involves" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--" (concat "-author:" (or user "@me")))))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
+    (cons (append cmd opts (remove nil (list arg))) nil)))
+
+(defvar consult-gh--dashboard-assigned-to-user
+  (list :name "Assigned to me"
+        :narrow ?a
+        :async (consult--process-collection #'consult-gh--dashboard-issues-assigned-builder
+                 :transform (consult--async-transform #'consult-gh--search-dashboard-transform)
+                 :min-input 0)
+        :async-wrap (lambda (sink) (lambda (action) (if (stringp action) (funcall sink (propertize action 'consult--force t))
+                                                      (funcall sink action))))
+        :group #'consult-gh--dashboard-group
+        :state #'consult-gh--dashboard-state
+        :require-match t
+        :category 'consult-gh-issues
+        :preview-key consult-gh-preview-key
+        :sort t)
+"Source for dashboard items assigned to user.")
+
+(defvar consult-gh--dashboard-authored-by-user
+  (list :name "Authored by me"
+        :narrow ?w
+        :async (consult--process-collection #'consult-gh--dashboard-issues-authored-builder
+                 :transform (consult--async-transform #'consult-gh--search-dashboard-transform)
+                 :min-input 0)
+        :async-wrap (lambda (sink) (lambda (action) (if (stringp action) (funcall sink (propertize action 'consult--force t))
+                                                      (funcall sink action))))
+        :group #'consult-gh--dashboard-group
+        :state #'consult-gh--dashboard-state
+        :require-match t
+        :category 'consult-gh-issues
+        :preview-key consult-gh-preview-key
+        :sort t)
+"Source for dashboard items authored by user.")
+
+(defvar consult-gh--dashboard-mentions-user
+  (list :name "Mentions me"
+        :narrow ?m
+        :async (consult--process-collection #'consult-gh--dashboard-issues-mentions-builder
+                 :transform (consult--async-transform #'consult-gh--search-dashboard-transform)
+                 :min-input 0)
+        :async-wrap (lambda (sink) (lambda (action) (if (stringp action) (funcall sink (propertize action 'consult--force t))
+                                                      (funcall sink action))))
+        :group #'consult-gh--dashboard-group
+        :state #'consult-gh--dashboard-state
+        :require-match t
+        :category 'consult-gh-issues
+        :preview-key consult-gh-preview-key
+        :sort t)
+"Source for dashboard items that mentions user.")
+
+(defvar consult-gh--dashboard-involves-user
+  (list :name "Involves me"
+        :narrow ?i
+        :async (consult--process-collection #'consult-gh--dashboard-issues-involves-builder
+                 :transform (consult--async-transform #'consult-gh--search-dashboard-transform)
+                 :min-input 0)
+        :async-wrap (lambda (sink) (lambda (action) (if (stringp action) (funcall sink (propertize action 'consult--force t))
+                                                      (funcall sink action))))
+        :group #'consult-gh--dashboard-group
+        :state #'consult-gh--dashboard-state
+        :require-match t
+        :category 'consult-gh-issues
+        :preview-key consult-gh-preview-key
+        :sort t)
+"Source for dashboard items that involves user.")
+
+(defun consult-gh--dashboard (prompt &optional initial)
+  "Search current user's work on GitHub.
 
 This is a non-interactive internal function.
 For the interactive version see `consult-gh-dashboard'.
 
-This searches relevant (e.g. mentioned, owned, review-requested, etc.)
-issues and pull-requests for the USER.
+This searches relevant (e.g. mentioned, authored, review-requested, etc.)
+issues and pull-requests for the `consult-gh--get-current-username'.
 
 Description of Arguments:
 
   PROMPT  the prompt in the minibuffer
           \(passed as PROMPT to `consult--red'\)
-  USER    name of the GitHub user/or organization.
   INITIAL an optional arg for the initial input in the minibuffer.
           \(passed as INITITAL to `consult--read'\)"
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-   (if-let ((candidates (consult-gh--dashboard-items user)))
-       (consult--read
-        candidates
-        :prompt prompt
-        :lookup #'consult--lookup-member
-        :state (funcall #'consult-gh--dashboard-state)
-        :initial initial
-        :group #'consult-gh--dashboard-group
-        :require-match t
-        :history 'consult-gh--search-issues-history
-        :category 'consult-gh-issues
-        :preview-key consult-gh-preview-key
-        :sort t)
-     (progn
-       (message "no items in the dashboard")
-       nil))))
+   (consult--multi '(consult-gh--dashboard-assigned-to-user
+                     consult-gh--dashboard-mentions-user
+                     consult-gh--dashboard-involves-user
+                     consult-gh--dashboard-authored-by-user)
+                   :prompt prompt
+                   :group #'consult-gh--dashboard-group
+                   :history '(:input consult-gh--dashboard-history)
+                   :sort nil
+                   :initial initial)))
 
 ;;;###autoload
-(defun consult-gh-dashboard (&optional initial user noaction prompt)
-  "Search GitHub for USER's work on GitHub.
+(defun consult-gh-dashboard (&optional initial noaction prompt)
+  "Search GitHub for current user's work on GitHub.
 
 This is an interactive wrapper function around
 `consult-gh--dashboard'.
@@ -9477,7 +9563,7 @@ INITIAL is an optional arg for the initial input in the minibuffer.
 If PROMPT is non-nil, use it as the query prompt."
   (interactive)
   (let* ((prompt (or prompt "Search Dashboard:  "))
-         (sel (consult-gh--dashboard prompt initial user)))
+         (sel (consult-gh--dashboard prompt initial)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
