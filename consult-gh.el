@@ -262,6 +262,14 @@ The default is set to gh's default config, 30"
   :group 'consult-gh
   :type 'integer)
 
+(defcustom consult-gh-dashboard-maxnum 30
+  "Maximum number of dashboard items to show for each search operations.
+
+This is the value passed to “--limit” in the command line.
+The default is set to 30."
+  :group 'consult-gh
+  :type 'integer)
+
 (defcustom consult-gh-pr-maxnum 30
   "Maximum number of PRs to show for list and search operations.
 
