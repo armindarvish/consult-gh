@@ -1791,7 +1791,7 @@ Returns a list where CAR is the user's name and CADR is the package name."
 
 (defun consult-gh--tempdir ()
  "Make a new temporary directory with timestamp."
- (if (and consult-gh--current-tempdir (< (time-convert (time-subtract (current-time) (nth 5 (file-attributes (substring (file-name-as-directory consult-gh--current-tempdir) 0 -1)))) 'integer) consult-gh-temp-tempdir-cache))
+ (if (and consult-gh--current-tempdir (stringp consult-gh--current-tempdir) (< (time-convert (time-subtract (current-time) (nth 5 (file-attributes (substring (file-name-as-directory consult-gh--current-tempdir) 0 -1)))) 'integer) consult-gh-temp-tempdir-cache))
          consult-gh--current-tempdir
 (expand-file-name (make-temp-name (concat (format-time-string consult-gh-temp-tempdir-time-format  (current-time)) "-")) consult-gh-tempdir)))
 
@@ -3142,7 +3142,7 @@ from REPO as the default name for the cloned folder."
   (let* ((reponame (get-text-property 0 :repo cand))
          (package (consult-gh--get-package reponame)))
     (if consult-gh-confirm-before-clone
-        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or (file-name-as-directory consult-gh-default-clone-directory) default-directory) default-directory))
+        (let* ((targetdir (read-directory-name (concat "Select Directory for " (propertize (format "%s: " reponame) 'face 'font-lock-keyword-face)) (or (and (stringp consult-gh-default-clone-directory) (file-name-as-directory consult-gh-default-clone-directory)) default-directory)))
                (name (read-string "name: " package)))
           (consult-gh--repo-clone reponame name targetdir))
       (consult-gh--repo-clone reponame package consult-gh-default-clone-directory))))
@@ -3226,7 +3226,7 @@ Description of Arguments:
                                                                   :sort nil))))
          (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo) (propertize visibility 'face 'warning))))
          (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
-         (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or directory (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
+         (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or directory (and (stringp consult-gh-default-clone-directory) (file-name-as-directory consult-gh-default-clone-directory)) default-directory))))
          (default-directory (or clonedir default-directory))
          (targetdir (expand-file-name name default-directory))
          (args '("repo" "create"))
@@ -3286,7 +3286,7 @@ Description of Arguments:
      (template
       (let* ((confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo) (propertize visibility 'face 'warning))))
              (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
-             (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or (file-name-as-directory consult-gh-default-clone-directory) default-directory))))
+             (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or (and (stringp consult-gh-default-clone-directory) (file-name-as-directory consult-gh-default-clone-directory)) default-directory))))
              (default-directory (or clonedir default-directory))
              (targetdir (expand-file-name name default-directory))
              (args '("repo" "create"))
@@ -7678,7 +7678,9 @@ to pick them."
   (interactive)
   (let* ((repos (or repos (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos nil t)))))
          (targetdir (or targetdir consult-gh-default-clone-directory default-directory))
-         (clonedir (if consult-gh-confirm-before-clone (read-directory-name "Select Target Directory: " (file-name-as-directory targetdir)) targetdir)))
+         (clonedir (if consult-gh-confirm-before-clone
+                       (read-directory-name "Select Target Directory: " (and (stringp targetdir) (file-name-as-directory targetdir)))
+                     (and (stringp targetdir) (file-name-as-directory targetdir)))))
     (if (stringp repos)
         (setq repos (list repos)))
     (mapcar (lambda (repo)
