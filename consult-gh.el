@@ -2791,6 +2791,80 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
     (if (and file-p confirm)
         (consult-gh--files-view repo path url nil tempdir nil branch))))
 
+(defun consult-gh--files-content (repo path url &optional no-select tempdir jump-to-str branch)
+  "Get file content.
+
+This is an internal function that gets the PATH to a file within a REPO and the URL of the file on GitHub API, then fetches the content from GitHub by `consult-gh--files-get-content' and inserts it into a temporary file
+stored under `consult-gh-tempdir' in appropriate subdirectories for REPO.
+
+If the optional input NO-SELECT is nil, it switches to the buffer
+by `find-file', otherwise it does not swith-to-buffer
+and only returns the name of the buffer.
+
+To use this as the default action in `consult-gh-find-file',
+see `consult-gh--files-view-action'.
+
+Description of Arguments:
+  REPO      full name of the repo e.g. “arimindarvish/consult-gh”
+  PATH      the relative path of the file to the root of repo
+            e.g “./README.org”
+  URL       the url of the file as retrieved from GitHub API
+  NO-SELECT a boolean for whether to swith-to-buffer or not
+  TEMPDIR   the directory where the temporary file is saved
+  BRANCH    is the branch of the repository
+
+Output is the buffer visiting the file."
+  (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
+         (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir)))
+         (topic (format "%s/%s" repo path)))
+    (add-text-properties 0 1 (list :repo repo :type "file" :path path :branch branch :title nil) topic)
+    (unless (file-exists-p temp-file)
+      (make-directory (file-name-directory temp-file) t)
+      (with-temp-file temp-file
+        (insert (consult-gh--files-get-content url))
+        (set-buffer-file-coding-system 'raw-text)
+        (write-file temp-file))
+      (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file)))
+    (if no-select
+        (find-file-noselect temp-file)
+      (with-current-buffer (find-file temp-file)
+        (if jump-to-str
+            (progn
+              (goto-char (point-min))
+              (search-forward jump-to-str nil t)
+              (consult-gh-recenter 'middle))
+          nil)
+        (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
+        (setq-local consult-gh--topic topic)
+        (current-buffer)))))
+
+(defun consult-gh--files-view-action (cand)
+  "Open file candidate, CAND, in an Emacs buffer.
+
+This is a wrapper function around `consult-gh--files-view'.
+
+It parses CAND to extract relevant values
+\(e.g. repository, file path, url, ...\) and passes them to
+`consult-gh--files-view'.
+
+To use this as the default action on consult-gh's files,
+set `consult-gh-file-action' to `consult-gh--files-view-action'."
+  (let* ((repo (get-text-property 0 :repo cand))
+         (path (get-text-property 0 :path cand))
+         (url (get-text-property 0 :url cand))
+         (branch (or (get-text-property 0 :branch cand) "HEAD"))
+         (tempdir (expand-file-name (concat repo "/" branch "/")
+                                    (or consult-gh--current-tempdir (consult-gh--tempdir))))
+         (file-p (or (file-name-extension path) (get-text-property 0 :size cand)))
+         (file-size (and file-p (get-text-property 0 :size cand)))
+         (confirm t))
+    (when (and file-size (>= file-size consult-gh-large-file-warning-threshold))
+      (if (yes-or-no-p (format "File is %s Bytes.  Do you really want to load it?" file-size))
+          (setq confirm t)
+        (setq confirm nil)))
+    (if (and file-p confirm)
+        (consult-gh--files-view repo path url nil tempdir nil branch))))
+
 (defun consult-gh--files-save-file-action (cand)
   "Save file candidate, CAND, to a file.
 

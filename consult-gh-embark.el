@@ -303,6 +303,20 @@ CAND can be a repo, issue, PR, file path, ..."
            (package (car (last (split-string repo "\/")))))
       (kill-new (concat "(use-package " package)))))
 
+(defun consult-gh-embark-copy-file-contents-as-kill (cand)
+  "Copy the contents of CAND file to `kill-ring'."
+  (when (stringp cand)
+    (let ((url (get-text-property 0 :url cand)))
+    (when (and url (strinp url))
+      (kill-new (consult-gh--files-get-content url))))))
+
+(defun consult-gh-embark-insert-file-contents (cand)
+  "Insert the contents of CAND file at point."
+  (when (stringp cand)
+    (let ((url (get-text-property 0 :url cand)))
+    (when (and url (strinp url))
+      (embark-insert (consult-gh--files-get-content url))))))
+
 (defun consult-gh-embark-get-other-repos-by-same-user (cand)
   "List other repos by the same user/organization as CAND at point."
   (when (stringp cand)
@@ -748,7 +762,9 @@ CAND can be a PR or an issue."
 (defvar-keymap consult-gh-embark-files-actions-map
   :doc "Keymap for consult-gh-embark-files"
   :parent consult-gh-embark-general-actions-map
-  "s" '("gh save file" . consult-gh-embark-save-file))
+  "s" '("gh save file" . consult-gh-embark-save-file)
+  "w f" '("file content" . consult-gh-embark-insert-file-contents)
+  "i f" '("file content" . consult-gh-embark-copy-file-contents-as-kill))
 
 ;; Issue Actions
 
