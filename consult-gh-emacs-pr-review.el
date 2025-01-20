@@ -41,7 +41,7 @@
 (defvar consult-gh-emacs-pr-review--default-pr-action consult-gh-pr-action
   "Default action for viewing PRs without pr-review integration.")
 
-(defun consult-gh-emacs-pr-review--pr-view (repo number &optional timeout)
+(defun consult-gh-emacs-pr-review--pr-view (repo number)
   "Open pullrequest NUMBER in REPO  with `pr-review'."
   (let* ((repo-owner (consult-gh--get-username repo))
          (repo-name (consult-gh--get-package repo)))
@@ -88,7 +88,7 @@ This is a wrapper function around `consult-gh-pre-review--pr-view'."
      (if (equal type "pr")
          (consult-gh-emacs-pr-review--pr-view repo number)
        (if (and repo number)
-           (message (format "%s:%s is not a %s" (propertize repo 'face consult-gh-repo) (propertize number 'face consult-gh-repo) (propertize "pullrequest" 'face consult-gh-warning)))
+           (message (format "%s:%s is not a %s" (propertize repo 'face 'consult-gh-repo) (propertize number 'face 'consult-gh-repo) (propertize "pullrequest" 'face 'consult-gh-warning)))
          (message "cannot find a GitHub pullrequest in this buffer to open with `pr-review'."))))))
 
 
