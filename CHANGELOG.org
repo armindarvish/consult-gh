@@ -4,6 +4,12 @@
 
 * Development
 
+
+- *BREAKING CHANGE*: update to new consult API with breaking changes
+  consult-gh now uses the new consult API for async processes. See [[https://github.com/minad/consult/commit/ada079d5932700a8819ace622ef4323e73983161][Breaking Changes in Consult]] for more info!
+- improve consult-gh-dashboard by using consult--multi with async processes
+
+
 * Version 2.2 (2025-01-16)
 - improve embark keybindings (issue #174)
 - improve embark actions (see #190)

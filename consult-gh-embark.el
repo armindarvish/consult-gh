@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.0
-;; Package-Requires: ((emacs "30.0") (consult-gh "2.0") (embark-consult "1.1"))
+;; Version: 2.2
+;; Package-Requires: ((emacs "30.0") (embark-consult "1.1") (consult-gh "2.2"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -34,8 +34,8 @@
 ;;; Code:
 
 ;;; Requirements
-(require 'consult-gh)
 (require 'embark-consult)
+(require 'consult-gh)
 
 ;;; Define Embark Action Functions
 (defun consult-gh-embark-add-repo-to-known-repos (cand)
@@ -136,11 +136,11 @@ When `current-prefix-args' is non-nil, add repository's name at the front."
                     ((or "file" "code")
                      (if current-prefix-arg
                          (format "%s/%s" repo path)
-                     (format "%s" path)))
+                       (format "%s" path)))
                     ((or "issue" "pr")
                      (if current-prefix-arg
                          (format "%s/#%s: %s" repo number title)
-                     (concat "#" (format "%s: %s" number title))))
+                       (concat "#" (format "%s: %s" number title))))
                     (_ (format "%s" repo)))))
       (string-trim title))))
 
@@ -148,35 +148,35 @@ When `current-prefix-args' is non-nil, add repository's name at the front."
   "Insert the title of CAND at point."
   (when (stringp cand)
     (if-let* ((title (consult-gh-embark-get-title cand)))
-      (embark-insert (list (string-trim title))))))
+        (embark-insert (list (string-trim title))))))
 
 (defun consult-gh-embark-copy-title-as-kill (cand)
   "Copy the title of CAND to `kill-ring'."
   (when (stringp cand)
     (if-let* ((title (consult-gh-embark-get-title cand)))
-      (kill-new (string-trim title)))))
+        (kill-new (string-trim title)))))
 
 (defun consult-gh-embark-get-url-link (cand)
   "Get url link of CAND.
 
 The candidate can be a repo, issue, PR, file path, or a branch."
-   (when (stringp cand)
-     (consult-gh-with-host
-      (consult-gh--auth-account-host)
-      (let* ((repo (get-text-property 0 :repo cand))
-             (class (or (get-text-property 0 :class cand) nil))
-             (number (or (get-text-property 0 :number cand) nil))
-             (path (or (get-text-property 0 :path cand) nil))
-             (branch (or (get-text-property 0 :branch cand) nil)))
-     (pcase class
-       ("issue"
-        (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number))))
-       ((or "file" "code")
-        (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
-       ("pr"
-        (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
-       (_
-        (string-trim (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((repo (get-text-property 0 :repo cand))
+            (class (or (get-text-property 0 :class cand) nil))
+            (number (or (get-text-property 0 :number cand) nil))
+            (path (or (get-text-property 0 :path cand) nil))
+            (branch (or (get-text-property 0 :branch cand) nil)))
+       (pcase class
+         ("issue"
+          (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number))))
+         ((or "file" "code")
+          (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
+         ("pr"
+          (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
+         (_
+          (string-trim (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))))
 
 
 (defun consult-gh-embark-open-in-system-browser (cand)
@@ -208,9 +208,9 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   "Copy url link of CAND to `kill-ring'.
 
 CAND can be a repo, issue, PR, file path, ..."
-   (when (stringp cand)
-      (let* ((link (consult-gh-embark-get-url-link cand)))
-        (kill-new link))))
+  (when (stringp cand)
+    (let* ((link (consult-gh-embark-get-url-link cand)))
+      (kill-new link))))
 
 (defun consult-gh-embark-copy-url-org-link-as-kill (cand)
   "Copy the org-format url link of CAND to `kill-ring'."
@@ -225,7 +225,7 @@ CAND can be a repo, issue, PR, file path, ..."
 
       (pcase class
         ((or "issue" "pr")
-          (when (not current-prefix-arg) (setq title (concat repo "/" title))))
+         (when (not current-prefix-arg) (setq title (concat repo "/" title))))
         ((or "file" "code")
          (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
 
@@ -251,7 +251,7 @@ CAND can be a repo, issue, PR, file path, ..."
 
       (pcase class
         ((or "issue" "pr")
-          (when (not current-prefix-arg) (setq title (concat repo "/" title))))
+         (when (not current-prefix-arg) (setq title (concat repo "/" title))))
         ((or "file" "code")
          (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
 
@@ -279,54 +279,76 @@ CAND can be a repo, issue, PR, file path, ..."
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (let ((repo (get-text-property 0 :repo cand)))
-     (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser"))  ".git"))))))
+       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser"))  ".git"))))))
 
 (defun consult-gh-embark-copy-ssh-link-as-kill (cand)
   "Copy shh link of CAND to `kill-ring'."
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let* ((repo (get-text-property 0 :repo cand)))
-     (kill-new (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" (string-trim repo) "--json" "sshUrl") :sshUrl))))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((repo (get-text-property 0 :repo cand)))
+       (kill-new (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" (string-trim repo) "--json" "sshUrl") :sshUrl))))))
 
 (defun consult-gh-embark-copy-straight-usepackage-link-as-kill (cand)
   "Copy a drop-in straight use-package script of CAND to `kill-ring'."
-    (when (stringp cand)
-  (let* ((repo (get-text-property 0 :repo cand))
-         (package (car (last (split-string repo "\/")))))
-    (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo "\")\n)")))))
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+           (package (car (last (split-string repo "\/")))))
+      (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo "\")\n)")))))
 
 (defun consult-gh-embark-copy-usepackage-link-as-kill (cand)
   "Copy a drop-in use-package script of CAND to `kill-ring'."
-    (when (stringp cand)
-  (let* ((repo (get-text-property 0 :repo cand))
-         (package (car (last (split-string repo "\/")))))
-    (kill-new (concat "(use-package " package)))))
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+           (package (car (last (split-string repo "\/")))))
+      (kill-new (concat "(use-package " package)))))
+
+(defun consult-gh-embark-copy-file-contents-as-kill (cand)
+  "Copy the contents of CAND file to `kill-ring'."
+  (when (stringp cand)
+    (let ((url (get-text-property 0 :url cand)))
+    (when (and url (strinp url))
+      (kill-new (consult-gh--files-get-content url))))))
+
+(defun consult-gh-embark-insert-file-contents (cand)
+  "Insert the contents of CAND file at point."
+  (when (stringp cand)
+    (let ((url (get-text-property 0 :url cand)))
+    (when (and url (strinp url))
+      (embark-insert (consult-gh--files-get-content url))))))
 
 (defun consult-gh-embark-get-other-repos-by-same-user (cand)
   "List other repos by the same user/organization as CAND at point."
-    (when (stringp cand)
-  (let* ((repo (get-text-property 0 :repo cand))
-         (user (car (split-string repo "\/"))))
-    (consult-gh-repo-list user))))
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+           (user (car (split-string repo "\/"))))
+      (consult-gh-repo-list user))))
 
 (defun consult-gh-embark-view-issues-of-repo (cand)
   "Browse issues of CAND repo at point."
-    (when (stringp cand)
-  (let ((repo (or (get-text-property 0 :repo cand))))
-    (consult-gh-issue-list repo))))
+  (when (stringp cand)
+    (let ((repo (or (get-text-property 0 :repo cand))))
+      (consult-gh-issue-list repo))))
 
 (defun consult-gh-embark-view-prs-of-repo (cand)
   "Browse PRs of CAND repo at point."
-    (when (stringp cand)
-  (let ((repo (or (get-text-property 0 :repo cand))))
-    (consult-gh-pr-list repo))))
+  (when (stringp cand)
+    (let ((repo (or (get-text-property 0 :repo cand))))
+      (consult-gh-pr-list repo))))
 
 (defun consult-gh-embark-view-files-of-repo (cand)
   "Browse files of CAND at point."
-    (when (stringp cand)
-  (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--nonutf-cleanup cand))))
-    (consult-gh-find-file repo))))
+  (when (stringp cand)
+    (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--nonutf-cleanup cand))))
+      (consult-gh-find-file repo))))
+
+(defun consult-gh-embark-search-code-in-repo (cand)
+  "Search for code in CAND repo at point."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let ((repo (or (get-text-property 0 :repo cand) (substring-no-properties cand))))
+       (consult-gh-search-code nil repo)))))
 
 (defun consult-gh-embark-search-code-in-repo (cand)
   "Search for code in CAND repo at point."
@@ -338,24 +360,30 @@ CAND can be a repo, issue, PR, file path, ..."
 
 (defun consult-gh-embark-clone-repo (cand)
   "Clone the CAND repo at point."
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh--repo-clone-action cand))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh--repo-clone-action cand))))
 
 (defun consult-gh-embark-fork-repo (cand)
   "Fork the CAND repo at point."
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh--repo-fork-action cand))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh--repo-fork-action cand))))
 
 (defun consult-gh-embark-save-file (cand)
   "Save the CAND file at point."
   (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh--files-save-file-action cand))))
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh--files-save-file-action cand))))
+
+(defun consult-gh-embark-create-repo (cand)
+  "Create a new repo with CAND as name"
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-repo-create (and (stringp cand) (string-remove-prefix (consult-gh--get-split-style-character) cand)))))
 
 (defun consult-gh-embark-create-repo (cand)
   "Create a new repo with CAND as name"
@@ -370,18 +398,16 @@ CAND can be a repo, issue, PR, file path, ..."
      (consult-gh--auth-account-host)
      (let* ((repo (get-text-property 0 :repo cand))
            (class (get-text-property 0 :class cand))
-           (sep (plist-get (alist-get consult-async-split-style consult-async-split-styles-alist) :initial))
            (title (pcase class
                     ((or "repo" "issue") nil)
                     ("pr" (get-text-property 0 :title cand))
-                    (_ (or (get-text-property 0 :title cand) (string-remove-prefix sep (substring-no-properties cand))))))
+                    (_ (or (get-text-property 0 :title cand) (string-remove-prefix (consult-gh--get-split-style-character) (substring-no-properties cand))))))
            (ref (pcase class
                   ((or "pr" "notification" "dashboard" "code" "file")
                    (consult-gh-embark-get-url-link cand))
                   (_ nil)))
            (body (when ref (not (string-empty-p ref)) (format "%s" ref))))
        (funcall #'consult-gh-issue-create repo title body)))))
-
 
 (defun consult-gh-embark-create-pr (cand)
   "Create a pull request in repo of CAND"
@@ -390,11 +416,10 @@ CAND can be a repo, issue, PR, file path, ..."
      (consult-gh--auth-account-host)
     (let* ((repo (get-text-property 0 :repo cand))
            (class (get-text-property 0 :class cand))
-            (sep (plist-get (alist-get consult-async-split-style consult-async-split-styles-alist) :initial))
            (title (pcase class
                     ((or "repo" "pr") nil)
                     ("issue" (get-text-property 0 :title cand))
-                    (_ (or (get-text-property 0 :title cand) (string-remove-prefix sep (substring-no-properties cand))))))
+                    (_ (or (get-text-property 0 :title cand) (string-remove-prefix (consult-gh--get-split-style-character) (substring-no-properties cand))))))
            (ref (pcase class
                   ((or "issue" "notification" "dashboard" "code" "file")
                    (consult-gh-embark-get-url-link cand))
@@ -402,147 +427,146 @@ CAND can be a repo, issue, PR, file path, ..."
            (body (when ref (not (string-empty-p ref)) (format "%s" ref))))
        (funcall #'consult-gh-pr-create repo title body)))))
 
-
 (defun consult-gh-embark-toggle-issue-open (cand)
   "Close/Re-open the issue in CAND"
   (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let* ((state (get-text-property 0 :state cand)))
-     (if (equal state "OPEN")
-         (funcall #'consult-gh-issue-close cand)
-       (funcall #'consult-gh-issue-reopen cand))))))
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((state (get-text-property 0 :state cand)))
+       (if (equal state "OPEN")
+           (funcall #'consult-gh-issue-close cand)
+         (funcall #'consult-gh-issue-reopen cand))))))
 
 (defun consult-gh-embark-toggle-issue-pin (cand)
   "Pin/Unpin the issue in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (when-let* ((repo (get-text-property 0 :repo cand))
-         (number (get-text-property 0 :number cand))
-         (state (when (and repo number)
-                  (consult-gh--json-to-hashtable  (consult-gh--command-to-string "issue" "view" number "--repo" repo "--json" "isPinned") :isPinned))))
-     (if (eq state 't)
-         (funcall #'consult-gh-issue-unpin cand)
-       (funcall #'consult-gh-issue-pin cand))))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (when-let* ((repo (get-text-property 0 :repo cand))
+                 (number (get-text-property 0 :number cand))
+                 (state (when (and repo number)
+                          (consult-gh--json-to-hashtable  (consult-gh--command-to-string "issue" "view" number "--repo" repo "--json" "isPinned") :isPinned))))
+       (if (eq state 't)
+           (funcall #'consult-gh-issue-unpin cand)
+         (funcall #'consult-gh-issue-pin cand))))))
 
 (defun consult-gh-embark-toggle-issue-lock (cand)
   "Lock/Unlock the issue in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (when-let* ((repo (get-text-property 0 :repo cand))
-               (number (get-text-property 0 :number cand))
-               (state (when (and repo number)
-                  (consult-gh--json-to-hashtable  (consult-gh--api-command-string (format "/repos/%s/issues/%s" repo number)) :locked))))
-     (if (eq state 't)
-         (funcall #'consult-gh-issue-unlock cand)
-       (funcall #'consult-gh-issue-lock cand))))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (when-let* ((repo (get-text-property 0 :repo cand))
+                 (number (get-text-property 0 :number cand))
+                 (state (when (and repo number)
+                          (consult-gh--json-to-hashtable  (consult-gh--api-command-string (format "/repos/%s/issues/%s" repo number)) :locked))))
+       (if (eq state 't)
+           (funcall #'consult-gh-issue-unlock cand)
+         (funcall #'consult-gh-issue-lock cand))))))
 
 (defun consult-gh-embark-transfer-issue (cand)
   "Transfer the issue in CAND"
   (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh-issue-transfer cand))))
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-issue-transfer cand))))
 
 (defun consult-gh-embark-delete-issue (cand)
   "Delete the issue in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh-issue-delete cand))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-issue-delete cand))))
 
 (defun consult-gh-embark-develop-issue (cand)
   "Make a linked branch for the issue in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh-issue-develop cand))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-issue-develop cand))))
 
 (defun consult-gh-embark-edit-issue (cand)
   "Make a linked branch for the issue in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh-issue-edit cand))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-issue-edit cand))))
 
 (defun consult-gh-embark-comment-on-issue (cand)
   "Edit the issue in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let ((repo (get-text-property 0 :repo cand))
-         (number (get-text-property 0 :number cand)))
-     (with-current-buffer (funcall #'consult-gh--issue-view repo number)
-       (consult-gh-topics-comment-create))))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let ((repo (get-text-property 0 :repo cand))
+           (number (get-text-property 0 :number cand)))
+       (with-current-buffer (funcall #'consult-gh--issue-view repo number)
+         (consult-gh-topics-comment-create))))))
 
 (defun consult-gh-embark-edit-pr (cand)
   "Edit the pull request in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh-pr-edit cand))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-pr-edit cand))))
 
 (defun consult-gh-embark-merge-pr (cand)
   "Merge the pull request in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh-pr-merge cand))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-pr-merge cand))))
 
 (defun consult-gh-embark-review-pr (cand)
   "Review the pull request in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (funcall #'consult-gh-pr-review cand))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-pr-review cand))))
 
 (defun consult-gh-embark-comment-on-pr (cand)
   "Make a linked branch for the issue in CAND"
   (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let ((repo (get-text-property 0 :repo cand))
-         (number (get-text-property 0 :number cand)))
-     (with-current-buffer (funcall #'consult-gh--pr-view repo number)
-       (consult-gh-topics-comment-create))))))
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let ((repo (get-text-property 0 :repo cand))
+           (number (get-text-property 0 :number cand)))
+       (with-current-buffer (funcall #'consult-gh--pr-view repo number)
+         (consult-gh-topics-comment-create))))))
 
 (defun consult-gh-embark-toggle-pr-open (cand)
   "Close/Re-open the pull request in CAND"
   (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let* ((state (get-text-property 0 :state cand)))
-     (if (equal state "OPEN")
-         (funcall #'consult-gh-pr-close cand)
-       (funcall #'consult-gh-pr-reopen cand))))))
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((state (get-text-property 0 :state cand)))
+       (if (equal state "OPEN")
+           (funcall #'consult-gh-pr-close cand)
+         (funcall #'consult-gh-pr-reopen cand))))))
 
 (defun consult-gh-embark-toggle-pr-lock (cand)
   "Lock/Unlock the pull request in CAND"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (when-let* ((repo (get-text-property 0 :repo cand))
-               (number (get-text-property 0 :number cand))
-               (state (when (and repo number)
-                  (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s" repo number)) :locked))))
-     (if (eq state 't)
-         (funcall #'consult-gh-pr-unlock cand)
-       (funcall #'consult-gh-pr-lock cand))))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (when-let* ((repo (get-text-property 0 :repo cand))
+                 (number (get-text-property 0 :number cand))
+                 (state (when (and repo number)
+                          (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s" repo number)) :locked))))
+       (if (eq state 't)
+           (funcall #'consult-gh-pr-unlock cand)
+         (funcall #'consult-gh-pr-lock cand))))))
 
 (defun consult-gh-embark-toggle-pr-draft (cand)
   "Toggle the pull request in CAND as draft/ready"
-    (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (when-let* ((repo (get-text-property 0 :repo cand))
-         (number (get-text-property 0 :number cand))
-         (state (when (and repo number)
-                  (consult-gh--json-to-hashtable  (consult-gh--command-to-string "pr" "view" number "--repo" repo "--json" "isDraft") :isDraft))))
-     (if (eq state 't)
-         (funcall #'consult-gh-pr-mark-ready cand)
-       (funcall #'consult-gh-pr-mark-draft cand))))))
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (when-let* ((repo (get-text-property 0 :repo cand))
+                 (number (get-text-property 0 :number cand))
+                 (state (when (and repo number)
+                          (consult-gh--json-to-hashtable  (consult-gh--command-to-string "pr" "view" number "--repo" repo "--json" "isDraft") :isDraft))))
+       (if (eq state 't)
+           (funcall #'consult-gh-pr-mark-ready cand)
+         (funcall #'consult-gh-pr-mark-draft cand))))))
 
 (defun consult-gh-embark-link-pr-to-issue (cand)
   "Link CAND to Issue or PR.
@@ -577,26 +601,25 @@ CAND can be a PR or an issue."
               (apply #'consult-gh--command-to-string "pr" "edit" pr-number (list "--repo" repo "--body" (substring-no-properties new-body))))))
          (_ nil)))))))
 
-
 (defun consult-gh-embark-toggle-notification-read (cand)
   "Mark the notification in CAND as read/unread"
   (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let ((state (get-text-property 0 :state cand)))
-     (if (equal state "Unread")
-         (consult-gh--notifications-mark-as-read cand))))))
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let ((state (get-text-property 0 :state cand)))
+       (if (equal state "Unread")
+           (consult-gh--notifications-mark-as-read cand))))))
 
 (defun consult-gh-embark-notification-toggle-subscription (cand)
   "Mark the notification in CAND as read/unread"
   (when (stringp cand)
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let* ((thread (get-text-property 0 :thread cand))
-          (subscription (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/notifications/threads/%s/subscription" thread)) :subscribed)))
-     (if (eq subscription 't)
-         (consult-gh--notifications-unsubscribe cand)
-       (consult-gh--notifications-subscribe cand))))))
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((thread (get-text-property 0 :thread cand))
+            (subscription (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/notifications/threads/%s/subscription" thread)) :subscribed)))
+       (if (eq subscription 't)
+           (consult-gh--notifications-unsubscribe cand)
+         (consult-gh--notifications-subscribe cand))))))
 
 ;;; Define Embark Keymaps
 
@@ -739,7 +762,9 @@ CAND can be a PR or an issue."
 (defvar-keymap consult-gh-embark-files-actions-map
   :doc "Keymap for consult-gh-embark-files"
   :parent consult-gh-embark-general-actions-map
-  "s" '("gh save file" . consult-gh-embark-save-file))
+  "s" '("gh save file" . consult-gh-embark-save-file)
+  "w f" '("file content" . consult-gh-embark-insert-file-contents)
+  "i f" '("file content" . consult-gh-embark-copy-file-contents-as-kill))
 
 ;; Issue Actions
 

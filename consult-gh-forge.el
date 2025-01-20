@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.0
-;; Package-Requires: ((emacs "30.0") (consult "1.0") (forge "0.3.3") (consult-gh "2.0"))
+;; Version: 2.2
+;; Package-Requires: ((emacs "30.0") (consult "1.9") (forge "0.3.3") (consult-gh "2.2"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -104,7 +104,7 @@ Removes the forge from the list in variable `forge-database'."
   "Remove all the forge repos added by `consult-gh-forge--add-repository'.
 
 If optional argument URLS is non-nil, remove forges of URLS.
-The repos are stored in `conuslt-gh-forge--aded-repositories'."
+The repos are stored in `consult-gh-forge--added-repositories'."
   (interactive)
   (let ((urls (or urls consult-gh-forge--added-repositories)))
     (mapcar #'consult-gh-forge--remove-repository-by-url urls)))
@@ -193,7 +193,7 @@ issue identified by NUMBER."
 (defun consult-gh-forge--issue-view-action (cand)
   "Open preview of an issue candidate, CAND, in `forge'.
 
-This is a wrapper function arround `consult-gh-forge--issue-view'."
+This is a wrapper function around `consult-gh-forge--issue-view'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
          (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
     (consult-gh-forge--issue-view repo number)))
@@ -226,7 +226,7 @@ identified by NUMBER."
 (defun consult-gh-forge--pr-view-action (cand)
   "Open preview of a pr candidate, CAND, in `forge'.
 
-This is a wrapper function arround `consult-gh-forge--pr-view'."
+This is a wrapper function around `consult-gh-forge--pr-view'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
          (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
     (consult-gh-forge--pr-view repo number)))
@@ -318,7 +318,7 @@ default behavior of `ghub--username' to allow using
                                      :prompt "Which account do you want to use?"
                                      :sort nil
                                      :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
-                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
+                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags)))))
                     (or consult-gh-user ghub-user))))
         (if (and user (not (string-empty-p user))) user
           (cl-call-next-method)))))))
@@ -342,7 +342,7 @@ default behavior of `ghub--host' to allow using
                                      :prompt "Which account do you want to use?"
                                      :sort nil
                                      :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
-                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags-face)))))
+                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags)))))
                     (or consult-gh-host ghub-host))))
         (if (and host (not (string-empty-p host))) host
           (cl-call-next-method)))))))
