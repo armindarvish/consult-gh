@@ -13,7 +13,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.0
-;; Package-Requires: ((emacs "30.0") (consult "1.9") (markdown-mode "2.6") (ox-gfm "1.0"))
+;; Package-Requires: ((emacs "30.0") (consult "20250121.1423") (markdown-mode "2.6") (ox-gfm "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
@@ -12220,7 +12220,7 @@ CAND can be a PR or an issue."
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.2
-;; Package-Requires: ((emacs "30.0") (consult "1.9") (forge "0.3.3") (consult-gh "2.2"))
+;; Package-Requires: ((emacs "30.0") (consult "20250121.1423") (forge "0.3.3") (consult-gh "2.2"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -12623,7 +12623,7 @@ default behavior of `ghub--host' to allow using
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.2
-;; Package-Requires: ((emacs "30.0") (consult "1.9") (pr-review "0.1") (consult-gh "2.2"))
+;; Package-Requires: ((emacs "30.0") (consult "20250121.1423") (pr-review "0.1") (consult-gh "2.2"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, completion
 
