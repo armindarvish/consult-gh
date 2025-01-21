@@ -6,7 +6,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.2
-;; Package-Requires: ((emacs "30.0") (consult "1.9") (pr-review "0.1") (consult-gh "2.2"))
+;; Package-Requires: ((emacs "30.0") (consult "202501220") (pr-review "0.1") (consult-gh "2.2"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, completion
 
