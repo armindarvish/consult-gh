@@ -6,7 +6,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.0
-;; Package-Requires: ((emacs "30.0") (consult "202501220") (markdown-mode "2.6") (ox-gfm "1.0"))
+;; Package-Requires: ((emacs "30.0") (consult "20250121.1423") (markdown-mode "2.6") (ox-gfm "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
@@ -1999,7 +1999,7 @@ USER defaults to `consult-gh--auth-current-active-account'."
 
 STYLE defaults to `consult-async-split-style'."
 (let ((style (or style consult-async-split-style 'none)))
-  (or (plist-get (alist-get style consult-async-split-styles-alist) :initial)
+  (or (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :initial))
       (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :separator))
       "")))
 
@@ -7487,7 +7487,7 @@ Description of Arguments:
                                          :state (funcall #'consult-gh--repo-state)
                                          :initial initial
                                          :group #'consult-gh--repo-group
-                                         :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                                         :add-history  (mapcar (lambda (item) (concat  (consult-gh--get-split-style-character) item))
                                                                (append (list
                                                                (when current-repo
                                                                  (consult-gh--get-username current-repo))
