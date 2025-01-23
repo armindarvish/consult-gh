@@ -48,9 +48,6 @@ and pr review config do not match."
 
 ;;; Other Variables
 
-(defvar consult-gh-emacs-pr-review-pr-action #'consult-gh-emacs-pr-review--pr-view-action
-  "What function to call when a pull request is selected?")
-
 (defvar consult-gh-emacs-pr-review--default-pr-action consult-gh-pr-action
   "Default action for viewing PRs without pr-review integration.")
 

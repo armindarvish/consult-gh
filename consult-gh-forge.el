@@ -56,12 +56,6 @@ and git config do not match."
   :type 'boolean)
 
 ;;; Other Variables
-(defvar consult-gh-forge-issue-action #'consult-gh-forge--issue-view-action
-  "What function to call when a pull request is selected?")
-
-(defvar consult-gh-forge-pr-action #'consult-gh-forge--pr-view-action
-  "What function to call when a pull request is selected?")
-
 (defvar consult-gh-forge--added-repositories (list)
   "List of repositories added to forge's database.
 
