@@ -161,7 +161,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
 (transient-define-suffix consult-gh-transient--suffix-dashboard ()
   "Call `consult-gh-dashboard' in `consult-gh' transient menu."
   :transient nil
-  :description "User's Dashbaord"
+  :description "User's Dashboard"
   :key "d"
   (interactive)
   (consult-gh-dashboard))

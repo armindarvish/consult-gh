@@ -56,6 +56,11 @@ and git config do not match."
   :type 'boolean)
 
 ;;; Other Variables
+(defvar consult-gh-forge-issue-action #'consult-gh-forge--issue-view-action
+  "What function to call when a pull request is selected?")
+
+(defvar consult-gh-forge-pr-action #'consult-gh-forge--pr-view-action
+  "What function to call when a pull request is selected?")
 
 (defvar consult-gh-forge--added-repositories (list)
   "List of repositories added to forge's database.
@@ -194,9 +199,11 @@ issue identified by NUMBER."
   "Open preview of an issue candidate, CAND, in `forge'.
 
 This is a wrapper function around `consult-gh-forge--issue-view'."
-  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
-         (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
-    (consult-gh-forge--issue-view repo number)))
+  (if consult-gh-forge-mode
+      (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+             (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
+    (consult-gh-forge--issue-view repo number))
+  (message "consult-gh-forge-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-issue-action'\).")))
 
 (defun consult-gh-forge--pr-view (repo number &optional timeout)
   "Add the REPO and PR to forge database.
@@ -227,9 +234,11 @@ identified by NUMBER."
   "Open preview of a pr candidate, CAND, in `forge'.
 
 This is a wrapper function around `consult-gh-forge--pr-view'."
-  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+  (if consult-gh-forge-mode
+      (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
          (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
-    (consult-gh-forge--pr-view repo number)))
+    (consult-gh-forge--pr-view repo number))
+(message "consult-gh-forge-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-pr-action'\).")))
 
 (defun consult-gh-forge--ghub-token (host username package &optional nocreate forge)
   "Get GitHub token for HOST USERNAME and PACKAGE.
@@ -245,6 +254,8 @@ more info."
          (host (cond ((equal host ghub-default-host)
                       (string-trim-left ghub-default-host "api."))
                      ((string-suffix-p "/api" host) (string-trim-right host "/api"))
+                     ((string-suffix-p "/v3" host) (string-trim-right host "/v3"))
+                     ((string-suffix-p "/api/v4" host) (string-trim-right host "/api/v4"))
                      (t host)))
          (cmd-args (append '("auth" "token")
                            (and username `("-u" ,username))
@@ -260,7 +271,7 @@ more info."
                 ;; fixing so we want to keep trying by invalidating that
                 ;; information.
                 ;; The (:max 1) is needed and has to be placed at the
-                ;; end for Emacs releases before 26.1.  #24 #64 #72
+                ;; end for Emacs releases before 26.1.
                 (auth-source-forget (list :host host :user user :max 1))
                 (and (not nocreate)
                      (error "\
@@ -274,16 +285,20 @@ or (info \"(ghub)Getting Started\") for instructions.
 
 (defun consult-gh-forge--mode-on ()
   "Enable `consult-gh-forge-mode'."
-  (setq consult-gh-forge--default-issue-action consult-gh-issue-action)
-  (setq consult-gh-forge--default-pr-action consult-gh-pr-action)
+  (unless (equal consult-gh-issue-action #'consult-gh-forge--issue-view-action)
+    (setq consult-gh-forge--default-issue-action consult-gh-issue-action))
+  (unless (equal consult-gh-pr-action #'consult-gh-forge--pr-view-action)
+    (setq consult-gh-forge--default-pr-action consult-gh-pr-action))
   (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action)
   (setq consult-gh-pr-action #'consult-gh-forge--pr-view-action)
   (advice-add 'ghub--token :override #'consult-gh-forge--ghub-token))
 
 (defun consult-gh-forge--mode-off ()
   "Disable `consult-gh-forge-mode'."
-  (setq consult-gh-issue-action consult-gh-forge--default-issue-action)
-  (setq consult-gh-pr-action consult-gh-forge--default-pr-action)
+  (when (equal consult-gh-issue-action #'consult-gh-forge--issue-view-action)
+    (setq consult-gh-issue-action consult-gh-forge--default-issue-action))
+  (when (equal consult-gh-pr-action #'consult-gh-forge--pr-view-action)
+    (setq consult-gh-pr-action consult-gh-forge--default-pr-action))
   (advice-remove 'ghub--token #'consult-gh-forge--ghub-token))
 
 ;;;###autoload
@@ -306,7 +321,17 @@ default behavior of `ghub--username' to allow using
 `consult-gh' user name instead if the user chooses to."
 
   (let ((ghub-user (cl-call-next-method))
-        (consult-gh-user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account (if (equal host "api.github.com") "github.com" (or host consult-gh-default-host)))))))
+        (consult-gh-user (or (car-safe consult-gh--auth-current-account)
+                             (car-safe (consult-gh--auth-current-active-account
+                                        (cond ((equal host ghub-default-host)
+                                               (string-trim-left ghub-default-host "api."))
+                                              ((string-suffix-p "/api" host)
+                                               (string-trim-right host "/api"))
+                                              ((string-suffix-p "/v3" host)
+                                               (string-trim-right host "/v3"))
+                                              ((string-suffix-p "/api/v4" host)
+                                               (string-trim-right host "/api/v4"))
+                                              (t (or host consult-gh-default-host))))))))
     (cond
      ((equal ghub-user consult-gh-user) ghub-user)
      (t

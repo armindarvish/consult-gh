@@ -36,16 +36,31 @@
 (require 'pr-review)
 (require 'consult-gh)
 
+;;; Customization Variables
 
-;;; Variables
+(defcustom consult-gh-emacs-pr-review-confirm-account t
+  "Ask for confirmation when account doesn't match pr-review config?
+
+Query the user to pick an account when the account from gh cli command
+and pr review config do not match."
+  :group 'consult-gh
+  :type 'boolean)
+
+;;; Other Variables
+
+(defvar consult-gh-emacs-pr-review-pr-action #'consult-gh-emacs-pr-review--pr-view-action
+  "What function to call when a pull request is selected?")
+
 (defvar consult-gh-emacs-pr-review--default-pr-action consult-gh-pr-action
   "Default action for viewing PRs without pr-review integration.")
 
 (defun consult-gh-emacs-pr-review--pr-view (repo number)
   "Open pullrequest NUMBER in REPO  with `pr-review'."
+(if consult-gh-emacs-pr-review-mode
   (let* ((repo-owner (consult-gh--get-username repo))
          (repo-name (consult-gh--get-package repo)))
-    (pr-review-open repo-owner repo-name number)))
+    (pr-review-open repo-owner repo-name number))
+  (message "consult-gh-emacs-pr-review-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-pr-action'\).")))
 
 (defun consult-gh-emacs-pr-review--pr-view-action (cand)
   "Open preview of a pr candidate, CAND, in `pr-review'.
@@ -55,14 +70,61 @@ This is a wrapper function around `consult-gh-pre-review--pr-view'."
          (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
     (consult-gh-emacs-pr-review--pr-view repo number)))
 
+(defun consult-gh-emacs-pr-review--ghub-token (host username package &optional nocreate forge)
+  "Get GitHub token for HOST USERNAME and PACKAGE.
+
+This is an override function for `ghub--token' to allow
+using `consult-gh' for getting tokens when `ghub--token' fails.
+This allows getting token from gh cli commands without saving tokens
+in auth sources.
+
+See `ghub--token' for definition of NOCREATE and FORGE as well as
+more info."
+  (let* ((user (ghub--ident username package))
+         (host (cond ((equal host ghub-default-host) (string-trim-left ghub-default-host "api."))
+                     ((string-suffix-p "/api" host) (string-trim-right host "/api"))
+                     ((string-suffix-p "/v3" host) (string-trim-right host "/v3"))
+                     ((string-suffix-p "/api/v4" host) (string-trim-right host "/api/v4"))
+                     (t host)))
+         (cmd-args (append '("auth" "token")
+                           (and username `("-u" ,username))
+                           (and host `("-h" ,host))))
+         (gh-token (apply #'consult-gh--command-to-string cmd-args))
+         (token
+          (or (car (ghub--auth-source-get (list :secret)
+                     :host host :user user))
+              (and (stringp gh-token) (string-trim gh-token))
+              (progn
+                ;; Auth-Source caches the information that there is no
+                ;; value, but in our case that is a situation that needs
+                ;; fixing so we want to keep trying by invalidating that
+                ;; information.
+                ;; The (:max 1) is needed and has to be placed at the
+                ;; end for Emacs releases before 26.1.
+                (auth-source-forget (list :host host :user user :max 1))
+                (and (not nocreate)
+                     (error "\
+Required %s token (\"%s\" for \"%s\") does not exist.
+See https://magit.vc/manual/ghub/Getting-Started.html
+or (info \"(ghub)Getting Started\") for instructions.
+\(The setup wizard no longer exists.)"
+                            (capitalize (symbol-name (or forge 'github)))
+                            user host))))))
+    (if (functionp token) (funcall token) token)))
+
 (defun consult-gh-emacs-pr-review--mode-on ()
   "Enable `consult-gh-emacs-pr-review-mode'."
-  (setq consult-gh-emacs-pr-review--default-pr-action consult-gh-pr-action)
-  (setq consult-gh-pr-action #'consult-gh-emacs-pr-review--pr-view-action))
+  (unless (equal consult-gh-pr-action #'consult-gh-emacs-pr-review--pr-view-action)
+    (setq consult-gh-emacs-pr-review--default-pr-action consult-gh-pr-action))
+  (setq consult-gh-pr-action #'consult-gh-emacs-pr-review--pr-view-action)
+  (advice-add 'ghub--token :override #'consult-gh-emacs-pr-review--ghub-token))
 
 (defun consult-gh-emacs-pr-review--mode-off ()
   "Disable `consult-gh-emacs-pr-review-mode'."
-  (setq consult-gh-pr-action consult-gh-emacs-pr-review--default-pr-action))
+  (when (equal consult-gh-pr-action #'consult-gh-emacs-pr-review--pr-view-action)
+    (setq consult-gh-pr-action consult-gh-emacs-pr-review--default-pr-action))
+  (advice-remove 'ghub--token #'consult-gh-emacs-pr-review--ghub-token))
+
 
 ;;;###autoload
 (define-minor-mode consult-gh-emacs-pr-review-mode
@@ -90,6 +152,67 @@ This is a wrapper function around `consult-gh-pre-review--pr-view'."
        (if (and repo number)
            (message (format "%s:%s is not a %s" (propertize repo 'face 'consult-gh-repo) (propertize number 'face 'consult-gh-repo) (propertize "pullrequest" 'face 'consult-gh-warning)))
          (message "cannot find a GitHub pullrequest in this buffer to open with `pr-review'."))))))
+
+;;; Redefine ghub authentication functions
+(cl-defmethod ghub--username :around (host &context (consult-gh-emacs-pr-review-mode (eql t)) &optional _forge)
+  "Get username for HOST and FORGE (`consult-gh' override).
+
+Note that this is created by `consult-gh' and overrides the
+default behavior of `ghub--username' to allow using
+`consult-gh' user name instead if the user chooses to."
+
+  (let ((ghub-user (cl-call-next-method))
+        (consult-gh-user (or (car-safe consult-gh--auth-current-account)
+                             (car-safe (consult-gh--auth-current-active-account
+                                        (cond ((equal host ghub-default-host)
+                                               (string-trim-left ghub-default-host "api."))
+                                              ((string-suffix-p "/api" host)
+                                               (string-trim-right host "/api"))
+                                              ((string-suffix-p "/v3" host)
+                                               (string-trim-right host "/v3"))
+                                              ((string-suffix-p "/api/v4" host)
+                                               (string-trim-right host "/api/v4"))
+                                              (t (or host consult-gh-default-host))))))))
+    (cond
+     ((equal ghub-user consult-gh-user) ghub-user)
+     (t
+      (let ((user (if (and consult-gh-emacs-pr-review-confirm-account
+                           (stringp ghub-user)
+                           (stringp consult-gh-user))
+                      (consult--read (list (propertize consult-gh-user 'account "from consult-gh")
+                                           (propertize ghub-user 'account "from ghub/pr-review"))
+                                     :prompt "Which account do you want to use?"
+                                     :sort nil
+                                     :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
+                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags)))))
+                    (or consult-gh-user ghub-user))))
+        (if (and user (not (string-empty-p user))) user
+          (cl-call-next-method)))))))
+
+(cl-defmethod ghub--host :around (&context (consult-gh-emacs-pr-review-mode (eql t)) &optional _forge)
+  "Get host name for FORGE (`consult-gh' override).
+
+Note that this is created by `consult-gh' and overrides the
+default behavior of `ghub--host' to allow using
+`consult-gh' host name instead if the user chooses to."
+  (let ((ghub-host (cl-call-next-method))
+        (consult-gh-host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))))
+    (cond
+     ((equal ghub-host consult-gh-host) ghub-host)
+     (t
+      (let ((host (if (and consult-gh-emacs-pr-review-confirm-account
+                           (stringp ghub-host)
+                           (stringp consult-gh-host))
+                      (consult--read (list (propertize consult-gh-host 'account "from consult-gh")
+                                           (propertize ghub-host 'account "from ghub/pr-review"))
+                                     :prompt "Which account do you want to use?"
+                                     :sort nil
+                                     :annotate (lambda (cand) (let ((acc (get-text-property 0 'account cand)))
+                                                                (format "\t%s" (propertize acc 'face 'consult-gh-tags)))))
+                    (or consult-gh-host ghub-host))))
+        (if (and host (not (string-empty-p host))) host
+          (cl-call-next-method)))))))
+
 
 
 ;;; Provide `consult-gh-emacs-pr-review' module
