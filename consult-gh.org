@@ -8222,7 +8222,7 @@ set `consult-gh-notificatios-action' to
 This is an internal action function that gets a notification candidate, CAND,
 from `consult-gh-notifications' and makrs it as read."
   (when-let ((thread (get-text-property 0 :thread cand)))
-    (when (consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH" "--paginate")
+    (when (consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH")
       (message "marked as read!"))))
 
 #+end_src
