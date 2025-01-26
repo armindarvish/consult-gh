@@ -6,7 +6,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.2
-;; Package-Requires: ((emacs "30.0") (consult "20250121.1423") (pr-review "0.1") (consult-gh "2.2"))
+;; Package-Requires: ((emacs "29.4") (consult "20250121.1423") (pr-review "0.1") (consult-gh "2.2"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, completion
 
@@ -39,7 +39,7 @@
 ;;; Customization Variables
 
 (defcustom consult-gh-emacs-pr-review-confirm-account t
-  "Ask for confirmation when account doesn't match pr-review config?
+  "Ask for confirmation when account doesn't match `pr-review' config?
 
 Query the user to pick an account when the account from gh cli command
 and pr review config do not match."
@@ -49,7 +49,7 @@ and pr review config do not match."
 ;;; Other Variables
 
 (defvar consult-gh-emacs-pr-review--default-pr-action consult-gh-pr-action
-  "Default action for viewing PRs without pr-review integration.")
+  "Default action for viewing PRs without `pr-review' integration.")
 
 (defun consult-gh-emacs-pr-review--pr-view (repo number)
   "Open pullrequest NUMBER in REPO  with `pr-review'."
@@ -136,7 +136,7 @@ or (info \"(ghub)Getting Started\") for instructions.
 
 ;;;###autoload
 (defun consult-gh-topics-open-in-emacs-pr-review (&optional topic)
-  "Open the consult-gh TOPIC in pr-review."
+  "Open the consult-gh TOPIC in `pr-review'."
   (interactive nil consult-gh-pr-view-mode)
   (consult-gh-with-host
    (consult-gh--auth-account-host)
@@ -147,7 +147,7 @@ or (info \"(ghub)Getting Started\") for instructions.
      (if (equal type "pr")
          (consult-gh-emacs-pr-review--pr-view repo number)
        (if (and repo number)
-           (message (format "%s:%s is not a %s" (propertize repo 'face 'consult-gh-repo) (propertize number 'face 'consult-gh-repo) (propertize "pullrequest" 'face 'consult-gh-warning)))
+           (message "%s:%s is not a %s" (propertize repo 'face 'consult-gh-repo) (propertize number 'face 'consult-gh-repo) (propertize "pullrequest" 'face 'consult-gh-warning))
          (message "cannot find a GitHub pullrequest in this buffer to open with `pr-review'."))))))
 
 ;;; Redefine ghub authentication functions
