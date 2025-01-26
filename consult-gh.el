@@ -2008,8 +2008,8 @@ USER defaults to `consult-gh--auth-current-active-account'."
 
 STYLE defaults to `consult-async-split-style'."
 (let ((style (or style consult-async-split-style 'none)))
-  (or (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :initial))
-      (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :separator))
+  (or (plist-get (alist-get style consult-async-split-styles-alist) :initial)
+      (plist-get (alist-get style consult-async-split-styles-alist) :separator)
       "")))
 
 (defun consult-gh--get-user-info (&optional user)
