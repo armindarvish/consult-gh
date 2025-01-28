@@ -706,6 +706,15 @@ otherwise request a name."
   :group 'consult-gh
   :type 'boolean)
 
+(defcustom consult-gh-confirm-before-delete-repo t
+  "Should confirmation of repo name be requested before cloning?
+
+When set to non-nil, the user is asked to type the name of repo for confirmation.
+
+IMPORTANT NOTE: To avoid deleting repos by accident, It is highly recommended to set this to t."
+  :group 'consult-gh
+  :type 'boolean)
+
 (defcustom consult-gh-ask-for-path-before-save t
   "Should file path be confirmed when saving files?
 
@@ -3216,6 +3225,47 @@ To use this as the default action for repos,
 set `consult-gh-repo-action' to `consult-gh--repo-fork-action'."
   (let* ((reponame (get-text-property 0 :repo cand)))
     (consult-gh--repo-fork reponame)))
+
+(defun consult-gh--repo-delete (repo &optional noconfirm)
+"Delete REPO.
+
+This is an internal function for non-interactive use.
+For interactive use see `consult-gh-repo-delete'.
+
+It runs the command “gh repo delte REPO”
+using `consult-gh--command-to-string'."
+    (unless noconfirm
+      (let ((try 1)
+            (repo-confirm (read-string (format "Type %s to confirm deleting repo: " (propertize repo 'face 'consult-gh-repo)))))
+      (while (and (not (equal repo repo-confirm)) (< try 3))
+                        (setq try (1+ try))
+                        (setq repo-confirm (read-string (format "Try %s. Try again and type %s to confirm deleting repo: " (propertize (format "%s/3" try) 'face 'consult-gh-wraning) (propertize repo 'face 'consult-gh-repo)))))
+      (if (not (equal repo repo-confirm))
+               (message "Did not get confirmation in 3 trials. Canceled!")
+        (setq noconfirm (equal repo repo-confirm)))))
+    (if noconfirm
+        (progn
+          (consult-gh--command-to-string "repo" "delete" repo "--yes")
+          (message "repo %s was %s" (propertize repo 'face 'consult-gh-repo) (propertize "DELTETED!" 'face 'consult-gh-warning)))))
+
+(defun consult-gh--repo-delete-action (cand)
+  "Delete a repo candidate, CAND.
+
+This is a wrapper function around `consult-gh--repo-delete'.
+It parses CAND to extract relevant values \(e.g. repository's name\)
+and passes them to `consult-gh--repo-delete'.
+
+To use this as the default action for repos,
+set `consult-gh-repo-action' to `consult-gh--repo-delete-action'.
+
+If `consult-gh-confirm-before-delete-repo' is non-nil it asks for confirmation
+before deleting the repo, otherise deletes the repo without asking for
+confirmation."
+
+  (let* ((reponame (get-text-property 0 :repo cand)))
+    (if consult-gh-confirm-before-delete-repo
+        (consult-gh--repo-delete reponame)
+      (consult-gh--repo-delete reponame t))))
 
 (defun consult-gh--repo-create-scratch (&optional name directory owner description visibility make-readme gitignore-template license-key)
   "Create a new repository on github from scratch.
@@ -7791,16 +7841,18 @@ If PROMPT is non-nil, use it as the query prompt."
       (funcall consult-gh-repo-action sel))))
 
 ;;;###autoload
-(defun consult-gh-user-repos (&optional user)
+(defun consult-gh-user-repos (&optional user noaction)
   "List all repos for USER.
 
 This includes repos of orgs of USER.  It uses
 `consult-gh--get-current-user-orgs' to get all
-orgs of USER."
+orgs of USER.
+
+If NOACTION is non-nil, return the candidate without running action."
   (interactive)
   (if user
-      (consult-gh-orgs (consult-gh--get-current-user-orgs user t))
-    (consult-gh-orgs (or consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)))))
+      (consult-gh-orgs (consult-gh--get-current-user-orgs user t) noaction)
+    (consult-gh-orgs (or consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)) noaction)))
 
 ;;;###autoload
 (defun consult-gh-favorite-repos ()
@@ -7865,6 +7917,22 @@ If name is nil, interatively ask the user for the name."
 
   (interactive "P")
   (consult-gh--repo-create name))
+
+;;;###autoload
+(defun consult-gh-repo-delete (&optional repo noconfirm)
+  "Interactively delete REPOS.
+
+It runs the command “gh repo delete ...” to delete a repository
+using the internal function `consult-gh--repo-delete'.
+
+If REPOS are not supplied, interactively asks user to pick them from `consult-gh-user-repos'.
+
+When NOCONFIRM is non-nil, do not ask for confirmation"
+  (interactive)
+  (when-let ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-user-repos nil t))))))
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (consult-gh--repo-delete repo (or noconfirm (not consult-gh-confirm-before-delete-repo))))))
 
 (defun consult-gh--issue-list-transform (input)
 "Add annotation to issue candidates in `consult-gh-issue-list'.
