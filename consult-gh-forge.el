@@ -258,9 +258,9 @@ more info."
                            (and host `("-h" ,host))))
          (gh-token (apply #'consult-gh--command-to-string cmd-args))
          (token
-          (or (car (ghub--auth-source-get (list :secret)
+          (or (and (stringp gh-token) (string-trim gh-token))
+              (car (ghub--auth-source-get (list :secret)
                      :host host :user user))
-              (and (stringp gh-token) (string-trim gh-token))
               (progn
                 ;; Auth-Source caches the information that there is no
                 ;; value, but in our case that is a situation that needs
