@@ -999,6 +999,12 @@ This is used in `consult-gh-dashboard'.")
 (defvar consult-gh--files-history nil
   "History variable for files used in `consult-gh-find-file'.")
 
+(defvar consult-gh--gitignore-templates-history nil
+  "History variable for gitignore templates.")
+
+(defvar consult-gh--license-key-history nil
+  "History variable for license keys.")
+
 (defvar consult-gh--current-user-orgs nil
   "List of repos of current user.")
 
@@ -1739,22 +1745,6 @@ When INCLUDE-USER is non-nil, add the name of the user to the list."
               (if include-user (list user))))
      (t (if include-user (list user))))))
 
-(defun consult-gh--get-gitignore-template-list ()
-  "List name of .gitignore templates."
-  (string-split (string-trim
-                 (cadr
-                  (consult-gh--api-get-json "gitignore/templates"))
-                 "\\[" "\\]") "," t "\""))
-
-(defun consult-gh--get-license-template-list ()
-  "List name of open source license templates.
-
-Each item is a cons of (name . key) for a license."
-  (mapcar (lambda (item) (cons (gethash :name item) (gethash :key item)))
-          (consult-gh--json-to-hashtable
-           (cadr
-            (consult-gh--api-get-json "licenses")))))
-
 (defun consult-gh--get-user-template-repos (&optional user)
   "List template repository for USER.
 
@@ -2042,6 +2032,99 @@ STYLE defaults to `consult-async-split-style'."
 (defun consult-gh--get-user-link (&optional user)
   "Get the link to USER page on GitHub."
   (gethash :html_url (consult-gh--get-user-info user)))
+
+(defun consult-gh--get-gitignore-template-list ()
+  "List name of .gitignore templates."
+  (string-split (string-trim
+                 (cadr
+                  (consult-gh--api-get-json "gitignore/templates"))
+                 "\\[" "\\]") "," t "\""))
+
+(defun consult-gh--get-gitignore-template-content (template)
+  "Get content of gitignore TEMPLATE."
+  (when-let ((response (consult-gh--command-to-string "api" (format "gitignore/templates/%s" template))))
+    (gethash :source (consult-gh--json-to-hashtable response))))
+
+(defun consult-gh--gitignore-template-preview (action cand)
+  "Preview function for gitignore temlates.
+
+This is passed as state function to `consult--read'."
+  (let* ((preview (consult--buffer-preview)))
+  (pcase action
+    ('preview
+     (if (and consult-gh-show-preview cand (stringp cand))
+         (let* ((content (consult-gh--get-gitignore-template-content cand))
+                (buff (get-buffer-create (format "*consult-gh-preview: gitignore-%s*" cand))))
+           (with-current-buffer buff
+             (erase-buffer)
+             (insert content)
+             (set-buffer-file-coding-system 'utf-8))
+           (add-to-list 'consult-gh--preview-buffers-list buff)
+           (funcall preview action
+                    buff))))
+    ('return
+     cand))))
+
+(defun consult-gh--read-gitignore-template (&optional templates)
+"Read a gitignore template from TEMPLATES with preview.
+
+TEMPLATES default to the list of templates from github:
+URL `https://github.com/github/gitignore'"
+  (consult--read (or templates (consult-gh--get-gitignore-template-list))
+                 :prompt (format "Select template for %s" (propertize ".gitignore " 'face 'error))
+                 :state #'consult-gh--gitignore-template-preview
+                 :require-match t
+                 :history 'consult-gh--gitignore-templates-history
+                 :preview-key consult-gh-preview-key
+                 :sort nil))
+
+(defun consult-gh--get-license-list ()
+  "List name of open source license keys.
+
+Each item is a cons of (name . key) for a license."
+  (mapcar (lambda (item) (cons (gethash :name item) (gethash :key item)))
+          (consult-gh--json-to-hashtable
+           (cadr
+            (consult-gh--api-get-json "licenses")))))
+
+(defun consult-gh--get-license-content (license)
+  "Get body of LICENSE."
+  (when-let ((response (consult-gh--command-to-string "api" (format "licenses/%s" license))))
+    (gethash :body (consult-gh--json-to-hashtable response))))
+
+(defun consult-gh--license-preview (action cand)
+  "Preview function for gitignore temlates.
+
+This is passed as state function to `consult--read'."
+  (let* ((preview (consult--buffer-preview)))
+  (pcase action
+    ('preview
+     (if (and consult-gh-show-preview cand (stringp cand))
+         (let* ((content (consult-gh--get-license-content cand))
+                (buff (get-buffer-create (format "*consult-gh-preview: license-%s*" cand))))
+           (with-current-buffer buff
+             (erase-buffer)
+             (insert content)
+             (set-buffer-file-coding-system 'utf-8))
+           (add-to-list 'consult-gh--preview-buffers-list buff)
+           (funcall preview action
+                    buff))))
+    ('return
+     cand))))
+
+(defun consult-gh--read-license-key (&optional licenses)
+  "Read a license key from LICENSES with preview.
+
+LICENSES default to the list of licenses from github api:
+URL `https://docs.github.com/en/rest/licenses'"
+  (consult--read (or licenses (consult-gh--get-license-list))
+                 :prompt (format "Select a %s" (propertize "license key" 'face 'consult-gh-description))
+                 :state #'consult-gh--license-preview
+                 :require-match t
+                 :history 'consult-gh--license-key-history
+                 :lookup #'consult--lookup-cdr
+                 :preview-key consult-gh-preview-key
+                 :sort nil))
 
 ;;; Backend functions for `consult-gh'.
 
@@ -3297,16 +3380,9 @@ Description of Arguments:
                                                              :require-match t))))
          (readme (or make-readme (y-or-n-p "Would you like to add a README file?")))
          (gitignore (if (not gitignore-template) (y-or-n-p "Would you like to add a .gitignore?") t))
-         (gitignore-template (or gitignore-template (and gitignore (string-trim (consult--read (consult-gh--get-gitignore-template-list)
-                                                                                               :prompt (format "Select template for %s" (propertize ".gitignore " 'face 'error))
-                                                                                               :sort nil
-                                                                                               :require-match t)))))
+         (gitignore-template (or gitignore-template (and gitignore (string-trim (consult-gh--read-gitignore-template)))))
          (license (if (not license-key) (y-or-n-p "Would you like to add a license?") t))
-         (license-key (or license-key (and license (consult--read (consult-gh--get-license-template-list)
-                                                                  :prompt (format "Select %s template" (propertize "license " 'face 'consult-gh-warning))
-                                                                  :lookup #'consult--lookup-cdr
-                                                                  :require-match t
-                                                                  :sort nil))))
+         (license-key (or license-key (and license (consult-gh--read-license-key))))
          (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo) (propertize visibility 'face 'warning))))
          (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
          (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or directory (and (stringp consult-gh-default-clone-directory) (file-name-as-directory consult-gh-default-clone-directory)) default-directory))))
