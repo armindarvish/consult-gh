@@ -6,7 +6,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 2.2
-;; Package-Requires: ((emacs "29.4") (consult "20250121.1423") (forge "0.3.3") (consult-gh "2.2"))
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "2.2"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -258,9 +258,9 @@ more info."
                            (and host `("-h" ,host))))
          (gh-token (apply #'consult-gh--command-to-string cmd-args))
          (token
-          (or (car (ghub--auth-source-get (list :secret)
+          (or (and (stringp gh-token) (string-trim gh-token))
+              (car (ghub--auth-source-get (list :secret)
                      :host host :user user))
-              (and (stringp gh-token) (string-trim gh-token))
               (progn
                 ;; Auth-Source caches the information that there is no
                 ;; value, but in our case that is a situation that needs
