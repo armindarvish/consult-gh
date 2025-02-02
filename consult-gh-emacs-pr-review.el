@@ -135,7 +135,7 @@ or (info \"(ghub)Getting Started\") for instructions.
     (consult-gh-emacs-pr-review--mode-off)))
 
 ;;;###autoload
-(defun consult-gh-topics-open-in-emacs-pr-review (&optional topic)
+(defun consult-gh-emacs-pr-review-open-topic (&optional topic)
   "Open the consult-gh TOPIC in `pr-review'."
   (interactive nil consult-gh-pr-view-mode)
   (consult-gh-with-host
@@ -193,7 +193,8 @@ Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--host' to allow using
 `consult-gh' host name instead if the user chooses to."
   (let ((ghub-host (cl-call-next-method))
-        (consult-gh-host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))))
+        (consult-gh-host (or (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))
+                             (cadr (consult-gh--auth-current-active-account)))))
     (cond
      ((equal ghub-host consult-gh-host) ghub-host)
      (t

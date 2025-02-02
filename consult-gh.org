@@ -47,6 +47,8 @@
 ** Requirements
 #+begin_src emacs-lisp
 ;;; Requirements
+(unless  (executable-find "gh")
+  (user-error (propertize "\"gh\" is not found on this system" 'face 'warning)))
 
 (eval-when-compile
   (require 'json))
@@ -55,6 +57,8 @@
 (require 'markdown-mode) ;; markdown-mode for viewing issues,prs, ...
 (require 'ox-gfm) ;; for exporting org-mode to github flavored markdown
 (require 'org) ;; for its awesomeness!
+
+
 #+end_src
 
 ** Define Group, Customs, Vars, etc.
@@ -1643,7 +1647,7 @@ Splits the difference and returns a list where:
 
 (defun consult-gh--auth-account-host (&optional account)
   "Get the host of current ACCOUNT."
-  (let* ((account (or account consult-gh--auth-current-account)))
+  (let* ((account (or account consult-gh--auth-current-account (consult-gh--auth-current-active-account))))
     (when (consp account)
       (cadr account))))
 #+end_src
@@ -2875,7 +2879,6 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)."
     (when current-account
       (setq consult-gh--auth-current-account current-account))))
 
-(consult-gh--auth-current-active-account)
 #+end_src
 
 ***** consult-gh--auth-switch
@@ -2905,8 +2908,8 @@ For interactive use see `consult-gh-auth-switch'."
   "Return a list of token scopes for USERNAME on HOST.
 
 USERNAME and HOST default to `consult-gh--auth-current-account'."
-  (let* ((username (or username (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account)) ".*?"))
-         (host (or host (cadr consult-gh--auth-current-account) ".*?"))
+  (let* ((username (or username (car-safe consult-gh--auth-current-account) (car-safe  (consult-gh--auth-current-active-account)) ".*?"))
+         (host (or host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account)) (cadr (consult-gh--auth-current-active-account)) ".*?"))
          (str (consult-gh--command-to-string "auth" "status")))
     (when
         (string-match (format "Logged in to %s account %s \(.*\)\n.*Active account: true[[:ascii:][:nonascii:]]*?Token scopes: \\(?1:.+\\)?" host username) str)
@@ -8564,7 +8567,7 @@ If PROMPT is non-nil, use it as the query prompt."
                                            (let* ((info (assoc cand accounts))
                                                   (host (cadr info))
                                                   (status (if (caddr info) "active" ""))
-                                                  (current (if (equal info consult-gh--auth-current-account) "selected" "")))
+                                                  (current (if (equal info (or consult-gh--auth-current-account (consult-gh--auth-current-active-account))) "selected" "")))
                                              (format "\t\t%s\s\s%s\s\s%s"
                                                      (propertize host 'face 'consult-gh-tags)
                                                      (propertize status 'face 'consult-gh-user)
@@ -13102,7 +13105,8 @@ Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--host' to allow using
 `consult-gh' host name instead if the user chooses to."
   (let ((ghub-host (cl-call-next-method))
-        (consult-gh-host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))))
+        (consult-gh-host (or (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))
+                             (cadr (consult-gh--auth-current-active-account)))))
     (cond
      ((equal ghub-host consult-gh-host) ghub-host)
      (t
@@ -13308,7 +13312,7 @@ or (info \"(ghub)Getting Started\") for instructions.
     (consult-gh-emacs-pr-review--mode-off)))
 
 ;;;###autoload
-(defun consult-gh-topics-open-in-emacs-pr-review (&optional topic)
+(defun consult-gh-emacs-pr-review-open-topic (&optional topic)
   "Open the consult-gh TOPIC in `pr-review'."
   (interactive nil consult-gh-pr-view-mode)
   (consult-gh-with-host
@@ -13366,7 +13370,8 @@ Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--host' to allow using
 `consult-gh' host name instead if the user chooses to."
   (let ((ghub-host (cl-call-next-method))
-        (consult-gh-host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))))
+        (consult-gh-host (or (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))
+                             (cadr (consult-gh--auth-current-active-account)))))
     (cond
      ((equal ghub-host consult-gh-host) ghub-host)
      (t

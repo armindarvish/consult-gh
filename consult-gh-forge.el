@@ -355,7 +355,8 @@ Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--host' to allow using
 `consult-gh' host name instead if the user chooses to."
   (let ((ghub-host (cl-call-next-method))
-        (consult-gh-host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))))
+        (consult-gh-host (or (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account))
+                             (cadr (consult-gh--auth-current-active-account)))))
     (cond
      ((equal ghub-host consult-gh-host) ghub-host)
      (t
