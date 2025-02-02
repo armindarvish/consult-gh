@@ -1560,7 +1560,7 @@ Splits the difference and returns a list where:
 
 (defun consult-gh--auth-account-host (&optional account)
   "Get the host of current ACCOUNT."
-  (let* ((account (or account consult-gh--auth-current-account (consult-gh--auth-current-active-account))))
+  (let* ((account (or account consult-gh--auth-current-account)))
     (when (consp account)
       (cadr account))))
 
