@@ -8402,7 +8402,7 @@ For more details refer to the manual with “gh issue close --help”."
 
 ;;;###autoload
 (defun consult-gh-issue-reopen (&optional issue comment)
-  "Close the ISSUE with an optional COMMENT.
+  "Reopen the ISSUE with an optional COMMENT.
 
 This mimicks the same function as running “gh issue reopen” in the terminal.
 For more details refer to the manual with “gh issue reopen --help”."
@@ -9312,7 +9312,7 @@ For more details refer to the manual with “gh pr close --help”."
 
 ;;;###autoload
 (defun consult-gh-pr-reopen (&optional pr comment)
-  "Close the PR with an optional COMMENT.
+  "Reopen the PR with an optional COMMENT.
 
 This mimicks the same function as running “gh pr reopen” in the terminal.
 For more details refer to the manual with “gh pr reopen --help”."
