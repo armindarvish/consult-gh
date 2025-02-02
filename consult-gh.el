@@ -36,6 +36,8 @@
 ;;; Code:
 
 ;;; Requirements
+(unless  (executable-find "gh")
+  (user-error (propertize "\"gh\" is not found on this system" 'face 'warning)))
 
 (eval-when-compile
   (require 'json))
@@ -1558,7 +1560,7 @@ Splits the difference and returns a list where:
 
 (defun consult-gh--auth-account-host (&optional account)
   "Get the host of current ACCOUNT."
-  (let* ((account (or account consult-gh--auth-current-account)))
+  (let* ((account (or account consult-gh--auth-current-account (consult-gh--auth-current-active-account))))
     (when (consp account)
       (cadr account))))
 
@@ -2557,8 +2559,6 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)."
     (when current-account
       (setq consult-gh--auth-current-account current-account))))
 
-(consult-gh--auth-current-active-account)
-
 (defvar consult-gh-auth-post-switch-hook nil
   "Functions called after `consult-auth--switch'.
 
@@ -2581,8 +2581,8 @@ For interactive use see `consult-gh-auth-switch'."
   "Return a list of token scopes for USERNAME on HOST.
 
 USERNAME and HOST default to `consult-gh--auth-current-account'."
-  (let* ((username (or username (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account)) ".*?"))
-         (host (or host (cadr consult-gh--auth-current-account) ".*?"))
+  (let* ((username (or username (car-safe consult-gh--auth-current-account) (car-safe  (consult-gh--auth-current-active-account)) ".*?"))
+         (host (or host (and (consp consult-gh--auth-current-account) (cadr consult-gh--auth-current-account)) (cadr (consult-gh--auth-current-active-account)) ".*?"))
          (str (consult-gh--command-to-string "auth" "status")))
     (when
         (string-match (format "Logged in to %s account %s \(.*\)\n.*Active account: true[[:ascii:][:nonascii:]]*?Token scopes: \\(?1:.+\\)?" host username) str)
@@ -7608,7 +7608,7 @@ If PROMPT is non-nil, use it as the query prompt."
                                            (let* ((info (assoc cand accounts))
                                                   (host (cadr info))
                                                   (status (if (caddr info) "active" ""))
-                                                  (current (if (equal info consult-gh--auth-current-account) "selected" "")))
+                                                  (current (if (equal info (or consult-gh--auth-current-account (consult-gh--auth-current-active-account))) "selected" "")))
                                              (format "\t\t%s\s\s%s\s\s%s"
                                                      (propertize host 'face 'consult-gh-tags)
                                                      (propertize status 'face 'consult-gh-user)
