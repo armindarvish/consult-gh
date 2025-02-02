@@ -8402,7 +8402,7 @@ For more details refer to the manual with “gh issue close --help”."
 
 ;;;###autoload
 (defun consult-gh-issue-reopen (&optional issue comment)
-  "Close the ISSUE with an optional COMMENT.
+  "Reopen the ISSUE with an optional COMMENT.
 
 This mimicks the same function as running “gh issue reopen” in the terminal.
 For more details refer to the manual with “gh issue reopen --help”."
