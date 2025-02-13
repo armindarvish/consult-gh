@@ -48,7 +48,7 @@
 #+begin_src emacs-lisp
 ;;; Requirements
 (unless  (executable-find "gh")
-  (user-error (propertize "\"gh\" is not found on this system" 'face 'warning)))
+  (display-warning 'consult-gh (propertize "\"gh\" is not found on this system" 'face 'warning) :warning))
 
 (eval-when-compile
   (require 'json))
@@ -1732,7 +1732,7 @@ Description of Arguments:
                         :filter filter
                         :sentinel proc-sentinel)))
     (progn
-      (message (propertize "\"gh\" is not found on this system" 'face 'warning))
+      (user-error (propertize "\"gh\" is not found on this system" 'face 'warning))
       nil)))
 
 #+end_src
@@ -1752,7 +1752,7 @@ and a message saying “gh” is not found."
                               (list (apply #'call-process "gh" nil (current-buffer) nil args)
                                     (buffer-string))))
     (progn
-      (message (propertize "\"gh\" is not found on this system" 'face 'warning))
+      (user-error (propertize "\"gh\" is not found on this system" 'face 'warning))
       '(127 ""))))
 
 #+end_src
@@ -8607,11 +8607,12 @@ INPUT must be a GitHub user or org as a string e.g. “armindarvish”."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-repo-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 #+end_src
 
 
@@ -8765,11 +8766,12 @@ The command arguments such as \(e.g. “gh search repos INPUT”\)."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-repo-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 #+end_src
 
 
@@ -9068,11 +9070,12 @@ e.g. “armindarvish/consult-gh”."
     (unless (or (member "-s" flags) (member "--state" flags))
       (setq opts (append opts (list "--state" (format "%s" consult-gh-issues-state-to-show)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 
 #+end_src
 
@@ -9762,11 +9765,12 @@ Format each candidates with `consult-gh--search-issues-format' and INPUT."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 #+end_src
 
 
@@ -9905,11 +9909,12 @@ e.g. “armindarvish/consult-gh”."
     (unless (or (member "-s" flags) (member "--state" flags))
       (setq opts (append opts (list "--state" (format "%s" consult-gh-prs-state-to-show)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 #+end_src
 
 
@@ -10632,11 +10637,12 @@ Format each candidates with `consult-gh--search-prs-format' and INPUT."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 
 #+end_src
 
@@ -10769,11 +10775,12 @@ Format each candidates with `consult-gh--search-code-format' and INPUT."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-code-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 #+end_src
 
 
