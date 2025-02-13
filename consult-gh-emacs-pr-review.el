@@ -1,4 +1,4 @@
-;;; consult-gh-emacs-pr-review.el --- Emacs pr-review Integration for consult-gh -*- lexical-binding: t -*-
+;;; consult-gh-emacs-pr-review.el --- "pr-review" Integration for consult-gh -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Armin Darvish
 
@@ -72,8 +72,8 @@ This is a wrapper function around `consult-gh-pre-review--pr-view'."
 
 This is an override function for `ghub--token' to allow
 using `consult-gh' for getting tokens when `ghub--token' fails.
-This allows getting token from gh cli commands without saving tokens
-in auth sources.
+This allows getting token for `pr-review' from gh cli commands without
+saving tokens in auth sources.
 
 See `ghub--token' for definition of NOCREATE and FORGE as well as
 more info."
@@ -136,7 +136,7 @@ or (info \"(ghub)Getting Started\") for instructions.
 
 ;;;###autoload
 (defun consult-gh-emacs-pr-review-open-topic (&optional topic)
-  "Open the consult-gh TOPIC in `pr-review'."
+  "Open the `consult-gh' TOPIC in `pr-review'."
   (interactive nil consult-gh-pr-view-mode)
   (consult-gh-with-host
    (consult-gh--auth-account-host)
