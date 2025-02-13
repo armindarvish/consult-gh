@@ -37,7 +37,7 @@
 
 ;;; Requirements
 (unless  (executable-find "gh")
-  (user-error (propertize "\"gh\" is not found on this system" 'face 'warning)))
+  (display-warning 'consult-gh (propertize "\"gh\" is not found on this system" 'face 'warning) :warning))
 
 (eval-when-compile
   (require 'json))
@@ -1638,7 +1638,7 @@ Description of Arguments:
                         :filter filter
                         :sentinel proc-sentinel)))
     (progn
-      (message (propertize "\"gh\" is not found on this system" 'face 'warning))
+      (user-error (propertize "\"gh\" is not found on this system" 'face 'warning))
       nil)))
 
 (defun consult-gh--call-process (&rest args)
@@ -1655,7 +1655,7 @@ and a message saying “gh” is not found."
                               (list (apply #'call-process "gh" nil (current-buffer) nil args)
                                     (buffer-string))))
     (progn
-      (message (propertize "\"gh\" is not found on this system" 'face 'warning))
+      (user-error (propertize "\"gh\" is not found on this system" 'face 'warning))
       '(127 ""))))
 
 (defun consult-gh--command-to-string (&rest args)
@@ -7639,11 +7639,12 @@ INPUT must be a GitHub user or org as a string e.g. “armindarvish”."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-repo-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 
 (defun consult-gh--repo-list (org)
   "List repos of ORG synchronously.
@@ -7778,11 +7779,12 @@ The command arguments such as \(e.g. “gh search repos INPUT”\)."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-repo-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 
 (defun consult-gh--async-search-repos (prompt builder &optional initial min-input)
   "Seacrhes GitHub repositories asynchronously.
@@ -8033,11 +8035,12 @@ e.g. “armindarvish/consult-gh”."
     (unless (or (member "-s" flags) (member "--state" flags))
       (setq opts (append opts (list "--state" (format "%s" consult-gh-issues-state-to-show)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 
 (defun consult-gh--async-issue-list (prompt builder &optional initial min-input)
   "List issues GitHub repos asynchronously.
@@ -8662,11 +8665,12 @@ Format each candidates with `consult-gh--search-issues-format' and INPUT."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 
 (defun consult-gh--async-search-issues (prompt builder &optional initial min-input)
   "Search GitHub issues asynchronously.
@@ -8785,11 +8789,12 @@ e.g. “armindarvish/consult-gh”."
     (unless (or (member "-s" flags) (member "--state" flags))
       (setq opts (append opts (list "--state" (format "%s" consult-gh-prs-state-to-show)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 
 (defun consult-gh--async-pr-list (prompt builder &optional initial min-input)
   "List pull requests of GitHub repos asynchronously.
@@ -9448,11 +9453,12 @@ Format each candidates with `consult-gh--search-prs-format' and INPUT."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 
 (defun consult-gh--async-search-prs (prompt builder &optional initial min-input)
   "Search GitHub pull requests asynchronously.
@@ -9566,11 +9572,12 @@ Format each candidates with `consult-gh--search-code-format' and INPUT."
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-code-maxnum)))))
     (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (when re
+      (if re
         (cons (append cmd
                       (list (string-join re " "))
                       opts)
-              hl)))))
+              hl)
+        (cons (append cmd opts) nil)))))
 
 (defun consult-gh--async-search-code (prompt builder &optional initial min-input)
   "Seacrh GitHub codes asynchronously.
