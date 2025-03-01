@@ -711,9 +711,11 @@ otherwise request a name."
 (defcustom consult-gh-confirm-before-delete-repo t
   "Should confirmation of repo name be requested before cloning?
 
-When set to non-nil, the user is asked to type the name of repo for confirmation.
+When set to non-nil, the user is asked to type the name of repo for
+confirmation.
 
-IMPORTANT NOTE: To avoid deleting repos by accident, It is highly recommended to set this to t."
+IMPORTANT NOTE: To avoid deleting repos by accident, It is highly
+recommended to set this to t."
   :group 'consult-gh
   :type 'boolean)
 
@@ -1053,13 +1055,13 @@ This is used to change grouping dynamically.")
 (defvar consult-gh--pr-view-json-fields "additions,assignees,author,baseRefName,body,closedAt,commits,createdAt,deletions,files,headRefName,headRepository,headRepositoryOwner,headRefOid,labels,mergeable,milestone,number,projectItems,reviewDecision,reviewRequests,state,statusCheckRollup,title,updatedAt,url"
   "String of comma separated json fields to retrieve for viewing prs.")
 
-(defvar consult-gh--issue-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-topics-comment-create)
+(defvar consult-gh--issue-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
                                                        ("C-c C-e" . consult-gh-issue-edit)
                                                        ("C-c C-<return>" . consult-gh-topics-open-in-browser))
 
   "Keymap alist for `consult-gh-issue-view-mode'.")
 
-(defvar consult-gh--pr-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-topics-comment-create)
+(defvar consult-gh--pr-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
                                                     ("C-c C-e" . consult-gh-pr-edit)
                                                     ("C-c C-m" . consult-gh-pr-merge)
                                                     ("C-c C-r" . consult-gh-pr-review)
@@ -1071,7 +1073,7 @@ This is used to change grouping dynamically.")
 
   "Keymap alist for `consult-gh-repo-view-mode'.")
 
-(defvar consult-gh--topics-edit-mode-keybinding-alist '(("C-c C-c" . consult-gh-topics-submit)
+(defvar consult-gh--topics-edit-mode-keybinding-alist '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
                                                         ("C-c C-k" . consult-gh-topics-cancel))
 
   "Keymap alist for `consult-gh-topics-edit-mode'.")
@@ -2048,9 +2050,12 @@ STYLE defaults to `consult-async-split-style'."
     (gethash :source (consult-gh--json-to-hashtable response))))
 
 (defun consult-gh--gitignore-template-preview (action cand)
-  "Preview function for gitignore temlates.
+  "Preview function for gitignore templates.
 
-This is passed as state function to `consult--read'."
+This is passed as state function to `consult--read'.
+
+For more details on ACTION and CAND refer to docstring of
+`consult--with-preview'."
   (let* ((preview (consult--buffer-preview)))
   (pcase action
     ('preview
@@ -2095,9 +2100,12 @@ Each item is a cons of (name . key) for a license."
     (gethash :body (consult-gh--json-to-hashtable response))))
 
 (defun consult-gh--license-preview (action cand)
-  "Preview function for gitignore temlates.
+  "Preview function for license templates.
 
-This is passed as state function to `consult--read'."
+This is passed as state function to `consult--read'.
+
+For more details on ACTION and CAND refer to docstring of
+`consult--with-preview'."
   (let* ((preview (consult--buffer-preview)))
   (pcase action
     ('preview
@@ -3316,7 +3324,9 @@ This is an internal function for non-interactive use.
 For interactive use see `consult-gh-repo-delete'.
 
 It runs the command “gh repo delte REPO”
-using `consult-gh--command-to-string'."
+using `consult-gh--command-to-string'.
+
+When NOCONFIRM is non-nil, does not ask for confirmation."
     (unless noconfirm
       (let ((try 1)
             (repo-confirm (read-string (format "Type %s to confirm deleting repo: " (propertize repo 'face 'consult-gh-repo)))))
@@ -6575,14 +6585,15 @@ BUFFER defaults to the current buffer."
   "Create a new review comment with BODY for TOPIC.
 
 TOPIC defaults to `consult-gh--topic' and should be a string with
-properties that identify a comment.  The properties should contain :path,
-:line, :side, and other info that can be passed GitHub API.  For more
-informaiton see:
-URL `https://docs.github.com/en/rest/pulls/comments?apiVersion=2022-11-28#create-a-review-comment-for-a-pull-request'
+properties that identify a comment.  The properties should contain
+:path, :line, :side, and other info that can be passed to GitHub API.
+For more informaiton see:
+URL
+`https://docs.github.com/en/rest/pulls/comments?apiVersion=2022-11-28#create-a-review-comment-for-a-pull-request'
 
-BODY is a string for comment text.  When BODY is nil, the value of \=:body
-key stored in TOPIC properties is stored, and if that is nil as well, the
-content of the current buffer is used."
+BODY is a string for comment text.  When BODY is nil, the value of
+\=:body key stored in TOPIC properties is stored, and if that is nil as
+well, the content of the current buffer is used."
   (let* ((topic (or topic consult-gh--topic))
          (review-buffer (get-text-property 0 :review-buffer topic))
          (view-buffer (get-text-property 0 :view-buffer topic))
@@ -7998,12 +8009,13 @@ If name is nil, interatively ask the user for the name."
 
 ;;;###autoload
 (defun consult-gh-repo-delete (&optional repo noconfirm)
-  "Interactively delete REPOS.
+  "Interactively delete REPO.
 
 It runs the command “gh repo delete ...” to delete a repository
 using the internal function `consult-gh--repo-delete'.
 
-If REPOS are not supplied, interactively asks user to pick them from `consult-gh-user-repos'.
+If REPOS are not supplied, interactively asks user to pick them from
+`consult-gh-user-repos'.
 
 When NOCONFIRM is non-nil, do not ask for confirmation"
   (interactive)
@@ -10208,6 +10220,18 @@ browser."
      (if (stringp url)
          (funcall (or consult-gh-browse-url-func #'browse-url) url)
        (message "No topic to browse in this buffer!")))))
+
+(defun consult-gh-ctrl-c-ctrl-c ()
+  "Submit topic or invoke `org-ctrl-c-ctrl-c' in `org-mode'."
+  (interactive)
+  (if (and (derived-mode-p 'org-mode)
+           (org-in-src-block-p))
+      (org-ctrl-c-ctrl-c)
+      (cond
+       ((or consult-gh-pr-view-mode consult-gh-issue-view-mode)
+        (consult-gh-topics-comment-create))
+       (consult-gh-topics-edit-mode
+        (consult-gh-topics-submit)))))
 
 ;;;###autoload
 (defun consult-gh-enable-default-keybindings ()
