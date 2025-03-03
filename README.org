@@ -436,7 +436,7 @@ This variable sets the maximum time in *seconds* that =consult-gh-forge= tries t
 
 ** PR-Review Integration
 
-If you use [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review]] for reviewing pull requests, you can use =consult-gh-with-pr-review= to directly open issues in a pr-review buffer and do your review in =pr-review=. To do so enable =consult-gh-with-pr-review-mode=:
+If you use [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review (pr-review package on MELPA)]] for reviewing pull requests, you can use =consult-gh-with-pr-review= to directly open issues in a pr-review buffer. To do so,  enable =consult-gh-with-pr-review-mode= by running =M-x consult-gh-with-pt-review-mode= or putting the following in your init file:
 #+begin_src emacs-lisp
 (consult-gh-with-pr-review-mode +1)
 #+end_src
