@@ -434,20 +434,29 @@ In addition, with =consult-gh-forge=, you get one more customization variable as
 **** =consult-gh-forge-timeout-seconds=
 This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal Emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before reaching this timeout!
 
+**** =consult-gh-forge-confirm-account=
+Whether consult-gh-forge should ask for confirmation when chosing the account for authorization.  If this is set to =nil=, consult-gh uses the =gh= setting to get the account name and token for authorization. Otherwise, it compares the setting from =gh= with that of forge settings (e.g. the credentials stored in authinfo), and when they are different, queries the user to pick which account should be used.
+
 ** PR-Review Integration
 
-If you use [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review]] for reviewing pull requests, you can use =consult-gh-with-pr-review= to directly open issues in a pr-review buffer and do your review in =pr-review=. To do so enable =consult-gh-with-pr-review-mode=:
+If you use [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review (pr-review package on MELPA)]] for reviewing pull requests, you can use =consult-gh-with-pr-review= to directly open issues in a pr-review buffer. To do so,  enable =consult-gh-with-pr-review-mode= by running =M-x consult-gh-with-pt-review-mode= or putting the following in your init file:
 #+begin_src emacs-lisp
 (consult-gh-with-pr-review-mode +1)
 #+end_src
 
 Here is a screenshot:
 
-#+ATTR_ORG: :width 800px
+
+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-with-pr-review.gif]]
 
+
+In addition, with =consult-gh-with-pr-view=, you get one more customization variable as well:
+
+**** =consult-gh-with-pr-review-confirm-account=
+Whether consult-gh-with-pr-review should ask for confirmation when chosing the account for authorization.  If this is set to =nil=, consult-gh uses the =gh= setting to get the account name and token for authorization. Otherwise, it compares the setting from =gh= with that of pr-review settings (e.g. the credentials stored in authinfo), and when they are different, queries the user to pick which account should be used.
 
 ** Transient Menu
 consult-gh provides a transient menu as well. It can be accessed by running =M-x consult-gh-transient= after loading consult-gh-transient module e.g. =(require 'consult-gh-transient)=. Here is a screenshot:
