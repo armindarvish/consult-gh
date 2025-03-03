@@ -390,10 +390,17 @@ Here is a screenshot of calling embark actions to clone a single repository or m
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-embark.gif]]
 
 ** Magit/Forge Integration
+
 :PROPERTIES:
 :ID:       F7E30167-C797-48AB-93DF-29FD63B63994
 :END:
-If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub repositories, you can use the =consult-gh-forge= to directly open issues in a magit/forge buffer. In addition, you can edit issues in a forge buffer as you would normally do by =forge-edit-post=, =forge-create-post=, etc. Here it is in action:
+If you use [[https://github.com/magit/forge][forge]] to see issues of GitHub repositories, you can use the =consult-gh-forge= to directly open issues in a magit/forge buffer. In addition, you can edit issues in a forge buffer as you would normally do by =forge-edit-post=, =forge-create-post=, etc. To use =consult-gh-forge=, enable =consult-gh-forge-mode= by running =M-x consult-gh-forge-mode= or putting the following in your init file:
+#+begin_src emacs-lisp
+(consult-gh-forge-mode +1)
+#+end_src
+
+
+Here is forge integration in action:
 
 
 #+ATTR_ORG: :width 800px
@@ -426,6 +433,17 @@ In addition, with =consult-gh-forge=, you get one more customization variable as
 
 **** =consult-gh-forge-timeout-seconds=
 This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal Emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before reaching this timeout!
+
+** PR-Review Integration
+
+If you use [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review]] for reviewing pull requests, you can use =consult-gh-with-pr-review= to directly open issues in a pr-review buffer and do your review in =pr-review=. To do so enable =consult-gh-with-pr-review-mode=:
+#+begin_src emacs-lisp
+(consult-gh-with-pr-review-mode +1)
+#+end_src
+
+Here is a screenshot:
+
+
 
 
 ** Transient Menu
