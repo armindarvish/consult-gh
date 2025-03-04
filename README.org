@@ -447,7 +447,7 @@ If you use [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review (pr-re
 Here is a screenshot:
 
 
-ATTR_ORG: :width 800px
+#+ATTR_ORG: :width 800px
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-with-pr-review.gif]]
