@@ -4,7 +4,7 @@
 
 * Development
 
-* Version 2.3 (2025-03-06)
+* Version 2.3 (2025-03-09)
 
 - *BREAKING CHANGE*: update to new consult API with breaking changes
   consult-gh now uses the new consult API for async processes. See [[https://github.com/minad/consult/commit/ada079d5932700a8819ace622ef4323e73983161][Breaking Changes in Consult]] for more info!
