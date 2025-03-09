@@ -5,7 +5,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.2
+;; Version: 2.3
 ;; Package-Requires: ((emacs "29.4") (consult "2.0") (markdown-mode "2.6") (ox-gfm "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
@@ -298,6 +298,31 @@ whether to filer comments or not."
   :group 'consult-gh
   :type 'integer)
 
+(defcustom consult-gh-forks-maxnum 100
+  "Maximum number of fork repositories to load when creating prs."
+  :group 'consult-gh
+  :type 'integer)
+
+(defcustom consult-gh-issues-show-comments-in-view t
+  "Whether to include comments in `consult-gh--issue-view'?
+
+Not including comments make viewing long issues faster.
+
+Common options include:
+ - \='t       Ask user how many comments to show
+              when there are too many
+ - an integer Show this many comments
+ - \='all     Show all comments
+ - \='nil     Do not show any comments
+
+Note that when some comments are hidden `consult-gh-issue-view-comments'
+can be used to load all comments."
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Ask user what to do when there are many comments" t)
+                 (const :tag "Do not load comments" nil)
+                 (symbol :tag "Load all comments" 'all)
+                 (integer :tag "An integer for number of recent comments to load")))
+
 (defcustom consult-gh-issues-state-to-show "open"
   "Which type of issues should be listed by `consult-gh-issue-list'?
 
@@ -322,12 +347,57 @@ The possible options are “open”, “closed”, “merged”, or “all”."
                  (const :tag "Show closed pull requests only" "closed")
                  (const :tag "Show all pull requests" "all")))
 
-(defcustom consult-gh-prs-show-commits-in-view t
+(defcustom consult-gh-prs-show-commits-in-view nil
   "Whether to include all commits in `consult-gh--pr-view'?
 
-Not including all commits make viewing long PRs faster."
+Not including all commits make viewing long PRs faster.  Note that
+when commits are hidden `consult-gh-pr-view-commits'
+can be used to load all commits."
   :group 'consult-gh
   :type 'boolean)
+
+(defcustom consult-gh-prs-show-file-changes-in-view t
+  "Whether to include file changes in `consult-gh--pr-view'?
+
+Not including file changes make viewing long PRs faster.  Note that
+when file changes are hidden `consult-gh-pr-view-file-changes'
+can be used to load all comments."
+  :group 'consult-gh
+  :type 'boolean)
+
+(defcustom consult-gh-prs-show-comments-in-view t
+  "Whether to include comments in `consult-gh--pr-view'?
+
+Not including comments make viewing long PRs faster.
+
+Common options include:
+ - \='t       Ask user how many comments to show
+              when there are too many
+ - an integer Show this many comments
+ - \='all     Show all comments
+ - \='nil     Do not show any comments
+
+Note that when some comments are hidden `consult-gh-pr-view-comments'
+can be used to load all comments."
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Ask user what to do when there are many comments" t)
+                 (const :tag "Do not load comments" nil)
+                 (symbol :tag "Load all comments" 'all)
+                 (integer :tag "An integer for number of recent comments to load")))
+
+(defcustom consult-gh-pr-create-show-similar-repos 'forks
+  "Whether to show similar repos (a.k.a. forks) when creating a PR?
+
+Common options include:
+ - \='parent  Only show parent repo
+ - \='forks   Only show forks of the repo
+ - \='all     Show all relevant repos (forks and parents)
+ - \='nil     Do not show forks"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Show forks of the repo" forks)
+                 (const :tag "Only show parent repos" parent)
+                 (const :tag "Show all relevant repos (forks and parent)" all)
+                 (const :tag "Do not show similar repos" nil)))
 
 (defcustom consult-gh-large-file-warning-threshold large-file-warning-threshold
   "Threshold for size of file to require confirmation for preview/open/save.
@@ -343,27 +413,20 @@ If nil, no confirmation is required."
 (defcustom consult-gh-prioritize-local-folder 'suggest
   "How to use the local repository for completion?
 
-There are three options, \='suggest, nil or t.
+When non-nil, the git repository from the local folder, if any, is
+used as initial-input value for commands such as
+`consult-gh-issue-list' or `consult-gh-find-file'.  The entry can
+still be changed by user input.
 
-When set to \='suggest,  the git repository from the local folder
+
+When nil, the git repository from the local folder
 \(i.e. `default-directory')\ is added to the future history list
 so it can quickly be accessed by `next-history-element' \(bound to
 '\\[next-history-element]'\) when running commands such as
-`consult-gh-issue-list' or `consult-gh-find-file'.
-
-When set to t, the git repository from the local folder is used
-as initial-input value for commands such as `consult-gh-issue-list'
-or `consult-gh-find-file'.  The entry can still be changed by user input.
-If there is no GitHub repository in the `default-directory',
-it falls back to no initial input.
-
-When set to nil, the git repository from the local folder is ignored and
-no initial input is provided."
+`consult-gh-issue-list' or `consult-gh-find-file'."
 
   :group 'consult-gh
-  :type '(choice (const :tag "Current repository is in future history" suggest)
-                 (const :tag "Current repository is default input" t)
-                 (const :tag "Current repository is ignored" nil)))
+  :type 'boolean)
 
 (defcustom consult-gh-repo-preview-major-mode nil
   "Major mode to preview repository READMEs.
@@ -424,9 +487,7 @@ issue/pr numbers or user names."
 (make-obsolete-variable 'consult-gh-preview-buffer-mode "Use `consult-gh-repo-preview-major-mode', or `consult-gh-issue-preview-major-mode' instead." "1.1")
 
 (defcustom consult-gh-favorite-orgs-list (list)
-  "List of default GitHub orgs.
-
-This can be a list of orgs or a function returning a list"
+  "List of default GitHub orgs/users."
   :group 'consult-gh
   :type '(repeat (string :tag "GitHub Organization (i.e. Username)")))
 
@@ -938,6 +999,14 @@ search first."
   :group 'consult-gh
   :type 'boolean)
 
+(defcustom consult-gh-pr-create-confirm-fill t
+  "Whether to ask user to fill pull request body?
+
+When creating a pull request, the user is asked whether to fill the
+body of the pull requests from commits info, when this varibale is non-nil."
+  :group 'consult-gh
+  :type 'boolean)
+
 ;;; Other Variables
 
 (defvar consult-gh-category 'consult-gh
@@ -1072,6 +1141,12 @@ This is used to change grouping dynamically.")
 (defvar consult-gh--repo-view-mode-keybinding-alist '(("C-c C-<return>" . consult-gh-topics-open-in-browser))
 
   "Keymap alist for `consult-gh-repo-view-mode'.")
+
+
+(defvar consult-gh--misc-view-mode-keybinding-alist '(("C-c C-k" . consult-gh-topics-cancel)
+                                                      ("C-c C-<return>" . consult-gh-topics-open-in-browser))
+
+  "Keymap alist for `consult-gh-misc-view-mode'.")
 
 (defvar consult-gh--topics-edit-mode-keybinding-alist '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
                                                         ("C-c C-k" . consult-gh-topics-cancel))
@@ -2136,6 +2211,34 @@ URL `https://docs.github.com/en/rest/licenses'"
                  :preview-key consult-gh-preview-key
                  :sort nil))
 
+(defun consult-gh--format-issue-view-mode (&optional buffer)
+  "Format the content of the BUFFER for issue or pr view modes.
+
+Format the buffer based on the mode set in
+`consult-gh-issue-preview-major-mode'."
+  (with-current-buffer (or buffer (current-buffer))
+  (save-excursion
+    (pcase consult-gh-issue-preview-major-mode
+      ('gfm-mode
+       (gfm-mode)
+       (when (display-images-p)
+         (markdown-display-inline-images)))
+      ('markdown-mode
+       (markdown-mode)
+       (when (display-images-p)
+         (markdown-display-inline-images)))
+      ('org-mode
+       (let ((org-display-remote-inline-images 'download))
+         (consult-gh--markdown-to-org)))
+      (_
+       (consult-gh--markdown-to-org-emphasis)
+       (outline-mode))))
+  (goto-char (point-min))
+  (save-excursion
+    (while (re-search-forward "\r\n" nil t)
+      (replace-match "\n")))
+  (set-buffer-file-coding-system 'utf-8-unix)))
+
 ;;; Backend functions for `consult-gh'.
 
 ;; Buffers and Windows
@@ -2846,7 +2949,7 @@ set `consult-gh-file-action' to `consult-gh--files-browse-url-action'."
          (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" branch "/" path)))
     (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
-(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str branch)
+(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str branch revert)
   "Open file in an Emacs buffer.
 
 This is an internal function that gets the PATH to a file within a REPO
@@ -2869,12 +2972,13 @@ Description of Arguments:
   NO-SELECT a boolean for whether to swith-to-buffer or not
   TEMPDIR   the directory where the temporary file is saved
   BRANCH    is the branch of the repository
+  REVERT    if non-nil, pull the file from remote
 
 Output is the buffer visiting the file."
   (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
          (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir)))
          (topic (format "%s/%s" repo path)))
-    (add-text-properties 0 1 (list :repo repo :type "file" :path path :branch branch :title nil) topic)
+    (add-text-properties 0 1 (list :repo repo :type "file" :path path :branch branch :title nil :url url) topic)
     (unless (file-exists-p temp-file)
       (make-directory (file-name-directory temp-file) t)
       (with-temp-file temp-file
@@ -2885,6 +2989,12 @@ Output is the buffer visiting the file."
     (if no-select
         (find-file-noselect temp-file)
       (with-current-buffer (find-file temp-file)
+        (when revert
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (consult-gh--files-get-content url))
+            (set-buffer-file-coding-system 'raw-text)
+            (write-file temp-file)))
         (if jump-to-str
             (progn
               (goto-char (point-min))
@@ -2892,6 +3002,8 @@ Output is the buffer visiting the file."
               (consult-gh-recenter 'middle))
           nil)
         (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
+        (consult-gh-misc-view-mode +1)
+        (read-only-mode -1)
         (setq-local consult-gh--topic topic)
         (current-buffer)))))
 
@@ -3067,7 +3179,8 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
     (insert readme)
     (set-buffer-modified-p nil)
     (gfm-mode)
-    (markdown-display-inline-images)
+    (when (display-images-p)
+      (markdown-display-inline-images))
     (set-buffer-modified-p nil))
     nil))
 
@@ -3926,22 +4039,24 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
 
     (concat author " " (consult-gh--time-ago createdAt)
             " " (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)) "\n"
-            "---\n" body "\n" "\n")))
+            "-----\n" body "\n" "\n")))
 
-(defun consult-gh--issue-filter-comments (comments &optional maxnum)
+(defun consult-gh--issue-filter-comments-with-query (comments &optional maxnum)
   "Filter COMMENTS when there are more than MAXNUM.
 
 Queries the user for how to filter the comments."
 
   (let ((maxnum (or maxnum consult-gh-comments-maxnum)))
     (when (and (listp comments) (> (length comments) maxnum))
-      (pcase (consult--read (list (cons "Load Everything" :nil)
-                                  (cons "Load comments in the last week." :last-week)
-                                  (cons "Load comments in the last month." :last-month)
-                                  (cons (format "Load up to %s latest comments." maxnum) :last-maxnum)
-                                  (cons "Load comments since a particular date" :date)
-                                  (cons "Load comments in a date range" :daterange))
-                            :prompt (format "There are more than %s comments on that pull request. Do you want to load them all?" maxnum)
+      (pcase (consult--read (list (cons "Yes, Load Everything" :nil)
+                                  (cons (format "No, Load up to %s latest comments." maxnum) :last-maxnum)
+                                  (cons "No, let me enter the number of commetns to load" :last-number)
+                                  (cons "No, only load the comments in the last week." :last-week)
+                                  (cons "No, only load the comments in the last month." :last-month)
+
+                                  (cons "No, only load the comments since a date I choose" :date)
+                                  (cons "No, only load the comments in a date range I choose" :daterange))
+                            :prompt (format "There are more than %s comments on that issue.  Do you want to load them all?" maxnum)
                             :lookup #'consult--lookup-cdr
                             :sort nil)
         (':last-week
@@ -3954,20 +4069,40 @@ Queries the user for how to filter the comments."
                                           comments)))
         (':last-maxnum
          (setq comments (cl-subseq comments 0 (min (length comments) maxnum))))
+        (':last-number
+         (let ((number (read-number "Enter the number of comments to load: ")))
+               (when (numberp number)
+         (setq comments (cl-subseq comments 0 (min (length comments) (truncate number)))))))
         (':date
-         (let ((d (org-read-date nil t)))
+         (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car comments)))))
+                (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car (last comments))))))
+                (d (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
            (setq comments (cl-remove-if-not (lambda (k)
                                               (time-less-p d (date-to-time (gethash :createdAt k))))
                                             comments))))
-        (':daterange (let ((begin-date (org-read-date nil t nil "Select Beginning"))
-                           (end-date (org-read-date nil t nil "Select End")))
-                       (setq comments (cl-remove-if-not (lambda (k)
-                                                          (let ((date (date-to-time (gethash :createdAt k))))
-                                                            (or (time-less-p begin-date date)
-                                                                (time-less-p date end-date))))
+        (':daterange (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car comments)))))
+                            (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car (last comments))))))
+                            (begin-date (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date))))
+                            (end-date (org-read-date nil t nil (format "Select End Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
+                       (setq comments (cl-remove-if (lambda (k)
+                                                          (or (time-less-p (date-to-time (gethash :createdAt k)) begin-date)
+                                                                (time-less-p end-date (date-to-time (gethash :createdAt k)))))
 
                                                         comments))))))
     comments))
+
+(defun consult-gh--issue-filter-comments (comments &optional maxnum)
+  "Filter COMMENTS when there are more than MAXNUM.
+
+Use `consult-gh-issues-show-comments-in-view' to decide how to filter
+the comments."
+  (when (and comments (listp comments))
+  (pcase consult-gh-issues-show-comments-in-view
+    ('all comments)
+    ((pred (lambda (var) (numberp var)))
+     (cl-subseq comments (max 0 (- (length comments) consult-gh-issues-show-comments-in-view)
+                          (- (length comments) (or maxnum consult-gh-comments-maxnum)))))
+    (_ (consult-gh--issue-filter-comments-with-query comments maxnum)))))
 
 (defun consult-gh--issue-format-comments (comments)
   "Format the COMMENTS.
@@ -4010,6 +4145,45 @@ for `consult-gh--issue-view'."
                                       :consult-gh (list :author author :comment-url comment-url))))))))
     out))
 
+(defun consult-gh--issue-comments-section (comments-text comments comments-filtered &optional preview)
+  "Format the comments section with COMMENTS-TEXT.
+
+Add a placeholder for loading the rest, when PREVIEW is non-nil or if
+length of COMMENTS is larger than length of COMMENTS-FILTERED."
+  (if (or preview (not consult-gh-issues-show-comments-in-view))
+      (pcase consult-gh-issue-preview-major-mode
+        ((or 'gfm-mode 'markdown-mode)
+         (concat "\n"
+                 (propertize "# " :consult-gh-issue-comments t)
+                 (buttonize (propertize "Use **M-x consult-gh-issue-view-comments** to Load Comments..." :consult-gh-issue-comments t) (lambda (&rest _) (consult-gh-issue-view-comments)))
+                 "\n"))
+        ('org-mode
+         (concat "\n"
+                 (propertize "# " :consult-gh-issue-comments t)
+                 (buttonize (propertize "Load Comments..." :consult-gh-issue-comments t) (lambda (&rest _) (consult-gh-issue-view-comments)))
+                 "\n")))
+    (cond
+     ((and (listp comments) (listp comments-filtered) (> (length comments) (length comments-filtered)))
+      (pcase consult-gh-issue-preview-major-mode
+        ((or 'gfm-mode 'markdown-mode)
+         (concat "\n"
+                 (when comments-text (propertize comments-text :consult-gh-issue-comments t))
+                 "\n"
+                 (propertize "# " :consult-gh-issue-comments t)
+                 (buttonize (propertize "Use **M-x consult-gh-issue-view-comments** to load the more..." :consult-gh-issue-comments t) (lambda (&rest _) (consult-gh-issue-view-comments)))
+                 "\n"))
+        ('org-mode
+         (concat "\n"
+                 (when comments-text (propertize comments-text :consult-gh-issue-comments t))
+                 (propertize "\n" :consult-gh-issue-comments t)
+                 (propertize "# " :consult-gh-issue-comments t)
+                 (buttonize (propertize "Load More..." :consult-gh-issue-comments t) (lambda (&rest _) (consult-gh-issue-view-comments)))
+                 "\n"))))
+     (t
+      (concat "\n"
+              (when comments-text (propertize comments-text :consult-gh-issue-comments t))
+              "\n")))))
+
 (defun consult-gh--issue-view (repo number &optional buffer preview title)
   "Open ISSUE of REPO in an Emacs buffer, BUFFER.
 
@@ -4040,13 +4214,18 @@ see `consult-gh--issue-view-action'."
          (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
          (table (consult-gh--issue-read-json repo number))
          (state (gethash :state table))
-         (comments (unless preview (consult-gh--issue-filter-comments (consult-gh--issue-get-comments repo number))))
+         (comments (when (and consult-gh-issues-show-comments-in-view (not preview))
+                      (consult-gh--issue-get-comments repo number)))
+         (comments-filtered (when comments (consult-gh--issue-filter-comments comments)))
+
          (commenters (and table (not preview) (consult-gh--issue-get-commenters table comments)))
          (header-text (and table (consult-gh--issue-format-header repo number table topic)))
          (title (or title (car (split-string header-text "\n" t))))
          (title (string-trim-left title "title: "))
          (body-text (consult-gh--issue-format-body table topic))
-         (comments-text (unless preview (consult-gh--issue-format-comments comments))))
+         (comments-text (when (and comments-filtered (listp comments-filtered))
+                           (consult-gh--issue-format-comments comments-filtered)))
+         (comments-section (consult-gh--issue-comments-section comments-text comments comments-filtered preview)))
     (unless preview
       ;; collect issues of repo for completion at point
       (consult-gh--completion-set-issues topic repo)
@@ -4071,7 +4250,7 @@ see `consult-gh--issue-view-action'."
 
       (add-text-properties 0 1 (list :valid-labels nil :assignable-users nil :valid-milestones nil :valid-projects nil) topic)))
 
-    (add-text-properties 0 1 (list :repo repo :type "issue" :commenters (mapcar (lambda (item) (concat "@" item)) commenters) :number number :title title :state state) topic)
+    (add-text-properties 0 1 (list :repo repo :type "issue" :commenters (mapcar (lambda (item) (concat "@" item)) commenters) :number number :title title :state state :view "issue") topic)
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
         (erase-buffer)
@@ -4080,27 +4259,8 @@ see `consult-gh--issue-view-action'."
           (when (eq consult-gh-issue-preview-major-mode 'org-mode)
            (consult-gh--github-header-to-org buffer)))
         (when body-text (insert body-text))
-        (when comments-text (insert comments-text))
-        (pcase consult-gh-issue-preview-major-mode
-          ('gfm-mode
-           (gfm-mode)
-           (when (display-images-p)
-             (markdown-display-inline-images)))
-          ('markdown-mode
-           (markdown-mode)
-           (when (display-images-p)
-             (markdown-display-inline-images)))
-          ('org-mode
-           (let ((org-display-remote-inline-images 'download))
-             (consult-gh--markdown-to-org)))
-          (_
-           (consult-gh--markdown-to-org-emphasis)
-           (outline-mode)))
-        (set-buffer-file-coding-system 'unix)
-        (goto-char (point-min))
-        (save-excursion
-          (while (re-search-forward "\r\n" nil t)
-            (replace-match "\n")))
+        (when comments-section (insert comments-section))
+        (consult-gh--format-issue-view-mode)
         (outline-hide-sublevels 1)
         (consult-gh-issue-view-mode +1)
         (setq-local consult-gh--topic topic)
@@ -4987,13 +5147,22 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
   (let* ((author (gethash :login (gethash :author table)))
          (body (gethash :body table))
          (createdAt (gethash :createdAt table))
-         (url (gethash :url table)))
+         (url (gethash :url table))
+         (header-marker "#"))
+    (save-match-data
+      (when (and body (string-match (concat "^" header-marker "+?\s.*$")  body))
+        (setq body (with-temp-buffer
+                     (insert body)
+                     (goto-char (point-min))
+                     (while (re-search-forward (concat "^" header-marker "+?\s.*$") nil t)
+                       (replace-match (concat header-marker header-marker "\\&")))
+                     (buffer-string)))))
 
     (when topic (add-text-properties 0 1 (list :body body) topic))
 
-    (propertize (concat "\n" author " " (consult-gh--time-ago createdAt)
+    (propertize (concat "\n## " author " " (consult-gh--time-ago createdAt)
                         " " (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)) "\n"
-                        "---\n" body "\n" "\n")
+                        "\n" body "\n" "\n-----\n")
                 :consult-gh (list :author author
                                   :url url))))
 
@@ -5032,19 +5201,20 @@ Description of Arguments:
                      (insert (concat (propertize  "\n```diff\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil)) (propertize (cdr chunk) :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code t)) (propertize  "\n```\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil))))))))
       (consult-gh--whole-buffer-string))))
 
-(defun consult-gh--pr-filter-comments (comments &optional maxnum)
+(defun consult-gh--pr-read-filter-comments-with-query (comments &optional maxnum)
   "Filter COMMENTS when there are more than MAXNUM.
 
 Queries the user for how to filter the comments."
-
   (let ((maxnum (or maxnum consult-gh-comments-maxnum)))
     (when (and (listp comments) (> (length comments) maxnum))
-      (pcase (consult--read (list (cons "Load Everything" :nil)
-                                  (cons "Load comments in the last week." :last-week)
-                                  (cons "Load comments in the last month." :last-month)
-                                  (cons (format "Load up to %s latest comments." maxnum) :last-maxnum)
-                                  (cons "Load comments since a particular date" :date)
-                                  (cons "Load comments in a date range" :daterange))
+      (pcase (consult--read (list (cons "Yes, Load Everything" :nil)
+                                  (cons (format "No, Load up to %s latest comments." maxnum) :last-maxnum)
+                                  (cons "No, let me enter the number of commetns to load" :last-number)
+                                  (cons "No, only load the comments in the last week." :last-week)
+                                  (cons "No, only load the comments in the last month." :last-month)
+
+                                  (cons "No, only load the comments since a date I choose" :date)
+                                  (cons "No, only load the comments in a date range I choose" :daterange))
                             :prompt (format "There are more than %s comments on that pull request. Do you want to load them all?" maxnum)
                             :lookup #'consult--lookup-cdr
                             :sort nil)
@@ -5058,19 +5228,39 @@ Queries the user for how to filter the comments."
                                           comments)))
         (':last-maxnum
          (setq comments (cl-subseq comments (max 0 (- (length comments) maxnum)))))
+        (':last-number
+         (let ((number (read-number "Enter the number of comments to load: ")))
+           (when (numberp number)
+             (setq comments (cl-subseq comments 0 (min (length comments) (truncate number)))))))
         (':date
-         (let ((d (org-read-date nil t)))
+         (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments))))))
+               (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
+               (d (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
            (setq comments (cl-remove-if-not (lambda (k)
                                               (time-less-p d (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
                                             comments))))
         (':daterange
-         (let ((begin-date (org-read-date nil t nil "Select Beginning"))
-               (end-date (org-read-date nil t nil "Select End")))
+         (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments)) ))))
+               (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
+               (begin-date (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date))))
+               (end-date (org-read-date nil t nil (format "Select End Date range - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
            (setq comments (cl-remove-if-not (lambda (k)
                                               (let ((date (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
                                                 (and (time-less-p begin-date date) (time-less-p date end-date))))
                                             comments))))))
     comments))
+
+(defun consult-gh--pr-filter-comments (comments &optional maxnum)
+  "Filter COMMENTS when there are more than MAXNUM.
+
+Queries the user for how to filter the comments."
+  (when (and comments (listp comments))
+  (pcase consult-gh-prs-show-comments-in-view
+    ('all comments)
+    ((pred (lambda (var) (numberp var)))
+     (cl-subseq comments (max 0 (- (length comments) consult-gh-prs-show-comments-in-view)
+                          (- (length comments) (or maxnum consult-gh-comments-maxnum)))))
+    (_ (consult-gh--pr-read-filter-comments-with-query comments maxnum)))))
 
 (defun consult-gh--pr-format-comments (comments repo number &optional url)
   "Format the COMMENTS for the pull request NUMBER in REPO.
@@ -5131,7 +5321,7 @@ The optional argument URL, is the web url for the pull request on GitHub."
                                                              (and createdAt (concat (consult-gh--time-ago createdAt) " " createdAt))
                                                              "\n"
 
-(and oid pull-id (concat "\ncommit: " "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid) "\n---"))
+(and oid pull-id (concat "\ncommit: " "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid) "\n-----"))
 (and body (concat "\n" body "\n"))
                                                              (when diff-chunks
                                                                (consult-gh--pr-format-diffs diff-chunks repo number oid 3  (format "%s/commits" url)))
@@ -5141,6 +5331,45 @@ The optional argument URL, is the web url for the pull request on GitHub."
          (concat pull-url "/comments"))
                                                                        :commit-url (when (and pull-url oid) (format "%s/commits/%s" url oid))))))))))
     out))
+
+(defun consult-gh--pr-comments-section (comments-text comments comments-filtered &optional preview)
+  "Format the comments section with COMMENTS-TEXT.
+
+Add a placeholder for loading the rest, when PREVIEW is non-nil or if
+length of COMMENTS is larger than length of COMMENTS-FILTERED."
+  (if (or preview (not consult-gh-prs-show-comments-in-view))
+      (pcase consult-gh-issue-preview-major-mode
+        ((or 'gfm-mode 'markdown-mode)
+         (concat "\n"
+                 (propertize "## " :consult-gh-pr-comments t)
+                 (buttonize (propertize "Use **M-x consult-gh-pr-view-comments** to Load Comments..." :consult-gh-pr-comments t) (lambda (&rest _) (consult-gh-pr-view-comments)))
+                 "\n"))
+        ('org-mode
+         (concat "\n"
+                 (propertize "## " :consult-gh-pr-comments t)
+                 (buttonize (propertize "Load Comments..." :consult-gh-pr-comments t) (lambda (&rest _) (consult-gh-pr-view-comments)))
+                 "\n")))
+    (cond
+     ((and (listp comments) (listp comments-filtered) (> (length comments) (length comments-filtered)))
+      (pcase consult-gh-issue-preview-major-mode
+        ((or 'gfm-mode 'markdown-mode)
+         (concat "\n"
+                 (when (stringp comments-text) (propertize comments-text :consult-gh-pr-comments t))
+                 "\n"
+                 (propertize "## " :consult-gh-pr-comments t)
+                 (buttonize (propertize "Use **M-x consult-gh-pr-view-comments** to load the more..." :consult-gh-pr-comments t) (lambda (&rest _) (consult-gh-pr-view-comments)))
+                 "\n"))
+        ('org-mode
+         (concat "\n"
+                 (when (stringp comments-text) (propertize comments-text :consult-gh-pr-comments t))
+                 (propertize "\n" :consult-gh-pr-comments t)
+                 (propertize "## " :consult-gh-pr-comments t)
+                 (buttonize (propertize "Load More..." :consult-gh-pr-comments t) (lambda (&rest _) (consult-gh-pr-view-comments)))
+                 "\n"))))
+     (t
+      (concat "\n"
+              (when (stringp comments-text) (propertize comments-text :consult-gh-pr-comments t))
+              "\n")))))
 
 (defun consult-gh--pr-format-commits (commits repo number url &optional preview)
   "Format COMMITS for the pull request NUMBER in REPO.
@@ -5158,15 +5387,98 @@ If optional argument PREVIEW is non-nil, do not load diff of commits."
                         (authors (and (listp authors) (mapconcat (lambda (author) (gethash :login author)) authors ",\s")))
                         (date (gethash :committedDate commit))
                         (date (and (stringp date) (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time date))))
+                        (messageHeadline (gethash :messageHeadline commit))
+                        (messageBody (gethash :messageBody commit))
                         (diff (unless preview (and oid
                                    (consult-gh--command-to-string "api" "-H" "Accept:application/vnd.github.diff" (format "repos/%s/commits/%s" repo oid)))))
                         (diff-chunks (and (stringp diff) (consult-gh--parse-diff diff)))
-                        (title (propertize (concat "## " (concat "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid) " by " authors " at " date "\n")) :consult-gh (list :commit-id oid)))
-                        (body
-                              (when (and diff-chunks (listp diff-chunks))
+                        (title (propertize (concat "## " (concat "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid) " by " authors " at " date "\n" (when messageHeadline (concat messageHeadline "\n")) (when messageBody (concat messageBody "\n")))) :consult-gh (list :commit-id oid)))
+                        (body (when (and diff-chunks (listp diff-chunks))
                                   (consult-gh--pr-format-diffs diff-chunks repo number oid 2 (format "%s/commits/%s" url oid) preview))))
                    (setq out (concat out title body)))))
       out)))
+
+(defun consult-gh--pr-view-get-commits (&optional pr)
+  "Load commits text of PR on demand."
+  (let* ((pr (or pr consult-gh--topic))
+         (repo (get-text-property 0 :repo pr))
+         (number (get-text-property 0 :number pr))
+         (_ (message "Contacting %s API..." (propertize "GitHub" 'face 'consult-gh-date)))
+         (table (consult-gh--pr-read-json repo number))
+         (_ (message "Loading Commits..."))
+         (commits (gethash :commits table))
+         (url (gethash :url table))
+         (_ (message "Formatting the %s..." (propertize "content" 'face 'consult-gh-issue)))
+         (commit-text
+          (when (and commits (listp commits)) (consult-gh--pr-format-commits commits repo number url))))
+    (when commit-text
+      (with-temp-buffer (insert commit-text
+                                "\n")
+         (consult-gh--format-issue-view-mode)
+        (propertize (buffer-string) :consult-gh-pr-commits t)))))
+
+(defun consult-gh--pr-commits-section (commits-text)
+"Format the commits section with COMMITS-TEXT."
+(or commits-text
+  (pcase consult-gh-issue-preview-major-mode
+    ((or 'gfm-mode 'markdown-mode)
+     (concat (buttonize (propertize "Use **M-x consult-gh-pr-view-commits** to load commits diff..." :consult-gh-pr-commits t) (lambda (&rest _) (consult-gh-pr-view-commits)))
+             "\n"))
+    ('org-mode
+     (concat (buttonize (propertize "Load Commits..." :consult-gh-pr-commits t) (lambda (&rest _) (consult-gh-pr-view-commits)))
+             "\n")))))
+
+(defun consult-gh--pr-view-get-file-changes (&optional pr)
+  "Load file changes diff text of PR on demand."
+  (let* ((pr (or pr consult-gh--topic))
+         (repo (get-text-property 0 :repo pr))
+         (number (get-text-property 0 :number pr))
+         (_ (message "Contacting %s API..." (propertize "GitHub" 'face 'consult-gh-date)))
+         (table (consult-gh--pr-read-json repo number))
+         (url (gethash :url table))
+         (latest-commit (gethash :headRefOid table))
+         (_ (message "Loading File Changes..."))
+         (diff (consult-gh--command-to-string "pr" "diff" number "--repo" repo))
+         (chunks (when (and diff (stringp diff)) (consult-gh--parse-diff diff)))
+         (_ (message "Formatting the %s..." (propertize "content" 'face 'consult-gh-issue)))
+         (diff-text (when (and chunks (listp chunks)) (consult-gh--pr-format-diffs chunks repo number latest-commit 1 (format "%s/commits/%s" url latest-commit) nil))))
+    (when diff-text
+      (with-temp-buffer
+        (insert diff-text
+                "\n")
+         (save-excursion
+           (pcase consult-gh-issue-preview-major-mode
+             ('gfm-mode
+              (gfm-mode)
+              (when (display-images-p)
+                (markdown-display-inline-images)))
+             ('markdown-mode
+              (markdown-mode)
+              (when (display-images-p)
+                (markdown-display-inline-images)))
+             ('org-mode
+              (let ((org-display-remote-inline-images 'download))
+                (consult-gh--markdown-to-org)))
+             (_
+              (consult-gh--markdown-to-org-emphasis)
+              (outline-mode))))
+         (goto-char (point-min))
+         (save-excursion
+           (while (re-search-forward "\r\n" nil t)
+             (replace-match "\n")))
+        (propertize (buffer-string) :consult-gh-pr-file-changes t)))))
+
+(defun consult-gh--pr-file-change-section (diff-text)
+"Format the file change section with DIFF-TEXT."
+(if (and consult-gh-prs-show-file-changes-in-view diff-text)
+             diff-text
+           (pcase consult-gh-issue-preview-major-mode
+             ((or 'gfm-mode 'markdown-mode)
+              (concat (buttonize (propertize "Use **M-x consult-gh-pr-view-file-changes** to load file changes diff..." :consult-gh-pr-file-changes t) (lambda (&rest _) (consult-gh-pr-view-file-changes)))
+                      "\n"))
+             ('org-mode
+              (concat (buttonize (propertize "Load File Changes..." :consult-gh-pr-file-changes t) (lambda (&rest _) (consult-gh-pr-view-file-changes)))
+                      "\n")))))
 
 (defun consult-gh--pr-view (repo number &optional buffer preview title)
   "Open the pull request with id NUMBER in REPO in BUFFER.
@@ -5198,7 +5510,9 @@ To use this as the default action for PRs, see
           (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
           (_ (message "Collecting info from %s..." (propertize "GitHub" 'face 'consult-gh-date)))
           (table (consult-gh--pr-read-json repo number))
-          (comments (unless preview (consult-gh--pr-filter-comments (consult-gh--pr-get-comments repo number))))
+          (comments (when (and consult-gh-prs-show-comments-in-view (not preview))
+                      (consult-gh--pr-get-comments repo number)))
+          (comments-filtered (when comments (consult-gh--pr-filter-comments comments)))
           (commenters (unless preview (and table (consult-gh--pr-get-commenters table comments))))
           (state (gethash :state table))
           (url (gethash :url table))
@@ -5208,15 +5522,19 @@ To use this as the default action for PRs, see
           (title (string-trim-left title "title: "))
           (latest-commit (gethash :headRefOid table))
           (body-text (consult-gh--pr-format-body table topic))
-          (comments-text (when (and comments (listp comments)) (consult-gh--pr-format-comments comments repo number url)))
+          (comments-text (when (and comments-filtered (listp comments-filtered))
+                           (consult-gh--pr-format-comments comments-filtered repo number url)))
+          (comments-section (consult-gh--pr-comments-section comments-text comments comments-filtered preview))
           (file-change-text (consult-gh--pr-format-files-changed table))
           (_ (message "Working on some %s details..." (propertize "more" 'face 'consult-gh-issue)))
-          (diff (consult-gh--command-to-string "pr" "diff" number "--repo" repo))
+          (diff (when consult-gh-prs-show-file-changes-in-view (consult-gh--command-to-string "pr" "diff" number "--repo" repo)))
           (chunks (when (and diff (stringp diff)) (consult-gh--parse-diff diff)))
           (diff-text (when (and chunks (listp chunks)) (consult-gh--pr-format-diffs chunks repo number latest-commit 1 (format "%s/commits/%s" url latest-commit) preview)))
+          (file-change-section (consult-gh--pr-file-change-section diff-text))
           (commits (when consult-gh-prs-show-commits-in-view
                      (gethash :commits table)))
-          (commits-text (when (and commits (listp commits)) (consult-gh--pr-format-commits commits repo number url preview))))
+          (commits-text (when (and commits (listp commits)) (consult-gh--pr-format-commits commits repo number url preview)))
+          (commits-section (consult-gh--pr-commits-section commits-text)))
 
      (unless preview
        ;; collect issues of repo for completion at point
@@ -5242,7 +5560,7 @@ To use this as the default action for PRs, see
 
          (add-text-properties 0 1 (list :valid-labels nil :assignable-users nil :valid-milestones nil :valid-projects nil) topic)))
 
-     (add-text-properties 0 1 (list :repo repo :type "pr" :number number :title title :state state :commenters (mapcar (lambda (item) (concat "@" item)) commenters)) topic)
+     (add-text-properties 0 1 (list :repo repo :type "pr" :number number :title title :state state :commenters (mapcar (lambda (item) (concat "@" item)) commenters) :view "pr") topic)
 
      (with-current-buffer buffer
        (let ((inhibit-read-only t))
@@ -5253,44 +5571,24 @@ To use this as the default action for PRs, see
              (consult-gh--github-header-to-org buffer)))
          (insert (concat "# Conversation\n"))
          (when body-text (insert body-text))
-         (if preview
-             (insert "## comments not available in preview!\n")
-           (when comments-text (insert comments-text)))
+         ;insert comments section
+         (when comments-section
+           (insert comments-section))
+         ;insert file changes section
          (when file-change-text (insert file-change-text))
-         (when diff-text (insert diff-text))
-         (insert "\n")
+         (when file-change-section (insert file-change-section))
+         ;insert commit section
          (insert "# Commits\n")
-         (when commits-text (insert commits-text))
-         (insert "\n")
+         (when commits-section (insert commits-section))
          (message "Putting %s together..." (propertize "everything" 'face 'consult-gh-repo))
-         (save-excursion
-           (pcase consult-gh-issue-preview-major-mode
-             ('gfm-mode
-              (gfm-mode)
-              (when (display-images-p)
-                (markdown-display-inline-images)))
-             ('markdown-mode
-              (markdown-mode)
-              (when (display-images-p)
-                (markdown-display-inline-images)))
-             ('org-mode
-              (let ((org-display-remote-inline-images 'download))
-                (consult-gh--markdown-to-org buffer)))
-             (_
-              (consult-gh--markdown-to-org-emphasis buffer)
-              (outline-mode))))
-         (goto-char (point-min))
-         (save-excursion
-           (while (re-search-forward "\r\n" nil t)
-             (replace-match "\n")))
-         (set-buffer-file-coding-system 'utf-8-unix)
+         (consult-gh--format-issue-view-mode)
          (outline-hide-sublevels 1)
          (consult-gh-pr-view-mode +1)
          (setq-local consult-gh--topic topic)
          (current-buffer))))))
 
 (defun consult-gh--pr-view-action (cand)
-  "Opens the preview of a pull request candidate, CAND.
+  "View a pull request candidate, CAND.
 
 This is a wrapper function around `consult-gh--pr-view'.  It parses CAND
 to extract relevant values \(e.g. repository's name and pull request
@@ -5330,6 +5628,93 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
         (set-buffer-modified-p nil)
         (buffer-name (current-buffer))))))
 
+(defun consult-gh--pr-view-diff (repo number &optional buffer)
+  "View diff of the pull request with id NUMBER in REPO in BUFFER.
+
+This is an internal function that takes REPO, the full name of a repository \(e.g. “armindarvish/consult-gh”\) and NUMBER, a pr number
+of REPO, and shows the diffs of the pull request in an Emacs Buffer.
+
+It fetches the diff from GitHub API for comparing two branches:
+URL `https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits'
+
+Description of Arguments:
+
+  REPO    a string; the full name of the repository
+  NUMBER  a string; pull request id number
+  BUFFER  a string; optional buffer name
+
+To use this as the default action for PRs, see
+`consult-gh--pr-view-action'."
+  (consult--with-increased-gc
+   (let* ((topic (format "%s/#%s" repo number))
+          (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
+          (table (consult-gh--pr-read-json repo number))
+          (title (gethash :title table))
+          (state (gethash :state table))
+          (baseRef (gethash :baseRefName table))
+          (head (gethash :headRepository table))
+          (headRepo (and head (gethash :name head)))
+          (headRepoOwner (gethash :headRepositoryOwner table))
+          (headRepoOwner (and headRepoOwner (gethash :login headRepoOwner)))
+          (headRef (gethash :headRefName table))
+          (diff (consult-gh--api-command-string (format "repos/%s/compare/%s...%s:%s" repo baseRef headRepoOwner headRef) "-H" "Accept:application/vnd.github.diff")))
+     (when (stringp topic)
+       (add-text-properties 0 1 (list :repo repo :type "pr" :number number :title title :state state :headrepo (concat headRepoOwner "/" headRepo) :headbranch headRef :baserepo repo :basebranch baseRef :valid-labels nil :assignable-users nil :valid-milestones nil :valid-projects nil :view "diff") topic))
+     (when (and diff (stringp diff))
+       (cond
+        ((string-empty-p diff)
+         (message "There is no diff beetwen %s and %s" (concat repo "/" baseRef) (concat headRepoOwner "/" headRepo)))
+        (t
+         (with-current-buffer buffer
+           (erase-buffer)
+           (diff-mode)
+           (insert diff)
+           (goto-char (point-min))
+           (consult-gh-misc-view-mode +1)
+           (setq-local consult-gh--topic topic)
+           (current-buffer))))))))
+
+(defun consult-gh--pr-view-diff-action (cand)
+  "View diff of a pull request candidate, CAND.
+
+This is a wrapper function around `consult-gh--pr-view-diff'.  It parses CAND
+to extract relevant values \(e.g. repository's name and pull request
+number\) and passes them to `consult-gh--pr-view-diff'.
+
+To use this as the default action for prs,
+set `consult-gh-pr-action' to `consult-gh--pr-view-diff-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (number (substring-no-properties (format "%s" (get-text-property 0 :number cand))))
+         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/pull/" number " - diff"))
+         (existing (get-buffer buffername))
+         (confirm (if (and existing (not (= (buffer-size existing) 0)))
+                      (consult--read
+                       (list (cons "Switch to existing buffer." :resume)
+                             (cons "Reload the pull request diff in the existing buffer." :replace)
+                             (cons "Make a new buffer and load the pull request diff in it (without killing the old buffer)." :new))
+                       :prompt "You already have this pull request diff open in another buffer.  Would you like to switch to that buffer or make a new one? "
+                       :lookup #'consult--lookup-cdr
+                       :sort nil
+                       :require-match t))))
+    (if existing
+        (cond
+         ((eq confirm :resume) (funcall consult-gh-switch-to-buffer-func existing))
+         ((eq confirm :replace)
+          (message "Reloading pull request diff in the existing buffer...")
+          (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view-diff repo number existing))
+          (set-buffer-modified-p nil)
+          (buffer-name (current-buffer)))
+         ((eq confirm :new)
+          (message "Opening pull request in a new buffer...")
+          (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view-diff repo number (generate-new-buffer buffername nil)))
+          (set-buffer-modified-p nil)
+          (buffer-name (current-buffer))))
+      (progn
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--pr-view-diff repo number))
+        (rename-buffer buffername t)
+        (set-buffer-modified-p nil)
+        (buffer-name (current-buffer))))))
+
 (defun consult-gh--get-pr-templates (repo)
   "Get pull request templates of REPO."
   (let* ((table (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" repo "--json" "pullRequestTemplates") :pullRequestTemplates))
@@ -5346,10 +5731,10 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
   "Get a list of branches of REPO."
   (mapcar (lambda (item) (gethash :name item)) (consult-gh--json-to-hashtable (cadr (consult-gh--api-get-json (concat "repos/" repo "/branches"))))))
 
-(defun consult-gh-topics--pr-get-forks (repo)
-  "Get list of forks of REPO."
-  (let* ((table (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "repos/%s/forks" repo)))))
-    (and (listp table)  (mapcar (lambda (item) (gethash :full_name item)) table))))
+(defun consult-gh-topics--pr-get-forks (repo &optional maxnum)
+  "Get a list of forks of REPO up to MAXNUM."
+  (let* ((table (consult-gh--command-to-string "api" (format "repos/%s/forks" repo) "--jq" (format "limit(%s; .[].full_name)" (or maxnum consult-gh-forks-maxnum)))))
+    (when (stringp table) (split-string (string-trim table) "[\r\n]" t))))
 
 (defun consult-gh-topics--pr-get-parent (repo)
   "Get the upstream parent of REPO."
@@ -5373,10 +5758,30 @@ Sinblings here means forks of the upstream repositories."
 
 Similar here means forks, paretns from `consult-gh-topics--pr-get-parent'
 and siblings from `consult-gh-topics--pr-get-siblings'."
-  (let* ((parent (consult-gh-topics--pr-get-parent repo))
-         (forks (consult-gh-topics--pr-get-forks repo))
-         (siblings (consult-gh-topics--pr-get-siblings repo)))
-    (cl-remove-duplicates (delq nil (append (list parent) forks siblings)) :test #'equal)))
+  (pcase consult-gh-pr-create-show-similar-repos
+    ('parent (consult-gh-topics--pr-get-parent repo))
+    ('forks (consult-gh-topics--pr-get-forks repo))
+    ('all
+     (let* ((parent (consult-gh-topics--pr-get-parent repo))
+            (forks (consult-gh-topics--pr-get-forks repo))
+            (siblings (consult-gh-topics--pr-get-siblings repo)))
+       (cl-remove-duplicates (delq nil (append (list parent) forks siblings)) :test #'equal)))
+    ('nil
+     (list))))
+
+(defun consult-gh-topics--pr-fill-body-from-commits (baserepo basebranch headrepo headbranch)
+"Fill the body of pull reqeust from commits.
+
+Compares the base and head of pull request and generates a string of
+commit messages to use as pull request body.
+
+Description of Arguments:
+  BASEREPO    a string; full name of the base (target) repository
+  BASEBRANCH  a string; name of the base ref branch
+  HEADREPO    a string; name of the head (source) repository
+  HEADBRANCH  a string; name of the head ref branch"
+
+(consult-gh--api-command-string (format "repos/%s/compare/%s...%s:%s" baserepo basebranch (consult-gh--get-username headrepo) headbranch) "--jq" ".commits.[].commit.message"))
 
 (defun consult-gh-topics--pr-parse-metadata ()
   "Parse pull requests' metadata."
@@ -5652,6 +6057,227 @@ This is used for changing ref branches in a pull requests."
                           (replace-match (concat (get-text-property 0 :headrepo pr) ":" (get-text-property 0 :headbranch pr)) nil nil nil 1)))
         (setq consult-gh--topic pr)))))
 
+(defun consult-gh-topics--pr-create-view-diff (&optional pr refresh)
+  "View diff for PR topic.
+
+When REFRESH reload the diff in the current buffer."
+  (let* ((pr (or pr consult-gh--topic))
+         (baserepo (get-text-property 0 :baserepo pr))
+         (basebranch (get-text-property 0 :basebranch pr))
+         (headrepo (get-text-property 0 :headrepo pr))
+         (headbranch (get-text-property 0 :headbranch pr))
+         (buffername (format "*consult-gh-pr-create-diff: %s:%s<-%s:%s" baserepo basebranch headrepo headbranch))
+         (ref (format "%s:%s...%s:%s" (consult-gh--get-username baserepo) basebranch (consult-gh--get-username headrepo) headbranch))
+         (newtopic (format "%s/compare/%s" baserepo ref))
+         (diff (consult-gh--api-command-string (format "repos/%s/compare/%s" baserepo ref) "-H" "Accept:application/vnd.github.diff")))
+    (when (and diff (stringp diff))
+      (let* ((existing (and (not refresh) (get-buffer buffername)))
+             (confirm (if (and existing (not (= (buffer-size existing) 0)))
+                          (consult--read
+                           (list (cons "Switch to existing buffer." :resume)
+                                 (cons "Reload the diff in the existing buffer." :replace)
+                                 (cons "Make a new buffer and load the diff in it (without killing the old buffer)." :new))
+                           :prompt "You already have this diff open in another buffer.  Would you like to switch to that buffer or make a new one? "
+                           :lookup #'consult--lookup-cdr
+                           :sort nil
+                           :require-match t))))
+        (when existing
+          (cond
+           ((eq confirm :resume) (funcall consult-gh-switch-to-buffer-func existing))
+           (t
+            (add-text-properties 0 1 (text-properties-at 0 pr) newtopic)
+            (add-text-properties 0 1 (list :type "compareDiff" :ref ref) newtopic)
+            (cond
+             ((eq confirm :replace)
+              (message "Reloading the diff in the existing buffer..."))
+             ((eq confirm :new)
+              (message "Opening the diff in a new buffer...")
+              (setq buffername (generate-new-buffer buffername nil)))))))
+        (unless (and existing (eq confirm :resume))
+          (with-current-buffer (get-buffer-create buffername)
+            (let ((inhibit-read-only t))
+              (erase-buffer)
+              (diff-mode)
+              (insert diff)
+              (consult-gh-misc-view-mode +1)
+              (setq-local consult-gh--topic newtopic)
+              (goto-char (point-min)))
+            (funcall consult-gh-pop-to-buffer-func (current-buffer))))
+        (current-buffer)))))
+
+(defun consult-gh-topics--pr-create-view-format-commits (baserepo basebranch headowner headbranch)
+  "Format commits comparison of two branches.
+
+Description of Arguments:
+  BASEREPO    a string; full name of the base (target) repository
+  BASEBRANCH  a string; name of the base ref branch
+  HEADOWNER   a string; name of the pwner of the head (source)
+              repository
+  HEADBRANCH  a string; name of the head ref branch"
+  (let* ((json-object-type 'hash-table)
+         (json-array-type 'list)
+         (json-key-type 'keyword)
+         (json-false :false)
+         (table (json-read-from-string (consult-gh--api-command-string (format "repos/%s/compare/%s...%s:%s" baserepo basebranch headowner headbranch))))
+         (commits (when (hash-table-p table) (gethash :commits table)))
+         (out ""))
+    (when (and commits (listp commits))
+      (cl-loop for commit in commits
+               do (let* ((oid  (gethash :sha commit))
+                         (diff (consult-gh--command-to-string "api" "-H" "Accept:application/vnd.github.diff" (format "repos/%s/commits/%s" baserepo oid)))
+                         (diff-chunks (and (stringp diff) (consult-gh--parse-diff diff)))
+                         (commitObj (gethash :commit commit))
+                         (author (and (hash-table-p commitObj) (gethash :author commitObj)))
+                         (author (and (hash-table-p author) (gethash :name author)))
+                         (date (and (hash-table-p commitObj) (gethash :committer commitObj)))
+                         (date (and (hash-table-p date)(gethash :date date)))
+                         (date (and (stringp date) (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time date))))
+                         (message (and (hash-table-p commitObj) (gethash :message commitObj)))
+                         (url (gethash :html_url commit))
+                         (title (propertize (concat "## " (concat "[" (substring oid 0 6) "]" (format "(%s)" url) " by " author " at " date "\n" (when message (concat message "\n")))) :consult-gh (list :commit-id oid)))
+                         (body
+                          (when (and diff-chunks (listp diff-chunks))
+                            (consult-gh--pr-format-diffs diff-chunks baserepo nil oid 2 url nil))))
+                    (setq out (concat out title body))))
+      out)))
+
+(defun consult-gh-topics--pr-create-view-commits (&optional pr refresh)
+  "View commits for PR topic.
+
+When REFRESH reload the diff in the current buffer."
+  (let* ((pr (or pr consult-gh--topic))
+         (baserepo (get-text-property 0 :baserepo pr))
+         (basebranch (get-text-property 0 :basebranch pr))
+         (headrepo (get-text-property 0 :headrepo pr))
+         (headbranch (get-text-property 0 :headbranch pr))
+         (buffername (format "*consult-gh-pr-create-commits: %s:%s<-%s:%s" baserepo basebranch headrepo headbranch))
+         (ref (format "%s:%s...%s:%s" (consult-gh--get-username baserepo) basebranch (consult-gh--get-username headrepo) headbranch))
+         (newtopic (format "%s/compare/%s" baserepo ref))
+         (commits-text (consult-gh-topics--pr-create-view-format-commits baserepo basebranch (consult-gh--get-username headrepo) headbranch)))
+    (when (or (equal (get-text-property 0 :type pr) "pr")
+              (equal (get-text-property 0 :type pr) "compareCommits"))
+      (when (and commits-text (stringp commits-text))
+        (let* ((existing (and (not refresh) (get-buffer buffername)))
+               (confirm (if (and existing (not (= (buffer-size existing) 0)))
+                            (consult--read
+                             (list (cons "Switch to existing buffer." :resume)
+                                   (cons "Reload the commits in the existing buffer." :replace)
+                                   (cons "Make a new buffer and load the commits in it (without killing the old buffer)." :new))
+                             :prompt "You already have these commits open in another buffer.  Would you like to switch to that buffer or make a new one? "
+                             :lookup #'consult--lookup-cdr
+                             :sort nil
+                             :require-match t))))
+          (when existing
+            (cond
+             ((eq confirm :resume) (funcall consult-gh-switch-to-buffer-func existing))
+             (t
+              (add-text-properties 0 1 (text-properties-at 0 pr) newtopic)
+              (add-text-properties 0 1 (list :type "compareCommits" :ref ref) newtopic)
+              (cond
+               ((eq confirm :replace)
+                (message "Reloading commits in the existing buffer..."))
+               ((eq confirm :new)
+                (message "Opening pull request in a new buffer...")
+                (setq buffername (generate-new-buffer buffername nil)))))))
+          (unless (and existing (eq confirm :resume))
+            (with-current-buffer (get-buffer-create buffername)
+              (let ((inhibit-read-only t))
+                (erase-buffer)
+                (insert (format "ref: %s:%s <- %s:%s\n\n--\n" baserepo basebranch headrepo headbranch))
+                (save-excursion
+                  (when (eq consult-gh-issue-preview-major-mode 'org-mode)
+                    (consult-gh--github-header-to-org (current-buffer))))
+                (insert "# Commits\n")
+                (insert commits-text)
+                (insert "\n")
+                (consult-gh--format-issue-view-mode)
+                (outline-hide-sublevels 2)
+                (goto-char (point-min))
+                (consult-gh-misc-view-mode +1)
+                (setq-local consult-gh--topic newtopic)
+                (funcall consult-gh-pop-to-buffer-func (current-buffer)))))
+           (current-buffer))))))
+
+(defun consult-gh-topics--pr-create-view-format-file-changes (baserepo basebranch headowner headbranch)
+  "Format commits comparison of two branches.
+
+Description of Arguments:
+  BASEREPO    a string; full name of the base (target) repository
+  BASEBRANCH  a string; name of the base ref branch
+  HEADOWNER   a string; name of the owner of the head (source)
+              repository
+  HEADBRANCH  a string; name of the head ref branch"
+(let* ((json-object-type 'hash-table)
+       (json-array-type 'list)
+       (json-key-type 'keyword)
+       (json-false :false)
+       (table (json-read-from-string (consult-gh--api-command-string (format "repos/%s/compare/%s...%s:%s" baserepo basebranch headowner headbranch)))))
+  (when (hash-table-p table)
+       (let* ((latest-commit (gethash :headRefOid table))
+              (url (gethash :html_url table))
+              (file-change-text (consult-gh--pr-format-files-changed table))
+              (diff (consult-gh--command-to-string "api" "-H" "Accept:application/vnd.github.diff" (format "repos/%s/compare/%s...%s:%s" baserepo basebranch headowner headbranch)))
+              (chunks (when (and diff (stringp diff)) (consult-gh--parse-diff diff)))
+              (diff-text (when (and chunks (listp chunks)) (consult-gh--pr-format-diffs chunks baserepo nil latest-commit 1 url nil))))
+(when (stringp file-change-text)
+  (concat file-change-text "\n" (when (stringp diff-text) diff-text)))))))
+
+(defun consult-gh-topics--pr-create-view-file-changes (&optional pr refresh)
+  "View file changes for PR topic.
+
+When REFRESH reload the diff in the current buffer."
+  (let* ((pr (or pr consult-gh--topic))
+         (baserepo (get-text-property 0 :baserepo pr))
+         (basebranch (get-text-property 0 :basebranch pr))
+         (headrepo (get-text-property 0 :headrepo pr))
+         (headbranch (get-text-property 0 :headbranch pr))
+         (buffername (format "*consult-gh-pr-create-file-changes: %s:%s<-%s:%s" baserepo basebranch headrepo headbranch))
+         (ref (format "%s:%s...%s:%s" (consult-gh--get-username baserepo) basebranch (consult-gh--get-username headrepo) headbranch))
+         (newtopic (format "%s/compare/%s" baserepo ref))
+         (file-changes-text (consult-gh-topics--pr-create-view-format-file-changes baserepo basebranch (consult-gh--get-username headrepo) headbranch)))
+    (when (or (equal (get-text-property 0 :type pr) "pr")
+              (equal (get-text-property 0 :type pr) "compareFileChanges"))
+      (when (and file-changes-text (stringp file-changes-text))
+        (let* ((existing (and (not refresh) (get-buffer buffername)))
+               (confirm (if (and existing (not (= (buffer-size existing) 0)))
+                            (consult--read
+                             (list (cons "Switch to existing buffer." :resume)
+                                   (cons "Reload the file changes in the existing buffer." :replace)
+                                   (cons "Make a new buffer and load the file changes in it (without killing the old buffer)." :new))
+                             :prompt "You already have these file changes open in another buffer.  Would you like to switch to that buffer or make a new one? "
+                             :lookup #'consult--lookup-cdr
+                             :sort nil
+                             :require-match t))))
+          (when existing
+            (cond
+             ((eq confirm :resume) (funcall consult-gh-switch-to-buffer-func existing))
+             (t
+               (add-text-properties 0 1 (text-properties-at 0 pr) newtopic)
+               (add-text-properties 0 1 (list :type "compareFileChanges" :ref ref) newtopic)
+              (cond
+               ((eq confirm :replace)
+                (message "Reloading file changes in the existing buffer..."))
+               ((eq confirm :new)
+                (message "Opening file changes in a new buffer...")
+                (setq buffername (generate-new-buffer buffername nil)))))))
+          (unless (and existing (eq confirm :resume))
+            (with-current-buffer (get-buffer-create buffername)
+              (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (format "ref: %s:%s <- %s:%s\n\n--\n" baserepo basebranch headrepo headbranch))
+            (save-excursion
+              (when (eq consult-gh-issue-preview-major-mode 'org-mode)
+                (consult-gh--github-header-to-org (current-buffer))))
+            (insert file-changes-text)
+            (insert "\n")
+            (consult-gh--format-issue-view-mode)
+            (outline-hide-sublevels 2)
+            (goto-char (point-min))
+            (consult-gh-misc-view-mode +1)
+            (setq-local consult-gh--topic newtopic)
+            (funcall consult-gh-pop-to-buffer-func (current-buffer)))))
+           (current-buffer))))))
+
 (defun consult-gh-topics--pr-create-submit (baserepo basebranch headrepo headbranch title body &optional reviewers assignees labels milestone projects draft fill web)
   "Create a new pull request in REPO with metadata.
 
@@ -5743,9 +6369,13 @@ buffer generated by `consult-gh-pr-create'."
              (baserepo (get-text-property 0 :baserepo pr))
              (canAdmin (consult-gh--user-canadmin baserepo))
              (isAuthor (consult-gh--user-isauthor pr))
-             (nextsteps (append (list (cons "Submit" :submit))
+             (nextsteps (append
+                                (list (cons "Submit" :submit))
                                 (list (cons "Submit as Draft" :draft))
                                 (list (cons "Continue in the Browser" :browser))
+                                (list (cons "View Diff" :diff))
+                                (list (cons "View All Commits" :commits))
+                                (list (cons "View File Changes" :files))
                                 (and canAdmin (list (cons "Add Metadata" :metadata)))
                                 (and (or canAdmin isAuthor) (list (cons "Change Refs" :refs)))
                                 (list (cons "Cancel" :cancel))))
@@ -5766,8 +6396,12 @@ buffer generated by `consult-gh-pr-create'."
                                     :prompt "Choose what to do next? "
                                     :lookup #'consult--lookup-cdr
                                     :sort nil)))
-
-        (pcase-let* ((`(,title . ,body) (consult-gh-topics--get-title-and-body))
+        (cond
+         ((eq next ':diff)  (consult-gh-topics--pr-create-view-diff pr))
+         ((eq next ':commits) (consult-gh-topics--pr-create-view-commits pr))
+         ((eq next ':files) (consult-gh-topics--pr-create-view-file-changes pr))
+         (t
+          (pcase-let* ((`(,title . ,body) (consult-gh-topics--get-title-and-body))
                      (title (or title
                                 (and (derived-mode-p 'org-mode)
                                      (cadar (org-collect-keywords
@@ -5792,7 +6426,7 @@ buffer generated by `consult-gh-pr-create'."
                            (funcall consult-gh-quit-window-func t)))
             (':draft (and (consult-gh-topics--pr-create-submit baserepo basebranch headrepo headbranch title body reviewers assignees labels milestone projects t nil nil)
                           (message "Draft Submitted!")
-                          (funcall consult-gh-quit-window-func t))))))
+                          (funcall consult-gh-quit-window-func t))))))))
     (message "Not in a pull requests editing buffer!")))
 
 (defun consult-gh-pr--edit-restore-default (&optional pr)
@@ -6517,11 +7151,11 @@ URL `https://docs.github.com/en/rest/pulls/reviews?apiVersion=2022-11-28#create-
                                                         snippet
                                                         "\n" block-end "\n")))
                                        'cursor-intangible t)
-                            (if (derived-mode-p 'markdown-mode) (concat (consult-gh-topics--format-field-cursor-intangible "\n---") "\n")
-                              (consult-gh-topics--format-field-cursor-intangible "\n---\n"))
+                            (if (derived-mode-p 'markdown-mode) (concat (consult-gh-topics--format-field-cursor-intangible "\n-----") "\n")
+                              (consult-gh-topics--format-field-cursor-intangible "\n-----\n"))
                             (and body (propertize body :consult-gh-comments-body t))
-                            (if (derived-mode-p 'markdown-mode) (concat (consult-gh-topics--format-field-cursor-intangible "\n---") "\n")
-                              (consult-gh-topics--format-field-cursor-intangible "\n---\n"))))
+                            (if (derived-mode-p 'markdown-mode) (concat (consult-gh-topics--format-field-cursor-intangible "\n-----") "\n")
+                              (consult-gh-topics--format-field-cursor-intangible "\n-----\n"))))
            (funcall mode-func)
            (concat (propertize (consult-gh--whole-buffer-string) :consult-gh-comments comment-info :consult-gh-markings t))))
       (goto-char (point-max))
@@ -6767,10 +7401,10 @@ Description of Arguments:
          (existing (not (= (buffer-size buffer) 0)))
          (confirm (if existing
                       (consult--read
-                       (list (cons "Resume editing the existing draft." :resume)
-                             (cons (format "Create a new %s from scratch, but do not discard the old one." subject) :new)
-                             (cons "Discard the old draft and create a new one from scratch." :replace))
-                       :prompt (format "You already have an existing draft for this %s.  Would you like to resume editing that one or start a new one? " subject)
+                       (list (cons "Resume editing/viewing in the existing buffer." :resume)
+                             (cons (format "Create a new buffer for %s from scratch, but do not discard the old one." subject) :new)
+                             (cons "Discard the old draft/buffer and create a new one from scratch." :replace))
+                       :prompt (format "You already have an existing buffer for this %s.  Would you like to resume editing/viewing that one or start a new one? " subject)
                        :lookup #'consult--lookup-cdr
                        :sort nil
                        :require-match t))))
@@ -7519,6 +8153,19 @@ from `consult-gh-notifications' and unsubscribes from the thread."
   :keymap consult-gh-pr-view-mode-map
   (read-only-mode +1))
 
+(defvar-keymap consult-gh-misc-view-mode-map
+  :doc "Keymap for `consult-gh-topic-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-misc-view-mode
+  "Minor-mode for viewing miscellanous consult-gh buffers."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-misc-view"
+  :keymap consult-gh-misc-view-mode-map
+  (read-only-mode +1))
+
 (defun consult-gh-topics-edit-header-line ()
   "Create `header-line-format' for `consult-gh-topics-edit-mode'."
   (let* ((topic consult-gh--topic)
@@ -7543,7 +8190,7 @@ from `consult-gh-notifications' and unsubscribes from the thread."
                                ("pr"
                                 (funcall consult-gh-pr-action ,cand)))))))
      ".  "
-     (substitute-command-keys "When done, use `\\[consult-gh-topics-submit]' to submit or `\\[consult-gh-topics-cancel]' to cancel."))))
+     (substitute-command-keys "When done, use `\\[consult-gh-ctrl-c-ctrl-c]' to submit or `\\[consult-gh-topics-cancel]' to cancel."))))
 
 (defvar-keymap consult-gh-topics-edit-mode-map
   :doc "Keymap for `consult-gh-topics-edit-mode'.")
@@ -7697,6 +8344,8 @@ Description of Arguments:
   MIN-INPUT is the minimum input length and defaults to
             `consult-async-min-input'"
   (let* ((current-repo (consult-gh--get-repo-from-directory))
+         (current-user (consult-gh--get-current-username))
+         (current-user-orgs (consult-gh--get-current-user-orgs))
          (initial (or initial
                       (if (equal consult-gh-prioritize-local-folder 't) (consult-gh--get-username current-repo)))))
     (consult-gh-with-host (consult-gh--auth-account-host)
@@ -7709,8 +8358,11 @@ Description of Arguments:
                            :state (funcall #'consult-gh--repo-state)
                            :initial initial
                            :group #'consult-gh--repo-group
-                           :add-history  (mapcar (lambda (item) (concat  (consult-gh--get-split-style-character) item))
-                                                 (append (list
+                           :add-history  (mapcar (lambda (item) (when item (concat  (consult-gh--get-split-style-character) item)))
+                                                 (append (list current-user)
+                                                         (when (listp current-user-orgs)
+                                                           current-user-orgs)
+                                                         (list
                                                           (when current-repo
                                                             (consult-gh--get-username current-repo))
                                                           (thing-at-point 'symbol))
@@ -7833,11 +8485,15 @@ Description of Arguments:
                            :state (funcall #'consult-gh--repo-state)
                            :initial initial
                            :group #'consult-gh--repo-group
-                           :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
-                                                 (append (list (consult-gh--get-repo-from-directory)
-                                                               (consult-gh--get-repo-from-topic)
-                                                               (thing-at-point 'symbol))
-                                                         consult-gh--known-orgs-list))
+                           :add-history  (let* ((topicrepo (consult-gh--get-repo-from-topic))
+                                                (localrepo (consult-gh--get-repo-from-directory)))
+                                           (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
+                                                 (append (list
+                                                          topicrepo
+                                                          localrepo
+                                                          " -- --owner @me"
+                                                          (thing-at-point 'symbol))
+                                                         consult-gh--known-orgs-list)))
                            :history '(:input consult-gh--search-repos-history)
                            :require-match t
                            :category 'consult-gh-repos
@@ -8094,11 +8750,15 @@ Description of Arguments:
                            :group #'consult-gh--issue-group
                            :require-match t
                            :category 'consult-gh-issues
-                           :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
-                                                 (append (list (consult-gh--get-repo-from-directory)
-                                                               (consult-gh--get-repo-from-topic)
+                           :add-history  (let* ((topicrepo (consult-gh--get-repo-from-topic))
+                                                (localrepo (consult-gh--get-repo-from-directory)))
+                                           (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
+                                                 (append (list (when topicrepo topicrepo)
+                                                               (when localrepo localrepo)
+                                                               (when localrepo (concat localrepo " -- --assignee @me"))
+                                                               (when localrepo (concat localrepo " -- --author @me"))
                                                                (thing-at-point 'symbol))
-                                                         consult-gh--known-repos-list))
+                                                         consult-gh--known-repos-list)))
                            :history '(:input consult-gh--repos-history)
                            :preview-key consult-gh-preview-key
                            :sort nil))))
@@ -8155,6 +8815,155 @@ URL `https://github.com/minad/consult'"
     (if noaction
         sel
       (funcall consult-gh-issue-action sel))))
+
+(defun consult-gh--search-issues-transform (input)
+  "Add annotation to issue candidates in `consult-gh-search-issues'.
+
+Format each candidates with `consult-gh--search-issues-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--search-issues-format cand input nil))))
+
+(defun consult-gh--search-issues-builder (input)
+  "Build gh command line for searching issues of INPUT query."
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-issues-args))
+               (cmd (consult--build-args consult-gh-args))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
+    (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
+      (if re
+        (cons (append cmd
+                      (list (string-join re " "))
+                      opts)
+              hl)
+        (cons (append cmd opts) nil)))))
+
+(defun consult-gh--async-search-issues (prompt builder &optional initial min-input)
+  "Search GitHub issues asynchronously.
+
+This is a non-interactive internal function.
+For the interactive version see `consult-gh-search-issues'.
+
+This runs the command line from `consult-gh--search-issues-builder' in
+an async process and returns the results \(list of search results
+for the input\) as a completion table in minibuffer.  The completion table
+gets dynamically updated as the user types in the minibuffer.
+Each candidate is formatted by `consult-gh--search-issues-transform'
+to add annotation and other info to the candidate.
+
+Description of Arguments:
+
+  PROMPT    the prompt in the minibuffer
+            \(passed as PROMPT to `consult--red'\)
+  BUILDER   an async builder function passed to
+            `consult--process-collection'.
+  INITIAL   an optional arg for the initial input in the minibuffer.
+            \(passed as INITITAL to `consult--read'\)
+  MIN-INPUT is the minimum input length and defaults to
+            `consult-async-min-input'"
+  (consult-gh-with-host (consult-gh--auth-account-host)
+      (consult--read
+       (consult--process-collection builder
+         :transform (consult--async-transform-by-input #'consult-gh--search-issues-transform)
+         :min-input min-input)
+       :prompt prompt
+       :lookup #'consult--lookup-member
+       :state (funcall #'consult-gh--issue-state)
+       :initial initial
+       :group #'consult-gh--issue-group
+       :require-match t
+       :add-history (let* ((topicrepo (consult-gh--get-repo-from-topic))
+                           (localrepo (consult-gh--get-repo-from-directory)))
+                      (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
+                             (append (list (when topicrepo topicrepo)
+                                           (when localrepo localrepo)
+                                           (when localrepo (concat localrepo " -- --assignee @me"))
+                                           (when localrepo (concat localrepo " -- --author @me"))
+                                  (thing-at-point 'symbol))
+                            consult-gh--known-repos-list)))
+       :history '(:input consult-gh--search-issues-history)
+       :category 'consult-gh-issues
+       :preview-key consult-gh-preview-key
+       :sort nil)))
+
+;;;###autoload
+(defun consult-gh-search-issues (&optional initial repo noaction prompt min-input)
+  "Interactively search GitHub issues of REPO.
+
+This is an interactive wrapper function around
+`consult-gh--async-search-issues'.  With prefix ARG, first search for a
+repo using `consult-gh-search-repos', then search issues of only that
+selected repo.
+
+It queries the user for a search term in the minibuffer, then fetches the
+list of possible GitHub issue for the entered query and presents them as a
+minibuffer completion table for selection.  The list of candidates in the
+completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-issue-action'
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+consult-gh -- -L 100
+and the async process will run “gh search issues consult-gh -L 100”,
+which sets the limit for the maximum number of results to 100.
+
+INITIAL is an optional arg for the initial input in the minibuffer
+\(passed as INITITAL to `consult-gh--async-repo-list'\).
+
+If PROMPT is non-nil, use it as the query prompt.
+
+MIN-INPUT is passed to `consult-gh--async-search-issues'.
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'."
+  (interactive)
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
+      (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
+  (let* ((prompt (or prompt "Search Issues:  "))
+         (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
+         (sel (consult-gh--async-search-issues prompt #'consult-gh--search-issues-builder initial min-input)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list reponame))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list username))
+    (if noaction
+        sel
+      (funcall consult-gh-issue-action sel))))
+
+(defun consult-gh-issue-view-comments (&optional issue)
+  "View all comments of ISSUE."
+  (interactive "P" consult-gh-issue-view-mode)
+  (when consult-gh-issue-view-mode
+  (let* ((issue (or issue consult-gh--topic))
+         (inhibit-read-only t)
+         (repo (get-text-property 0 :repo issue))
+         (number (get-text-property 0 :number issue))
+         (comments (consult-gh--issue-get-comments repo number))
+         (comments-text (when (and comments (listp comments))
+                           (consult-gh--issue-format-comments comments)))
+         (regions (consult-gh--get-region-with-prop :consult-gh-issue-comments))
+         (region (when (listp regions) (cons (caar regions) (cdar (last regions))))))
+    (when comments-text
+      (when region
+        (goto-char (car region))
+        (delete-region (car region) (cdr region))
+        (delete-region (line-beginning-position) (line-end-position))
+        (insert "\n"))
+      (save-mark-and-excursion
+        (insert (with-temp-buffer
+                  (insert comments-text)
+                  (consult-gh--format-issue-view-mode)
+                  (buffer-string))))
+      (outline-hide-sublevels 1)))))
 
 ;;;###autoload
 (defun consult-gh-issue-create (&optional repo title body)
@@ -8237,7 +9046,7 @@ For more details refer to the manual with “gh issue create --help”."
                  (insert (consult-gh-topics--format-field-header-string (concat header-marker "projects: ")))
                  (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
                  (insert "\n"))
-               (insert (consult-gh-topics--format-field-header-string "---\n"))
+               (insert (consult-gh-topics--format-field-header-string "-----\n"))
                (setq end (point))
                (overlay-put (make-overlay beg end) :consult-gh-header t)
                (insert "\n"))
@@ -8270,10 +9079,15 @@ For more details refer to the manual with “gh issue edit --help”."
    (consult-gh--auth-account-host)
    (if (not consult-gh-issue-view-mode)
        (let* ((repo (or (and issue (get-text-property 0 :repo issue))
+                        (and consult-gh--topic (get-text-property 0 :repo consult-gh--topic))
                         (get-text-property 0 :repo (consult-gh-search-repos nil t))))
               (canAdmin (consult-gh--user-canadmin repo))
               (sep (consult-gh--get-split-style-character))
-              (issue (or issue (consult-gh-issue-list (if canAdmin
+              (issue (or issue
+                          (and consult-gh--topic
+                           (equal (get-text-property 0 :type consult-gh--topic) "issue")
+                           consult-gh--topic)
+                          (consult-gh-issue-list (if canAdmin
                                                           repo
                                                         (concat repo " -- " "--author " "@me" sep))
                                                       t)))
@@ -8366,7 +9180,7 @@ For more details refer to the manual with “gh issue edit --help”."
                      (delete-char -1)
                      (insert " ")))
                    (insert "\n"))
-                 (insert (consult-gh-topics--format-field-header-string "---\n"))
+                 (insert (consult-gh-topics--format-field-header-string "-----\n"))
                  (setq end (point))
                  (overlay-put (make-overlay beg end) :consult-gh-header t))
                (when body
@@ -8659,125 +9473,6 @@ For more details refer to the manual with “gh issue develop --help”."
       ((stringp (cadr branch))
        (consult-gh-find-file repo (car branch)))))))
 
-(defun consult-gh--search-issues-transform (input)
-  "Add annotation to issue candidates in `consult-gh-search-issues'.
-
-Format each candidates with `consult-gh--search-issues-format' and INPUT."
-  (lambda (cands)
-    (cl-loop for cand in cands
-             collect
-             (consult-gh--search-issues-format cand input nil))))
-
-(defun consult-gh--search-issues-builder (input)
-  "Build gh command line for searching issues of INPUT query."
-  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-issues-args))
-               (cmd (consult--build-args consult-gh-args))
-               (`(,arg . ,opts) (consult-gh--split-command input))
-               (flags (append cmd opts)))
-    (unless (or (member "-L" flags) (member "--limit" flags))
-      (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
-    (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (if re
-        (cons (append cmd
-                      (list (string-join re " "))
-                      opts)
-              hl)
-        (cons (append cmd opts) nil)))))
-
-(defun consult-gh--async-search-issues (prompt builder &optional initial min-input)
-  "Search GitHub issues asynchronously.
-
-This is a non-interactive internal function.
-For the interactive version see `consult-gh-search-issues'.
-
-This runs the command line from `consult-gh--search-issues-builder' in
-an async process and returns the results \(list of search results
-for the input\) as a completion table in minibuffer.  The completion table
-gets dynamically updated as the user types in the minibuffer.
-Each candidate is formatted by `consult-gh--search-issues-transform'
-to add annotation and other info to the candidate.
-
-Description of Arguments:
-
-  PROMPT    the prompt in the minibuffer
-            \(passed as PROMPT to `consult--red'\)
-  BUILDER   an async builder function passed to
-            `consult--process-collection'.
-  INITIAL   an optional arg for the initial input in the minibuffer.
-            \(passed as INITITAL to `consult--read'\)
-  MIN-INPUT is the minimum input length and defaults to
-            `consult-async-min-input'"
-  (consult-gh-with-host (consult-gh--auth-account-host)
-      (consult--read
-       (consult--process-collection builder
-         :transform (consult--async-transform-by-input #'consult-gh--search-issues-transform)
-         :min-input min-input)
-       :prompt prompt
-       :lookup #'consult--lookup-member
-       :state (funcall #'consult-gh--issue-state)
-       :initial initial
-       :group #'consult-gh--issue-group
-       :require-match t
-       :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
-                             (append (list (consult-gh--get-repo-from-directory)
-                                  (consult-gh--get-repo-from-topic)
-                                  (thing-at-point 'symbol))
-                            consult-gh--known-repos-list))
-       :history '(:input consult-gh--search-issues-history)
-       :category 'consult-gh-issues
-       :preview-key consult-gh-preview-key
-       :sort nil)))
-
-;;;###autoload
-(defun consult-gh-search-issues (&optional initial repo noaction prompt min-input)
-  "Interactively search GitHub issues of REPO.
-
-This is an interactive wrapper function around
-`consult-gh--async-search-issues'.  With prefix ARG, first search for a
-repo using `consult-gh-search-repos', then search issues of only that
-selected repo.
-
-It queries the user for a search term in the minibuffer, then fetches the
-list of possible GitHub issue for the entered query and presents them as a
-minibuffer completion table for selection.  The list of candidates in the
-completion table are dynamically updated as the user changes the entry.
-
-Upon selection of a candidate either
- - if NOACTION is non-nil  candidate is returned
- - if NOACTION is nil      candidate is passed to `consult-gh-issue-action'
-
-Additional command line arguments can be passed in the minibuffer input
-by typing `--` followed by command line arguments.
-For example the user can enter the following in the minibuffer:
-consult-gh -- -L 100
-and the async process will run “gh search issues consult-gh -L 100”,
-which sets the limit for the maximum number of results to 100.
-
-INITIAL is an optional arg for the initial input in the minibuffer
-\(passed as INITITAL to `consult-gh--async-repo-list'\).
-
-If PROMPT is non-nil, use it as the query prompt.
-
-MIN-INPUT is passed to `consult-gh--async-search-issues'.
-
-For more details on consult--async functionalities, see `consult-grep'
-and the official manual of consult, here:
-URL `https://github.com/minad/consult'."
-  (interactive)
-  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
-      (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
-  (let* ((prompt (or prompt "Search Issues:  "))
-         (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
-         (sel (consult-gh--async-search-issues prompt #'consult-gh--search-issues-builder initial min-input)))
-    ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list username))
-    (if noaction
-        sel
-      (funcall consult-gh-issue-action sel))))
-
 (defun consult-gh--pr-list-transform (input)
   "Add annotation to issue candidates in `consult-gh-pr-list'.
 
@@ -8848,11 +9543,15 @@ Description of Arguments:
                            :initial initial
                            :group #'consult-gh--pr-list-group
                            :require-match t
-                           :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
-                                                 (append (list (consult-gh--get-repo-from-directory)
-                                                               (consult-gh--get-repo-from-topic)
+                           :add-history (let* ((topicrepo (consult-gh--get-repo-from-topic))
+                                               (localrepo (consult-gh--get-repo-from-directory)))
+                                          (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                                                 (append (list (when topicrepo topicrepo)
+                                                               (when localrepo localrepo)
+                                                               (when localrepo (concat localrepo " -- --assignee @me"))
+                                                               (when localrepo (concat localrepo " -- --author @me"))
                                                                (thing-at-point 'symbol))
-                                                         consult-gh--known-repos-list))
+                                                         consult-gh--known-repos-list)))
                            :history '(:input consult-gh--repos-history)
                            :preview-key consult-gh-preview-key
                            :sort nil))))
@@ -8908,6 +9607,205 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-pr-action sel))))
 
+(defun consult-gh--search-prs-transform (input)
+  "Add annotation to pr candidates in `consult-gh-search-prs'.
+
+Format each candidates with `consult-gh--search-prs-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--search-prs-format cand input nil))))
+
+(defun consult-gh--search-prs-builder (input)
+  "Build gh command line for searching pull requests of INPUT query."
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-prs-args))
+               (cmd (consult--build-args consult-gh-args))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
+    (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
+      (if re
+        (cons (append cmd
+                      (list (string-join re " "))
+                      opts)
+              hl)
+        (cons (append cmd opts) nil)))))
+
+(defun consult-gh--async-search-prs (prompt builder &optional initial min-input)
+  "Search GitHub pull requests asynchronously.
+
+This is a non-interactive internal function.
+For the interactive version see `consult-gh-search-prs'.
+
+This runs the command line from `consult-gh--search-prs-builder' in
+an async process and returns the results (list of search results for
+the input) as a completion table in minibuffer.  The completion table gets
+dynamically updated as the user types in the minibuffer.
+Each candidate in the minibuffer is formatted by
+`consult-gh--search-prs-transform' to add annotation to the candidate.
+
+Description of Arguments:
+
+  PROMPT    the prompt in the minibuffer
+            \(passed as PROMPT to `consult--red'\)
+  BUILDER   an async builder function passed to
+            `consult--process-collection'.
+  INITIAL   an optional arg for the initial input in the minibuffer.
+            \(passed as INITITAL to `consult--read'\)
+  MIN-INPUT is the minimum input length and defaults to
+            `consult-async-min-input'"
+  (consult-gh-with-host (consult-gh--auth-account-host)
+                        (consult--read
+                         (consult--process-collection builder
+                           :transform (consult--async-transform-by-input #'consult-gh--search-prs-transform)
+                           :min-input min-input)
+                         :prompt prompt
+                         :category 'consult-gh-prs
+                         :lookup #'consult--lookup-member
+                         :state (funcall #'consult-gh--pr-state)
+                         :initial initial
+                         :group #'consult-gh--pr-search-group
+                         :require-match t
+                         :add-history (let* ((topicrepo (consult-gh--get-repo-from-topic))
+                                             (localrepo (consult-gh--get-repo-from-directory)))
+                                          (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                                                 (append (list (when topicrepo topicrepo)
+                                                               (when localrepo localrepo)
+                                                               (when localrepo (concat localrepo " -- --review-requestd @me"))
+                                                               (when localrepo (concat localrepo " -- --assignee @me"))
+                                                               (when localrepo (concat localrepo " -- --mentions @me"))
+                                                               (when localrepo (concat localrepo " -- --author @me"))
+                                                               (thing-at-point 'symbol))
+                                                         consult-gh--known-repos-list)))
+                         :history '(:input consult-gh--search-prs-history)
+                         :preview-key consult-gh-preview-key
+                         :sort nil)))
+
+;;;###autoload
+(defun consult-gh-search-prs (&optional initial repo noaction prompt min-input)
+  "Interactively search GitHub pull requests of REPO.
+
+This is an interactive wrapper function around
+`consult-gh--async-search-prs'.  With prefix ARG, first search for a repo
+using `consult-gh-search-repos', then search prs of only that selected repo.
+
+It queries the user for a search term in the minibuffer, then fetches
+the list of possible GitHub pr candidates for the entered query
+and presents them as a minibuffer completion table for selection.
+The list of candidates in the completion table are dynamically updated as
+the user changes the input.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil candidate is returned
+ - if NOACTION is nil     candidate is passed to `consult-gh-pr-action'
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+consult-gh -- -L 100
+and the async process will run “gh search prs consult-gh -L 100”,
+which sets the limit for the maximum number of results to 100.
+
+INITIAL is an optional arg for the initial input in the minibuffer
+\(passed as INITITAL to `consult-gh--async-repo-list'\).
+
+If PROMPT is non-nil, use it as the query prompt.
+
+MIN-INPUT is passed to `consult-gh--async-search-prs'
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'."
+  (interactive)
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
+      (setq repo (or repo (substring-no-properties (get-text-property 0 :repo  (consult-gh-search-repos repo t))))))
+  (let* ((prompt (or prompt "Search Pull-Requests:  "))
+         (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
+         (sel (consult-gh--async-search-prs prompt #'consult-gh--search-prs-builder initial min-input)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list reponame))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list username))
+    (if noaction
+        sel
+      (funcall consult-gh-pr-action sel))))
+
+(defun consult-gh-pr-view-diff (&optional pr)
+  "View diff for PR."
+  (interactive "P")
+  (cond
+   (consult-gh-topics-edit-mode
+    (consult-gh-topics--pr-create-view-diff))
+   (consult-gh-pr-view-mode
+    (consult-gh--pr-view-diff-action (or pr consult-gh--topic)))))
+
+(defun consult-gh-pr-view-commits (&optional pr)
+  "Insert commits text of PR in the current buffer."
+  (interactive "P")
+  (cond
+   (consult-gh-topics-edit-mode
+    (consult-gh-topics--pr-create-view-commits))
+   (consult-gh-pr-view-mode
+    (let* ((pr (or pr consult-gh--topic))
+           (inhibit-read-only t)
+           (commits-text (consult-gh--pr-view-get-commits pr))
+           (regions (consult-gh--get-region-with-prop :consult-gh-pr-commits))
+           (region (when (listp regions) (cons (caar regions) (cdar (last regions))))))
+    (when commits-text
+      (when region
+        (goto-char (car-safe region))
+        (delete-region (car region) (cdr region)))
+      (save-excursion
+        (insert commits-text)))))))
+
+(defun consult-gh-pr-view-file-changes (&optional pr)
+  "Insert file changes diff text of PR in current buffer."
+  (interactive "P")
+  (cond
+   (consult-gh-topics-edit-mode
+    (consult-gh-topics--pr-create-view-file-changes))
+   (consult-gh-pr-view-mode
+    (let* ((pr (or pr consult-gh--topic))
+         (inhibit-read-only t)
+         (diff-text (consult-gh--pr-view-get-file-changes pr))
+         (regions (consult-gh--get-region-with-prop :consult-gh-pr-file-changes))
+         (region (when (listp regions) (cons (caar regions) (cdar (last regions))))))
+    (when diff-text
+      (when region
+        (goto-char (car-safe region))
+        (delete-region (car region) (cdr region)))
+      (save-excursion
+        (insert diff-text)))))))
+
+(defun consult-gh-pr-view-comments (&optional pr)
+  "Insert file changes diff text of PR in current buffer."
+  (interactive "P" consult-gh-pr-view-mode)
+  (when consult-gh-pr-view-mode
+  (let* ((pr (or pr consult-gh--topic))
+         (inhibit-read-only t)
+         (repo (get-text-property 0 :repo pr))
+         (number (get-text-property 0 :number pr))
+         (comments (consult-gh--pr-get-comments repo number))
+         (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number)))
+         (comments-text (when (and comments (listp comments))
+                           (consult-gh--pr-format-comments comments repo number url)))
+         (regions (consult-gh--get-region-with-prop :consult-gh-pr-comments))
+         (region (when (listp regions) (cons (caar regions) (cdar (last regions))))))
+    (when comments-text
+      (when region
+        (goto-char (car region))
+        (delete-region (car region) (cdr region))
+        (delete-region (line-beginning-position) (line-end-position))
+        (insert "\n"))
+      (save-excursion
+        (insert (with-temp-buffer
+                  (insert comments-text)
+                  (consult-gh--format-issue-view-mode)
+                  (buffer-string)))
+        (outline-hide-sublevels 2))))))
+
 (defun consult-gh-pr-create (&optional repo title body)
   "Create a new pull request with TITLE and BODY for REPO.
 
@@ -8918,11 +9816,11 @@ in the terminal.  For more details refer to the manual with
   (consult-gh-with-host
    (consult-gh--auth-account-host)
    (let* ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t "Select the target base repo you want to merge to: "))))
-          (isForked (eq (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" repo "--json" "isFork") :isFork) 't))
+          (isForked (equal (gethash :isFork (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" repo "--json" "isFork"))) 't))
           (simrepos (consult-gh-topics--pr-get-similar repo))
           (selection (if isForked
                         (substring-no-properties (consult--read (append simrepos "Other")
-                                                                :prompt "That is a forked repo. Which one of the following repos you want to meger to?"
+                                                                :prompt "That is a forked repo. Which one of the following repos you want to merge to?"
                                          :require-match t))))
           (baserepo (cond
                      ((equal selection "Other")
@@ -8934,7 +9832,7 @@ in the terminal.  For more details refer to the manual with
                                      :sort t))
           (selection (cond
                      ((length> simrepos 0)
-                      (consult--read (append (list baserepo) simrepos (list "Other"))
+                      (consult--read (append (list (propertize baserepo 'face 'consult-gh-repo)) simrepos (list (propertize "Other" 'face 'consult-gh-date)))
                                                                 :prompt "Select the source head repo you want to merge from: "
                                          :require-match t
                                          :sort nil))))
@@ -8960,10 +9858,14 @@ in the terminal.  For more details refer to the manual with
                                                 :require-match t
                                                 :lookup #'consult--lookup-cdr
                                                 :sort t)))))
-
+          (body (or body
+                    (and (if consult-gh-pr-create-confirm-fill
+                        (y-or-n-p "Fill the body automatically from commits info?")
+                        t)
+                        (consult-gh-topics--pr-fill-body-from-commits baserepo basebranch headrepo headbranch))))
           (topic (or repo "new pr"))
           (type "pr")
-          (buffer (format "*consult-gh-pr-create: %s:%s->%s:%s" repo headbranch baserepo basebranch)))
+          (buffer (format "*consult-gh-pr-create: %s:%s<-%s:%s" baserepo basebranch headrepo headbranch)))
 
      ;; collect issues of repo for completion at point
      (consult-gh--completion-set-issues topic repo)
@@ -9037,7 +9939,7 @@ in the terminal.  For more details refer to the manual with
                  (insert (consult-gh-topics--format-field-header-string (concat header-marker "projects: ")))
                  (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " "))
                  (insert "\n"))
-               (insert (consult-gh-topics--format-field-header-string "---\n"))
+               (insert (consult-gh-topics--format-field-header-string "-----\n"))
                (setq end (point))
                (overlay-put (make-overlay beg end) :consult-gh-header t)
                (insert "\n"))
@@ -9064,13 +9966,18 @@ For more details refer to the manual with “gh pr edit --help”."
    (consult-gh--auth-account-host)
    (if (not consult-gh-pr-view-mode)
        (let* ((baserepo (or (and pr (get-text-property 0 :baserepo pr))
-                        (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+                            (and consult-gh--topic (get-text-property 0 :baserepo consult-gh--topic))
+                            (get-text-property 0 :repo (consult-gh-search-repos nil t))))
               (canAdmin (consult-gh--user-canadmin baserepo))
               (sep (consult-gh--get-split-style-character))
-              (pr (or pr (consult-gh-pr-list (if canAdmin
-                                                 baserepo
-                                               (concat baserepo " -- " "--author " "@me" sep))
-                                             t)))
+              (pr (or pr
+                      (and consult-gh--topic
+                           (equal (get-text-property 0 :type consult-gh--topic) "pr")
+                           consult-gh--topic)
+                      (consult-gh-pr-list (if canAdmin
+                                                                   baserepo
+                                                                 (concat baserepo " -- " "--author " "@me" sep))
+                                                               t)))
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
               (isAuthor (consult-gh--user-isauthor pr)))
          (if (not (or canAdmin isAuthor))
@@ -9098,7 +10005,7 @@ For more details refer to the manual with “gh pr edit --help”."
             (type "pr"))
 
        ;; collect valid refs for completion at point
-     (consult-gh--completion-set-pr-refs newtopic baserepo nil t)
+       (consult-gh--completion-set-pr-refs newtopic baserepo nil t)
 
        (if canAdmin
            ;; collect valid projects for completion at point
@@ -9193,7 +10100,7 @@ For more details refer to the manual with “gh pr edit --help”."
                      (insert " ")))
                    (insert "\n"))
 
-                 (insert (consult-gh-topics--format-field-header-string "---\n"))
+                 (insert (consult-gh-topics--format-field-header-string "-----\n"))
                  (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert "\n"))
                  (setq end (point))
                  (overlay-put (make-overlay beg end) :consult-gh-header t))
@@ -9203,8 +10110,13 @@ For more details refer to the manual with “gh pr edit --help”."
                    ('markdown-mode (insert body))
                    ('org-mode (insert (with-temp-buffer
                                         (insert body)
-                                        (consult-gh--markdown-to-org)                                        (consult-gh--whole-buffer-string))))
-                   ('text-mode (insert body)))))
+                                        (consult-gh--markdown-to-org)
+                                        (consult-gh--whole-buffer-string))))
+                   ('text-mode (insert body)))
+                 (save-excursion (goto-char (point-min))
+                                 (while (re-search-forward "\r\n" nil t)
+                                   (replace-match "\n")))
+                                 ))
              (cursor-intangible-mode +1))))
 
        (funcall consult-gh-pop-to-buffer-func buffer)))))
@@ -9447,125 +10359,6 @@ This mimicks the same function as running “gh pr ready” with the switch
                                :when-done (lambda (_ str) (message str))
                                :cmd-args args))))
 
-(defun consult-gh--search-prs-transform (input)
-  "Add annotation to pr candidates in `consult-gh-search-prs'.
-
-Format each candidates with `consult-gh--search-prs-format' and INPUT."
-  (lambda (cands)
-    (cl-loop for cand in cands
-             collect
-             (consult-gh--search-prs-format cand input nil))))
-
-(defun consult-gh--search-prs-builder (input)
-  "Build gh command line for searching pull requests of INPUT query."
-  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-search-prs-args))
-               (cmd (consult--build-args consult-gh-args))
-               (`(,arg . ,opts) (consult-gh--split-command input))
-               (flags (append cmd opts)))
-    (unless (or (member "-L" flags) (member "--limit" flags))
-      (setq opts (append opts (list "--limit" (format "%s" consult-gh-issue-maxnum)))))
-    (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
-      (if re
-        (cons (append cmd
-                      (list (string-join re " "))
-                      opts)
-              hl)
-        (cons (append cmd opts) nil)))))
-
-(defun consult-gh--async-search-prs (prompt builder &optional initial min-input)
-  "Search GitHub pull requests asynchronously.
-
-This is a non-interactive internal function.
-For the interactive version see `consult-gh-search-prs'.
-
-This runs the command line from `consult-gh--search-prs-builder' in
-an async process and returns the results (list of search results for
-the input) as a completion table in minibuffer.  The completion table gets
-dynamically updated as the user types in the minibuffer.
-Each candidate in the minibuffer is formatted by
-`consult-gh--search-prs-transform' to add annotation to the candidate.
-
-Description of Arguments:
-
-  PROMPT    the prompt in the minibuffer
-            \(passed as PROMPT to `consult--red'\)
-  BUILDER   an async builder function passed to
-            `consult--process-collection'.
-  INITIAL   an optional arg for the initial input in the minibuffer.
-            \(passed as INITITAL to `consult--read'\)
-  MIN-INPUT is the minimum input length and defaults to
-            `consult-async-min-input'"
-  (consult-gh-with-host (consult-gh--auth-account-host)
-                        (consult--read
-                         (consult--process-collection builder
-                           :transform (consult--async-transform-by-input #'consult-gh--search-prs-transform)
-                           :min-input min-input)
-                         :prompt prompt
-                         :category 'consult-gh-prs
-                         :lookup #'consult--lookup-member
-                         :state (funcall #'consult-gh--pr-state)
-                         :initial initial
-                         :group #'consult-gh--pr-search-group
-                         :require-match t
-                         :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
-                                               (append (list (consult-gh--get-repo-from-directory)
-                                                             (consult-gh--get-repo-from-topic)
-                                                             (thing-at-point 'symbol))
-                                                       consult-gh--known-repos-list))
-                         :history '(:input consult-gh--search-prs-history)
-                         :preview-key consult-gh-preview-key
-                         :sort nil)))
-
-;;;###autoload
-(defun consult-gh-search-prs (&optional initial repo noaction prompt min-input)
-  "Interactively search GitHub pull requests of REPO.
-
-This is an interactive wrapper function around
-`consult-gh--async-search-prs'.  With prefix ARG, first search for a repo
-using `consult-gh-search-repos', then search prs of only that selected repo.
-
-It queries the user for a search term in the minibuffer, then fetches
-the list of possible GitHub pr candidates for the entered query
-and presents them as a minibuffer completion table for selection.
-The list of candidates in the completion table are dynamically updated as
-the user changes the input.
-
-Upon selection of a candidate either
- - if NOACTION is non-nil candidate is returned
- - if NOACTION is nil     candidate is passed to `consult-gh-pr-action'
-
-Additional command line arguments can be passed in the minibuffer input
-by typing `--` followed by command line arguments.
-For example the user can enter the following in the minibuffer:
-consult-gh -- -L 100
-and the async process will run “gh search prs consult-gh -L 100”,
-which sets the limit for the maximum number of results to 100.
-
-INITIAL is an optional arg for the initial input in the minibuffer
-\(passed as INITITAL to `consult-gh--async-repo-list'\).
-
-If PROMPT is non-nil, use it as the query prompt.
-
-MIN-INPUT is passed to `consult-gh--async-search-prs'
-
-For more details on consult--async functionalities, see `consult-grep'
-and the official manual of consult, here:
-URL `https://github.com/minad/consult'."
-  (interactive)
-  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
-      (setq repo (or repo (substring-no-properties (get-text-property 0 :repo  (consult-gh-search-repos repo t))))))
-  (let* ((prompt (or prompt "Search Pull-Requests:  "))
-         (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
-         (sel (consult-gh--async-search-prs prompt #'consult-gh--search-prs-builder initial min-input)))
-    ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list username))
-    (if noaction
-        sel
-      (funcall consult-gh-pr-action sel))))
-
 (defun consult-gh--search-code-transform (input)
   "Add annotation to code candidates in `consult-gh-search-code'.
 
@@ -9626,11 +10419,15 @@ Description of Arguments:
                          :initial initial
                          :group #'consult-gh--code-group
                          :require-match t
-                         :add-history  (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
-                                               (append (list (consult-gh--get-repo-from-directory)
-                                                             (consult-gh--get-repo-from-topic)
-                                                             (thing-at-point 'symbol))
-                                                       consult-gh--known-repos-list))
+                         :add-history (let* ((topicrepo (consult-gh--get-repo-from-topic))
+                                             (localrepo (consult-gh--get-repo-from-directory)))
+                                          (mapcar (lambda (item) (concat (consult-gh--get-split-style-character) item))
+                                                 (append (list " -- --owner @me"
+                                                               (when topicrepo (concat " -- --repo " topicrepo))
+                                                               (when localrepo (concat " -- --repo " localrepo))
+                                                               (when localrepo (concat " -- --repo " localrepo " --owner @me"))
+                                                               (thing-at-point 'symbol))
+                                                         consult-gh--known-repos-list)))
                          :history '(:input consult-gh--search-code-history)
                          :preview-key consult-gh-preview-key
                          :sort nil)))
@@ -9721,7 +10518,12 @@ INITIAL is an optional arg for the initial input in the minibuffer
                               :annotate (lambda (cand) (funcall (consult-gh--file-annotate) candidates cand))
                               :history t
                               :sort nil
-                              :add-history (concat (consult-gh--get-split-style-character) (thing-at-point 'filename))
+                              :add-history (let* ((localfile (buffer-file-name)))
+                                             (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
+                             (append (list
+                                      (thing-at-point 'symbol)
+                                      (when  localfile
+                                         (file-name-nondirectory localfile))))))
                               :history 'consult-gh--files-history
                               :category 'consult-gh-files
                               :preview-key consult-gh-preview-key
@@ -10195,7 +10997,7 @@ TOPIC defaults to `consult-gh--topic'.
 
 This funciton uses `consult-gh-browse-url-func' for opening a url in the
 browser."
-  (interactive "P" consult-gh-pr-view-mode consult-gh-issue-view-mode)
+  (interactive "P" consult-gh-pr-view-mode consult-gh-issue-view-mode consult-gh-misc-view-mode)
   (consult-gh-with-host
    (consult-gh--auth-account-host)
    (let* ((topic (or topic consult-gh--topic))
@@ -10204,6 +11006,7 @@ browser."
           (branch (and (stringp topic) (get-text-property 0 :branch topic)))
           (path (and (stringp topic) (get-text-property 0 :path topic)))
           (number (and (stringp topic) (get-text-property 0 :number topic)))
+          (ref (and (stringp topic) (get-text-property 0 :ref topic)))
           (local-info (get-text-property (point) :consult-gh))
           (local-url (or (plist-get local-info :url)
                          (plist-get local-info :comment-url)
@@ -10216,7 +11019,9 @@ browser."
                                                    ("issue"
                                                     (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number)))
                                                    ("pr"
-                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))))))
+                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number)))
+                                                   ("compare"
+                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/compare/%s" ref))))))))
      (if (stringp url)
          (funcall (or consult-gh-browse-url-func #'browse-url) url)
        (message "No topic to browse in this buffer!")))))
@@ -10246,6 +11051,8 @@ browser."
   ;; consult-gh-pr-view-mode-map
   (consult-gh--enable-keybindings-alist consult-gh-pr-view-mode-map  consult-gh--pr-view-mode-keybinding-alist)
 
+  ;; consult-gh-misc-view-mode-map
+  (consult-gh--enable-keybindings-alist consult-gh-misc-view-mode-map  consult-gh--misc-view-mode-keybinding-alist)
 
   ;; consult-gh-topics-edit-mode-map
   (consult-gh--enable-keybindings-alist consult-gh-topics-edit-mode-map consult-gh--topics-edit-mode-keybinding-alist))
@@ -10263,26 +11070,46 @@ browser."
   ;; consult-gh-pr-view-mode-map
   (consult-gh--disable-keybindings-alist consult-gh-pr-view-mode-map  consult-gh--pr-view-mode-keybinding-alist)
 
+  ;; consult-gh-misc-view-mode-map
+  (consult-gh--disable-keybindings-alist consult-gh-misc-view-mode-map  consult-gh--misc-view-mode-keybinding-alist)
+
   ;; consult-gh-topics-edit-mode-map
   (consult-gh--disable-keybindings-alist consult-gh-topics-edit-mode-map consult-gh--topics-edit-mode-keybinding-alist))
 
 ;;;###autoload
 (defun consult-gh-refresh-view ()
   "Refresh the buffer viewing a consult-gh topic."
-  (interactive nil consult-gh-pr-view-mode consult-gh-pr-issue-mode)
+  (interactive nil consult-gh-pr-view-mode consult-gh-issue-view-mode consult-gh-repo-view-mode consult-gh-misc-view-mode)
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-   (when-let* ((topic consult-gh--topic)
-               (type (get-text-property 0 :type topic))
-               (repo (get-text-property 0 :repo topic))
-               (number (get-text-property 0 :number topic)))
+   (let* ((topic consult-gh--topic)
+          (type (get-text-property 0 :type topic))
+          (repo (get-text-property 0 :repo topic)))
      (cond
       ((equal type "repo")
        (funcall #'consult-gh--repo-view repo (current-buffer)))
       ((equal type "issue")
-       (funcall #'consult-gh--issue-view repo number (current-buffer)))
+       (let* ((number (get-text-property 0 :number topic)))
+         (funcall #'consult-gh--issue-view repo number (current-buffer))))
       ((equal type "pr")
-       (funcall #'consult-gh--pr-view repo number (current-buffer)))))))
+       (let* ((number (get-text-property 0 :number topic)))
+         (pcase (get-text-property 0 :view topic)
+           ("pr"
+            (funcall #'consult-gh--pr-view repo number (current-buffer)))
+           ("diff"
+            (funcall #'consult-gh--pr-view-diff repo number (current-buffer))))))
+      ((equal type "compareDiff")
+       (funcall #'consult-gh-topics--pr-create-view-diff nil t))
+      ((equal type "compareCommits")
+       (funcall #'consult-gh-topics--pr-create-view-commits nil t))
+      ((equal type "compareFileChanges")
+       (funcall #'consult-gh-topics--pr-create-view-file-changes nil t))
+      ((equal type "file")
+       (when (and (buffer-modified-p) (y-or-n-p "This will discard your edits and pull the file from remote?  Do you want to Continue?"))
+       (let* ((path (get-text-property 0 :path topic))
+              (url (get-text-property 0 :url topic))
+              (branch (get-text-property 0 :branch topic)))
+         (funcall #'consult-gh--files-view repo path url nil (file-name-directory (buffer-file-name)) nil branch t))))))))
 
 ;;;###autoload
 (defun consult-gh (&rest args)
