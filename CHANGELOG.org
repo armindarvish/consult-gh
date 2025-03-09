@@ -4,19 +4,25 @@
 
 * Development
 
+* Version 2.3 (2025-03-09)
+
 - *BREAKING CHANGE*: update to new consult API with breaking changes
   consult-gh now uses the new consult API for async processes. See [[https://github.com/minad/consult/commit/ada079d5932700a8819ace622ef4323e73983161][Breaking Changes in Consult]] for more info!
+- add integration with [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review]] (see [[https://melpa.org/#/consult-gh-with-pr-review][consult-gh-with-pr-review on MELPA]])
 - improve consult-gh-dashboard by using consult--multi with async processes
-- add integration with  [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review]]
+- bump up consult dependency to version 2.0
+- add previews for gitignore and license templates
+- add ability to customize the sections that are shown in issue/pr view
+  (e.g. limiting the number of comments loaded, showing commits, ...)
+- add ability to view pr commits and file changes (both for prs and when creating new ones)
+- add some more embark actions (for seeing PR's commits and diff, ...)
 
 * Version 2.2 (2025-01-16)
 - improve embark keybindings (issue #174)
 - improve embark actions (see #190)
 - improve backward compatibility (issue #183)
 - remove dependency on dash.el (see #188)
-- fix minor issues nad typos, ...
-
-
+- fix minor issues and typos, ...
 
 * Vesrion 2.1 (2025-01-07)
 - Fixes bugs/issues in v2.0 (issues #178, #183, ...)

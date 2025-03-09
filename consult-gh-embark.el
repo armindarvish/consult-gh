@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.2
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.2") (embark-consult "1.1"))
+;; Version: 2.3
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.3") (embark-consult "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -490,7 +490,7 @@ CAND can be a repo, issue, PR, file path, ..."
                         :category 'consult-gh-issues
                         :preview-key consult-gh-preview-key
                         :sort nil)
-  (message "No user at point!")))))
+       (message "No user at point!")))))
 
 (defun consult-gh-embark-view-prs-involves-user (cand)
   "Search pullrequests involving the user in CAND."
@@ -511,7 +511,7 @@ CAND can be a repo, issue, PR, file path, ..."
                         :category 'consult-gh-prs
                         :preview-key consult-gh-preview-key
                         :sort nil)
-  (message "No user at point!")))))
+       (message "No user at point!")))))
 
 (defun consult-gh-embark-view-user-assignment (cand)
   "Search issues and prs assigned to the user in CAND."
@@ -532,7 +532,7 @@ CAND can be a repo, issue, PR, file path, ..."
                         :category 'consult-gh-dashboard
                         :preview-key consult-gh-preview-key
                         :sort nil)
-  (message "No user at point!")))))
+       (message "No user at point!")))))
 
 (defun consult-gh-embark-view-files-of-repo (cand)
   "Browse files of CAND at point."
@@ -785,6 +785,14 @@ CAND can be a PR or an issue."
                 (apply #'consult-gh--command-to-string "pr" "edit" pr-number (list "--repo" repo "--body" (substring-no-properties new-body))))))
            (_ nil)))))))
 
+(defun consult-gh-embark-view-pr-diff (cand)
+  "View the diff of a pull request in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh--pr-view-diff-action cand))))
+
+
 (defun consult-gh-embark-toggle-notification-read (cand)
   "Mark the notification in CAND as read/unread."
   (when (stringp cand)
@@ -808,7 +816,7 @@ CAND can be a PR or an issue."
 ;;; Define Embark Keymaps
 
 ;; General Actions
-                                        ; Bookmarks Menu
+; Bookmarks Menu
 (defvar-keymap consult-gh-embark-bookmark-repos-menu-map
   :doc "Keymap for bookmarking repos menu"
   :parent nil
@@ -836,7 +844,7 @@ CAND can be a PR or an issue."
 (fset 'consult-gh-embark-bookmarks-menu-map consult-gh-embark-bookmarks-menu-map)
 
 
-                                        ; Copy Menu
+; Copy Menu
 ;; copy  user's info
 (defvar-keymap consult-gh-embark-user-copy-menu-map
   :doc "Keymap for copying user info as kill menu"
@@ -885,7 +893,7 @@ CAND can be a PR or an issue."
 (fset 'consult-gh-embark-find-menu-map consult-gh-embark-find-menu-map)
 
 
-                                        ; Insert Menu
+; Insert Menu
 ;; insert  user's info
 (defvar-keymap consult-gh-embark-user-insert-menu-map
   :doc "Keymap for inserting user info menu"
@@ -906,7 +914,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-insert-menu-map consult-gh-embark-insert-menu-map)
 
-                                        ; Links Menu
+; Links Menu
 (defvar-keymap consult-gh-embark-links-menu-map
   :doc "Keymap for links menu"
   :parent nil
@@ -920,7 +928,7 @@ CAND can be a PR or an issue."
 (fset 'consult-gh-embark-links-menu-map consult-gh-embark-links-menu-map)
 
 
-                                        ; Open Menu
+; Open Menu
 (defvar-keymap consult-gh-embark-open-menu-map
   :doc "Keymap for open menu"
   :parent nil
@@ -931,7 +939,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-open-menu-map consult-gh-embark-open-menu-map)
 
-                                        ; Repos Menu
+; Repos Menu
 (defvar-keymap consult-gh-embark-repo-menu-map
   :doc "Keymap for repo actions menu"
   :parent nil
@@ -948,7 +956,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-repo-menu-map consult-gh-embark-repo-menu-map)
 
-                                        ; User Menu
+; User Menu
 (defvar-keymap consult-gh-embark-user-menu-map
   :doc "Keymap for user actions menu"
   :parent nil
@@ -964,7 +972,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-user-menu-map consult-gh-embark-user-menu-map)
 
-                                        ; Main
+; Main
 (defvar-keymap consult-gh-embark-general-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
@@ -984,9 +992,20 @@ CAND can be a PR or an issue."
   :parent consult-gh-embark-general-actions-map)
 
 ;; Repo Actions
+; Repo View Menu
+(defvar-keymap consult-gh-embark-repo-view-menu-map
+  :doc "Keymap for viewing Repo details"
+  :parent nil
+  "i" '("view issues" . consult-gh-embark-view-issues-of-repo)
+  "p" '("view pull requests" . consult-gh-embark-view-prs-of-repo))
+
+(fset 'consult-gh-embark-repo-view-menu-map consult-gh-embark-repo-view-menu-map)
+
+; Repo main menu
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
-  :parent consult-gh-embark-general-actions-map)
+  :parent consult-gh-embark-general-actions-map
+   "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map))
 
 
 ;; Files Actions
@@ -998,8 +1017,7 @@ CAND can be a PR or an issue."
   "i f" '("file content" . consult-gh-embark-copy-file-contents-as-kill))
 
 ;; Issue Actions
-
-                                        ; Edit Menu
+; Edit Menu
 (defvar-keymap consult-gh-embark-issues-edit-menu-map
   :doc "Keymap for editing issues"
   :parent nil
@@ -1014,6 +1032,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-issues-edit-menu-map consult-gh-embark-issues-edit-menu-map)
 
+; Issue main menu
 (defvar-keymap consult-gh-embark-issues-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
@@ -1023,8 +1042,7 @@ CAND can be a PR or an issue."
 
 
 ;; Pull Request Actions
-
-                                        ;Edit PRs menu
+; Edit PRs menu
 (defvar-keymap consult-gh-embark-prs-edit-menu-map
   :doc "Keymap for editing PRs"
   :parent nil
@@ -1037,13 +1055,23 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-prs-edit-menu-map consult-gh-embark-prs-edit-menu-map)
 
+; PR View menu
+(defvar-keymap consult-gh-embark-prs-view-menu-map
+  :doc "Keymap for viewing PR details"
+  :parent nil
+  "d" '("view diff" . consult-gh-embark-view-pr-diff))
+
+(fset 'consult-gh-embark-prs-view-menu-map consult-gh-embark-prs-view-menu-map)
+
+; PR main menu
 (defvar-keymap consult-gh-embark-prs-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
   "c" '("gh create" . consult-gh-embark-create-menu-map)
   "c C-c" '("comment on pr" . consult-gh-embark-comment-on-pr)
   "c C-r" '("review for pr" . consult-gh-embark-review-pr)
-  "e" '("gh edit pr" . consult-gh-embark-prs-edit-menu-map))
+  "e" '("gh edit pr" . consult-gh-embark-prs-edit-menu-map)
+  "v" '("gh view pr" . consult-gh-embark-prs-view-menu-map))
 
 ;; Code Actions
 (defvar-keymap consult-gh-embark-codes-actions-map
@@ -1051,7 +1079,7 @@ CAND can be a PR or an issue."
   :parent consult-gh-embark-general-actions-map)
 
 ;; Notifications Actions
-                                        ;Edit Notifications Menu
+;Edit Notifications Menu
 (defvar-keymap consult-gh-embark-notifications-edit-menu-map
   :doc "Keymap for editing notifications"
   :parent nil
