@@ -834,7 +834,7 @@ on the repositories being fetched."
                         nil)
                  (symbol :tag "Loads Specific Branch")))
 
-(defcustom consult-gh-repo-action #'consult-gh--repo-browse-url-action
+(defcustom consult-gh-repo-action #'consult-gh--repo-view-action
   "What function to call when a repo is selected?
 
 Common options include:
@@ -860,7 +860,7 @@ Common options include:
                  (function :tag "Fork Repository" #'consult-gh--repo-fork-action)
                  (function :tag "Custom Function")))
 
-(defcustom consult-gh-issue-action #'consult-gh--issue-browse-url-action
+(defcustom consult-gh-issue-action #'consult-gh--issue-view-action
   "What function to call when an issue is selected?
 
 Common options include:
@@ -885,7 +885,7 @@ Common options include:
                    (const :tag "Open the Issue in a Magit/Forge buffer" #'consult-gh-forge--issue-view-action)
                    (function :tag "Custom Function"))))
 
-(defcustom consult-gh-pr-action #'consult-gh--pr-browse-url-action
+(defcustom consult-gh-pr-action #'consult-gh--pr-view-action
   "What function to call when a pull request is selected?
 
 Common options include:
@@ -909,7 +909,7 @@ Common options include:
                    (const :tag "Open the PR in an Emacs buffer" #'consult-gh--pr-view-action)
                    (function :tag "Custom Function"))))
 
-(defcustom consult-gh-code-action #'consult-gh--code-browse-url-action
+(defcustom consult-gh-code-action #'consult-gh--code-view-action
   "What function to call when a code is selected?
 
 Common options include:
@@ -926,7 +926,7 @@ Common options include:
                  (const :tag "Open code (target file) in an Emacs buffer" consult-gh--code-view-action)
                  (function :tag "Custom Function")))
 
-(defcustom consult-gh-file-action #'consult-gh--files-browse-url-action
+(defcustom consult-gh-file-action #'consult-gh--files-view-action
   "What function to call when a file is selected?
 
 Common options include:
@@ -1006,7 +1006,6 @@ Common options include:
                  (function :tag "List default repos of user" consult-gh-favorite-repos)
                  (function :tag "Open transient menu" consult-gh-transient)
                  (function :tag "Other custom interactive command")))
-
 
 (defcustom consult-gh-use-search-to-find-name nil
   "Whether to use `consult-gh-search-repos' to find repo name.
