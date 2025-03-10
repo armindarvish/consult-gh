@@ -5636,7 +5636,8 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-action'."
 (defun consult-gh--pr-view-diff (repo number &optional buffer)
   "View diff of the pull request with id NUMBER in REPO in BUFFER.
 
-This is an internal function that takes REPO, the full name of a repository \(e.g. “armindarvish/consult-gh”\) and NUMBER, a pr number
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and NUMBER, a pr number
 of REPO, and shows the diffs of the pull request in an Emacs Buffer.
 
 It fetches the diff from GitHub API for comparing two branches:
