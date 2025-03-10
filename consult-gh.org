@@ -4476,11 +4476,13 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (author (gethash :login (gethash :author table)))
          (state (gethash :state table))
          (createdAt (gethash :createdAt table))
+         (createdAt (and createdAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt))))
+
          (updatedAt (gethash :updatedAt table))
-         (updatedAt (and updatedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time updatedAt))))
+         (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time updatedAt))))
          (url (gethash :url table))
          (closedAt (gethash :closedAt table))
-         (closedAt (and closedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time closedAt))))
+         (closedAt (and closedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time closedAt))))
          (labels (gethash :labels table))
          (labels (and labels (listp labels) (mapcar (lambda (item) (and (hash-table-p item) (gethash :name item))) labels)))
          (labels-text (and labels (listp labels) (mapconcat #'identity labels "\s\s")))
@@ -4540,7 +4542,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
     (when topic (add-text-properties 0 1 (list :body body) topic))
 
     (concat author " " (consult-gh--time-ago createdAt)
-            " " (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)) "\n"
+            " " (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)) "\n"
             "-----\n" body "\n" "\n")))
 
 #+end_src
@@ -4581,14 +4583,14 @@ Queries the user for how to filter the comments."
                (when (numberp number)
          (setq comments (cl-subseq comments 0 (min (length comments) (truncate number)))))))
         (':date
-         (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car comments)))))
-                (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car (last comments))))))
+         (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (gethash :createdAt (car comments)))))
+                (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (gethash :createdAt (car (last comments))))))
                 (d (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
            (setq comments (cl-remove-if-not (lambda (k)
                                               (time-less-p d (date-to-time (gethash :createdAt k))))
                                             comments))))
-        (':daterange (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car comments)))))
-                            (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car (last comments))))))
+        (':daterange (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (gethash :createdAt (car comments)))))
+                            (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (gethash :createdAt (car (last comments))))))
                             (begin-date (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date))))
                             (end-date (org-read-date nil t nil (format "Select End Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
                        (setq comments (cl-remove-if (lambda (k)
@@ -4637,7 +4639,7 @@ for `consult-gh--issue-view'."
                         (authorAssociation (unless (equal authorAssociation "NONE")
                                              authorAssociation))
                         (createdAt (gethash :createdAt comment))
-                        (createdAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)))
+                        (createdAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)))
                         (comment-url (gethash :url comment))
                         (body (gethash :body comment)))
                    (save-match-data
@@ -5704,10 +5706,10 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (state (gethash :state table))
          (createdAt (gethash :createdAt table))
          (updatedAt (gethash :updatedAt table))
-         (updatedAt (and updatedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time updatedAt))))
+         (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time updatedAt))))
          (url (gethash :url table))
          (closedAt (gethash :closedAt table))
-         (closedAt (and closedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time closedAt))))
+         (closedAt (and closedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time closedAt))))
 
          (labels (gethash :labels table))
          (labels (and labels (listp labels) (mapcar (lambda (item) (and (hash-table-p item) (gethash :name item))) labels)))
@@ -5781,7 +5783,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
     (when topic (add-text-properties 0 1 (list :body body) topic))
 
     (propertize (concat "\n## " author " " (consult-gh--time-ago createdAt)
-                        " " (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)) "\n"
+                        " " (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)) "\n"
                         "\n" body "\n" "\n-----\n")
                 :consult-gh (list :author author
                                   :url url))))
@@ -5863,15 +5865,15 @@ Queries the user for how to filter the comments."
            (when (numberp number)
              (setq comments (cl-subseq comments 0 (min (length comments) (truncate number)))))))
         (':date
-         (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments))))))
-               (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
+         (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments))))))
+               (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
                (d (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
            (setq comments (cl-remove-if-not (lambda (k)
                                               (time-less-p d (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
                                             comments))))
         (':daterange
-         (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments)) ))))
-               (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
+         (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments)) ))))
+               (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
                (begin-date (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date))))
                (end-date (org-read-date nil t nil (format "Select End Date range - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
            (setq comments (cl-remove-if-not (lambda (k)
@@ -5923,7 +5925,7 @@ The optional argument URL, is the web url for the pull request on GitHub."
                                        (gethash :created_at comment)
                                        (gethash :submitted_at comment)
                                        (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))
-                        (createdAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)))
+                        (createdAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)))
                         (state (gethash :state comment))
                         (state (cond
                                 ((equal state "COMMENTED") (propertize "COMMENTED" 'face 'default))
@@ -6028,7 +6030,7 @@ If optional argument PREVIEW is non-nil, do not load diff of commits."
                         (authors (gethash :authors commit))
                         (authors (and (listp authors) (mapconcat (lambda (author) (gethash :login author)) authors ",\s")))
                         (date (gethash :committedDate commit))
-                        (date (and (stringp date) (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time date))))
+                        (date (and (stringp date) (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time date))))
                         (messageHeadline (gethash :messageHeadline commit))
                         (messageBody (gethash :messageBody commit))
                         (diff (unless preview (and oid
@@ -6871,7 +6873,7 @@ Description of Arguments:
                          (author (and (hash-table-p author) (gethash :name author)))
                          (date (and (hash-table-p commitObj) (gethash :committer commitObj)))
                          (date (and (hash-table-p date)(gethash :date date)))
-                         (date (and (stringp date) (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time date))))
+                         (date (and (stringp date) (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time date))))
                          (message (and (hash-table-p commitObj) (gethash :message commitObj)))
                          (url (gethash :html_url commit))
                          (title (propertize (concat "## " (concat "[" (substring oid 0 6) "]" (format "(%s)" url) " by " author " at " date "\n" (when message (concat message "\n")))) :consult-gh (list :commit-id oid)))
