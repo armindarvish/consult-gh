@@ -3,7 +3,6 @@
 #+language: en
 
 * Development
-
 * Version 2.3 (2025-03-09)
 
 - *BREAKING CHANGE*: update to new consult API with breaking changes
@@ -16,6 +15,8 @@
   (e.g. limiting the number of comments loaded, showing commits, ...)
 - add ability to view pr commits and file changes (both for prs and when creating new ones)
 - add some more embark actions (for seeing PR's commits and diff, ...)
+- Update default actions to view actions instead of browse URL actions.
+- Fix permission checks for editing issues and prs.
 
 * Version 2.2 (2025-01-16)
 - improve embark keybindings (issue #174)
