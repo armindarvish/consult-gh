@@ -358,6 +358,7 @@ The possible options are “open”, “closed”, “merged”, or “all”."
   :group 'consult-gh
   :type '(choice (const :tag "Show open pull requests only" "open")
                  (const :tag "Show closed pull requests only" "closed")
+                 (const :tag "Show merged pull requests" "merged")
                  (const :tag "Show all pull requests" "all")))
 
 (defcustom consult-gh-prs-show-commits-in-view nil

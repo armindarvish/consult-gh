@@ -5,6 +5,7 @@
 * Development
 - fixed adding repos to history when using consult-gh-orgs
 - Add consult-gh-dashboard-state-to-show to filter items in the dashboard by their state (open or closed)
+- other minor fixes
 
 * Version 2.3 (2025-03-09)
 
