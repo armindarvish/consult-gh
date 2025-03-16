@@ -335,6 +335,19 @@ The possible options are “open”, “closed” or “all”."
                  (const :tag "Show closed issues only" "closed")
                  (const :tag "Show all issues" "all")))
 
+
+(defcustom consult-gh-dashboard-state-to-show "open"
+  "Which type of issues/prs should be listed by `consult-gh-dashboard'?
+
+This is what is passed to “--state” argument in the command line
+when running `gh search issues`.
+
+The possible options are “open”, “closed”, or nil."
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Show open issues only" "open")
+                 (const :tag "Show closed issues only" "closed")
+                 (const :tag "Show both closed and open issue" nil)))
+
 (defcustom consult-gh-prs-state-to-show "open"
   "Which type of PRs should be listed by `consult-gh-pr-list'?
 
@@ -10638,10 +10651,13 @@ Format each candidate in CANDS with `consult-gh--dashboard-format'."
 
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((cmd
-                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--assignee" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t"
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--assignee" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t"
  (format "Assigned to %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
+    (unless (or (member "-s" flags) (member "--state" flags))
+      (when (member consult-gh-dashboard-state-to-show '("open" "closed"))
+      (setq opts (append opts (list "--state" (format "%s" consult-gh-dashboard-state-to-show))))))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
     (cons (append cmd opts (remove nil (list arg))) nil)))
@@ -10667,9 +10683,12 @@ INPUT is passed as extra arguments to “gh search issues”."
 
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((cmd
-                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--author" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Authored by %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--author" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Authored by %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
+    (unless (or (member "-s" flags) (member "--state" flags))
+      (when (member consult-gh-dashboard-state-to-show '("open" "closed"))
+      (setq opts (append opts (list "--state" (format "%s" consult-gh-dashboard-state-to-show))))))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
     (cons (append cmd opts (remove nil (list arg))) nil)))
@@ -10695,9 +10714,12 @@ INPUT is passed as extra arguments to “gh search issues”."
 
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((cmd
-                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--mentions" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Mentions %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--mentions" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Mentions %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
+    (unless (or (member "-s" flags) (member "--state" flags))
+      (when (member consult-gh-dashboard-state-to-show '("open" "closed"))
+      (setq opts (append opts (list "--state" (format "%s" consult-gh-dashboard-state-to-show))))))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
     (cons (append cmd opts (remove nil (list arg))) nil)))
@@ -10724,9 +10746,12 @@ INPUT is passed as extra arguments to “gh search issues”."
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((user (consult-gh--get-current-username))
                (cmd
-                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--involves" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--" (concat "-author:" (or user "@me")))))
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--involves" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--" (concat "-author:" (or user "@me")))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
+    (unless (or (member "-s" flags) (member "--state" flags))
+      (when (member consult-gh-dashboard-state-to-show '("open" "closed"))
+      (setq opts (append opts (list "--state" (format "%s" consult-gh-dashboard-state-to-show))))))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
     (cons (append cmd opts (remove nil (list arg))) nil)))
