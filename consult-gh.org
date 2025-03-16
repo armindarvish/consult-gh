@@ -9661,11 +9661,19 @@ If PROMPT is non-nil, use it as the query prompt."
 (consult-gh--get-repo-from-topic)
 (thing-at-point 'symbol))
                                                                         consult-gh--known-repos-list))
-                                                   :history 'consult-gh--repos-history
+                                                   :history t
                                                    :require-match t
                                                    :category 'consult-gh-repos
                                                    :preview-key consult-gh-preview-key
                                                    :sort t))))
+
+     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+       (add-to-history 'consult-gh--repos-history (concat (consult-gh--get-split-style-character) reponame))
+       (add-to-history 'consult-gh--known-repos-list reponame))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--orgs-history (concat (consult-gh--get-split-style-character) username))
+      (add-to-history 'consult-gh--known-orgs-list username))
+
     (if noaction
         sel
       (funcall consult-gh-repo-action sel))))

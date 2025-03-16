@@ -3,6 +3,8 @@
 #+language: en
 
 * Development
+- fixed adding repos to history when using consult-gh-orgs
+
 * Version 2.3 (2025-03-09)
 
 - *BREAKING CHANGE*: update to new consult API with breaking changes
