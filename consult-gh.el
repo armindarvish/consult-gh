@@ -4054,11 +4054,21 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
 `consult-gh--issue-view'."
   (let* ((author (gethash :login (gethash :author table)))
          (body (gethash :body table))
-         (createdAt (gethash :createdAt table)))
+         (createdAt (gethash :createdAt table))
+         (header-marker "#"))
 
     (when topic (add-text-properties 0 1 (list :body body) topic))
 
-    (concat author " " (consult-gh--time-ago createdAt)
+     (save-match-data
+                     (when (and body (string-match (concat "^" header-marker "+?\s.*$")  body))
+                       (setq body (with-temp-buffer
+                                    (insert body)
+                                    (goto-char (point-min))
+                                    (while (re-search-forward (concat "^" header-marker "+?\s.*$") nil t)
+                                      (replace-match (concat header-marker "\\&")))
+                                    (buffer-string)))))
+
+    (concat header-marker " " author " " (consult-gh--time-ago createdAt)
             " " (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)) "\n"
             "-----\n" body "\n" "\n")))
 
