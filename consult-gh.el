@@ -11082,6 +11082,9 @@ browser."
   "Submit topic or invoke `org-ctrl-c-ctrl-c' in `org-mode'."
   (interactive)
   (if (and (derived-mode-p 'org-mode)
+           (or consult-gh-topics-edit-mode
+               consult-gh-repo-view-mode
+               consult-gh-issue-view-mode)
            (org-in-src-block-p))
       (org-ctrl-c-ctrl-c)
       (cond
