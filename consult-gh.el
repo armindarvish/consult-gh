@@ -7940,7 +7940,7 @@ set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
 
 (defun consult-gh-notifications-make-args ()
   "Make cmd arguments for notifications."
-  (list "api" (concat "notifications?sort=updated" (if consult-gh-notifications-show-unread-only "" "&all=true")) "--paginate" "--template" (concat "{{range .}}" "{{.id}}" "\t" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""\n" "{{end}}")))
+  (list "api" (concat "notifications?sort=updated" (if consult-gh-notifications-show-unread-only "" "&all=true")) "--paginate" "--template" (concat "{{range .}}" "{{.id}}" "\t" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""      " "{{end}}")))
 
 (defun consult-gh--notifications-format (string)
   "Format minibuffer candidates for notifications.
@@ -10581,7 +10581,7 @@ INITIAL is an optional arg for the initial input in the minibuffer
 
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
-  (let* ((notifications (string-split (apply #'consult-gh--command-to-string (funcall consult-gh-notifications-args-func)) "\n\\|\r" t)))
+  (let* ((notifications (string-split (apply #'consult-gh--command-to-string (funcall consult-gh-notifications-args-func)) "      " t)))
     (cl-delete-duplicates (delq nil (mapcar (lambda (string) (consult-gh--notifications-format string))
                                             notifications)))))
 
