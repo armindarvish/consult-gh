@@ -3287,15 +3287,23 @@ USERNAME and HOST default to `consult-gh--auth-current-account'."
 ****** set current user orgs
 #+begin_src emacs-lisp
 (defun consult-gh--set-current-user-orgs (&rest _args)
-  "Set `consult-gh--user-repos' to list of repos for current user."
+  "Return list of the orgs for the current user."
   (or consult-gh--current-user-orgs
       (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t))))
 
 #+end_src
+****** update user orgs
+#+begin_src emacs-lisp
+(defun consult-gh--update-current-user-orgs (&rest _args)
+  "Update the list of orgs for the current user.
+
+Sets `consult-gh--current-user-orgs' for the current user."
+  (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)))
+#+end_src
 ****** add auth-switch hook
 #+begin_src emacs-lisp
 ;; add hook to set user orgs after switching accounts
-(add-hook 'consult-gh-auth-post-switch-hook #'consult-gh--set-current-user-orgs)
+(add-hook 'consult-gh-auth-post-switch-hook #'consult-gh--update-current-user-orgs)
 #+end_src
 **** branches
 This section deals with fetching branches of repositories by using GitHub API e.g. =gh api repos/armindarvish/consult-gh/branches=

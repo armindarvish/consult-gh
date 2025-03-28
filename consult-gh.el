@@ -2913,12 +2913,18 @@ USERNAME and HOST default to `consult-gh--auth-current-account'."
         (and (stringp m) (split-string m ", " t "['\s\n\t]"))))))
 
 (defun consult-gh--set-current-user-orgs (&rest _args)
-  "Set `consult-gh--user-repos' to list of repos for current user."
+  "Return list of the orgs for the current user."
   (or consult-gh--current-user-orgs
       (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t))))
 
+(defun consult-gh--update-current-user-orgs (&rest _args)
+  "Update the list of orgs for the current user.
+
+Sets `consult-gh--current-user-orgs' for the current user."
+  (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)))
+
 ;; add hook to set user orgs after switching accounts
-(add-hook 'consult-gh-auth-post-switch-hook #'consult-gh--set-current-user-orgs)
+(add-hook 'consult-gh-auth-post-switch-hook #'consult-gh--update-current-user-orgs)
 
 (defun consult-gh--files-get-branches (repo)
   "List branches of REPO, in json format.
