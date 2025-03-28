@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.3
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.3") (embark-consult "1.1"))
+;; Version: 2.4
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.4") (embark-consult "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
