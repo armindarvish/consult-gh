@@ -2491,176 +2491,313 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
                                                       ,topic))
                               :cmd-args (list "api" (format "/repos/%s/branches" headrepo))))))
 
+(defun consult-gh--topics-users-capf ()
+  "Completion at point for users.
+
+Completes “@.*” for mentionng users in comments, posts,..."
+  (let* ((topic consult-gh--topic)
+         (begin (match-beginning 0))
+         (end (point))
+         (candidates (completion-table-dynamic
+                      `(lambda (_)
+                        (cl-remove-duplicates
+                         (delq nil (append
+                                    (get-text-property 0 :mentionable-users ,topic)
+                                    (get-text-property 0 :commenters ,topic)))))))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-user-prefix ""))
+                              list))))
+    (list begin end candidates
+          :affixation-function affix-fun
+          :exclusive 'no
+          :category 'string)))
+
+(defun consult-gh--topics-issue-number-capf ()
+  "Completion at point for issue numbers.
+
+Completes “#.*” for referencing issues"
+  (let* ((topic consult-gh--topic)
+         (issues (get-text-property 0 :issues topic))
+         (prs (get-text-property 0 :prs topic))
+         (all-issues (append issues prs))
+         (begin (match-beginning 0))
+         (end (point))
+         (candidates (completion-table-dynamic
+                      `(lambda (_)
+                         (cl-remove-duplicates
+                          (delq nil
+                                (mapcar (lambda (item)
+                                          (when (consp item)
+                                            (concat (car item)
+                                                    "\t"
+                                                    (propertize (cdr item) 'face 'completions-annotations))))
+                                        ',all-issues))))))
+         (affix-fun `(lambda (list)
+                      (mapcar (lambda (item)
+                                (list item
+                                      (cond ((assoc (car (split-string item "\t" t))
+                                                    ',issues)
+                                             consult-gh-completion-issue-prefix)
+                                            ((assoc (car (split-string item "\t" t))
+                                                    ',prs)
+                                             consult-gh-completion-pullrequest-prefix)
+                                            (t ""))
+                                      ""))
+                              list)))
+         (exit-fun (lambda (str _status)
+              (delete-char (- (length str)))
+              (when (looking-back "#" (- (point) 1)) (delete-char -1))
+              (insert (or (car (split-string str "\t" t)) str)))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'no
+      :category 'string)))
+
+(defun consult-gh--topics-issue-title-capf ()
+  "Completion at point for issue title.
+
+Completes “#.*” for referencing issues"
+  (let* ((topic consult-gh--topic)
+         (issues (get-text-property 0 :issues topic))
+         (prs (get-text-property 0 :prs topic))
+         (all-issues (append issues prs))
+         (begin (save-excursion
+                  (backward-word)
+                  (point)))
+         (end (point))
+         (candidates (completion-table-dynamic
+                      `(lambda (_)
+                         (cl-remove-duplicates
+                          (delq nil (mapcar #'cdr ',all-issues))))))
+         (affix-fun `(lambda (list)
+                      (mapcar (lambda (item)
+                                (list item
+                                      (cond ((rassoc item ',issues)
+                                             (concat  consult-gh-completion-issue-prefix " " (propertize (or (car-safe (rassoc item ',issues)) "") 'face 'completions-annotations) " "))
+                                            ((rassoc item ',prs)
+                                             (concat consult-gh-completion-pullrequest-prefix " " (propertize (or (car-safe (rassoc item ',prs)) "") 'face 'completions-annotations) " "))
+                                            (t ""))
+                                      ""))
+                              list)))
+         (exit-fun `(lambda (str _status)
+              (delete-char (- (length str)))
+              (when (looking-back "#" (- (point) 1)) (delete-char -1))
+              (insert (or (car-safe (rassoc str ',all-issues)) str)))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'no
+      :category 'string)))
+
+(defun consult-gh--topics-baseref-branch-capf ()
+  "Completion at point for base reference branches.
+
+Completes “base:.*” for referencing branches"
+  (let* ((topic consult-gh--topic)
+         (baserefs (get-text-property 0 :valid-baserefs topic))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^base: " (pos-bol) t)
+                        (point))
+                       ((looking-back " " (- (point) 1))
+                        (point))
+                       (t
+                        (backward-word)
+                        (point))))))
+         (end (pos-eol))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-branch-prefix ""))
+                              list))))
+(list begin end baserefs
+      :affixation-function affix-fun
+      :exclusive 'yes
+      :category 'string)))
+
+(defun consult-gh--topics-headref-branch-capf ()
+  "Completion at point for head reference branches.
+
+Completes “head:.*” for referencing branches"
+  (let* ((topic consult-gh--topic)
+         (headrefs (get-text-property 0 :valid-headrefs topic))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^head: " (pos-bol) t)
+                        (point))
+                       ((looking-back " " (- (point) 1))
+                        (point))
+                       (t
+                        (backward-word)
+                        (point))))))
+         (end (pos-eol))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-branch-prefix ""))
+                              list))))
+(list begin end headrefs
+      :affixation-function affix-fun
+      :exclusive 'yes
+      :category 'string)))
+
+(defun consult-gh--topics-assignees-capf ()
+  "Completion at point for assignees.
+
+Completes “assignees:.*” for adding assignees."
+  (let* ((topic consult-gh--topic)
+         (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users consult-gh--topic))))
+         (begin (if (looking-back " " (- (point) 1))
+                          (point)
+                        (save-excursion
+                          (backward-word)
+                          (point))))
+         (end (if (looking-at "\\(?1:[^[:space:]]+?\\)," (pos-eol))
+                   (save-excursion
+                          (forward-word)
+                          (point))
+                (point)))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-user-prefix ""))
+                              list)))
+         (exit-fun (lambda (_str _status) ""
+                     (insert ", "))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'yes
+      :category 'string)))
+
+(defun consult-gh--topics-labels-capf ()
+  "Completion at point for labels.
+
+Completes “labels:.*” for adding labels."
+  (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-labels consult-gh--topic))))
+         (begin (if (looking-back " " (- (point) 1))
+                          (point)
+                        (save-excursion
+                          (backward-word)
+                          (point))))
+         (end (if (looking-at "\\(?1:.+?\\)," (pos-eol))
+                   (save-excursion
+                     (re-search-forward "," (pos-eol) t)
+                     (point))
+                (point)))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-label-prefix ""))
+                              list)))
+         (exit-fun (lambda (_str _status) ""
+                     (insert ", "))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'yes
+      :category 'string)))
+
+(defun consult-gh--topics-milestone-capf ()
+  "Completion at point for milestone.
+
+Completes “milestone:.*” for adding a milestone."
+  (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-milestones consult-gh--topic))))
+         (begin (if (looking-back " " (- (point) 1))
+                          (point)
+                        (save-excursion
+                          (backward-word)
+                          (point))))
+         (end (pos-eol))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-milestone-prefix ""))
+                              list))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exclusive 'yes
+      :category 'string)))
+
+(defun consult-gh--topics-projects-capf ()
+  "Completion at point for projects.
+
+Completes “projects:.*” for adding projects."
+  (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-projects consult-gh--topic))))
+         (begin (if (looking-back " " (- (point) 1))
+                          (point)
+                        (save-excursion
+                          (backward-word)
+                          (point))))
+         (end (if (looking-at "\\(?1:.+?\\)," (pos-eol))
+                   (or (match-end 1) (match-end 0))
+                (point)))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-project-prefix ""))
+                              list)))
+         (exit-fun (lambda (_str _status)
+                     (insert ", "))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'yes
+      :category 'string)))
+
+(defun consult-gh--topics-reviewers-capf ()
+  "Completion at point for reviewers.
+
+Completes “reviewers:.*” for adding reviewers."
+  (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users consult-gh--topic))))
+         (begin (if (looking-back " " (- (point) 1))
+                          (point)
+                        (save-excursion
+                          (backward-word)
+                          (point))))
+         (end (if (looking-at "\\(?1:[^[:space:]]+?\\)," (pos-eol))
+                   (save-excursion
+                          (forward-word)
+                          (point))
+                (point)))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-user-prefix ""))
+                              list)))
+         (exit-fun (lambda (_str _status)
+                     (insert ", "))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'yes
+      :category 'string)))
+
 (defun consult-gh--topics-edit-capf ()
-  "Complettion at point for editing comments.
+  "Completion at point for editing comments.
 
 Completes for issue/pr numbers or user names."
   (save-match-data
     (when consult-gh-topics-edit-mode
       (cond
-       ((or (looking-back "@[^[:space:]]*?" (pos-bol)) (looking-back "#[^[:space:]]*?\\|#[^\\+][^[:digit:]]+.*?" (pos-bol)))
-        (let* ((begin (save-excursion (if (looking-back "@[^[:space:]]*?\\|#.*?" (pos-bol))
-                                          (match-beginning 0)
-                                        (progn
-                                          (backward-word)
-                                          (point)))))
-               (end (point))
-               (candidates (cl-remove-duplicates (delq nil (append (get-text-property 0 :mentionable-users consult-gh--topic)
-                                                                   (get-text-property 0 :commenters consult-gh--topic)
-                                                                   (mapcar (lambda (item) (and (consp item)
-                                                                                               (concat (car item)
-                                                                                                       "\t"
-                                                                                                       (propertize (cdr item) 'face 'completions-annotations))))
-                                                                           (get-text-property 0 :issues consult-gh--topic))
-                                                                   (mapcar (lambda (item) (and (consp item)
-                                                                                               (concat (car item)
-                                                                                                       "\t"
-                                                                                                       (propertize (cdr item) 'face 'completions-annotations))))
-                                                                           (get-text-property 0 :prs consult-gh--topic)))))))
-          (list begin end candidates
-                :affixation-function (lambda (list)
-                                       (mapcar (lambda (item)
-                                                 (list item
-                                                       (cond ((string-prefix-p "@" item) consult-gh-completion-user-prefix)
-                                                             ((assoc (car (split-string item "\t" t))
-                                                                     (get-text-property 0 :issues consult-gh--topic))
-                                                              consult-gh-completion-issue-prefix)
-                                                             ((assoc (car (split-string item "\t" t))
-                                                                     (get-text-property 0 :prs consult-gh--topic))
-                                                              consult-gh-completion-pullrequest-prefix)
-                                                             (t ""))
-                                                       ""))
-                                               list))
-                :exit-function (lambda (str _status) ""
-                                 (delete-char (- (length str)))
-                                 (when (looking-back "#\\|@" (- (point) 1)) (delete-char -1))
-                                 (insert (or (car (split-string str "\t" t)) str)))
-
-                :exclusive 'no
-                :category 'string)))
-       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}base: .*" (pos-bol)))
-        (let* ((begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-               (end (point))
-               (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-baserefs consult-gh--topic)))))
-
-          (list begin end candidates
-                :affixation-function (lambda (list)
-                                       (mapcar (lambda (item)
-                                                 (list item consult-gh-completion-branch-prefix ""))
-                                               list))
-                :exclusive 'yes
-                :category 'string)))
-
-       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}head: .*" (pos-bol)))
-        (let* ((begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-               (end (point))
-               (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-headrefs consult-gh--topic)))))
-
-          (list begin end candidates
-                :affixation-function (lambda (list)
-                                       (mapcar (lambda (item)
-                                                 (list item consult-gh-completion-branch-prefix ""))
-                                               list))
-                :exclusive 'yes
-                :category 'string)))
-
+       ((looking-back "@[^[:space:]]*?" (pos-bol))
+        (consult-gh--topics-users-capf))
+       ((looking-back "#[^#\\+[:space:][:digit:]]+?" (pos-bol))
+         (consult-gh--topics-issue-title-capf))
+       ((looking-back "#[^#\\+[:space:]]*?" (pos-bol))
+        (consult-gh--topics-issue-number-capf))
+        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}base: \\(?1:.*\\)" (pos-bol)))
+         (consult-gh--topics-baseref-branch-capf))
+         ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}head: \\(?1:.*\\)" (pos-bol)))
+          (consult-gh--topics-headref-branch-capf))
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}assignees: .*" (pos-bol)))
-        (let* ((begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-               (end (point))
-               (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users consult-gh--topic)))))
-
-          (list begin end candidates
-                :affixation-function (lambda (list)
-                                       (mapcar (lambda (item)
-                                                 (list item consult-gh-completion-user-prefix ""))
-                                               list))
-                :exit-function (lambda (_str _status) ""
-                                 (insert ", "))
-                :exclusive 'yes
-                :category 'string)))
+        (consult-gh--topics-assignees-capf))
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}labels: .*" (pos-bol)))
-        (let* ((begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-               (end (point))
-               (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-labels consult-gh--topic)))))
-
-          (list begin end candidates
-                :affixation-function (lambda (list)
-                                       (mapcar (lambda (item)
-                                                 (list item consult-gh-completion-label-prefix ""))
-                                               list))
-                :exit-function (lambda (_str _status) ""
-                                 (insert ", "))
-
-                :exclusive 'yes
-                :category 'string)))
+        (consult-gh--topics-labels-capf))
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}milestone: .*" (pos-bol)))
-        (let* ((begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-               (end (point))
-               (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-milestones consult-gh--topic)))))
+        (consult-gh--topics-milestone-capf))
 
-          (list begin end candidates
-                :affixation-function (lambda (list)
-                                       (mapcar (lambda (item)
-                                                 (list item consult-gh-completion-milestone-prefix ""))
-                                               list))
-                :exclusive 'yes
-                :category 'string)))
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}projects: .*" (pos-bol)))
-        (let* ((begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-               (end (point))
-               (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-projects consult-gh--topic)))))
-
-          (list begin end candidates
-                :affixation-function (lambda (list)
-                                       (mapcar (lambda (item)
-                                                 (list item consult-gh-completion-project-prefix ""))
-                                               list))
-                :exit-function (lambda (_str _status) ""
-                                 (insert ", "))
-                :exclusive 'yes
-                :category 'string)))
+        (consult-gh--topics-projects-capf))
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}reviewers: .*" (pos-bol)))
-        (let* ((begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-               (end (point))
-               (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users consult-gh--topic)))))
-
-          (list begin end candidates
-                :affixation-function (lambda (list)
-                                       (mapcar (lambda (item)
-                                                 (list item consult-gh-completion-user-prefix ""))
-                                               list))
-                :exit-function (lambda (_str _status) ""
-                                 (insert ", "))
-                :exclusive 'yes
-                :category 'string)))))))
+        (consult-gh--topics-reviewers-capf))))))
 
 (defun consult-gh--auth-accounts ()
   "Return a list of currently autheticated accounts.
