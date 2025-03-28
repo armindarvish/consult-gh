@@ -2914,9 +2914,8 @@ USERNAME and HOST default to `consult-gh--auth-current-account'."
 
 (defun consult-gh--set-current-user-orgs (&rest _args)
   "Set `consult-gh--user-repos' to list of repos for current user."
-  (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)))
-
-(consult-gh--set-current-user-orgs)
+  (or consult-gh--current-user-orgs
+      (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t))))
 
 ;; add hook to set user orgs after switching accounts
 (add-hook 'consult-gh-auth-post-switch-hook #'consult-gh--set-current-user-orgs)
@@ -8989,7 +8988,7 @@ If NOACTION is non-nil, return the candidate without running action."
   (interactive)
   (if user
       (consult-gh-orgs (consult-gh--get-current-user-orgs user t) noaction)
-    (consult-gh-orgs (or consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)) noaction)))
+    (consult-gh-orgs (consult-gh--get-current-user-orgs nil t)) noaction))
 
 ;;;###autoload
 (defun consult-gh-favorite-repos ()
