@@ -1131,6 +1131,9 @@ This is used in `consult-gh-dashboard'.")
 
 This is a list of \='(USERNAME HOST IF-ACTIVE)")
 
+(defvar consult-gh--user-orgs-loaded-p nil
+  "Flag indicating if `consult-gh--current-user-orgs' has been loaded.")
+
 (defvar consult-gh-default-host "github.com"
   "Default host of GitHub.")
 
@@ -3045,10 +3048,23 @@ USERNAME and HOST default to `consult-gh--auth-current-account'."
 #+begin_src emacs-lisp
 (defun consult-gh--set-current-user-orgs (&rest _args)
   "Set `consult-gh--user-repos' to list of repos for current user."
-  (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)))
+  (condition-case err
+      (progn
+        (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t))
+        (setq consult-gh--user-orgs-loaded-p t))
+    (error
+     ;; If debug-on-error is set, re-signal the error to trigger the debugger.
+     (if debug-on-error
+         (signal (car err) (cdr err))
+       ;; Otherwise, handle the error gracefully.
+       (message "consult-gh: Failed to fetch user orgs: %s" (error-message-string err))
+       (setq consult-gh--user-orgs-loaded-p nil)
+       (setq consult-gh--current-user-orgs nil)))))
 
-(consult-gh--set-current-user-orgs)
-
+(defun consult-gh--ensure-user-orgs-loaded ()
+  "Load user orgs via `consult-gh--set-current-user-orgs' if not already loaded."
+  (unless consult-gh--user-orgs-loaded-p
+    (consult-gh--set-current-user-orgs)))
 #+end_src
 ****** add auth-switch hook
 #+begin_src emacs-lisp
@@ -9682,6 +9698,7 @@ orgs of USER.
 
 If NOACTION is non-nil, return the candidate without running action."
   (interactive)
+  (consult-gh--ensure-user-orgs-loaded)
   (if user
       (consult-gh-orgs (consult-gh--get-current-user-orgs user t) noaction)
     (consult-gh-orgs (or consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)) noaction)))
