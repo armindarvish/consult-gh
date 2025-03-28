@@ -12,7 +12,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.3
+;; Version: 2.4
 ;; Package-Requires: ((emacs "29.4") (consult "2.0") (markdown-mode "2.6") (ox-gfm "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
@@ -356,6 +356,19 @@ The possible options are “open”, “closed” or “all”."
                  (const :tag "Show closed issues only" "closed")
                  (const :tag "Show all issues" "all")))
 
+
+(defcustom consult-gh-dashboard-state-to-show "open"
+  "Which type of issues/prs should be listed by `consult-gh-dashboard'?
+
+This is what is passed to “--state” argument in the command line
+when running `gh search issues`.
+
+The possible options are “open”, “closed”, or nil."
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Show open issues only" "open")
+                 (const :tag "Show closed issues only" "closed")
+                 (const :tag "Show both closed and open issue" nil)))
+
 (defcustom consult-gh-prs-state-to-show "open"
   "Which type of PRs should be listed by `consult-gh-pr-list'?
 
@@ -366,6 +379,7 @@ The possible options are “open”, “closed”, “merged”, or “all”."
   :group 'consult-gh
   :type '(choice (const :tag "Show open pull requests only" "open")
                  (const :tag "Show closed pull requests only" "closed")
+                 (const :tag "Show merged pull requests" "merged")
                  (const :tag "Show all pull requests" "all")))
 
 (defcustom consult-gh-prs-show-commits-in-view nil
@@ -2209,7 +2223,9 @@ See `consult--command-split' for more info."
   (let* ((json (consult-gh--command-to-string "repo" "view" repo "--json" "projectsV2"))
          (table (and (stringp json) (consult-gh--json-to-hashtable json :projectsV2)))
          (nodes (and (hash-table-p table) (gethash :Nodes table))))
-    (and nodes (listp nodes) (mapcar (lambda (item) (gethash :title item)) nodes))))
+    (and nodes (listp nodes) (mapcar
+                              (lambda (item) (gethash :title item))
+                              nodes))))
 
 #+end_src
 
@@ -2792,178 +2808,405 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
 
 #+end_src
 
-***** capf in editing comments
+***** capf functions
+
+****** capf for users
+#+begin_src emacs-lisp
+(defun consult-gh--topics-users-capf ()
+  "Completion at point for users.
+
+Completes “@.*” for mentionng users in comments, posts,..."
+  (let* ((topic consult-gh--topic)
+         (begin (match-beginning 0))
+         (end (point))
+         (candidates (completion-table-dynamic
+                      `(lambda (_)
+                        (cl-remove-duplicates
+                         (delq nil (append
+                                    (get-text-property 0 :mentionable-users ,topic)
+                                    (get-text-property 0 :commenters ,topic)))))))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-user-prefix ""))
+                              list))))
+    (list begin end candidates
+          :affixation-function affix-fun
+          :exclusive 'no
+          :category 'string)))
+
+#+end_src
+
+****** capf for issue number
+#+begin_src emacs-lisp
+(defun consult-gh--topics-issue-number-capf ()
+  "Completion at point for issue numbers.
+
+Completes “#.*” for referencing issues"
+  (let* ((topic consult-gh--topic)
+         (issues (get-text-property 0 :issues topic))
+         (prs (get-text-property 0 :prs topic))
+         (all-issues (append issues prs))
+         (begin (match-beginning 0))
+         (end (point))
+         (candidates (completion-table-dynamic
+                      `(lambda (_)
+                         (cl-remove-duplicates
+                          (delq nil
+                                (mapcar (lambda (item)
+                                          (when (consp item)
+                                            (concat (car item)
+                                                    "\t"
+                                                    (propertize (cdr item) 'face 'completions-annotations))))
+                                        ',all-issues))))))
+         (affix-fun `(lambda (list)
+                      (mapcar (lambda (item)
+                                (list item
+                                      (cond ((assoc (car (split-string item "\t" t))
+                                                    ',issues)
+                                             consult-gh-completion-issue-prefix)
+                                            ((assoc (car (split-string item "\t" t))
+                                                    ',prs)
+                                             consult-gh-completion-pullrequest-prefix)
+                                            (t ""))
+                                      ""))
+                              list)))
+         (exit-fun (lambda (str _status)
+              (delete-char (- (length str)))
+              (when (looking-back "#" (- (point) 1)) (delete-char -1))
+              (insert (or (car (split-string str "\t" t)) str)))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'no
+      :category 'string)))
+
+#+end_src
+
+****** issue title capf
+
+#+begin_src emacs-lisp
+(defun consult-gh--topics-issue-title-capf ()
+  "Completion at point for issue title.
+
+Completes “#.*” for referencing issues"
+  (let* ((topic consult-gh--topic)
+         (issues (get-text-property 0 :issues topic))
+         (prs (get-text-property 0 :prs topic))
+         (all-issues (append issues prs))
+         (begin (save-excursion
+                  (backward-word)
+                  (point)))
+         (end (point))
+         (candidates (completion-table-dynamic
+                      `(lambda (_)
+                         (cl-remove-duplicates
+                          (delq nil (mapcar #'cdr ',all-issues))))))
+         (affix-fun `(lambda (list)
+                      (mapcar (lambda (item)
+                                (list item
+                                      (cond ((rassoc item ',issues)
+                                             (concat  consult-gh-completion-issue-prefix " " (propertize (or (car-safe (rassoc item ',issues)) "") 'face 'completions-annotations) " "))
+                                            ((rassoc item ',prs)
+                                             (concat consult-gh-completion-pullrequest-prefix " " (propertize (or (car-safe (rassoc item ',prs)) "") 'face 'completions-annotations) " "))
+                                            (t ""))
+                                      ""))
+                              list)))
+         (exit-fun `(lambda (str _status)
+              (delete-char (- (length str)))
+              (when (looking-back "#" (- (point) 1)) (delete-char -1))
+              (insert (or (car-safe (rassoc str ',all-issues)) str)))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'no
+      :category 'string)))
+
+#+end_src
+
+****** baseref branch capf
+#+begin_src emacs-lisp
+(defun consult-gh--topics-baseref-branch-capf ()
+  "Completion at point for base reference branches.
+
+Completes “base:.*” for referencing branches"
+  (let* ((topic consult-gh--topic)
+         (baserefs (get-text-property 0 :valid-baserefs topic))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^.\\{1,3\\}base: " (pos-bol) t)
+                        (point))
+                       ((looking-back " " (- (point) 1))
+                        (point))
+                       (t
+                        (backward-word)
+                        (point))))))
+         (end (pos-eol))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-branch-prefix ""))
+                              list))))
+(list begin end baserefs
+      :affixation-function affix-fun
+      :exclusive 'yes
+      :category 'string)))
+#+end_src
+
+****** headref branch capf
+#+begin_src emacs-lisp
+(defun consult-gh--topics-headref-branch-capf ()
+  "Completion at point for head reference branches.
+
+Completes “head:.*” for referencing branches"
+  (let* ((topic consult-gh--topic)
+         (headrefs (get-text-property 0 :valid-headrefs topic))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^.\\{1,3\\}head: " (pos-bol) t)
+                        (point))
+                       ((looking-back " " (- (point) 1))
+                        (point))
+                       (t
+                        (backward-word)
+                        (point))))))
+         (end (pos-eol))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-branch-prefix ""))
+                              list))))
+(list begin end headrefs
+      :affixation-function affix-fun
+      :exclusive 'yes
+      :category 'string)))
+#+end_src
+
+****** assignees capf
+#+begin_src emacs-lisp
+(defun consult-gh--topics-assignees-capf ()
+  "Completion at point for assignees.
+
+Completes “assignees:.*” for adding assignees."
+  (let* ((topic consult-gh--topic)
+         (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users topic))))
+        (begin (save-excursion
+                  (cond
+                   ((looking-back ", " (- (point) 2))
+                          (point))
+                   ((looking-back "^.\\{1,3\\}assignees: " (pos-bol))
+                    (point))
+                   ((looking-back "," (- (point) 1))
+                    (point))
+                   ((re-search-backward ", " (pos-bol) t)
+                    (+ (point) 2))
+                   (t
+                    (backward-word)
+                    (point)))))
+         (end (save-excursion
+                (cond
+                 ((looking-at "\\(?1:.*?\\),")
+                  (max (or (match-end 1) (point)) begin))
+                 (t
+                  (point)))))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-user-prefix ""))
+                              list)))
+         (exit-fun (lambda (str _status)
+                     (save-excursion
+                       (backward-char (length str))
+                       (when (looking-back "," (- (point) 1)) (insert " ")))
+                     (insert ", "))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'yes
+      :category 'string)))
+#+end_src
+
+****** labels capf
+#+begin_src emacs-lisp
+(defun consult-gh--topics-labels-capf ()
+  "Completion at point for labels.
+
+Completes “labels:.*” for adding labels."
+  (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-labels consult-gh--topic))))
+         (begin (save-excursion
+                  (cond
+                   ((looking-back ", " (- (point) 2))
+                          (point))
+                   ((looking-back "," (- (point) 1))
+                    (point))
+                   ((re-search-backward ", " (pos-bol) t)
+                    (+ (point) 2))
+                   ((looking-back "^.\\{1,3\\}labels: " (pos-bol))
+                    (point))
+                   ((looking-back "^.\\{1,3\\}labels: \\(?1:[^,]+?\\)" (pos-bol))
+                    (or (match-beginning 1) (progn
+                                              (backward-word)
+                                              (point))))
+                   (t
+                    (backward-word)
+                    (point)))))
+         (end (save-excursion
+                (cond
+                 ((looking-at "\\(?1:.*?\\),")
+                  (max (or (match-end 1) (point)) begin))
+                 (t
+                  (point)))))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-label-prefix ""))
+                              list)))
+         (exit-fun (lambda (str _status)
+                     (save-excursion
+                       (backward-char (length str))
+                       (when (looking-back "," (- (point) 1)) (insert " ")))
+                     (insert ", "))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'yes
+      :category 'string)))
+#+end_src
+
+****** milestone capf
+#+begin_src emacs-lisp
+(defun consult-gh--topics-milestone-capf ()
+  "Completion at point for milestone.
+
+Completes “milestone:.*” for adding a milestone."
+  (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-milestones consult-gh--topic))))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^.\\{1,3\\}milestone: " (pos-bol) t)
+                        (point))
+                       (t
+                          (backward-word)
+                          (point))))))
+         (end (pos-eol))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-milestone-prefix ""))
+                              list))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exclusive 'yes
+      :category 'string)))
+#+end_src
+
+****** projects capf
+#+begin_src emacs-lisp
+(defun consult-gh--topics-projects-capf ()
+  "Completion at point for projects.
+
+Completes “projects:.*” for adding projects."
+  (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-projects consult-gh--topic))))
+         (begin (save-excursion
+                  (cond
+                   ((looking-back ", " (- (point) 2))
+                          (point))
+                   ((looking-back "," (- (point) 1))
+                    (point))
+                   ((re-search-backward ", " (pos-bol) t)
+                    (+ (point) 2))
+                   ((looking-back "^.\\{1,3\\}projects: " (pos-bol))
+                    (point))
+                   ((looking-back "^.\\{1,3\\}projects: \\(?1:[^,]+?\\)" (pos-bol))
+                    (or (match-beginning 1) (progn
+                                              (backward-word)
+                                              (point))))
+                   (t
+                    (backward-word)
+                    (point)))))
+         (end (save-excursion
+                (cond
+                 ((looking-at "\\(?1:.*?\\),")
+                  (max (or (match-end 1) (point)) begin))
+                 (t
+                  (point)))))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-project-prefix ""))
+                              list)))
+         (exit-fun (lambda (str _status)
+                     (save-match-data
+                       (when (string-match ".*,.*" str)
+                         (delete-char (- (length str)))
+                         (insert "\""
+                                 str
+                                 "\"")))
+                     (save-excursion
+                       (backward-char (length str))
+                       (when (looking-back "," (- (point) 1)) (insert " ")))
+                     (insert ", "))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'yes
+      :category 'string)))
+#+end_src
+
+****** reviewers capf
+#+begin_src emacs-lisp
+(defun consult-gh--topics-reviewers-capf ()
+  "Completion at point for reviewers.
+
+Completes “reviewers:.*” for adding reviewers."
+  (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users consult-gh--topic))))
+         (begin (if (looking-back " " (- (point) 1))
+                          (point)
+                        (save-excursion
+                          (backward-word)
+                          (point))))
+         (end (if (looking-at "\\(?1:[^[:space:]]+?\\)," (pos-eol))
+                   (save-excursion
+                          (forward-word)
+                          (point))
+                (point)))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-completion-user-prefix ""))
+                              list)))
+         (exit-fun (lambda (_str _status)
+                     (insert ", "))))
+(list begin end candidates
+      :affixation-function affix-fun
+      :exit-function exit-fun
+      :exclusive 'yes
+      :category 'string)))
+#+end_src
+
+****** main capf
 #+begin_src emacs-lisp
 (defun consult-gh--topics-edit-capf ()
-  "Complettion at point for editing comments.
+  "Completion at point for editing comments.
 
 Completes for issue/pr numbers or user names."
   (save-match-data
     (when consult-gh-topics-edit-mode
-    (cond
-     ((or (looking-back "@[^[:space:]]*?" (pos-bol)) (looking-back "#[^[:space:]]*?\\|#[^\\+][^[:digit:]]+.*?" (pos-bol)))
-      (let* ((begin (save-excursion (if (looking-back "@[^[:space:]]*?\\|#.*?" (pos-bol))
-                                        (match-beginning 0)
-                                      (progn
-                                        (backward-word)
-                                        (point)))))
-             (end (point))
-             (candidates (cl-remove-duplicates (delq nil (append (get-text-property 0 :mentionable-users consult-gh--topic)
-                                                                 (get-text-property 0 :commenters consult-gh--topic)
-                                                                 (mapcar (lambda (item) (and (consp item)
-                                                                                             (concat (car item)
-                                                                                                     "\t"
-                                                                                                     (propertize (cdr item) 'face 'completions-annotations))))
-                                                                         (get-text-property 0 :issues consult-gh--topic))
-                                                                 (mapcar (lambda (item) (and (consp item)
-                                                                                             (concat (car item)
-                                                                                                     "\t"
-                                                                                                     (propertize (cdr item) 'face 'completions-annotations))))
-                                                                         (get-text-property 0 :prs consult-gh--topic)))))))
-        (list begin end candidates
-              :affixation-function (lambda (list)
-                                     (mapcar (lambda (item)
-                                               (list item
-                                                     (cond ((string-prefix-p "@" item) consult-gh-completion-user-prefix)
-                                                           ((assoc (car (split-string item "\t" t))
-                                                                   (get-text-property 0 :issues consult-gh--topic))
-                                                            consult-gh-completion-issue-prefix)
-                                                           ((assoc (car (split-string item "\t" t))
-                                                                   (get-text-property 0 :prs consult-gh--topic))
-                                                            consult-gh-completion-pullrequest-prefix)
-                                                           (t ""))
-                                                     ""))
-                                             list))
-              :exit-function (lambda (str _status) ""
-                               (delete-char (- (length str)))
-                               (when (looking-back "#\\|@" (- (point) 1)) (delete-char -1))
-                               (insert (or (car (split-string str "\t" t)) str)))
-
-              :exclusive 'no
-              :category 'string)))
-     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}base: .*" (pos-bol)))
-      (let* ((begin (if (looking-back " " (- (point) 1))
-                                        (point)
-                                      (save-excursion
-                                        (backward-word)
-                                        (point))))
-             (end (point))
-             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-baserefs consult-gh--topic)))))
-
-        (list begin end candidates
-              :affixation-function (lambda (list)
-                                     (mapcar (lambda (item)
-                                               (list item consult-gh-completion-branch-prefix ""))
-                                             list))
-              :exclusive 'yes
-              :category 'string)))
-
-     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}head: .*" (pos-bol)))
-      (let* ((begin (if (looking-back " " (- (point) 1))
-                                        (point)
-                                      (save-excursion
-                                        (backward-word)
-                                        (point))))
-             (end (point))
-             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-headrefs consult-gh--topic)))))
-
-        (list begin end candidates
-              :affixation-function (lambda (list)
-                                     (mapcar (lambda (item)
-                                               (list item consult-gh-completion-branch-prefix ""))
-                                             list))
-              :exclusive 'yes
-              :category 'string)))
-
-     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}assignees: .*" (pos-bol)))
-      (let* ((begin (if (looking-back " " (- (point) 1))
-                                        (point)
-                                      (save-excursion
-                                        (backward-word)
-                                        (point))))
-             (end (point))
-             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users consult-gh--topic)))))
-
-        (list begin end candidates
-              :affixation-function (lambda (list)
-                                     (mapcar (lambda (item)
-                                               (list item consult-gh-completion-user-prefix ""))
-                                             list))
-              :exit-function (lambda (_str _status) ""
-                               (insert ", "))
-              :exclusive 'yes
-              :category 'string)))
-     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}labels: .*" (pos-bol)))
-      (let* ((begin (if (looking-back " " (- (point) 1))
-                                        (point)
-                                      (save-excursion
-                                        (backward-word)
-                                        (point))))
-             (end (point))
-             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-labels consult-gh--topic)))))
-
-        (list begin end candidates
-              :affixation-function (lambda (list)
-                                     (mapcar (lambda (item)
-                                               (list item consult-gh-completion-label-prefix ""))
-                                             list))
-              :exit-function (lambda (_str _status) ""
-                               (insert ", "))
-
-              :exclusive 'yes
-              :category 'string)))
-     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}milestone: .*" (pos-bol)))
-      (let* ((begin (if (looking-back " " (- (point) 1))
-                                        (point)
-                                      (save-excursion
-                                        (backward-word)
-                                        (point))))
-             (end (point))
-             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-milestones consult-gh--topic)))))
-
-        (list begin end candidates
-              :affixation-function (lambda (list)
-                                     (mapcar (lambda (item)
-                                               (list item consult-gh-completion-milestone-prefix ""))
-                                             list))
-              :exclusive 'yes
-              :category 'string)))
-     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}projects: .*" (pos-bol)))
-      (let* ((begin (if (looking-back " " (- (point) 1))
-                                        (point)
-                                      (save-excursion
-                                        (backward-word)
-                                        (point))))
-             (end (point))
-             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-projects consult-gh--topic)))))
-
-        (list begin end candidates
-              :affixation-function (lambda (list)
-                                     (mapcar (lambda (item)
-                                               (list item consult-gh-completion-project-prefix ""))
-                                             list))
-              :exit-function (lambda (_str _status) ""
-                               (insert ", "))
-              :exclusive 'yes
-              :category 'string)))
-     ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}reviewers: .*" (pos-bol)))
-      (let* ((begin (if (looking-back " " (- (point) 1))
-                                        (point)
-                                      (save-excursion
-                                        (backward-word)
-                                        (point))))
-             (end (point))
-             (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users consult-gh--topic)))))
-
-        (list begin end candidates
-              :affixation-function (lambda (list)
-                                     (mapcar (lambda (item)
-                                               (list item consult-gh-completion-user-prefix ""))
-                                             list))
-              :exit-function (lambda (_str _status) ""
-                               (insert ", "))
-              :exclusive 'yes
-              :category 'string)))))))
+      (cond
+       ((looking-back "@[^[:space:]]*?" (pos-bol))
+        (consult-gh--topics-users-capf))
+       ((looking-back "#[^#\\+[:space:][:digit:]]+?" (pos-bol))
+         (consult-gh--topics-issue-title-capf))
+       ((looking-back "#[^#\\+[:space:]]*?" (pos-bol))
+        (consult-gh--topics-issue-number-capf))
+        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}base: \\(?1:.*\\)" (pos-bol)))
+         (consult-gh--topics-baseref-branch-capf))
+         ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}head: \\(?1:.*\\)" (pos-bol)))
+          (consult-gh--topics-headref-branch-capf))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}assignees: \\(?1:.*\\)" (pos-bol)))
+        (consult-gh--topics-assignees-capf))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}labels: \\(?1:.*\\)" (pos-bol)))
+        (consult-gh--topics-labels-capf))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}milestone: \\(?1:.*\\)" (pos-bol)))
+        (consult-gh--topics-milestone-capf))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}projects: \\(?1:.*\\)" (pos-bol)))
+        (consult-gh--topics-projects-capf))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}reviewers: \\(?1:.*\\)" (pos-bol)))
+        (consult-gh--topics-reviewers-capf))))))
 
 #+end_src
 
@@ -3045,9 +3288,8 @@ USERNAME and HOST default to `consult-gh--auth-current-account'."
 #+begin_src emacs-lisp
 (defun consult-gh--set-current-user-orgs (&rest _args)
   "Set `consult-gh--user-repos' to list of repos for current user."
-  (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)))
-
-(consult-gh--set-current-user-orgs)
+  (or consult-gh--current-user-orgs
+      (setq consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t))))
 
 #+end_src
 ****** add auth-switch hook
@@ -4476,11 +4718,13 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (author (gethash :login (gethash :author table)))
          (state (gethash :state table))
          (createdAt (gethash :createdAt table))
+         (createdAt (and createdAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt))))
+
          (updatedAt (gethash :updatedAt table))
-         (updatedAt (and updatedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time updatedAt))))
+         (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time updatedAt))))
          (url (gethash :url table))
          (closedAt (gethash :closedAt table))
-         (closedAt (and closedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time closedAt))))
+         (closedAt (and closedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time closedAt))))
          (labels (gethash :labels table))
          (labels (and labels (listp labels) (mapcar (lambda (item) (and (hash-table-p item) (gethash :name item))) labels)))
          (labels-text (and labels (listp labels) (mapconcat #'identity labels "\s\s")))
@@ -4535,12 +4779,22 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
 `consult-gh--issue-view'."
   (let* ((author (gethash :login (gethash :author table)))
          (body (gethash :body table))
-         (createdAt (gethash :createdAt table)))
+         (createdAt (gethash :createdAt table))
+         (header-marker "#"))
 
     (when topic (add-text-properties 0 1 (list :body body) topic))
 
-    (concat author " " (consult-gh--time-ago createdAt)
-            " " (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)) "\n"
+     (save-match-data
+                     (when (and body (string-match (concat "^" header-marker "+?\s.*$")  body))
+                       (setq body (with-temp-buffer
+                                    (insert body)
+                                    (goto-char (point-min))
+                                    (while (re-search-forward (concat "^" header-marker "+?\s.*$") nil t)
+                                      (replace-match (concat header-marker "\\&")))
+                                    (buffer-string)))))
+
+    (concat header-marker " " author " " (consult-gh--time-ago createdAt)
+            " " (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)) "\n"
             "-----\n" body "\n" "\n")))
 
 #+end_src
@@ -4581,14 +4835,14 @@ Queries the user for how to filter the comments."
                (when (numberp number)
          (setq comments (cl-subseq comments 0 (min (length comments) (truncate number)))))))
         (':date
-         (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car comments)))))
-                (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car (last comments))))))
+         (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (gethash :createdAt (car comments)))))
+                (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (gethash :createdAt (car (last comments))))))
                 (d (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
            (setq comments (cl-remove-if-not (lambda (k)
                                               (time-less-p d (date-to-time (gethash :createdAt k))))
                                             comments))))
-        (':daterange (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car comments)))))
-                            (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (gethash :createdAt (car (last comments))))))
+        (':daterange (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (gethash :createdAt (car comments)))))
+                            (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (gethash :createdAt (car (last comments))))))
                             (begin-date (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date))))
                             (end-date (org-read-date nil t nil (format "Select End Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
                        (setq comments (cl-remove-if (lambda (k)
@@ -4637,7 +4891,7 @@ for `consult-gh--issue-view'."
                         (authorAssociation (unless (equal authorAssociation "NONE")
                                              authorAssociation))
                         (createdAt (gethash :createdAt comment))
-                        (createdAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)))
+                        (createdAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)))
                         (comment-url (gethash :url comment))
                         (body (gethash :body comment)))
                    (save-match-data
@@ -4911,11 +5165,19 @@ ISSUE defaults to `consult-gh--topic'."
            (t (setq milestone nil))))
 
         (when (stringp text-projects)
-          (setq projects (cl-remove-duplicates
-                          (cl-remove-if-not
-                           (lambda (item) (member item valid-projects))
-                           (split-string text-projects "," t "[ \t]+"))
-                          :test #'equal)))))
+          (save-match-data
+            (while (string-match ".*\\(?1:\".*?\"\\).*" text-projects)
+              (when-let ((p (match-string 1 text-projects)))
+                 (if (member (string-trim p "\"" "\"") valid-projects)
+                     (push p projects))
+                (setq text-projects (string-replace p "" text-projects))))
+            (setq projects (cl-remove-duplicates
+                            (append projects
+                                    (cl-remove-if-not
+                                     (lambda (item)
+                                       (member item valid-projects))
+                                     (split-string text-projects "," t "[ \t]+")))
+                                    :test #'equal))))))
 
     (list (cons "assignees" assignees)
           (cons "labels" labels)
@@ -4939,7 +5201,8 @@ This is used when creating new issues for REPO."
       ;; add assignees
       (and (y-or-n-p "Would you like to add assignees?")
            (let* ((current (cdr (assoc "assignees" meta)))
-                  (table (consult-gh--get-assignable-users repo))
+                  (table (or (get-text-property 0 :assignable-users issue)
+                             (consult-gh--get-assignable-users repo)))
                   (users (append (list "@me") table))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Users: " users)) :test #'equal)))
              (add-text-properties 0 1 (list :assignees (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) issue)
@@ -4951,7 +5214,9 @@ This is used when creating new issues for REPO."
       ;; add labels
       (and (y-or-n-p "Would you like to add lables?")
            (let* ((current (cdr (assoc "labels" meta)))
-                  (labels (consult-gh--get-labels repo))
+                  (labels (or (get-text-property 0 :valid-labels issue)
+                              (and (not (member :valid-labels (text-properties-at 0 issue)))
+                                   (consult-gh--get-labels repo))))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Labels: " labels)) :test #'equal)))
              (add-text-properties 0 1 (list :labels (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) issue)
 
@@ -4963,10 +5228,28 @@ This is used when creating new issues for REPO."
       ;; add projects
       (and (y-or-n-p "Would you like to add projects?")
            (let* ((current (cdr (assoc "projects" meta)))
-                  (table (consult-gh--get-projects repo))
-                  (table (and (hash-table-p table) (gethash :Nodes table)))
-                  (projects (and (listp table) (mapcar (lambda (item) (gethash :title item)) table)))
-                  (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Projects: " projects)) :test #'equal)))
+                  (projects (or (get-text-property 0 :valid-projects issue)
+                                (and (not (member :valid-projects (text-properties-at 0 issue)))
+                                     (consult-gh--get-projects repo))))
+                  (projects (mapcar (lambda (item)
+                                      (save-match-data
+                                        (let ((title
+                                               (if (string-match ".*,.*" item)
+                                                   (string-replace "," " - " item)
+                                                 item)))
+                                      (cons title item))))
+                                    projects))
+                  (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Projects: " projects)) :test #'equal))
+                  (selection (when (listp selection)
+                               (mapcar (lambda (item) (cdr (assoc item projects))) selection)))
+                  (selection
+                   (when (listp selection)
+                   (save-match-data
+                     (mapcar (lambda (sel)
+                               (if (string-match ".*,.*" sel)
+                                   (format "\"%s\"" sel)
+                                 sel))
+                             selection)))))
              (add-text-properties 0 1 (list :projects (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) issue)
 
              (save-excursion (goto-char (car header))
@@ -4975,7 +5258,9 @@ This is used when creating new issues for REPO."
 
       ;; add a milestone
       (and (y-or-n-p "Would you like to add a milestone?")
-           (let* ((milestones (consult-gh--get-milestones repo))
+           (let* ((milestones (or (get-text-property 0 :valid-milestones issue)
+                                  (and (not (member :valid-milestones (text-properties-at 0 issue)))
+                                       (consult-gh--get-milestones repo))))
                   (selection (if milestones
                                  (consult--read milestones
                                                 :prompt "Select a Milestone: "
@@ -5247,30 +5532,75 @@ buffer generated by `consult-gh-issue-create'."
 (defun consult-gh-issue--edit-change-projects (&optional new old issue)
   "Change projects of ISSUE from OLD to NEW."
   (if consult-gh-topics-edit-mode
-  (let* ((issue (or issue consult-gh--topic))
-         (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
-         (valid-projects (get-text-property 0 :valid-projects issue))
-         (sep (replace-regexp-in-string "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" "" crm-separator))
-         (old (cond ((stringp old) old)
-                    ((and (listp old) (length> old 1)) (mapconcat #'identity old sep))
-                    ((and (listp old) (length< old 2)) (car old))))
-         (old (if (and (stringp old) (not (string-suffix-p sep old)))
-                  (concat old sep)
-                old))
-         (new (or new
-                  (if (and valid-projects (listp valid-projects))
-                      (completing-read-multiple "Select Projects: " valid-projects nil t old)
-                    (error "No projects found!")))))
+      (let* ((issue (or issue consult-gh--topic))
+             (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
+             (valid-projects (get-text-property 0 :valid-projects issue))
+             (sep (replace-regexp-in-string "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" "" crm-separator))
+             (projects (mapcar (lambda (item)
+                                 (save-match-data
+                                   (let ((title
+                                          (if (string-match (format ".*%s.*" sep) item)
+                                              (string-replace sep " - " item)
+                                            item)))
+                                     (cons title item))))
+                               valid-projects))
+             (old (save-match-data (cond
+                                    ((stringp old)
+                                     (if (string-match (format ".*%s.*" sep) old)
+                                         (let ((p (string-trim old "\"" "\"")))
+                                           (when (member p valid-projects)
+                                             (string-replace sep " - " p)))
+                                              old))
+                                    ((and old (listp old) (length> old 1))
+                                     (mapconcat (lambda (item)
+                                                  (if (string-match (format ".*%s.*" sep) item)
+                                                      (let ((p (string-trim item "\"" "\"")))
+                                                        (when (member p valid-projects)
+                                                          (string-replace sep " - " p)))
+                                                    item))
+                                                old sep))
+                                    ((and old (listp old) (length< old 2) (stringp (car old)))
+                                     (if (string-match (format ".*%s.*" sep) (car old))
+                                         (let ((p (string-trim (car old) "\"" "\"")))
+                                           (when (member p valid-projects)
+                                             (string-replace sep " - " p)))
+                                       (car old)))
+                                    (t nil))))
+             (old (if (and (stringp old) (not (string-suffix-p sep old)))
+                      (concat old sep)
+                    old))
+             (old (if (and (stringp old) (string-prefix-p sep old))
+                      (string-remove-prefix sep old)
+                    old))
+             (new (or new
+                      (if (and projects (listp projects))
+                          (completing-read-multiple "Select Projects: " projects nil t old)
+                        (error "No projects found!"))))
+             (new (when (listp new)
+                    (mapcar (lambda (item) (cdr (assoc item projects))) new)))
+             (new
+              (when (listp new)
+                (save-match-data
+                  (mapcar (lambda (sel)
+                            (if (string-match ".*,.*" sel)
+                                (format "\"%s\"" sel)
+                              sel))
+                          new)))))
 
-    (when (listp new)
-      (setq new (cl-remove-duplicates
-                 (cl-remove-if-not (lambda (item) (member item valid-projects)) new) :test #'equal))
-      (add-text-properties 0 1 (list :projects new) issue)
+        (when (listp new)
+          (setq new (cl-remove-duplicates
+                     (cl-remove-if-not (lambda (item)
+                                         (or (member item valid-projects)
+                                             (member (string-trim item "\"" "\"") valid-projects)))
+                                       new)
+                     :test #'equal))
 
-      (save-excursion (goto-char (car header))
-                      (when (re-search-forward "^.*projects: \\(?1:.*\\)?" (cdr header) t)
-                        (replace-match (mapconcat #'identity (get-text-property 0 :projects issue) ", ") nil nil nil 1)))))
-(error "Not in an issue editing buffer!")))
+          (add-text-properties 0 1 (list :projects new) issue)
+
+          (save-excursion (goto-char (car header))
+                          (when (re-search-forward "^.*projects: \\(?1:.*\\)?" (cdr header) t)
+                            (replace-match (mapconcat #'identity (get-text-property 0 :projects issue) ", ") nil nil nil 1)))))
+    (error "Not in an issue editing buffer!")))
 
 #+end_src
 ******* change milestone
@@ -5704,10 +6034,10 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (state (gethash :state table))
          (createdAt (gethash :createdAt table))
          (updatedAt (gethash :updatedAt table))
-         (updatedAt (and updatedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time updatedAt))))
+         (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time updatedAt))))
          (url (gethash :url table))
          (closedAt (gethash :closedAt table))
-         (closedAt (and closedAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time closedAt))))
+         (closedAt (and closedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time closedAt))))
 
          (labels (gethash :labels table))
          (labels (and labels (listp labels) (mapcar (lambda (item) (and (hash-table-p item) (gethash :name item))) labels)))
@@ -5781,7 +6111,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
     (when topic (add-text-properties 0 1 (list :body body) topic))
 
     (propertize (concat "\n## " author " " (consult-gh--time-ago createdAt)
-                        " " (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)) "\n"
+                        " " (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)) "\n"
                         "\n" body "\n" "\n-----\n")
                 :consult-gh (list :author author
                                   :url url))))
@@ -5863,15 +6193,15 @@ Queries the user for how to filter the comments."
            (when (numberp number)
              (setq comments (cl-subseq comments 0 (min (length comments) (truncate number)))))))
         (':date
-         (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments))))))
-               (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
+         (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments))))))
+               (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
                (d (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
            (setq comments (cl-remove-if-not (lambda (k)
                                               (time-less-p d (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
                                             comments))))
         (':daterange
-         (let* ((limit-begin (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments)) ))))
-               (limit-end (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
+         (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments)) (gethash :submitted_at (car comments)) ))))
+               (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments))) (gethash :submitted_at (car (last comments)))))))
                (begin-date (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date))))
                (end-date (org-read-date nil t nil (format "Select End Date range - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
            (setq comments (cl-remove-if-not (lambda (k)
@@ -5923,7 +6253,7 @@ The optional argument URL, is the web url for the pull request on GitHub."
                                        (gethash :created_at comment)
                                        (gethash :submitted_at comment)
                                        (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))
-                        (createdAt (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time createdAt)))
+                        (createdAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)))
                         (state (gethash :state comment))
                         (state (cond
                                 ((equal state "COMMENTED") (propertize "COMMENTED" 'face 'default))
@@ -6028,7 +6358,7 @@ If optional argument PREVIEW is non-nil, do not load diff of commits."
                         (authors (gethash :authors commit))
                         (authors (and (listp authors) (mapconcat (lambda (author) (gethash :login author)) authors ",\s")))
                         (date (gethash :committedDate commit))
-                        (date (and (stringp date) (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time date))))
+                        (date (and (stringp date) (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time date))))
                         (messageHeadline (gethash :messageHeadline commit))
                         (messageBody (gethash :messageBody commit))
                         (diff (unless preview (and oid
@@ -6635,11 +6965,19 @@ PR defaults to `consult-gh--topic'."
                         :test #'equal)))
 
         (when (stringp text-projects)
-          (setq projects (cl-remove-duplicates
-                          (cl-remove-if-not
-                           (lambda (item) (member item valid-projects))
-                           (split-string text-projects "," t "[ \t]+"))
-                          :test #'equal)))
+          (save-match-data
+            (while (string-match ".*\\(?1:\".*?\"\\).*" text-projects)
+              (when-let ((p (match-string 1 text-projects)))
+                 (if (member (string-trim p "\"" "\"") valid-projects)
+                     (push p projects))
+                (setq text-projects (string-replace p "" text-projects))))
+            (setq projects (cl-remove-duplicates
+                            (append projects
+                                    (cl-remove-if-not
+                                     (lambda (item)
+                                       (member item valid-projects))
+                                     (split-string text-projects "," t "[ \t]+")))
+                                    :test #'equal))))
 
         (when (stringp text-milestone)
           (cond
@@ -6676,7 +7014,9 @@ This is used for creating new pull requests."
       ;; add reviewers
       (and (y-or-n-p "Would you like to add reviewers?")
            (let* ((current (cdr (assoc "reviewers" meta)))
-                  (users (or (get-text-property 0 :assignable-users pr) (consult-gh--get-assignable-users repo)))
+                  (users (or (get-text-property 0 :assignable-users pr)
+                             (and (not (member :assignable-users (text-properties-at 0 pr)))
+                                  (consult-gh--get-assignable-users repo))))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Users: " users)) :test #'equal)))
              (add-text-properties 0 1 (list :reviewers (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) pr)
 
@@ -6687,7 +7027,9 @@ This is used for creating new pull requests."
       ;; add assignees
       (and (y-or-n-p "Would you like to add assignees?")
            (let* ((current (cdr (assoc "assignees" meta)))
-                  (table (or (get-text-property 0 :assignable-users pr) (consult-gh--get-assignable-users repo)))
+                  (table (or (get-text-property 0 :assignable-users pr)
+                             (and (not (member :assignable-users (text-properties-at 0 pr)))
+                                  (consult-gh--get-assignable-users repo))))
                   (users (append (list "@me") table))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Users: " users)) :test #'equal)))
              (add-text-properties 0 1 (list :assignees (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) pr)
@@ -6699,7 +7041,9 @@ This is used for creating new pull requests."
       ;; add labels
       (and (y-or-n-p "Would you like to add lables?")
            (let* ((current (cdr (assoc "labels" meta)))
-                  (labels (or (get-text-property 0 :valid-labels pr) (and (not (member :valid-labels (text-properties-at 0 pr))) (consult-gh--get-labels repo))))
+                  (labels (or (get-text-property 0 :valid-labels pr)
+                              (and (not (member :valid-labels (text-properties-at 0 pr)))
+                                   (consult-gh--get-labels repo))))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Labels: " labels)) :test #'equal)))
              (add-text-properties 0 1 (list :labels (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) pr)
 
@@ -6711,17 +7055,40 @@ This is used for creating new pull requests."
       ;; add projects
       (and (y-or-n-p "Would you like to add projects?")
            (let* ((current (cdr (assoc "projects" meta)))
-                  (projects (or (get-text-property 0 :valid-projects pr) (and (not (member :valid-projects (text-properties-at 0 pr))) (mapcar (lambda (item) (gethash :title item)) (gethash :Nodes (consult-gh--get-projects repo))))))
-                  (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Projects: " projects)) :test #'equal)))
+                  (projects (or (get-text-property 0 :valid-projects pr)
+                                (and (not (member :valid-projects (text-properties-at 0 pr)))
+                                     (consult-gh--get-projects repo))))
+                  (projects (mapcar (lambda (item)
+                                      (save-match-data
+                                        (let ((title
+                                               (if (string-match ".*,.*" item)
+                                                   (string-replace "," " - " item)
+                                                 item)))
+                                      (cons title item))))
+                                    projects))
+                  (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Projects: " projects)) :test #'equal))
+                  (selection (when (listp selection)
+                               (mapcar (lambda (item) (cdr (assoc item projects))) selection)))
+                  (selection
+                   (when (listp selection)
+                   (save-match-data
+                     (mapcar (lambda (sel)
+                               (if (string-match ".*,.*" sel)
+                                   (format "\"%s\"" sel)
+                                 sel))
+                             selection)))))
+
              (add-text-properties 0 1 (list :projects (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) pr)
 
-               (save-excursion (goto-char (car header))
+             (save-excursion (goto-char (car header))
                                (when (re-search-forward "^.*projects: \\(?1:.*\\)?" (cdr header) t)
                                  (replace-match (mapconcat #'identity (get-text-property 0 :projects pr) ", ") nil nil nil 1)))))
 
       ;; add a milestone
       (and (y-or-n-p "Would you like to add a milestone?")
-           (let* ((milestones (consult-gh--get-milestones repo))
+           (let* ((milestones (or (get-text-property 0 :valid-milestones pr)
+                                  (and (not (member :valid-milestones (text-properties-at 0 pr)))
+                                       (consult-gh--get-milestones repo))))
                   (selection (if milestones (consult--read milestones
                                            :prompt "Select a Milestone: "
                                            :require-match t))))
@@ -6871,7 +7238,7 @@ Description of Arguments:
                          (author (and (hash-table-p author) (gethash :name author)))
                          (date (and (hash-table-p commitObj) (gethash :committer commitObj)))
                          (date (and (hash-table-p date)(gethash :date date)))
-                         (date (and (stringp date) (format-time-string "<%Y-%m-%d %H:%M>" (date-to-time date))))
+                         (date (and (stringp date) (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time date))))
                          (message (and (hash-table-p commitObj) (gethash :message commitObj)))
                          (url (gethash :html_url commit))
                          (title (propertize (concat "## " (concat "[" (substring oid 0 6) "]" (format "(%s)" url) " by " author " at " date "\n" (when message (concat message "\n")))) :consult-gh (list :commit-id oid)))
@@ -7427,23 +7794,69 @@ buffer generated by `consult-gh-pr-create'."
   "Change PR's labels from OLD to NEW."
   (if consult-gh-topics-edit-mode
       (let* ((pr (or pr consult-gh--topic))
+             (repo (get-text-property 0 :repo pr))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
-             (valid-projects (get-text-property 0 :valid-projects pr))
+             (valid-projects (or (get-text-property 0 :valid-projects pr)
+                                 (and (not (member :valid-projects (text-properties-at 0 pr)))
+                                      (consult-gh--get-projects repo))))
              (sep (replace-regexp-in-string "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" "" crm-separator))
-             (old (cond ((stringp old) old)
-                        ((and (listp old) (length> old 1)) (mapconcat #'identity old sep))
-                        ((and (listp old) (length< old 2)) (car old))))
+             (projects (mapcar (lambda (item)
+                                 (save-match-data
+                                   (let ((title
+                                          (if (string-match (format ".*%s.*" sep) item)
+                                              (string-replace sep " - " item)
+                                            item)))
+                                     (cons title item))))
+                               valid-projects))
+             (old (save-match-data (cond
+                                    ((stringp old)
+                                     (if (string-match (format ".*%s.*" sep) old)
+                                         (let ((p (string-trim old "\"" "\"")))
+                                           (when (member p valid-projects)
+                                             (string-replace sep " - " p)))
+                                              old))
+                                    ((and old (listp old) (length> old 1))
+                                     (mapconcat (lambda (item)
+                                                  (if (string-match (format ".*%s.*" sep) item)
+                                                      (let ((p (string-trim item "\"" "\"")))
+                                                        (when (member p valid-projects)
+                                                          (string-replace sep " - " p)))
+                                                    item))
+                                                old sep))
+                                    ((and old (listp old) (length< old 2) (stringp (car old)))
+                                     (if (string-match (format ".*%s.*" sep) (car old))
+                                         (let ((p (string-trim (car old) "\"" "\"")))
+                                           (when (member p valid-projects)
+                                             (string-replace sep " - " p)))
+                                       (car old)))
+                                    (t nil))))
              (old (if (and (stringp old) (not (string-suffix-p sep old)))
                       (concat old sep)
                     old))
+             (old (if (and (stringp old) (string-prefix-p sep old))
+                      (string-remove-prefix sep old)
+                    old))
              (new (or new
-                      (if (and valid-projects (listp valid-projects))
-                          (completing-read-multiple "Select Projects: " valid-projects nil t old)
-                        (error "No projects found!")))))
-
+                      (if (and projects (listp projects))
+                          (completing-read-multiple "Select Projects: " projects nil t old)
+                        (error "No projects found!"))))
+             (new (when (listp new)
+                    (mapcar (lambda (item) (cdr (assoc item projects))) new)))
+             (new
+              (when (listp new)
+                (save-match-data
+                  (mapcar (lambda (sel)
+                            (if (string-match ".*,.*" sel)
+                                (format "\"%s\"" sel)
+                              sel))
+                          new)))))
         (when (listp new)
           (setq new (cl-remove-duplicates
-                     (cl-remove-if-not (lambda (item) (member item valid-projects)) new) :test #'equal))
+                     (cl-remove-if-not (lambda (item)
+                                         (or (member item valid-projects)
+                                             (member (string-trim item "\"" "\"") valid-projects)))
+                                       new)
+                     :test #'equal))
           (add-text-properties 0 1 (list :projects new) pr)
 
           (save-excursion (goto-char (car header))
@@ -8881,7 +9294,7 @@ set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
 #+begin_src emacs-lisp
 (defun consult-gh-notifications-make-args ()
   "Make cmd arguments for notifications."
-  (list "api" (concat "notifications?sort=updated" (if consult-gh-notifications-show-unread-only "" "&all=true")) "--paginate" "--template" (concat "{{range .}}" "{{.id}}" "\t" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""\n" "{{end}}")))
+  (list "api" (concat "notifications?sort=updated" (if consult-gh-notifications-show-unread-only "" "&all=true")) "--paginate" "--template" (concat "{{range .}}" "{{.id}}" "\t" "{{.subject.type}}" "\t" "{{.repository.full_name}}" "\t" "{{.subject.title}}" "\t" "{{.reason}}" "\t" "{{.unread}}" "\t" "{{.updated_at}}" "\t" "{{(timeago .updated_at)}}" "\t" "{{.subject.url}}""      " "{{end}}")))
 
 #+end_src
 ****** format
@@ -9659,11 +10072,19 @@ If PROMPT is non-nil, use it as the query prompt."
 (consult-gh--get-repo-from-topic)
 (thing-at-point 'symbol))
                                                                         consult-gh--known-repos-list))
-                                                   :history 'consult-gh--repos-history
+                                                   :history t
                                                    :require-match t
                                                    :category 'consult-gh-repos
                                                    :preview-key consult-gh-preview-key
                                                    :sort t))))
+
+     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+       (add-to-history 'consult-gh--repos-history (concat (consult-gh--get-split-style-character) reponame))
+       (add-to-history 'consult-gh--known-repos-list reponame))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--orgs-history (concat (consult-gh--get-split-style-character) username))
+      (add-to-history 'consult-gh--known-orgs-list username))
+
     (if noaction
         sel
       (funcall consult-gh-repo-action sel))))
@@ -9684,7 +10105,7 @@ If NOACTION is non-nil, return the candidate without running action."
   (interactive)
   (if user
       (consult-gh-orgs (consult-gh--get-current-user-orgs user t) noaction)
-    (consult-gh-orgs (or consult-gh--current-user-orgs (consult-gh--get-current-user-orgs nil t)) noaction)))
+    (consult-gh-orgs (consult-gh--get-current-user-orgs nil t)) noaction))
 
 #+end_src
 **** consult-gh-favorite-repos
@@ -11867,7 +12288,7 @@ INITIAL is an optional arg for the initial input in the minibuffer
 #+begin_src emacs-lisp
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
-  (let* ((notifications (string-split (apply #'consult-gh--command-to-string (funcall consult-gh-notifications-args-func)) "\n\\|\r" t)))
+  (let* ((notifications (string-split (apply #'consult-gh--command-to-string (funcall consult-gh-notifications-args-func)) "      " t)))
     (cl-delete-duplicates (delq nil (mapcar (lambda (string) (consult-gh--notifications-format string))
                                             notifications)))))
 
@@ -11972,10 +12393,13 @@ Format each candidate in CANDS with `consult-gh--dashboard-format'."
 
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((cmd
-                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--assignee" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t"
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--assignee" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t"
  (format "Assigned to %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
+    (unless (or (member "-s" flags) (member "--state" flags))
+      (when (member consult-gh-dashboard-state-to-show '("open" "closed"))
+      (setq opts (append opts (list "--state" (format "%s" consult-gh-dashboard-state-to-show))))))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
     (cons (append cmd opts (remove nil (list arg))) nil)))
@@ -12009,9 +12433,12 @@ INPUT is passed as extra arguments to “gh search issues”."
 
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((cmd
-                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--author" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Authored by %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--author" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Authored by %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
+    (unless (or (member "-s" flags) (member "--state" flags))
+      (when (member consult-gh-dashboard-state-to-show '("open" "closed"))
+      (setq opts (append opts (list "--state" (format "%s" consult-gh-dashboard-state-to-show))))))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
     (cons (append cmd opts (remove nil (list arg))) nil)))
@@ -12047,9 +12474,12 @@ INPUT is passed as extra arguments to “gh search issues”."
 
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((cmd
-                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--mentions" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Mentions %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--mentions" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Mentions %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
+    (unless (or (member "-s" flags) (member "--state" flags))
+      (when (member consult-gh-dashboard-state-to-show '("open" "closed"))
+      (setq opts (append opts (list "--state" (format "%s" consult-gh-dashboard-state-to-show))))))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
     (cons (append cmd opts (remove nil (list arg))) nil)))
@@ -12086,9 +12516,12 @@ INPUT is passed as extra arguments to “gh search issues”."
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((user (consult-gh--get-current-username))
                (cmd
-                (append consult-gh-args (list "search" "issues" "--state" consult-gh-issues-state-to-show "--sort" "updated" "--include-prs" "--involves" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--" (concat "-author:" (or user "@me")))))
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--involves" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--" (concat "-author:" (or user "@me")))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
+    (unless (or (member "-s" flags) (member "--state" flags))
+      (when (member consult-gh-dashboard-state-to-show '("open" "closed"))
+      (setq opts (append opts (list "--state" (format "%s" consult-gh-dashboard-state-to-show))))))
     (unless (or (member "-L" flags) (member "--limit" flags))
       (setq opts (append opts (list "--limit" (format "%s" consult-gh-dashboard-maxnum)))))
     (cons (append cmd opts (remove nil (list arg))) nil)))
@@ -12444,6 +12877,9 @@ browser."
   "Submit topic or invoke `org-ctrl-c-ctrl-c' in `org-mode'."
   (interactive)
   (if (and (derived-mode-p 'org-mode)
+           (or consult-gh-topics-edit-mode
+               consult-gh-repo-view-mode
+               consult-gh-issue-view-mode)
            (org-in-src-block-p))
       (org-ctrl-c-ctrl-c)
       (cond
@@ -12575,8 +13011,8 @@ and passes ARGS to it."
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.3
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.3") (embark-consult "1.1"))
+;; Version: 2.4
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.4") (embark-consult "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -13749,8 +14185,8 @@ CAND can be a PR or an issue."
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.3
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "2.3"))
+;; Version: 2.4
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "2.4"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -14178,8 +14614,8 @@ default behavior of `ghub--host' to allow using
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.3
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (pr-review "0.1") (consult-gh "2.3"))
+;; Version: 2.4
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (pr-review "0.1") (consult-gh "2.4"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, completion
 
@@ -14410,7 +14846,7 @@ default behavior of `ghub--host' to allow using
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.3
+;; Version: 2.4
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 

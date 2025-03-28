@@ -3,6 +3,16 @@
 #+language: en
 
 * Development
+
+* Version 2.4 (2025-03-28)
+- Refactored completion-at-point functions, and added support for completing references to issues with title (e.g. =#title= now can be competed to issue number), and improved the overall behavior of completion functions.
+- Fixed issue with loading the repo without internet (see #226) by defering loading the user organizations.
+- Fixed handling of projects names that conatin "," in theri name.
+- Fixed the default keybinding for "C-c C-c" in consult-gh-pr-view-mode buffers to comment on line of codes inside a source block.
+- Fixed adding repos to history when using consult-gh-orgs
+- Added consult-gh-dashboard-state-to-show to filter items in the dashboard by their state (open or closed)
+- Other minor fixes
+
 * Version 2.3 (2025-03-09)
 
 - *BREAKING CHANGE*: update to new consult API with breaking changes
