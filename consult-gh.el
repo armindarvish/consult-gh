@@ -2048,7 +2048,9 @@ See `consult--command-split' for more info."
   (let* ((json (consult-gh--command-to-string "repo" "view" repo "--json" "projectsV2"))
          (table (and (stringp json) (consult-gh--json-to-hashtable json :projectsV2)))
          (nodes (and (hash-table-p table) (gethash :Nodes table))))
-    (and nodes (listp nodes) (mapcar (lambda (item) (gethash :title item)) nodes))))
+    (and nodes (listp nodes) (mapcar
+                              (lambda (item) (gethash :title item))
+                              nodes))))
 
 (defun consult-gh--get-issue-templates (repo)
   "Get issue templates of REPO."
@@ -2600,7 +2602,7 @@ Completes “base:.*” for referencing branches"
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
-                       ((re-search-backward "^base: " (pos-bol) t)
+                       ((re-search-backward "^.\\{1,3\\}base: " (pos-bol) t)
                         (point))
                        ((looking-back " " (- (point) 1))
                         (point))
@@ -2626,7 +2628,7 @@ Completes “head:.*” for referencing branches"
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
-                       ((re-search-backward "^head: " (pos-bol) t)
+                       ((re-search-backward "^.\\{1,3\\}head: " (pos-bol) t)
                         (point))
                        ((looking-back " " (- (point) 1))
                         (point))
@@ -2649,21 +2651,33 @@ Completes “head:.*” for referencing branches"
 Completes “assignees:.*” for adding assignees."
   (let* ((topic consult-gh--topic)
          (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users consult-gh--topic))))
-         (begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-         (end (if (looking-at "\\(?1:[^[:space:]]+?\\)," (pos-eol))
-                   (save-excursion
-                          (forward-word)
+        (begin (save-excursion
+                  (cond
+                   ((looking-back ", " (- (point) 2))
                           (point))
-                (point)))
+                   ((looking-back "^.\\{1,3\\}assignees: " (pos-bol))
+                    (point))
+                   ((looking-back "," (- (point) 1))
+                    (point))
+                   ((re-search-backward ", " (pos-bol) t)
+                    (+ (point) 2))
+                   (t
+                    (backward-word)
+                    (point)))))
+         (end (save-excursion
+                (cond
+                 ((looking-at "\\(?1:.*?\\),")
+                  (max (or (match-end 1) (point)) begin))
+                 (t
+                  (point)))))
          (affix-fun (lambda (list)
                       (mapcar (lambda (item)
                                 (list item consult-gh-completion-user-prefix ""))
                               list)))
-         (exit-fun (lambda (_str _status) ""
+         (exit-fun (lambda (str _status)
+                     (save-excursion
+                       (backward-char (length str))
+                       (when (looking-back "," (- (point) 1)) (insert " ")))
                      (insert ", "))))
 (list begin end candidates
       :affixation-function affix-fun
@@ -2676,21 +2690,37 @@ Completes “assignees:.*” for adding assignees."
 
 Completes “labels:.*” for adding labels."
   (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-labels consult-gh--topic))))
-         (begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-         (end (if (looking-at "\\(?1:.+?\\)," (pos-eol))
-                   (save-excursion
-                     (re-search-forward "," (pos-eol) t)
-                     (point))
-                (point)))
+         (begin (save-excursion
+                  (cond
+                   ((looking-back ", " (- (point) 2))
+                          (point))
+                   ((looking-back "," (- (point) 1))
+                    (point))
+                   ((re-search-backward ", " (pos-bol) t)
+                    (+ (point) 2))
+                   ((looking-back "^.\\{1,3\\}labels: " (pos-bol))
+                    (point))
+                   ((looking-back "^.\\{1,3\\}labels: \\(?1:[^,]+?\\)" (pos-bol))
+                    (or (match-beginning 1) (progn
+                                              (backward-word)
+                                              (point))))
+                   (t
+                    (backward-word)
+                    (point)))))
+         (end (save-excursion
+                (cond
+                 ((looking-at "\\(?1:.*?\\),")
+                  (max (or (match-end 1) (point)) begin))
+                 (t
+                  (point)))))
          (affix-fun (lambda (list)
                       (mapcar (lambda (item)
                                 (list item consult-gh-completion-label-prefix ""))
                               list)))
-         (exit-fun (lambda (_str _status) ""
+         (exit-fun (lambda (str _status)
+                     (save-excursion
+                       (backward-char (length str))
+                       (when (looking-back "," (- (point) 1)) (insert " ")))
                      (insert ", "))))
 (list begin end candidates
       :affixation-function affix-fun
@@ -2703,11 +2733,14 @@ Completes “labels:.*” for adding labels."
 
 Completes “milestone:.*” for adding a milestone."
   (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-milestones consult-gh--topic))))
-         (begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^.\\{1,3\\}milestone: " (pos-bol) t)
+                        (point))
+                       (t
                           (backward-word)
-                          (point))))
+                          (point))))))
          (end (pos-eol))
          (affix-fun (lambda (list)
                       (mapcar (lambda (item)
@@ -2723,19 +2756,43 @@ Completes “milestone:.*” for adding a milestone."
 
 Completes “projects:.*” for adding projects."
   (let* ((candidates (cl-remove-duplicates (delq nil (get-text-property 0 :valid-projects consult-gh--topic))))
-         (begin (if (looking-back " " (- (point) 1))
-                          (point)
-                        (save-excursion
-                          (backward-word)
-                          (point))))
-         (end (if (looking-at "\\(?1:.+?\\)," (pos-eol))
-                   (or (match-end 1) (match-end 0))
-                (point)))
+         (begin (save-excursion
+                  (cond
+                   ((looking-back ", " (- (point) 2))
+                          (point))
+                   ((looking-back "," (- (point) 1))
+                    (point))
+                   ((re-search-backward ", " (pos-bol) t)
+                    (+ (point) 2))
+                   ((looking-back "^.\\{1,3\\}projects: " (pos-bol))
+                    (point))
+                   ((looking-back "^.\\{1,3\\}projects: \\(?1:[^,]+?\\)" (pos-bol))
+                    (or (match-beginning 1) (progn
+                                              (backward-word)
+                                              (point))))
+                   (t
+                    (backward-word)
+                    (point)))))
+         (end (save-excursion
+                (cond
+                 ((looking-at "\\(?1:.*?\\),")
+                  (max (or (match-end 1) (point)) begin))
+                 (t
+                  (point)))))
          (affix-fun (lambda (list)
                       (mapcar (lambda (item)
                                 (list item consult-gh-completion-project-prefix ""))
                               list)))
-         (exit-fun (lambda (_str _status)
+         (exit-fun (lambda (str _status)
+                     (save-match-data 
+                       (when (string-match ".*,.*" str)
+                         (delete-char (- (length str)))
+                         (insert "\""
+                                 str
+                                 "\"")))
+                     (save-excursion
+                       (backward-char (length str))
+                       (when (looking-back "," (- (point) 1)) (insert " ")))
                      (insert ", "))))
 (list begin end candidates
       :affixation-function affix-fun
@@ -2787,16 +2844,15 @@ Completes for issue/pr numbers or user names."
          (consult-gh--topics-baseref-branch-capf))
          ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}head: \\(?1:.*\\)" (pos-bol)))
           (consult-gh--topics-headref-branch-capf))
-       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}assignees: .*" (pos-bol)))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}assignees: \\(?1:.*\\)" (pos-bol)))
         (consult-gh--topics-assignees-capf))
-       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}labels: .*" (pos-bol)))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}labels: \\(?1:.*\\)" (pos-bol)))
         (consult-gh--topics-labels-capf))
-       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}milestone: .*" (pos-bol)))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}milestone: \\(?1:.*\\)" (pos-bol)))
         (consult-gh--topics-milestone-capf))
-
-       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}projects: .*" (pos-bol)))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}projects: \\(?1:.*\\)" (pos-bol)))
         (consult-gh--topics-projects-capf))
-       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}reviewers: .*" (pos-bol)))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}reviewers: \\(?1:.*\\)" (pos-bol)))
         (consult-gh--topics-reviewers-capf))))))
 
 (defun consult-gh--auth-accounts ()
@@ -4548,11 +4604,19 @@ ISSUE defaults to `consult-gh--topic'."
            (t (setq milestone nil))))
 
         (when (stringp text-projects)
-          (setq projects (cl-remove-duplicates
-                          (cl-remove-if-not
-                           (lambda (item) (member item valid-projects))
-                           (split-string text-projects "," t "[ \t]+"))
-                          :test #'equal)))))
+          (save-match-data
+            (while (string-match ".*\\(?1:\".*?\"\\).*" text-projects)
+              (when-let ((p (match-string 1 text-projects)))
+                 (if (member (string-trim p "\"" "\"") valid-projects)
+                     (push p projects))
+                (setq text-projects (string-replace p "" text-projects))))
+            (setq projects (cl-remove-duplicates
+                            (append projects
+                                    (cl-remove-if-not
+                                     (lambda (item)
+                                       (member item valid-projects))
+                                     (split-string text-projects "," t "[ \t]+")))
+                                    :test #'equal))))))
 
     (list (cons "assignees" assignees)
           (cons "labels" labels)
@@ -4572,7 +4636,8 @@ This is used when creating new issues for REPO."
       ;; add assignees
       (and (y-or-n-p "Would you like to add assignees?")
            (let* ((current (cdr (assoc "assignees" meta)))
-                  (table (consult-gh--get-assignable-users repo))
+                  (table (or (get-text-property 0 :assignable-users issue)
+                             (consult-gh--get-assignable-users repo)))
                   (users (append (list "@me") table))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Users: " users)) :test #'equal)))
              (add-text-properties 0 1 (list :assignees (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) issue)
@@ -4584,7 +4649,9 @@ This is used when creating new issues for REPO."
       ;; add labels
       (and (y-or-n-p "Would you like to add lables?")
            (let* ((current (cdr (assoc "labels" meta)))
-                  (labels (consult-gh--get-labels repo))
+                  (labels (or (get-text-property 0 :valid-labels issue)
+                              (and (not (member :valid-labels (text-properties-at 0 issue)))
+                                   (consult-gh--get-labels repo))))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Labels: " labels)) :test #'equal)))
              (add-text-properties 0 1 (list :labels (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) issue)
 
@@ -4596,10 +4663,28 @@ This is used when creating new issues for REPO."
       ;; add projects
       (and (y-or-n-p "Would you like to add projects?")
            (let* ((current (cdr (assoc "projects" meta)))
-                  (table (consult-gh--get-projects repo))
-                  (table (and (hash-table-p table) (gethash :Nodes table)))
-                  (projects (and (listp table) (mapcar (lambda (item) (gethash :title item)) table)))
-                  (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Projects: " projects)) :test #'equal)))
+                  (projects (or (get-text-property 0 :valid-projects issue)
+                                (and (not (member :valid-projects (text-properties-at 0 issue)))
+                                     (consult-gh--get-projects repo))))
+                  (projects (mapcar (lambda (item)
+                                      (save-match-data
+                                        (let ((title
+                                               (if (string-match ".*,.*" item)
+                                                   (string-replace "," " - " item)
+                                                 item)))
+                                      (cons title item))))
+                                    projects))
+                  (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Projects: " projects)) :test #'equal))
+                  (selection (when (listp selection)
+                               (mapcar (lambda (item) (cdr (assoc item projects))) selection)))
+                  (selection
+                   (when (listp selection)
+                   (save-match-data
+                     (mapcar (lambda (sel)
+                               (if (string-match ".*,.*" sel)
+                                   (format "\"%s\"" sel)
+                                 sel))
+                             selection)))))
              (add-text-properties 0 1 (list :projects (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) issue)
 
              (save-excursion (goto-char (car header))
@@ -4608,7 +4693,9 @@ This is used when creating new issues for REPO."
 
       ;; add a milestone
       (and (y-or-n-p "Would you like to add a milestone?")
-           (let* ((milestones (consult-gh--get-milestones repo))
+           (let* ((milestones (or (get-text-property 0 :valid-milestones issue)
+                                  (and (not (member :valid-milestones (text-properties-at 0 issue)))
+                                       (consult-gh--get-milestones repo))))
                   (selection (if milestones
                                  (consult--read milestones
                                                 :prompt "Select a Milestone: "
@@ -4850,30 +4937,75 @@ buffer generated by `consult-gh-issue-create'."
 (defun consult-gh-issue--edit-change-projects (&optional new old issue)
   "Change projects of ISSUE from OLD to NEW."
   (if consult-gh-topics-edit-mode
-  (let* ((issue (or issue consult-gh--topic))
-         (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
-         (valid-projects (get-text-property 0 :valid-projects issue))
-         (sep (replace-regexp-in-string "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" "" crm-separator))
-         (old (cond ((stringp old) old)
-                    ((and (listp old) (length> old 1)) (mapconcat #'identity old sep))
-                    ((and (listp old) (length< old 2)) (car old))))
-         (old (if (and (stringp old) (not (string-suffix-p sep old)))
-                  (concat old sep)
-                old))
-         (new (or new
-                  (if (and valid-projects (listp valid-projects))
-                      (completing-read-multiple "Select Projects: " valid-projects nil t old)
-                    (error "No projects found!")))))
+      (let* ((issue (or issue consult-gh--topic))
+             (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
+             (valid-projects (get-text-property 0 :valid-projects issue))
+             (sep (replace-regexp-in-string "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" "" crm-separator))
+             (projects (mapcar (lambda (item)
+                                 (save-match-data
+                                   (let ((title
+                                          (if (string-match (format ".*%s.*" sep) item)
+                                              (string-replace sep " - " item)
+                                            item)))
+                                     (cons title item))))
+                               valid-projects))
+             (old (save-match-data (cond
+                                    ((stringp old)
+                                     (if (string-match (format ".*%s.*" sep) old)
+                                         (let ((p (string-trim old "\"" "\"")))
+                                           (when (member p valid-projects)
+                                             (string-replace sep " - " p)))
+                                              old))
+                                    ((and old (listp old) (length> old 1))
+                                     (mapconcat (lambda (item)
+                                                  (if (string-match (format ".*%s.*" sep) item)
+                                                      (let ((p (string-trim item "\"" "\"")))
+                                                        (when (member p valid-projects)
+                                                          (string-replace sep " - " p)))
+                                                    item))
+                                                old sep))
+                                    ((and old (listp old) (length< old 2) (stringp (car old)))
+                                     (if (string-match (format ".*%s.*" sep) (car old))
+                                         (let ((p (string-trim (car old) "\"" "\"")))
+                                           (when (member p valid-projects)
+                                             (string-replace sep " - " p)))
+                                       (car old)))
+                                    (t nil))))
+             (old (if (and (stringp old) (not (string-suffix-p sep old)))
+                      (concat old sep)
+                    old))
+             (old (if (and (stringp old) (string-prefix-p sep old))
+                      (string-remove-prefix sep old)
+                    old))
+             (new (or new
+                      (if (and projects (listp projects))
+                          (completing-read-multiple "Select Projects: " projects nil t old)
+                        (error "No projects found!"))))
+             (new (when (listp new)
+                    (mapcar (lambda (item) (cdr (assoc item projects))) new)))
+             (new
+              (when (listp new)
+                (save-match-data
+                  (mapcar (lambda (sel)
+                            (if (string-match ".*,.*" sel)
+                                (format "\"%s\"" sel)
+                              sel))
+                          new)))))
 
-    (when (listp new)
-      (setq new (cl-remove-duplicates
-                 (cl-remove-if-not (lambda (item) (member item valid-projects)) new) :test #'equal))
-      (add-text-properties 0 1 (list :projects new) issue)
+        (when (listp new)
+          (setq new (cl-remove-duplicates
+                     (cl-remove-if-not (lambda (item)
+                                         (or (member item valid-projects)
+                                             (member (string-trim item "\"" "\"") valid-projects)))
+                                       new)
+                     :test #'equal))
 
-      (save-excursion (goto-char (car header))
-                      (when (re-search-forward "^.*projects: \\(?1:.*\\)?" (cdr header) t)
-                        (replace-match (mapconcat #'identity (get-text-property 0 :projects issue) ", ") nil nil nil 1)))))
-(error "Not in an issue editing buffer!")))
+          (add-text-properties 0 1 (list :projects new) issue)
+
+          (save-excursion (goto-char (car header))
+                          (when (re-search-forward "^.*projects: \\(?1:.*\\)?" (cdr header) t)
+                            (replace-match (mapconcat #'identity (get-text-property 0 :projects issue) ", ") nil nil nil 1)))))
+    (error "Not in an issue editing buffer!")))
 
 (defun consult-gh-issue--edit-change-milestone (&optional new old issue)
   "Change milestone of ISSUE from OLD to NEW."
@@ -6085,11 +6217,19 @@ PR defaults to `consult-gh--topic'."
                         :test #'equal)))
 
         (when (stringp text-projects)
-          (setq projects (cl-remove-duplicates
-                          (cl-remove-if-not
-                           (lambda (item) (member item valid-projects))
-                           (split-string text-projects "," t "[ \t]+"))
-                          :test #'equal)))
+          (save-match-data
+            (while (string-match ".*\\(?1:\".*?\"\\).*" text-projects)
+              (when-let ((p (match-string 1 text-projects)))
+                 (if (member (string-trim p "\"" "\"") valid-projects)
+                     (push p projects))
+                (setq text-projects (string-replace p "" text-projects))))
+            (setq projects (cl-remove-duplicates
+                            (append projects
+                                    (cl-remove-if-not
+                                     (lambda (item)
+                                       (member item valid-projects))
+                                     (split-string text-projects "," t "[ \t]+")))
+                                    :test #'equal))))
 
         (when (stringp text-milestone)
           (cond
@@ -6121,7 +6261,9 @@ This is used for creating new pull requests."
       ;; add reviewers
       (and (y-or-n-p "Would you like to add reviewers?")
            (let* ((current (cdr (assoc "reviewers" meta)))
-                  (users (or (get-text-property 0 :assignable-users pr) (consult-gh--get-assignable-users repo)))
+                  (users (or (get-text-property 0 :assignable-users pr)
+                             (and (not (member :assignable-users (text-properties-at 0 pr)))
+                                  (consult-gh--get-assignable-users repo))))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Users: " users)) :test #'equal)))
              (add-text-properties 0 1 (list :reviewers (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) pr)
 
@@ -6132,7 +6274,9 @@ This is used for creating new pull requests."
       ;; add assignees
       (and (y-or-n-p "Would you like to add assignees?")
            (let* ((current (cdr (assoc "assignees" meta)))
-                  (table (or (get-text-property 0 :assignable-users pr) (consult-gh--get-assignable-users repo)))
+                  (table (or (get-text-property 0 :assignable-users pr)
+                             (and (not (member :assignable-users (text-properties-at 0 pr)))
+                                  (consult-gh--get-assignable-users repo))))
                   (users (append (list "@me") table))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Users: " users)) :test #'equal)))
              (add-text-properties 0 1 (list :assignees (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) pr)
@@ -6144,7 +6288,9 @@ This is used for creating new pull requests."
       ;; add labels
       (and (y-or-n-p "Would you like to add lables?")
            (let* ((current (cdr (assoc "labels" meta)))
-                  (labels (or (get-text-property 0 :valid-labels pr) (and (not (member :valid-labels (text-properties-at 0 pr))) (consult-gh--get-labels repo))))
+                  (labels (or (get-text-property 0 :valid-labels pr)
+                              (and (not (member :valid-labels (text-properties-at 0 pr)))
+                                   (consult-gh--get-labels repo))))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Labels: " labels)) :test #'equal)))
              (add-text-properties 0 1 (list :labels (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) pr)
 
@@ -6156,17 +6302,40 @@ This is used for creating new pull requests."
       ;; add projects
       (and (y-or-n-p "Would you like to add projects?")
            (let* ((current (cdr (assoc "projects" meta)))
-                  (projects (or (get-text-property 0 :valid-projects pr) (and (not (member :valid-projects (text-properties-at 0 pr))) (mapcar (lambda (item) (gethash :title item)) (gethash :Nodes (consult-gh--get-projects repo))))))
-                  (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Projects: " projects)) :test #'equal)))
+                  (projects (or (get-text-property 0 :valid-projects pr)
+                                (and (not (member :valid-projects (text-properties-at 0 pr)))
+                                     (consult-gh--get-projects repo))))
+                  (projects (mapcar (lambda (item)
+                                      (save-match-data
+                                        (let ((title
+                                               (if (string-match ".*,.*" item)
+                                                   (string-replace "," " - " item)
+                                                 item)))
+                                      (cons title item))))
+                                    projects))
+                  (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Projects: " projects)) :test #'equal))
+                  (selection (when (listp selection)
+                               (mapcar (lambda (item) (cdr (assoc item projects))) selection)))
+                  (selection
+                   (when (listp selection)
+                   (save-match-data
+                     (mapcar (lambda (sel)
+                               (if (string-match ".*,.*" sel)
+                                   (format "\"%s\"" sel)
+                                 sel))
+                             selection)))))
+
              (add-text-properties 0 1 (list :projects (cl-remove-duplicates (delq nil (append current selection)) :test #'equal)) pr)
 
-               (save-excursion (goto-char (car header))
+             (save-excursion (goto-char (car header))
                                (when (re-search-forward "^.*projects: \\(?1:.*\\)?" (cdr header) t)
                                  (replace-match (mapconcat #'identity (get-text-property 0 :projects pr) ", ") nil nil nil 1)))))
 
       ;; add a milestone
       (and (y-or-n-p "Would you like to add a milestone?")
-           (let* ((milestones (consult-gh--get-milestones repo))
+           (let* ((milestones (or (get-text-property 0 :valid-milestones pr)
+                                  (and (not (member :valid-milestones (text-properties-at 0 pr)))
+                                       (consult-gh--get-milestones repo))))
                   (selection (if milestones (consult--read milestones
                                            :prompt "Select a Milestone: "
                                            :require-match t))))
@@ -6802,23 +6971,69 @@ buffer generated by `consult-gh-pr-create'."
   "Change PR's labels from OLD to NEW."
   (if consult-gh-topics-edit-mode
       (let* ((pr (or pr consult-gh--topic))
+             (repo (get-text-property 0 :repo pr))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
-             (valid-projects (get-text-property 0 :valid-projects pr))
+             (valid-projects (or (get-text-property 0 :valid-projects pr)
+                                 (and (not (member :valid-projects (text-properties-at 0 pr)))
+                                      (consult-gh--get-projects repo))))
              (sep (replace-regexp-in-string "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" "" crm-separator))
-             (old (cond ((stringp old) old)
-                        ((and (listp old) (length> old 1)) (mapconcat #'identity old sep))
-                        ((and (listp old) (length< old 2)) (car old))))
+             (projects (mapcar (lambda (item)
+                                 (save-match-data
+                                   (let ((title
+                                          (if (string-match (format ".*%s.*" sep) item)
+                                              (string-replace sep " - " item)
+                                            item)))
+                                     (cons title item))))
+                               valid-projects))
+             (old (save-match-data (cond
+                                    ((stringp old)
+                                     (if (string-match (format ".*%s.*" sep) old)
+                                         (let ((p (string-trim old "\"" "\"")))
+                                           (when (member p valid-projects)
+                                             (string-replace sep " - " p)))
+                                              old))
+                                    ((and old (listp old) (length> old 1))
+                                     (mapconcat (lambda (item)
+                                                  (if (string-match (format ".*%s.*" sep) item)
+                                                      (let ((p (string-trim item "\"" "\"")))
+                                                        (when (member p valid-projects)
+                                                          (string-replace sep " - " p)))
+                                                    item))
+                                                old sep))
+                                    ((and old (listp old) (length< old 2) (stringp (car old)))
+                                     (if (string-match (format ".*%s.*" sep) (car old))
+                                         (let ((p (string-trim (car old) "\"" "\"")))
+                                           (when (member p valid-projects)
+                                             (string-replace sep " - " p)))
+                                       (car old)))
+                                    (t nil))))
              (old (if (and (stringp old) (not (string-suffix-p sep old)))
                       (concat old sep)
                     old))
+             (old (if (and (stringp old) (string-prefix-p sep old))
+                      (string-remove-prefix sep old)
+                    old))
              (new (or new
-                      (if (and valid-projects (listp valid-projects))
-                          (completing-read-multiple "Select Projects: " valid-projects nil t old)
-                        (error "No projects found!")))))
-
+                      (if (and projects (listp projects))
+                          (completing-read-multiple "Select Projects: " projects nil t old)
+                        (error "No projects found!"))))
+             (new (when (listp new)
+                    (mapcar (lambda (item) (cdr (assoc item projects))) new)))
+             (new
+              (when (listp new)
+                (save-match-data
+                  (mapcar (lambda (sel)
+                            (if (string-match ".*,.*" sel)
+                                (format "\"%s\"" sel)
+                              sel))
+                          new)))))
         (when (listp new)
           (setq new (cl-remove-duplicates
-                     (cl-remove-if-not (lambda (item) (member item valid-projects)) new) :test #'equal))
+                     (cl-remove-if-not (lambda (item)
+                                         (or (member item valid-projects)
+                                             (member (string-trim item "\"" "\"") valid-projects)))
+                                       new)
+                     :test #'equal))
           (add-text-properties 0 1 (list :projects new) pr)
 
           (save-excursion (goto-char (car header))
