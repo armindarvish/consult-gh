@@ -2988,7 +2988,7 @@ Completes “head:.*” for referencing branches"
 
 Completes “assignees:.*” for adding assignees."
   (let* ((topic consult-gh--topic)
-         (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users consult-gh--topic))))
+         (candidates (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users topic))))
         (begin (save-excursion
                   (cond
                    ((looking-back ", " (- (point) 2))
@@ -3131,7 +3131,7 @@ Completes “projects:.*” for adding projects."
                                 (list item consult-gh-completion-project-prefix ""))
                               list)))
          (exit-fun (lambda (str _status)
-                     (save-match-data 
+                     (save-match-data
                        (when (string-match ".*,.*" str)
                          (delete-char (- (length str)))
                          (insert "\""
