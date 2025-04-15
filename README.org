@@ -12,14 +12,40 @@
 *Contents*:
 
 - [[#about-consult-gh][About consult-gh]]
+  - [[##main-functions-and-interactive-commands][Main Functions and Interactive Commands]]
+
 - [[#getting-started][Getting Started]]
+  - [[##requirements][Requirements]]
+  - [[##installation][Installation]]
+  - [[##configuration][Configuration]]
+
 - [[#features-and-demos][Features and Demos (Usage)]]
+  - [[##search-for-repositories][Search for Repositories]]
+  - [[##looking-at-repositories-of-user(s)][Looking at Repositories of User(s)]]
+  - [[##switching-between-accounts][Switching between Accounts]]
+  - [[##dynamic-grouping-of-candidates][Dynamic Grouping of candidates]]
+  - [[##searching/viewing-issues-or-pull-requests][Searching/Viewing Issues or Pull Requests]]
+  - [[##commenting-on-issues-and-pull-requests][Commenting on Issues and Pull Requests]]
+  - [[##browsing-files-in-a-repository][Browsing Files in a Repository]]
+  - [[##searching-codes][Searching Codes]]
+  - [[##creating-a-new-repository,-issue-or-pull-request-on-github][Creating a New Repository, Issue or Pull Request on GitHub]]
+  - [[##embark-integration][Embark Integration]]
+  - [[##magit/forge-integration][Magit/Forge Integration]]
+  - [[##pr-review-integration][PR-Review Integration]]
+  - [[##transient-menu][Transient Menu]]
+
 - [[#bug-reports][Bug reports]]
+
 - [[#contributions][Contributions]]
+
 - [[#comparison-with-other-packages][Comparison with Other Packages]]
+
 - [[#acknowledgments][Acknowledgments]]
 
+
 For the latest news see [[file:CHANGELOG.org][The ChangeLog]].
+
+
 
 * About consult-gh
 =consult-gh= provides an interface to interact with GitHub repositories (search, view files and issues, clone, fork, ...) from inside Emacs. It uses the awesome package [[https://github.com/minad/consult][consult]] by [[https://github.com/minad][Daniel Mendler]] and [[https://cli.github.com/][GitHub CLI]] and optionally [[https://github.com/oantolin/embark][Embark]] by [[https://github.com/oantolin][Omar Antolín Camarena]], and provides an intuitive UI using minibuffer completion familiar to Emacs users.
@@ -262,7 +288,6 @@ In the screenshots below,  I am generally using vanilla Emacs and a minimal conf
   :config
   (consult-gh-embark-mode +1))
 #+end_src
-
 
 ** Search for Repositories
 In the screenshot below, I use =consult-gh-search-repos= to search for repositories. The screenshot shows the updated capabilities with consult-async (since version 1.0):
