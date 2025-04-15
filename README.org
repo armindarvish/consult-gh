@@ -9,7 +9,7 @@
 #+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://img.shields.io/static/v1?label=Made%20For&message=GNU%20Emacs&color=7a5aba&logo=gnuemacs&logoColor=white"/></a>
 #+html: <a href="https://melpa.org/#/consult-gh"><img alt="MELPA" src="https://melpa.org/packages/consult-gh-badge.svg"/></a>
 
-Jump to Section:
+*Contents*:
 
 - [[#about-consult-gh][About consult-gh]]
 - [[#getting-started][Getting Started]]
