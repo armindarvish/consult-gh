@@ -11,7 +11,7 @@
 
 Jump to Section:
 
-- [[id: #about-consult-gh][About consult-gh]]
+- [[#about-consult-gh][About consult-gh]]
 - [[#getting-started][Getting Started]]
 - [[#features-and-demos][Features and Demos (Usage)]]
 - [[#bug-reports][Bug reports]]
@@ -21,6 +21,8 @@ Jump to Section:
 
 For the latest news see [[file:CHANGELOG.org][The ChangeLog]].
 
+
+[[* About consult-gh]]
 
 * About consult-gh
 :PROPERTIES:
