@@ -13,13 +13,13 @@ For the latest news see [[file:CHANGELOG.org][The ChangeLog]].
 
 Jump to Section:
 
-- #about-consult-gh
-- #getting-started
-- #features-and-demos
-- #bug-reports
-- #contributions
-- #comparison-with-other-packages
-- #acknowledgments
+#about-consult-gh
+#getting-started
+#features-and-demos
+#bug-reports
+#contributions
+#comparison-with-other-packages
+#acknowledgments
 
 * About consult-gh
 :PROPERTIES:
