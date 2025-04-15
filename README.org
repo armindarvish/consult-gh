@@ -9,19 +9,23 @@
 #+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://img.shields.io/static/v1?label=Made%20For&message=GNU%20Emacs&color=7a5aba&logo=gnuemacs&logoColor=white"/></a>
 #+html: <a href="https://melpa.org/#/consult-gh"><img alt="MELPA" src="https://melpa.org/packages/consult-gh-badge.svg"/></a>
 
-For the latest news see [[file:CHANGELOG.org][The ChangeLog]].
-
 Jump to Section:
 
-- [[#about-consult-gh][About consult-gh]]
+- [[id: #about-consult-gh][About consult-gh]]
 - [[#getting-started][Getting Started]]
 - [[#features-and-demos][Features and Demos (Usage)]]
 - [[#bug-reports][Bug reports]]
 - [[#contributions][Contributions]]
 - [[#comparison-with-other-packages][Comparison with Other Packages]]
-- [[#acknowledgements][Acknowledgments]]
+- [[#acknowledgments][Acknowledgments]]
+
+For the latest news see [[file:CHANGELOG.org][The ChangeLog]].
+
 
 * About consult-gh
+:PROPERTIES:
+:ID:       #about-consult-gh
+:END:
 
 =consult-gh= provides an interface to interact with GitHub repositories (search, view files and issues, clone, fork, ...) from inside Emacs. It uses the awesome package [[https://github.com/minad/consult][consult]] by [[https://github.com/minad][Daniel Mendler]] and [[https://cli.github.com/][GitHub CLI]] and optionally [[https://github.com/oantolin/embark][Embark]] by [[https://github.com/oantolin][Omar Antolín Camarena]], and provides an intuitive UI using minibuffer completion familiar to Emacs users.
 
@@ -477,7 +481,7 @@ consult-gh provides a transient menu as well. It can be accessed by running =M-x
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-transient.gif]]
 
-* Bug reports
+* Bug Reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]] and see if there is an existing solution or add relevant comments and discussion under the same issue. If not file a new issue following these steps:
 
 1. Make sure the dependencies are installed, and you are logged in by running =gh auth login= in the terminal.
