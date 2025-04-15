@@ -13,13 +13,13 @@ For the latest news see [[file:CHANGELOG.org][The ChangeLog]].
 
 Jump to Section:
 
-- [[id:F9B00342-3608-4115-8AEF-B22C588F6AB0][About consult-gh]]
-- [[id:C36967B4-EB5D-41E4-9E38-28CA7465DD7B][Getting Started]]
-- [[id:0AAC346E-481A-48AB-B7DA-1569EBA4A145][Features and Demos (Usage)]]
-- [[id:4F1D82C1-7FCE-4377-8F8C-772BC3F8A9BD][Bug reports]]
-- [[id:6135E51E-AC57-45E1-984F-D591B0FFB899][Contributions]]
-- [[id:2DE59C1D-2760-40F0-940D-FBCF7750E52D][Comparison with Other Packages]]
-- [[id:C2A4FCAC-A902-4254-AB1A-6FFAE91D4023][Acknowledgments]]
+- [[id:F9B00342-3608-4115-8AEF-B22C588F6AB0][*about-consult-gh]]
+- [[id:C36967B4-EB5D-41E4-9E38-28CA7465DD7B][#getting-started]]
+- [[id:0AAC346E-481A-48AB-B7DA-1569EBA4A145][#features-and-demos]]
+- [[id:4F1D82C1-7FCE-4377-8F8C-772BC3F8A9BD][#bug-reports]]
+- [[id:6135E51E-AC57-45E1-984F-D591B0FFB899][#contributions]]
+- [[id:2DE59C1D-2760-40F0-940D-FBCF7750E52D][#comparison-with-other-packages]]
+- [[id:C2A4FCAC-A902-4254-AB1A-6FFAE91D4023][#acknowledgments]]
 
 * About consult-gh
 :PROPERTIES:
@@ -487,7 +487,7 @@ consult-gh provides a transient menu as well. It can be accessed by running =M-x
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-transient.gif]]
 
-* Bug reports
+* Bug Reports
 :PROPERTIES:
 :ID:       4F1D82C1-7FCE-4377-8F8C-772BC3F8A9BD
 :END:
