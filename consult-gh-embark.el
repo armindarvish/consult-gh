@@ -38,46 +38,8 @@
 (require 'consult-gh)
 
 ;;; Define Embark Action Functions
-(defun consult-gh-embark-add-repo-to-known-repos (cand)
-  "Add CAND repo to `consult-gh--known-repos-list'."
-  (when (stringp cand)
-    (let* ((repo (get-text-property 0 :repo cand)))
-      (add-to-list 'consult-gh--known-repos-list repo))))
 
-(defun consult-gh-embark-remove-repo-from-known-repos (cand)
-  "Remove CAND repo from `consult-gh--known-repos-list'."
-  (when (stringp cand)
-    (let* ((repo (get-text-property 0 :repo cand)))
-      (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list)))))
-
-(defun consult-gh-embark-add-org-to-known-orgs (cand)
-  "Add CAND org to `consult-gh--known-orgs-list'."
-  (when (stringp cand)
-    (let* ((org (get-text-property 0 :user cand)))
-      (add-to-list 'consult-gh--known-orgs-list (format "%s" org)))))
-
-(defun consult-gh-embark-remove-org-from-known-orgs (cand)
-  "Remove CAND org from `consult-gh--known-orgs-list'."
-  (when (stringp cand)
-    (let* ((org (get-text-property 0 :user cand)))
-      (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list)))))
-
-(defun consult-gh-embark-add-org-to-favorite-list (cand)
-  "Add CAND org to `consult-gh--known-orgs-list'."
-  (when (stringp cand)
-    (let* ((org (get-text-property 0 :user cand)))
-      (add-to-list 'consult-gh-favorite-orgs-list (format "%s" org)))))
-
-(define-obsolete-function-alias 'consult-gh-embark-add-org-to-default-list #'consult-gh-embark-add-org-to-favorite-list "2.0")
-
-(defun consult-gh-embark-remove-org-from-favorite-list (cand)
-  "Remove CAND org from `consult-gh--known-orgs-list'."
-  (when (stringp cand)
-    (let* ((org (get-text-property 0 :user cand)))
-      (setq consult-gh-favorite-orgs-list (delete org consult-gh-favorite-orgs-list)))))
-
-(define-obsolete-function-alias 'consult-gh-embark-remove-org-from-default-list #'consult-gh-embark-remove-org-from-favorite-list "2.0")
-
+;;;; Default Actions
 (defun consult-gh-embark-default-action (cand)
   "Open CAND link in an Emacs buffer."
   (when (stringp cand)
@@ -122,6 +84,48 @@
          (_
           (funcall (consult-gh--repo-state) 'preview cand)))))))
 
+;;;; Add/Remove from Favorites
+(defun consult-gh-embark-add-repo-to-known-repos (cand)
+  "Add CAND repo to `consult-gh--known-repos-list'."
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand)))
+      (add-to-list 'consult-gh--known-repos-list repo))))
+
+(defun consult-gh-embark-remove-repo-from-known-repos (cand)
+  "Remove CAND repo from `consult-gh--known-repos-list'."
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand)))
+      (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list)))))
+
+(defun consult-gh-embark-add-org-to-known-orgs (cand)
+  "Add CAND org to `consult-gh--known-orgs-list'."
+  (when (stringp cand)
+    (let* ((org (get-text-property 0 :user cand)))
+      (add-to-list 'consult-gh--known-orgs-list (format "%s" org)))))
+
+(defun consult-gh-embark-remove-org-from-known-orgs (cand)
+  "Remove CAND org from `consult-gh--known-orgs-list'."
+  (when (stringp cand)
+    (let* ((org (get-text-property 0 :user cand)))
+      (setq consult-gh--known-orgs-list (delete org consult-gh--known-orgs-list)))))
+
+(defun consult-gh-embark-add-org-to-favorite-list (cand)
+  "Add CAND org to `consult-gh--known-orgs-list'."
+  (when (stringp cand)
+    (let* ((org (get-text-property 0 :user cand)))
+      (add-to-list 'consult-gh-favorite-orgs-list (format "%s" org)))))
+
+(define-obsolete-function-alias 'consult-gh-embark-add-org-to-default-list #'consult-gh-embark-add-org-to-favorite-list "2.0")
+
+(defun consult-gh-embark-remove-org-from-favorite-list (cand)
+  "Remove CAND org from `consult-gh--known-orgs-list'."
+  (when (stringp cand)
+    (let* ((org (get-text-property 0 :user cand)))
+      (setq consult-gh-favorite-orgs-list (delete org consult-gh-favorite-orgs-list)))))
+
+(define-obsolete-function-alias 'consult-gh-embark-remove-org-from-default-list #'consult-gh-embark-remove-org-from-favorite-list "2.0")
+
+;;;; Get other props
 (defun consult-gh-embark-get-title (cand)
   "Get the title of CAND.
 
@@ -144,19 +148,7 @@ When `current-prefix-args' is non-nil, add repository's name at the front."
                     (_ (format "%s" repo)))))
       (string-trim title))))
 
-(defun consult-gh-embark-insert-title (cand)
-  "Insert the title of CAND at point."
-  (when (stringp cand)
-    (if-let* ((title (consult-gh-embark-get-title cand)))
-        (embark-insert (list (string-trim title))))))
-
-(defun consult-gh-embark-copy-title-as-kill (cand)
-  "Copy the title of CAND to `kill-ring'."
-  (when (stringp cand)
-    (if-let* ((title (consult-gh-embark-get-title cand)))
-        (kill-new (string-trim title)))))
-
-(defun consult-gh-embark-get-url-link (cand)
+(defun consult-gh-embark-get-url (cand)
   "Get url link of CAND.
 
 The candidate can be a repo, issue, PR, file path, or a branch."
@@ -178,165 +170,6 @@ The candidate can be a repo, issue, PR, file path, or a branch."
          (_
           (string-trim (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))))
 
-
-(defun consult-gh-embark-open-in-system-browser (cand)
-  "Open the url link of CAND in the system's default browser."
-  (when (stringp cand)
-    (let* ((repo (get-text-property 0 :repo cand))
-           (class (or (get-text-property 0 :class cand) nil))
-           (number (or (get-text-property 0 :number cand) nil))
-           (path (or (get-text-property 0 :path cand) nil))
-           (branch (or (get-text-property 0 :branch cand) nil)))
-      (consult-gh-with-host
-       (consult-gh--auth-account-host)
-       (pcase class
-         ("issue"
-          (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
-         ("file"
-          (funcall #'browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/" (or branch "HEAD")) path)))
-         ("pr"
-          (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
-         (_
-          (consult-gh--call-process "repo" "view" "--web" (substring repo))))))))
-
-(defun consult-gh-embark-open-in-default-browser (cand)
-  "Open the url link of CAND with `consult-gh-browse-url-func'."
-  (when (stringp cand)
-    (let* ((url (consult-gh-embark-get-url-link cand)))
-      (funcall consult-gh-browse-url-func url))))
-
-(defun consult-gh-embark-open-repo-in-system-browser (cand)
-  "Open the url link for user in CAND in the system's default browser."
-  (when (stringp cand)
-    (if-let* ((repo (get-text-property 0 :repo cand)))
-        (consult-gh-with-host
-         (consult-gh--auth-account-host)
-         (consult-gh--call-process "repo" "view" "--web" (substring repo)))
-      (message "No repo at point!"))))
-
-(defun consult-gh-embark-open-repo-in-default-browser (cand)
-  "Open the url link for user in CAND in the system's default browser."
-  (when (stringp cand)
-    (consult-gh-with-host
-     (consult-gh--auth-account-host)
-     (if-let* ((repo (get-text-property 0 :repo cand))
-               (url (string-trim (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))
-         (funcall consult-gh-browse-url-func url)
-       (message "No repo link at point!")))))
-
-
-(defun consult-gh-embark-copy-url-link-as-kill (cand)
-  "Copy url link of CAND to `kill-ring'.
-
-CAND can be a repo, issue, PR, file path, ..."
-  (when (stringp cand)
-    (let* ((link (consult-gh-embark-get-url-link cand)))
-      (kill-new link))))
-
-(defun consult-gh-embark-copy-url-org-link-as-kill (cand)
-  "Copy the org-format url link of CAND to `kill-ring'."
-  (when (stringp cand)
-    (let* ((class (get-text-property 0 :class cand))
-           (repo (get-text-property 0 :repo cand))
-           (url (consult-gh-embark-get-url-link cand))
-           (title (consult-gh-embark-get-title cand))
-           (path (or (get-text-property 0 :path cand) nil))
-           (branch (or (get-text-property 0 :branch cand) nil))
-           (str nil))
-
-      (pcase class
-        ((or "issue" "pr")
-         (when (not current-prefix-arg) (setq title (concat repo "/" title))))
-        ((or "file" "code")
-         (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
-
-      (when url
-        (setq str
-              (cond
-               ((and url title) (format " [[%s][%s]] " url title))
-               (url (format " [[%s]] " url))
-               (t nil))))
-
-      (when (stringp str)
-        (kill-new str)))))
-
-(defun consult-gh-embark-insert-url-link (cand)
-  "Insert the url of CAND at point."
-  (when (stringp cand)
-    (let* ((class (get-text-property 0 :class cand))
-           (repo (get-text-property 0 :repo cand))
-           (url (consult-gh-embark-get-url-link cand))
-           (title (consult-gh-embark-get-title cand))
-           (path (or (get-text-property 0 :path cand) nil))
-           (branch (or (get-text-property 0 :branch cand) nil)))
-
-      (pcase class
-        ((or "issue" "pr")
-         (when (not current-prefix-arg) (setq title (concat repo "/" title))))
-        ((or "file" "code")
-         (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
-
-      (when url
-        (cond
-         ((derived-mode-p 'org-mode)
-          (insert (cond
-                   ((and url title) (format " [[%s][%s]] " url title))
-                   (url (format " [[%s]] " url))
-                   (t ""))))
-         ((derived-mode-p 'markdown-mode)
-          (insert (cond
-                   ((and url title) (format " [%s](%s) " url title))
-                   (url (format " <%s> " url))
-                   (t ""))))
-         (t
-          (insert (cond
-                   ((and url title) (format " %s (%s) " title  url))
-                   (url (format " %s " url))
-                   (t "")))))))))
-
-(defun consult-gh-embark-copy-https-link-as-kill (cand)
-  "Copy http link of CAND to `kill-ring'."
-  (when (stringp cand)
-    (consult-gh-with-host
-     (consult-gh--auth-account-host)
-     (let ((repo (get-text-property 0 :repo cand)))
-       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser"))  ".git"))))))
-
-(defun consult-gh-embark-copy-ssh-link-as-kill (cand)
-  "Copy shh link of CAND to `kill-ring'."
-  (when (stringp cand)
-    (consult-gh-with-host
-     (consult-gh--auth-account-host)
-     (let* ((repo (get-text-property 0 :repo cand)))
-       (kill-new (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" (string-trim repo) "--json" "sshUrl") :sshUrl))))))
-
-(defun consult-gh-embark-copy-straight-usepackage-link-as-kill (cand)
-  "Copy a drop-in “straight use-package” script of CAND to `kill-ring'."
-  (when (stringp cand)
-    (let* ((repo (get-text-property 0 :repo cand))
-           (package (car (last (split-string repo "\/")))))
-      (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo "\")\n)")))))
-
-(defun consult-gh-embark-copy-usepackage-link-as-kill (cand)
-  "Copy a drop-in “use-package” script of CAND to `kill-ring'."
-  (when (stringp cand)
-    (let* ((repo (get-text-property 0 :repo cand))
-           (package (car (last (split-string repo "\/")))))
-      (kill-new (concat "(use-package " package)))))
-
-(defun consult-gh-embark-copy-file-contents-as-kill (cand)
-  "Copy the contents of CAND file to `kill-ring'."
-  (when (stringp cand)
-    (let ((url (get-text-property 0 :url cand)))
-      (when (and url (stringp url))
-        (kill-new (consult-gh--files-get-content url))))))
-
-(defun consult-gh-embark-insert-file-contents (cand)
-  "Insert the contents of CAND file at point."
-  (when (stringp cand)
-    (let ((url (get-text-property 0 :url cand)))
-      (when (and url (stringp url))
-        (embark-insert (consult-gh--files-get-content url))))))
 
 (defun consult-gh-embark-get-other-repos-by-same-user (cand)
   "List other repos by the same user/organization as CAND at point."
@@ -366,6 +199,53 @@ CAND can be a repo, issue, PR, file path, ..."
            (user (consult-gh--get-username repo)))
       (consult-gh--get-user-link user))))
 
+
+;;;; Open Actions
+(defun consult-gh-embark-open-in-system-browser (cand)
+  "Open the url link of CAND in the system's default browser."
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+           (class (or (get-text-property 0 :class cand) nil))
+           (number (or (get-text-property 0 :number cand) nil))
+           (path (or (get-text-property 0 :path cand) nil))
+           (branch (or (get-text-property 0 :branch cand) nil)))
+      (consult-gh-with-host
+       (consult-gh--auth-account-host)
+       (pcase class
+         ("issue"
+          (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
+         ("file"
+          (funcall #'browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/" (or branch "HEAD")) path)))
+         ("pr"
+          (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
+         (_
+          (consult-gh--call-process "repo" "view" "--web" (substring repo))))))))
+
+(defun consult-gh-embark-open-in-default-browser (cand)
+  "Open the url link of CAND with `consult-gh-browse-url-func'."
+  (when (stringp cand)
+    (let* ((url (consult-gh-embark-get-url cand)))
+      (funcall consult-gh-browse-url-func url))))
+
+(defun consult-gh-embark-open-repo-in-system-browser (cand)
+  "Open the url link for user in CAND in the system's default browser."
+  (when (stringp cand)
+    (if-let* ((repo (get-text-property 0 :repo cand)))
+        (consult-gh-with-host
+         (consult-gh--auth-account-host)
+         (consult-gh--call-process "repo" "view" "--web" (substring repo)))
+      (message "No repo at point!"))))
+
+(defun consult-gh-embark-open-repo-in-default-browser (cand)
+  "Open the url link for user in CAND in the system's default browser."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (if-let* ((repo (get-text-property 0 :repo cand))
+               (url (string-trim (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))
+         (funcall consult-gh-browse-url-func url)
+       (message "No repo link at point!")))))
+
 (defun consult-gh-embark-user-open-in-system-browser (cand)
   "Open the url link for user in CAND in the system's default browser."
   (when (stringp cand)
@@ -380,85 +260,8 @@ CAND can be a repo, issue, PR, file path, ..."
         (funcall consult-gh-browse-url-func url)
       (message "No user's link at point!"))))
 
-(defun consult-gh-embark-copy-user-as-kill (cand)
-  "Copy the user in CAND to `kill-ring'."
-  (when (stringp cand)
-    (when-let* ((repo (get-text-property 0 :repo cand))
-                (user (consult-gh--get-username repo)))
-      (kill-new user))))
 
-(defun consult-gh-embark-copy-user-name-as-kill (cand)
-  "Copy the name of the user in CAND to `kill-ring'."
-  (when (stringp cand)
-    (when-let ((name (consult-gh-embark-get-user-name cand)))
-      (kill-new name))))
-
-(defun consult-gh-embark-copy-user-email-as-kill (cand)
-  "Copy the email of the user in CAND to `kill-ring'."
-  (when (stringp cand)
-    (when-let ((email (consult-gh-embark-get-user-email cand)))
-      (kill-new email))))
-
-(defun consult-gh-embark-copy-user-link-as-kill (cand)
-  "Copy the link of the user page in CAND to `kill-ring'."
-  (when (stringp cand)
-    (when-let ((link (consult-gh-embark-get-user-link cand)))
-      (kill-new link))))
-
-(defun consult-gh-embark-insert-user (cand)
-  "Insert the user in CAND at point."
-  (when (stringp cand)
-    (let* ((repo (get-text-property 0 :repo cand))
-           (user (consult-gh--get-username repo)))
-      (if user (embark-insert (list user))
-        (message "No user at point!"))))
-
-  (defun consult-gh-embark-insert-user-name (cand)
-    "Insert the name of the user in CAND at point."
-    (when (stringp cand)
-      (if-let ((user (consult-gh-embark-get-user-name cand)))
-          (embark-insert (list user))
-        (message "No user at point!")))))
-
-(defun consult-gh-embark-insert-user-email (cand)
-  "Insert the email of the user in CAND at point."
-  (when (stringp cand)
-    (if-let ((email (consult-gh-embark-get-user-email cand)))
-        (embark-insert (list email))
-      (message "No email found for user at point!"))))
-
-(defun consult-gh-embark-insert-user-link (cand)
-  "Copy the org-format url link of CAND to `kill-ring'."
-  (when (stringp cand)
-    (let* ((repo (get-text-property 0 :repo cand))
-           (title (consult-gh--get-username repo))
-           (url (consult-gh-embark-get-user-link cand)))
-      (if url
-          (cond
-           ((derived-mode-p 'org-mode)
-            (insert (cond
-                     ((and url title) (format " [[%s][%s]] " url title))
-                     (url (format " [[%s]] " url))
-                     (t ""))))
-           ((derived-mode-p 'markdown-mode)
-            (insert (cond
-                     ((and url title) (format " [%s](%s) " url title))
-                     (url (format " <%s> " url))
-                     (t ""))))
-           (t
-            (insert (cond
-                     ((and url title) (format " %s (%s) " title  url))
-                     (url (format " %s " url))
-                     (t "")))))
-        (message "No link found for user at point!")))))
-
-(defun consult-gh-embark-email-user (cand)
-  "Insert the email of the user in CAND at point."
-  (when (stringp cand)
-    (if-let ((email (consult-gh-embark-get-user-email cand)))
-        (compose-mail email)
-      (message "No email at point!"))))
-
+;;;; View Actions
 (defun consult-gh-embark-view-issues-of-repo (cand)
   "Browse issues of CAND repo at point."
   (when (stringp cand)
@@ -540,13 +343,222 @@ CAND can be a repo, issue, PR, file path, ..."
     (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--nonutf-cleanup cand))))
       (consult-gh-find-file repo))))
 
-(defun consult-gh-embark-search-code-in-repo (cand)
-  "Search for code in CAND repo at point."
+(defun consult-gh-embark-view-pr-diff (cand)
+  "View the diff of a pull request in CAND."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
-     (let ((repo (or (get-text-property 0 :repo cand) (substring-no-properties cand))))
-       (consult-gh-search-code nil repo)))))
+     (funcall #'consult-gh--pr-view-diff-action cand))))
+
+;;;; Copy/Kill Actions
+(defun consult-gh-embark-copy-title-as-kill (cand)
+  "Copy the title of CAND to `kill-ring'."
+  (when (stringp cand)
+    (if-let* ((title (consult-gh-embark-get-title cand)))
+        (kill-new (string-trim title)))))
+
+(defun consult-gh-embark-copy-url-as-kill (cand)
+  "Copy url link of CAND to `kill-ring'.
+
+CAND can be a repo, issue, PR, file path, ..."
+  (when (stringp cand)
+    (let* ((url (consult-gh-embark-get-url cand)))
+      (kill-new url))))
+
+(defun consult-gh-embark-copy-org-link-as-kill (cand)
+  "Copy the org-format url link of CAND to `kill-ring'."
+  (when (stringp cand)
+    (let* ((class (get-text-property 0 :class cand))
+           (repo (get-text-property 0 :repo cand))
+           (url (consult-gh-embark-get-url cand))
+           (title (consult-gh-embark-get-title cand))
+           (path (or (get-text-property 0 :path cand) nil))
+           (branch (or (get-text-property 0 :branch cand) nil))
+           (str nil))
+
+      (pcase class
+        ((or "issue" "pr")
+         (when (not current-prefix-arg) (setq title (concat repo "/" title))))
+        ((or "file" "code")
+         (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
+
+      (when url
+        (setq str
+              (cond
+               ((and url title) (format " [[%s][%s]] " url title))
+               (url (format " [[%s]] " url))
+               (t nil))))
+
+      (when (stringp str)
+        (kill-new str)))))
+
+(defun consult-gh-embark-copy-https-link-as-kill (cand)
+  "Copy http link of CAND to `kill-ring'."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let ((repo (get-text-property 0 :repo cand)))
+       (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser"))  ".git"))))))
+
+(defun consult-gh-embark-copy-ssh-link-as-kill (cand)
+  "Copy shh link of CAND to `kill-ring'."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((repo (get-text-property 0 :repo cand)))
+       (kill-new (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" (string-trim repo) "--json" "sshUrl") :sshUrl))))))
+
+(defun consult-gh-embark-copy-straight-usepackage-link-as-kill (cand)
+  "Copy a drop-in “straight use-package” script of CAND to `kill-ring'."
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+           (package (car (last (split-string repo "\/")))))
+      (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo "\")\n)")))))
+
+(defun consult-gh-embark-copy-usepackage-link-as-kill (cand)
+  "Copy a drop-in “use-package” script of CAND to `kill-ring'."
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+           (package (car (last (split-string repo "\/")))))
+      (kill-new (concat "(use-package " package)))))
+
+(defun consult-gh-embark-copy-file-contents-as-kill (cand)
+  "Copy the contents of CAND file to `kill-ring'."
+  (when (stringp cand)
+    (let ((url (get-text-property 0 :url cand)))
+      (when (and url (stringp url))
+        (kill-new (consult-gh--files-get-content url))))))
+
+(defun consult-gh-embark-copy-user-as-kill (cand)
+  "Copy the user in CAND to `kill-ring'."
+  (when (stringp cand)
+    (when-let* ((repo (get-text-property 0 :repo cand))
+                (user (consult-gh--get-username repo)))
+      (kill-new user))))
+
+(defun consult-gh-embark-copy-user-name-as-kill (cand)
+  "Copy the name of the user in CAND to `kill-ring'."
+  (when (stringp cand)
+    (when-let ((name (consult-gh-embark-get-user-name cand)))
+      (kill-new name))))
+
+(defun consult-gh-embark-copy-user-email-as-kill (cand)
+  "Copy the email of the user in CAND to `kill-ring'."
+  (when (stringp cand)
+    (when-let ((email (consult-gh-embark-get-user-email cand)))
+      (kill-new email))))
+
+(defun consult-gh-embark-copy-user-link-as-kill (cand)
+  "Copy the link of the user page in CAND to `kill-ring'."
+  (when (stringp cand)
+    (when-let ((link (consult-gh-embark-get-user-link cand)))
+      (kill-new link))))
+
+
+;;;; Insert Actions
+(defun consult-gh-embark-insert-title (cand)
+  "Insert the title of CAND at point."
+  (when (stringp cand)
+    (if-let* ((title (consult-gh-embark-get-title cand)))
+        (embark-insert (list (string-trim title))))))
+
+(defun consult-gh-embark-insert-url (cand)
+  "Insert the url of CAND at point."
+  (when (stringp cand)
+    (if-let* ((url (consult-gh-embark-get-url cand)))
+        (embark-insert (list (string-trim url))))))
+
+(defun consult-gh-embark-insert-link (cand)
+  "Insert the link of CAND at point.
+
+In `org-mode' or `markdown-mode',the link is formatted accordingly."
+  (when (stringp cand)
+    (let* ((class (get-text-property 0 :class cand))
+           (repo (get-text-property 0 :repo cand))
+           (url (consult-gh-embark-get-url cand))
+           (title (consult-gh-embark-get-title cand))
+           (path (or (get-text-property 0 :path cand) nil))
+           (branch (or (get-text-property 0 :branch cand) nil)))
+
+      (pcase class
+        ((or "issue" "pr")
+         (when (not current-prefix-arg) (setq title (concat repo "/" title))))
+        ((or "file" "code")
+         (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
+
+      (when url
+        (cond
+         ((derived-mode-p 'org-mode)
+          (insert (cond
+                   ((and url title) (format " [[%s][%s]] " url title))
+                   (url (format " [[%s]] " url))
+                   (t ""))))
+         ((derived-mode-p 'markdown-mode)
+          (insert (cond
+                   ((and url title) (format " [%s](%s) " url title))
+                   (url (format " <%s> " url))
+                   (t ""))))
+         (t
+          (insert (cond
+                   ((and url title) (format " %s (%s) " title  url))
+                   (url (format " %s " url))
+                   (t "")))))))))
+
+(defun consult-gh-embark-insert-file-contents (cand)
+  "Insert the contents of CAND file at point."
+  (when (stringp cand)
+    (let ((url (get-text-property 0 :url cand)))
+      (when (and url (stringp url))
+        (embark-insert (consult-gh--files-get-content url))))))
+
+(defun consult-gh-embark-insert-user (cand)
+  "Insert the user in CAND at point."
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+           (user (consult-gh--get-username repo)))
+      (if user (embark-insert (list user))
+        (message "No user at point!")))))
+
+(defun consult-gh-embark-insert-user-name (cand)
+    "Insert the name of the user in CAND at point."
+    (when (stringp cand)
+      (if-let ((user (consult-gh-embark-get-user-name cand)))
+          (embark-insert (list user))
+        (message "No user at point!"))))
+
+(defun consult-gh-embark-insert-user-email (cand)
+  "Insert the email of the user in CAND at point."
+  (when (stringp cand)
+    (if-let ((email (consult-gh-embark-get-user-email cand)))
+        (embark-insert (list email))
+      (message "No email found for user at point!"))))
+
+(defun consult-gh-embark-insert-user-link (cand)
+  "Copy the org-format url link of CAND to `kill-ring'."
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+           (title (consult-gh--get-username repo))
+           (url (consult-gh-embark-get-user-link cand)))
+      (if url
+          (cond
+           ((derived-mode-p 'org-mode)
+            (insert (cond
+                     ((and url title) (format " [[%s][%s]] " url title))
+                     (url (format " [[%s]] " url))
+                     (t ""))))
+           ((derived-mode-p 'markdown-mode)
+            (insert (cond
+                     ((and url title) (format " [%s](%s) " url title))
+                     (url (format " <%s> " url))
+                     (t ""))))
+           (t
+            (insert (cond
+                     ((and url title) (format " %s (%s) " title  url))
+                     (url (format " %s " url))
+                     (t "")))))
+        (message "No link found for user at point!")))))
+
+;;;; Svae/Clone/Fork Actions
 
 (defun consult-gh-embark-clone-repo (cand)
   "Clone the CAND repo at point."
@@ -569,6 +581,8 @@ CAND can be a repo, issue, PR, file path, ..."
      (consult-gh--auth-account-host)
      (funcall #'consult-gh--files-save-file-action cand))))
 
+;;;; Create Actions
+
 (defun consult-gh-embark-create-repo (cand)
   "Create a new repo with CAND as name."
   (consult-gh-with-host
@@ -588,7 +602,7 @@ CAND can be a repo, issue, PR, file path, ..."
                      (_ (or (get-text-property 0 :title cand) (string-remove-prefix (consult-gh--get-split-style-character) (substring-no-properties cand))))))
             (ref (pcase class
                    ((or "pr" "notification" "dashboard" "code" "file")
-                    (consult-gh-embark-get-url-link cand))
+                    (consult-gh-embark-get-url cand))
                    (_ nil)))
             (body (when ref (not (string-empty-p ref)) (format "%s" ref))))
        (funcall #'consult-gh-issue-create repo title body)))))
@@ -606,10 +620,12 @@ CAND can be a repo, issue, PR, file path, ..."
                      (_ (or (get-text-property 0 :title cand) (string-remove-prefix (consult-gh--get-split-style-character) (substring-no-properties cand))))))
             (ref (pcase class
                    ((or "issue" "notification" "dashboard" "code" "file")
-                    (consult-gh-embark-get-url-link cand))
+                    (consult-gh-embark-get-url cand))
                    (_ nil)))
             (body (when ref (not (string-empty-p ref)) (format "%s" ref))))
        (funcall #'consult-gh-pr-create repo title body)))))
+
+;;;; Edit Issue Actions
 
 (defun consult-gh-embark-toggle-issue-open (cand)
   "Close/Re-open the issue in CAND."
@@ -684,6 +700,9 @@ CAND can be a repo, issue, PR, file path, ..."
            (number (get-text-property 0 :number cand)))
        (with-current-buffer (funcall #'consult-gh--issue-view repo number)
          (consult-gh-topics-comment-create))))))
+
+
+;;;; Edit PR Actions
 
 (defun consult-gh-embark-edit-pr (cand)
   "Edit the pull request in CAND."
@@ -785,14 +804,7 @@ CAND can be a PR or an issue."
                 (apply #'consult-gh--command-to-string "pr" "edit" pr-number (list "--repo" repo "--body" (substring-no-properties new-body))))))
            (_ nil)))))))
 
-(defun consult-gh-embark-view-pr-diff (cand)
-  "View the diff of a pull request in CAND."
-  (when (stringp cand)
-    (consult-gh-with-host
-     (consult-gh--auth-account-host)
-     (funcall #'consult-gh--pr-view-diff-action cand))))
-
-
+;;;; Edit Notification Actions
 (defun consult-gh-embark-toggle-notification-read (cand)
   "Mark the notification in CAND as read/unread."
   (when (stringp cand)
@@ -813,10 +825,28 @@ CAND can be a PR or an issue."
            (consult-gh--notifications-unsubscribe cand)
          (consult-gh--notifications-subscribe cand))))))
 
+;;;; Other Actions
+
+(defun consult-gh-embark-email-user (cand)
+  "Insert the email of the user in CAND at point."
+  (when (stringp cand)
+    (if-let ((email (consult-gh-embark-get-user-email cand)))
+        (compose-mail email)
+      (message "No email at point!"))))
+
+(defun consult-gh-embark-search-code-in-repo (cand)
+  "Search for code in CAND repo at point."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let ((repo (or (get-text-property 0 :repo cand) (substring-no-properties cand))))
+       (consult-gh-search-code nil repo)))))
+
+
 ;;; Define Embark Keymaps
 
-;; General Actions
-; Bookmarks Menu
+;;;; General Keymaps
+;;;;; Bookmark Menu Keymap
 (defvar-keymap consult-gh-embark-bookmark-repos-menu-map
   :doc "Keymap for bookmarking repos menu"
   :parent nil
@@ -844,8 +874,8 @@ CAND can be a PR or an issue."
 (fset 'consult-gh-embark-bookmarks-menu-map consult-gh-embark-bookmarks-menu-map)
 
 
-; Copy Menu
-;; copy  user's info
+;;;;; Copy Menu Keymap
+;;;;;; Copy  User's Info Keymap
 (defvar-keymap consult-gh-embark-user-copy-menu-map
   :doc "Keymap for copying user info as kill menu"
   :parent nil
@@ -859,15 +889,15 @@ CAND can be a PR or an issue."
   :doc "Keymap for copy-as-kill menu"
   :parent nil
   "t" '("title" . consult-gh-embark-copy-title-as-kill)
-  "u" '("url link" . consult-gh-embark-copy-url-link-as-kill)
+  "u" '("url link" . consult-gh-embark-copy-url-as-kill)
   "h" '("https link" . consult-gh-embark-copy-https-link-as-kill)
   "s" '("ssh link" . consult-gh-embark-copy-ssh-link-as-kill)
-  "o" '("org-mode link" . consult-gh-embark-copy-url-org-link-as-kill)
+  "o" '("org-mode link" . consult-gh-embark-copy-org-link-as-kill)
   "U" '("user's info" . consult-gh-embark-user-copy-menu-map))
 
 (fset 'consult-gh-embark-copy-menu-map consult-gh-embark-copy-menu-map)
 
-                                        ; Create Menu
+;;;;; Create Menu Keymap
 (defvar-keymap consult-gh-embark-create-menu-map
   :doc "Keymap for create menu"
   :parent nil
@@ -880,7 +910,7 @@ CAND can be a PR or an issue."
 (fset 'consult-gh-embark-create-menu-map consult-gh-embark-create-menu-map)
 
 
-                                        ; Find Menu
+;;;;; Find Menu Keymap
 (defvar-keymap consult-gh-embark-find-menu-map
   :doc "Keymap for find menu"
   :parent nil
@@ -893,8 +923,8 @@ CAND can be a PR or an issue."
 (fset 'consult-gh-embark-find-menu-map consult-gh-embark-find-menu-map)
 
 
-; Insert Menu
-;; insert  user's info
+;;;;; Insert Menu Keymap
+;;;;;; Insert  User's Info Keymap
 (defvar-keymap consult-gh-embark-user-insert-menu-map
   :doc "Keymap for inserting user info menu"
   :parent nil
@@ -909,26 +939,28 @@ CAND can be a PR or an issue."
   :doc "Keymap for insert menu"
   :parent nil
   "t" '("insert title" . consult-gh-embark-insert-title)
-  "u" '("insert url" . consult-gh-embark-insert-url-link)
+  "u" '("insert url" . consult-gh-embark-insert-url)
+  "l" '("insert link" .  consult-gh-embark-insert-link)
   "U" '("insert user info" . consult-gh-embark-user-insert-menu-map))
 
 (fset 'consult-gh-embark-insert-menu-map consult-gh-embark-insert-menu-map)
 
-; Links Menu
+
+;;;;; Links Menu Keymap
 (defvar-keymap consult-gh-embark-links-menu-map
   :doc "Keymap for links menu"
   :parent nil
   "h" '("copy https url" . consult-gh-embark-copy-https-link-as-kill)
   "s" '("copy ssh url" . consult-gh-embark-copy-ssh-link-as-kill)
-  "l" '("copy url" . consult-gh-embark-copy-url-link-as-kill)
-  "o" '("copy org-mode link" . consult-gh-embark-copy-url-org-link-as-kill)
+  "l" '("copy url" . consult-gh-embark-copy-url-as-kill)
+  "o" '("copy org-mode link" . consult-gh-embark-copy-org-link-as-kill)
   "u" '("copy straight use-package link" . consult-gh-embark-copy-straight-usepackage-link-as-kill)
   "U" '("copy user page link" . consult-gh-embark-copy-user-link-as-kill))
 
 (fset 'consult-gh-embark-links-menu-map consult-gh-embark-links-menu-map)
 
 
-; Open Menu
+;;;;; Open Menu Keymap
 (defvar-keymap consult-gh-embark-open-menu-map
   :doc "Keymap for open menu"
   :parent nil
@@ -939,7 +971,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-open-menu-map consult-gh-embark-open-menu-map)
 
-; Repos Menu
+;;;;; Repo Menu Keymap
 (defvar-keymap consult-gh-embark-repo-menu-map
   :doc "Keymap for repo actions menu"
   :parent nil
@@ -956,7 +988,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-repo-menu-map consult-gh-embark-repo-menu-map)
 
-; User Menu
+;;;;; User Menu Keymap
 (defvar-keymap consult-gh-embark-user-menu-map
   :doc "Keymap for user actions menu"
   :parent nil
@@ -972,7 +1004,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-user-menu-map consult-gh-embark-user-menu-map)
 
-; Main
+;;;;; Main Menu Keymap
 (defvar-keymap consult-gh-embark-general-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
@@ -986,13 +1018,13 @@ CAND can be a PR or an issue."
   "u" '("gh user" . consult-gh-embark-user-menu-map)
   "w" '("gh copy-as-kill" . consult-gh-embark-copy-menu-map))
 
-;; Org Actions
+;;;; Org Keymap
 (defvar-keymap consult-gh-embark-orgs-actions-map
   :doc "Keymap for consult-gh-embark-orgs"
   :parent consult-gh-embark-general-actions-map)
 
-;; Repo Actions
-; Repo View Menu
+;;;; Repo Keymap
+;;;;;; Repo View Menu Keymap
 (defvar-keymap consult-gh-embark-repo-view-menu-map
   :doc "Keymap for viewing Repo details"
   :parent nil
@@ -1001,14 +1033,14 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-repo-view-menu-map consult-gh-embark-repo-view-menu-map)
 
-; Repo main menu
+;;;;;; Repo Main Menu Keymap
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
    "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map))
 
 
-;; Files Actions
+;;;;; Files Keymap
 (defvar-keymap consult-gh-embark-files-actions-map
   :doc "Keymap for consult-gh-embark-files"
   :parent consult-gh-embark-general-actions-map
@@ -1016,8 +1048,8 @@ CAND can be a PR or an issue."
   "w f" '("file content" . consult-gh-embark-insert-file-contents)
   "i f" '("file content" . consult-gh-embark-copy-file-contents-as-kill))
 
-;; Issue Actions
-; Edit Menu
+;;;;; Issue Keymap
+;;;;;; Edit Issue Menu Keymap
 (defvar-keymap consult-gh-embark-issues-edit-menu-map
   :doc "Keymap for editing issues"
   :parent nil
@@ -1032,7 +1064,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-issues-edit-menu-map consult-gh-embark-issues-edit-menu-map)
 
-; Issue main menu
+;;;;;; Issue Main Menu Keymap
 (defvar-keymap consult-gh-embark-issues-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
@@ -1041,8 +1073,8 @@ CAND can be a PR or an issue."
   "e" '("gh edit issue" . consult-gh-embark-issues-edit-menu-map))
 
 
-;; Pull Request Actions
-; Edit PRs menu
+;;;;; Pull Request Keymap
+;;;;;; Edit PRs Menu Keymap
 (defvar-keymap consult-gh-embark-prs-edit-menu-map
   :doc "Keymap for editing PRs"
   :parent nil
@@ -1055,7 +1087,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-prs-edit-menu-map consult-gh-embark-prs-edit-menu-map)
 
-; PR View menu
+;;;;;; PR View Menu Keymap
 (defvar-keymap consult-gh-embark-prs-view-menu-map
   :doc "Keymap for viewing PR details"
   :parent nil
@@ -1063,7 +1095,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-prs-view-menu-map consult-gh-embark-prs-view-menu-map)
 
-; PR main menu
+;;;;; PR Main Menu Keymap
 (defvar-keymap consult-gh-embark-prs-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
@@ -1073,13 +1105,13 @@ CAND can be a PR or an issue."
   "e" '("gh edit pr" . consult-gh-embark-prs-edit-menu-map)
   "v" '("gh view pr" . consult-gh-embark-prs-view-menu-map))
 
-;; Code Actions
+;;;; Code Keymap
 (defvar-keymap consult-gh-embark-codes-actions-map
   :doc "Keymap for consult-gh-embark-codes"
   :parent consult-gh-embark-general-actions-map)
 
-;; Notifications Actions
-;Edit Notifications Menu
+;;;; Notifications Keymap
+;;;;; Edit Notifications Menu Keymap
 (defvar-keymap consult-gh-embark-notifications-edit-menu-map
   :doc "Keymap for editing notifications"
   :parent nil

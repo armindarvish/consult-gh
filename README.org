@@ -9,7 +9,49 @@
 #+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://img.shields.io/static/v1?label=Made%20For&message=GNU%20Emacs&color=7a5aba&logo=gnuemacs&logoColor=white"/></a>
 #+html: <a href="https://melpa.org/#/consult-gh"><img alt="MELPA" src="https://melpa.org/packages/consult-gh-badge.svg"/></a>
 
+*Contents*:
+
+- [[#about-consult-gh][About consult-gh]]
+  - [[#main-functions-and-interactive-commands][Main Functions and Interactive Commands]]
+
+
+- [[#getting-started][Getting Started]]
+  - [[#requirements][Requirements]]
+  - [[#installation][Installation]]
+  - [[#configuration][Configuration]]
+
+
+- [[#features-and-demos][Features and Demos (Usage)]]
+  - [[#search-for-repositories][Search for Repositories]]
+  - [[#looking-at-repositories-of-user(s)][Looking at Repositories of User(s)]]
+  - [[#switching-between-accounts][Switching between Accounts]]
+  - [[#dynamic-grouping-of-candidates][Dynamic Grouping of candidates]]
+  - [[#searching/viewing-issues-or-pull-requests][Searching/Viewing Issues or Pull Requests]]
+  - [[#commenting-on-issues-and-pull-requests][Commenting on Issues and Pull Requests]]
+  - [[#browsing-files-in-a-repository][Browsing Files in a Repository]]
+  - [[#searching-codes][Searching Codes]]
+  - [[#creating-a-new-repository,-issue-or-pull-request-on-github][Creating a New Repository, Issue or Pull Request on GitHub]]
+  - [[#embark-integration][Embark Integration]]
+  - [[#magitforge-integration][Magit/Forge Integration]]
+  - [[#pr-review-integration][PR-Review Integration]]
+  - [[#transient-menu][Transient Menu]]
+
+
+- [[#bug-reports][Bug reports]]
+
+
+- [[#contributions][Contributions]]
+
+
+- [[#comparison-with-other-packages][Comparison with Other Packages]]
+
+
+- [[#acknowledgments][Acknowledgments]]
+
+
 For the latest news see [[file:CHANGELOG.org][The ChangeLog]].
+
+
 
 * About consult-gh
 =consult-gh= provides an interface to interact with GitHub repositories (search, view files and issues, clone, fork, ...) from inside Emacs. It uses the awesome package [[https://github.com/minad/consult][consult]] by [[https://github.com/minad][Daniel Mendler]] and [[https://cli.github.com/][GitHub CLI]] and optionally [[https://github.com/oantolin/embark][Embark]] by [[https://github.com/oantolin][Omar Antolín Camarena]], and provides an intuitive UI using minibuffer completion familiar to Emacs users.
@@ -62,7 +104,6 @@ _Notifications and Dashboard_:
 Furthermore, =consult-gh=, also provides a number of useful [[https://github.com/oantolin/embark][Embark]] actions (see examples below), as well as integration with [[https://github.com/magit/forge][magit/forge]] package.
 
 * Getting Started
-
 ** Requirements
 In order to use =consult-gh=, you need the following requirements:
 
@@ -149,6 +190,11 @@ You can also fork this repository and use your own repo.
 Clone this repo and make sure the files are on your load path, as described on [[https://www.emacswiki.org/emacs/LoadPath][EmacsWiki]].
 *Make sure you load consult (e.g. =require consult=) before you load consult-gh.*
 
+*** Package-VC Install (requires manual fixing!)
+Currently, installing with =package-vc-install= or using =:vc= in =using-package= macro does not work. This is because of how =package-vc-install= handles dependencies. It tries to install all the =Package-Requires= declarations in every =*.el= file in the root directory. This is not compatible with a multi-package repo like consult-gh because the other .el files (like consult-gh-embark) have a dependency on consult-gh and that creates some looped self-dependencies in package-vc-install. If you try to install consult-gh with package-vc-install either you get some errors or get the version from MELPA installed as a dependency.
+This is not unique to consult-gh, any other repository with multiple package files in the root directory of the repo can run into the same issue (e.g. [[https://github.com/oantolin/embark][oantolin/embark]] with both =embark= and =embark-consult= in the root directory causes the same issue).
+
+*To fix the issue*, you can manually edit the =consult-gh.pkg= under =/elpa/consult-gh= in your Emacs directory, and remove any self-dependencies in =define-package= declaration. Also remove any other versions of consult-gh that is installed from MELPA (these will be folders named =consult-gh-*= where * is the version of the package) in the same =/elpa= directory. Then restart Emacs. If you update the package you may need to repeat the steps to fix the self-dependency.
 
 ** Configuration
 =consult-gh= is built with the idea that the user should be able to customize everything based on their use case. In fact, the default configurations are minimal and prioritize performance over usability, therefore the user is very much expected to configure =consult-gh= according to their use case. For example, with the default configuration, when selecting a repository, =consult-gh= opens the link in a browser, but you can configure the package to show the README or browse branches and files inside Emacs or do something else (e.g. clone the repository). Therefore, I recommend you read through this section and understand how to configure the package according to your needs and for your specific use-case, but if you just want a drop-in minimal config to test the package, look at the snippet below:
@@ -214,10 +260,6 @@ Here is a good customization for great performance as well as functionality:
 #+end_src
 
 * Features and Demos
-:PROPERTIES:
-:ID:       0AAC346E-481A-48AB-B7DA-1569EBA4A145
-:END:
-
 For background and context,  you can see this blog post: [[https://www.armindarvish.com/post/consult-gh_working_with_github_inside_emacs_in_2023_/][Working with GitHub inside Emacs in 2023]], and watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]]. Note that the blog post and some of the YouTube are out of date since the release of newer versions of consult-gh.
 
 In the screenshots below,  I am generally using vanilla Emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], [[https://github.com/oantolin/embark][embark]], and this package with the following config:
@@ -252,7 +294,6 @@ In the screenshots below,  I am generally using vanilla Emacs and a minimal conf
   :config
   (consult-gh-embark-mode +1))
 #+end_src
-
 
 ** Search for Repositories
 In the screenshot below, I use =consult-gh-search-repos= to search for repositories. The screenshot shows the updated capabilities with consult-async (since version 1.0):
@@ -466,7 +507,7 @@ consult-gh provides a transient menu as well. It can be accessed by running =M-x
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-transient.gif]]
 
-* Bug reports
+* Bug Reports
 To report bug, first check if it is already reported in the [[https://github.com/armindarvish/consult-gh/issues][*issue tracker*]] and see if there is an existing solution or add relevant comments and discussion under the same issue. If not file a new issue following these steps:
 
 1. Make sure the dependencies are installed, and you are logged in by running =gh auth login= in the terminal.
@@ -491,7 +532,6 @@ If you want to contribute to the code, please note that the main branch is curre
 Importantly, keep in mind that I am using a *literate programming approach* (given that this is a small project with very limited number of files) where everything goes into *consult-gh.org* and then gets tangled to appropriate files (for now that includes consult-gh.el and consult-gh-embark.el). If you open a pull-request where you directly edited the .el files, I will likely not approve it because that will then get overwritten later when I tangle from the .org file. In other words, *Do Not Edit The .el Files!* only edit the .org file and tangle to .el files.
 
 * Comparison with Other Packages
-
 While there are several packages for interacting with GitHub and GitHub API such as [[https://github.com/sigma/gh.el][gh.el]], [[https://github.com/magit/ghub][magit/ghub]] and [[https://github.com/magit/forge][magit/forge]], [[https://github.com/sshaw/git-link][git-link]], [[https://github.com/rmuslimov/browse-at-remote][browse-at-remote]], and ... in my opinion none of these packages provide an intuitive UI to interact (i.e. browse files, see issues/prs of repos, ...) with GitHub repositories. Some of these are a collection of low-level API calls without user-friendly interactive commands and others simply retrieve a URL in the browser instead of providing a GitHub interface inside Emacs. As a result, the user either has to implement their own functions to use the API calls or simply jump to the browser to interact with GitHub. =consult-gh= aims to fill this gap and provide a tool that allows the user to interact with GitHub from within Emacs.
 
 Keep in mind that =consult-gh= is a wrapper around the [[https://github.com/cli/cli][GitHub cli]] tool (gh). While =gh= can do git operations on local repositories, the main purpose of =consult-gh= is not for enabling git operations (because that can already be done with the wonderful [[https://github.com/magit/magit][magit]] package). Rather, the goal is to make it easier to interact with remote repositories, similar to how one would browse GitHub pages in a web browser (to see issues, pull requests, files, etc.) and also enable the basic operations like cloning, forking, viewing issues or pull requests, commenting on issues or pull requests, and so on from within Emacs. In addition, with [[https://github.com/oantolin/embark][embark]] actions and added integration with [[https://github.com/magit/forge][magit/forge]], one can pretty much manage all interactions with GitHub from within Emacs using =consult-gh=.  Personally, I like to use =consult-gh= to search repositories, browse issues or view/download files without cloning entire repositories. Since version 2.0, =consult-gh= is also my favorite interface to comment on issues or pull requests and even do code review because the writing/coding experience (especially with org mode) is far superior to doing that on the web.
