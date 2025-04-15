@@ -30,7 +30,7 @@
   - [[#searching-codes][Searching Codes]]
   - [[#creating-a-new-repository,-issue-or-pull-request-on-github][Creating a New Repository, Issue or Pull Request on GitHub]]
   - [[#embark-integration][Embark Integration]]
-  - [[#magit/forge-integration][Magit/Forge Integration]]
+  - [[#magitforge-integration][Magit/Forge Integration]]
   - [[#pr-review-integration][PR-Review Integration]]
   - [[#transient-menu][Transient Menu]]
 
