@@ -14,10 +14,12 @@
 - [[#about-consult-gh][About consult-gh]]
   - [[#main-functions-and-interactive-commands][Main Functions and Interactive Commands]]
 
+
 - [[#getting-started][Getting Started]]
   - [[#requirements][Requirements]]
   - [[#installation][Installation]]
   - [[#configuration][Configuration]]
+
 
 - [[#features-and-demos][Features and Demos (Usage)]]
   - [[#search-for-repositories][Search for Repositories]]
@@ -34,9 +36,12 @@
   - [[#pr-review-integration][PR-Review Integration]]
   - [[#transient-menu][Transient Menu]]
 
+
 - [[#bug-reports][Bug reports]]
 
+
 - [[#contributions][Contributions]]
+
 
 - [[#comparison-with-other-packages][Comparison with Other Packages]]
 
