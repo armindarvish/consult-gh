@@ -21,14 +21,7 @@ Jump to Section:
 
 For the latest news see [[file:CHANGELOG.org][The ChangeLog]].
 
-
-[[* About consult-gh]]
-
 * About consult-gh
-:PROPERTIES:
-:ID:       #about-consult-gh
-:END:
-
 =consult-gh= provides an interface to interact with GitHub repositories (search, view files and issues, clone, fork, ...) from inside Emacs. It uses the awesome package [[https://github.com/minad/consult][consult]] by [[https://github.com/minad][Daniel Mendler]] and [[https://cli.github.com/][GitHub CLI]] and optionally [[https://github.com/oantolin/embark][Embark]] by [[https://github.com/oantolin][Omar Antolín Camarena]], and provides an intuitive UI using minibuffer completion familiar to Emacs users.
 
 ** Main Functions and Interactive Commands
