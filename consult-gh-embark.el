@@ -469,7 +469,9 @@ CAND can be a repo, issue, PR, file path, ..."
         (embark-insert (list (string-trim url))))))
 
 (defun consult-gh-embark-insert-link (cand)
-  "Insert the url of CAND at point."
+  "Insert the link of CAND at point.
+
+In `org-mode' or `markdown-mode',the link is formatted accordingly."
   (when (stringp cand)
     (let* ((class (get-text-property 0 :class cand))
            (repo (get-text-property 0 :repo cand))
