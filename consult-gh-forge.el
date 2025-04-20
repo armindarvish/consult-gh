@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.4
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "2.4"))
+;; Version: 2.5
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "2.5"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -66,6 +66,35 @@ Uses `consult-gh-forge--add-topic' to add topics.")
 
 (defvar consult-gh-forge--default-pr-action consult-gh-pr-action
   "Default action for viewing PRs without forge integration.")
+
+(defun consult-gh-forge--mode-on ()
+  "Enable `consult-gh-forge-mode'."
+  (unless (equal consult-gh-issue-action #'consult-gh-forge--issue-view-action)
+    (setq consult-gh-forge--default-issue-action consult-gh-issue-action))
+  (unless (equal consult-gh-pr-action #'consult-gh-forge--pr-view-action)
+    (setq consult-gh-forge--default-pr-action consult-gh-pr-action))
+  (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action)
+  (setq consult-gh-pr-action #'consult-gh-forge--pr-view-action)
+  (advice-add 'ghub--token :override #'consult-gh-forge--ghub-token))
+
+(defun consult-gh-forge--mode-off ()
+  "Disable `consult-gh-forge-mode'."
+  (when (equal consult-gh-issue-action #'consult-gh-forge--issue-view-action)
+    (setq consult-gh-issue-action consult-gh-forge--default-issue-action))
+  (when (equal consult-gh-pr-action #'consult-gh-forge--pr-view-action)
+    (setq consult-gh-pr-action consult-gh-forge--default-pr-action))
+  (advice-remove 'ghub--token #'consult-gh-forge--ghub-token))
+
+;;;###autoload
+(define-minor-mode consult-gh-forge-mode
+  "Use magit/forge with `consult-gh' for viewing issues/prs."
+  :init-value nil
+  :global t
+  :group 'consult-gh
+  :lighter " consult-gh-forge"
+  (if consult-gh-forge-mode
+      (consult-gh-forge--mode-on)
+    (consult-gh-forge--mode-off)))
 
 ;;; Define Backend Functions for `consult-gh-forge'
 (defun consult-gh-forge--add-repository (url)
@@ -279,34 +308,7 @@ or (info \"(ghub)Getting Started\") for instructions.
                             user host))))))
     (if (functionp token) (funcall token) token)))
 
-(defun consult-gh-forge--mode-on ()
-  "Enable `consult-gh-forge-mode'."
-  (unless (equal consult-gh-issue-action #'consult-gh-forge--issue-view-action)
-    (setq consult-gh-forge--default-issue-action consult-gh-issue-action))
-  (unless (equal consult-gh-pr-action #'consult-gh-forge--pr-view-action)
-    (setq consult-gh-forge--default-pr-action consult-gh-pr-action))
-  (setq consult-gh-issue-action #'consult-gh-forge--issue-view-action)
-  (setq consult-gh-pr-action #'consult-gh-forge--pr-view-action)
-  (advice-add 'ghub--token :override #'consult-gh-forge--ghub-token))
 
-(defun consult-gh-forge--mode-off ()
-  "Disable `consult-gh-forge-mode'."
-  (when (equal consult-gh-issue-action #'consult-gh-forge--issue-view-action)
-    (setq consult-gh-issue-action consult-gh-forge--default-issue-action))
-  (when (equal consult-gh-pr-action #'consult-gh-forge--pr-view-action)
-    (setq consult-gh-pr-action consult-gh-forge--default-pr-action))
-  (advice-remove 'ghub--token #'consult-gh-forge--ghub-token))
-
-;;;###autoload
-(define-minor-mode consult-gh-forge-mode
-  "Use magit/forge with `consult-gh' for viewing issues/prs."
-  :init-value nil
-  :global t
-  :group 'consult-gh
-  :lighter " consult-gh-forge"
-  (if consult-gh-forge-mode
-      (consult-gh-forge--mode-on)
-    (consult-gh-forge--mode-off)))
 
 ;;; Redefine ghub authentication functions
 (cl-defmethod ghub--username :around (host &context (consult-gh-forge-mode (eql t)) &optional _forge)

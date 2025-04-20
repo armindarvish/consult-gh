@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.4
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.4") (embark-consult "1.1"))
+;; Version: 2.5
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.5") (embark-consult "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -262,6 +262,11 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 
 
 ;;;; View Actions
+(defun consult-gh-embark-view-readme-of-repo (cand)
+  "Open readme of CAND repo at point."
+  (when (stringp cand)
+    (consult-gh--repo-view-action cand)))
+
 (defun consult-gh-embark-view-issues-of-repo (cand)
   "Browse issues of CAND repo at point."
   (when (stringp cand)
@@ -1004,6 +1009,14 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-user-menu-map consult-gh-embark-user-menu-map)
 
+;;;;; View Menu Keymap
+(defvar-keymap consult-gh-embark-view-menu-map
+  :doc "Keymap for view actions menu"
+  :parent nil
+  "r" '("view readme" . consult-gh-embark-view-readme-of-repo))
+
+(fset 'consult-gh-embark-view-menu-map consult-gh-embark-view-menu-map)
+
 ;;;;; Main Menu Keymap
 (defvar-keymap consult-gh-embark-general-actions-map
   :doc "Keymap for consult-gh-embark"
@@ -1016,7 +1029,8 @@ CAND can be a PR or an issue."
   "o" '("gh open" . consult-gh-embark-open-menu-map)
   "r" '("gh repo" . consult-gh-embark-repo-menu-map)
   "u" '("gh user" . consult-gh-embark-user-menu-map)
-  "w" '("gh copy-as-kill" . consult-gh-embark-copy-menu-map))
+  "w" '("gh copy-as-kill" . consult-gh-embark-copy-menu-map)
+  "v" '("gh view" . consult-gh-embark-view-menu-map))
 
 ;;;; Org Keymap
 (defvar-keymap consult-gh-embark-orgs-actions-map
@@ -1028,6 +1042,7 @@ CAND can be a PR or an issue."
 (defvar-keymap consult-gh-embark-repo-view-menu-map
   :doc "Keymap for viewing Repo details"
   :parent nil
+  "r" '("view readme" . consult-gh-embark-view-readme-of-repo)
   "i" '("view issues" . consult-gh-embark-view-issues-of-repo)
   "p" '("view pull requests" . consult-gh-embark-view-prs-of-repo))
 

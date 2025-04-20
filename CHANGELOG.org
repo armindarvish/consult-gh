@@ -3,10 +3,10 @@
 #+language: en
 
 * Development
-- improved embark actions
-  clerane dup some actions
-  reordered actions for  better readability
-* Version 2.4 (2025-03-28)
+- added tooltips
+-
+
+* Version 2.4 (2025-04-17)
 - Refactored completion-at-point functions, and added support for completing references to issues with title (e.g. =#title= now can be competed to issue number), and improved the overall behavior of completion functions.
 - Fixed issue with loading the repo without internet (see #226) by defering loading the user organizations.
 - Fixed handling of projects names that conatin "," in theri name.
