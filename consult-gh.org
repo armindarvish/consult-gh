@@ -16443,6 +16443,7 @@ CAND can be a PR or an issue."
 
 *** Keymaps
 **** General Keymap
+***** bookmark menu
 #+begin_src emacs-lisp
 
 ;;; Define Embark Keymaps
@@ -16474,7 +16475,9 @@ CAND can be a PR or an issue."
   "o" '("bookmark orgs" . consult-gh-embark-bookmark-orgs-menu-map))
 
 (fset 'consult-gh-embark-bookmarks-menu-map consult-gh-embark-bookmarks-menu-map)
-
+#+end_src
+***** copy menu
+#+begin_src emacs-lisp
 
 ;;;;; Copy Menu Keymap
 ;;;;;; Copy  User's Info Keymap
@@ -16498,6 +16501,9 @@ CAND can be a PR or an issue."
   "U" '("user's info" . consult-gh-embark-user-copy-menu-map))
 
 (fset 'consult-gh-embark-copy-menu-map consult-gh-embark-copy-menu-map)
+#+end_src
+***** create menu
+#+begin_src emacs-lisp
 
 ;;;;; Create Menu Keymap
 (defvar-keymap consult-gh-embark-create-menu-map
@@ -16511,7 +16517,19 @@ CAND can be a PR or an issue."
   "f" '("create a fork repo" . consult-gh-embark-fork-repo))
 
 (fset 'consult-gh-embark-create-menu-map consult-gh-embark-create-menu-map)
+#+end_src
+***** edit menu
+#+begin_src emacs-lisp
 
+;;;;; Edit  Menu Keymap
+(defvar-keymap consult-gh-embark-edit-menu-map
+  :doc "Keymap for edit menu"
+  :parent nil)
+
+(fset 'consult-gh-embark-edit-menu-map consult-gh-embark-edit-menu-map)
+#+end_src
+***** find menu
+#+begin_src emacs-lisp
 
 ;;;;; Find Menu Keymap
 (defvar-keymap consult-gh-embark-find-menu-map
@@ -16524,7 +16542,9 @@ CAND can be a PR or an issue."
   "c" '("find code in repo" . consult-gh-embark-search-code-in-repo))
 
 (fset 'consult-gh-embark-find-menu-map consult-gh-embark-find-menu-map)
-
+#+end_src
+***** insert menu
+#+begin_src emacs-lisp
 
 ;;;;; Insert Menu Keymap
 ;;;;;; Insert  User's Info Keymap
@@ -16547,7 +16567,9 @@ CAND can be a PR or an issue."
   "U" '("insert user info" . consult-gh-embark-user-insert-menu-map))
 
 (fset 'consult-gh-embark-insert-menu-map consult-gh-embark-insert-menu-map)
-
+#+end_src
+***** links menu
+#+begin_src emacs-lisp
 
 ;;;;; Links Menu Keymap
 (defvar-keymap consult-gh-embark-links-menu-map
@@ -16561,7 +16583,9 @@ CAND can be a PR or an issue."
   "U" '("copy user page link" . consult-gh-embark-copy-user-link-as-kill))
 
 (fset 'consult-gh-embark-links-menu-map consult-gh-embark-links-menu-map)
-
+#+end_src
+***** open menu
+#+begin_src emacs-lisp
 
 ;;;;; Open Menu Keymap
 (defvar-keymap consult-gh-embark-open-menu-map
@@ -16573,6 +16597,9 @@ CAND can be a PR or an issue."
   "RET" '("open in emacs" . consult-gh-embark-default-action))
 
 (fset 'consult-gh-embark-open-menu-map consult-gh-embark-open-menu-map)
+#+end_src
+***** repo menu
+#+begin_src emacs-lisp
 
 ;;;;; Repo Menu Keymap
 (defvar-keymap consult-gh-embark-repo-menu-map
@@ -16590,6 +16617,9 @@ CAND can be a PR or an issue."
 
 
 (fset 'consult-gh-embark-repo-menu-map consult-gh-embark-repo-menu-map)
+#+end_src
+***** user menu
+#+begin_src emacs-lisp
 
 ;;;;; User Menu Keymap
 (defvar-keymap consult-gh-embark-user-menu-map
@@ -16606,14 +16636,19 @@ CAND can be a PR or an issue."
   "O" '("open repo page in system browser" .  consult-gh-embark-user-open-in-system-browser))
 
 (fset 'consult-gh-embark-user-menu-map consult-gh-embark-user-menu-map)
+#+end_src
+***** view menu
+#+begin_src emacs-lisp
 
 ;;;;; View Menu Keymap
 (defvar-keymap consult-gh-embark-view-menu-map
   :doc "Keymap for view actions menu"
-  :parent nil
-  "r" '("view readme" . consult-gh-embark-view-readme-of-repo))
+  :parent nil)
 
 (fset 'consult-gh-embark-view-menu-map consult-gh-embark-view-menu-map)
+#+end_src
+***** main manu
+#+begin_src emacs-lisp
 
 ;;;;; Main Menu Keymap
 (defvar-keymap consult-gh-embark-general-actions-map
@@ -16629,6 +16664,9 @@ CAND can be a PR or an issue."
   "u" '("gh user" . consult-gh-embark-user-menu-map)
   "w" '("gh copy-as-kill" . consult-gh-embark-copy-menu-map)
   "v" '("gh view" . consult-gh-embark-view-menu-map))
+#+end_src
+**** Orgs Keymap
+#+begin_src emacs-lisp
 
 ;;;; Org Keymap
 (defvar-keymap consult-gh-embark-orgs-actions-map
@@ -16637,6 +16675,8 @@ CAND can be a PR or an issue."
 #+end_src
 
 **** Repo Keymap
+
+***** repo view menu
 #+begin_src emacs-lisp
 
 ;;;; Repo Keymap
@@ -16649,6 +16689,10 @@ CAND can be a PR or an issue."
   "p" '("view pull requests" . consult-gh-embark-view-prs-of-repo))
 
 (fset 'consult-gh-embark-repo-view-menu-map consult-gh-embark-repo-view-menu-map)
+#+end_src
+
+***** repo main menu
+#+begin_src emacs-lisp
 
 ;;;;;; Repo Main Menu Keymap
 (defvar-keymap consult-gh-embark-repos-actions-map
@@ -16658,25 +16702,41 @@ CAND can be a PR or an issue."
 #+end_src
 
 **** Files Keymap
+
+***** files insert menu
 #+begin_src emacs-lisp
 
 ;;;;; Files Keymap
+;;;;;; Files Insert Menu Keymap
+(defvar-keymap consult-gh-embark-fiels-insert-menu-map
+  :doc "Keymap for editing issues"
+  :parent consult-gh-embark-user-insert-menu-map
+  "f" '("file content" . consult-gh-embark-insert-file-contents))
+
+(fset 'consult-gh-embark-fiels-insert-menu-map consult-gh-embark-fiels-insert-menu-map)
+#+end_src
+
+***** files main menu
+#+begin_src emacs-lisp
+
+;;;;;; Files Main Menu Keymap
 (defvar-keymap consult-gh-embark-files-actions-map
   :doc "Keymap for consult-gh-embark-files"
   :parent consult-gh-embark-general-actions-map
   "s" '("gh save file" . consult-gh-embark-save-file)
-  "w f" '("file content" . consult-gh-embark-insert-file-contents)
-  "i f" '("file content" . consult-gh-embark-copy-file-contents-as-kill))
+  "i" '("gh insert" . consult-gh-embark-fiels-insert-menu-map))
 #+end_src
 
 **** Issues Keymap
+
+***** issues edit menu
 #+begin_src emacs-lisp
 
 ;;;;; Issue Keymap
 ;;;;;; Edit Issue Menu Keymap
 (defvar-keymap consult-gh-embark-issues-edit-menu-map
   :doc "Keymap for editing issues"
-  :parent nil
+  :parent consult-gh-embark-edit-menu-map
   "D" '("delete issue" . consult-gh-embark-delete-issue)
   "e" '("edit issue" . consult-gh-embark-edit-issue)
   "d" '("develop issue" . consult-gh-embark-develop-issue)
@@ -16687,6 +16747,10 @@ CAND can be a PR or an issue."
   "L" '("link to pr" . consult-gh-embark-link-pr-to-issue))
 
 (fset 'consult-gh-embark-issues-edit-menu-map consult-gh-embark-issues-edit-menu-map)
+#+end_src
+
+***** issues main menu
+#+begin_src emacs-lisp
 
 ;;;;;; Issue Main Menu Keymap
 (defvar-keymap consult-gh-embark-issues-actions-map
@@ -16698,13 +16762,15 @@ CAND can be a PR or an issue."
 #+end_src
 
 **** PRs Keymap
+
+***** prs edit menu
 #+begin_src emacs-lisp
 
 ;;;;; Pull Request Keymap
 ;;;;;; Edit PRs Menu Keymap
 (defvar-keymap consult-gh-embark-prs-edit-menu-map
   :doc "Keymap for editing PRs"
-  :parent nil
+  :parent consult-gh-embark-edit-menu-map
   "e" '("edit pr" . consult-gh-embark-edit-pr)
   "d" '("draft/undraft pr" . consult-gh-embark-toggle-pr-draft)
   "l" '("lock/unlock pr" . consult-gh-embark-toggle-pr-lock)
@@ -16713,14 +16779,23 @@ CAND can be a PR or an issue."
   "L" '("link to issue" . consult-gh-embark-link-pr-to-issue))
 
 (fset 'consult-gh-embark-prs-edit-menu-map consult-gh-embark-prs-edit-menu-map)
+#+end_src
+
+***** prs view menu
+#+begin_src emacs-lisp
 
 ;;;;;; PR View Menu Keymap
 (defvar-keymap consult-gh-embark-prs-view-menu-map
   :doc "Keymap for viewing PR details"
   :parent nil
-  "d" '("view diff" . consult-gh-embark-view-pr-diff))
+  "d" '("view diff" . consult-gh-embark-view-pr-diff)
+  "r" '("view repo" . consult-gh-embark-repo-view-menu-map))
 
 (fset 'consult-gh-embark-prs-view-menu-map consult-gh-embark-prs-view-menu-map)
+#+end_src
+
+***** prs main menu
+#+begin_src emacs-lisp
 
 ;;;;; PR Main Menu Keymap
 (defvar-keymap consult-gh-embark-prs-actions-map
@@ -16734,10 +16809,12 @@ CAND can be a PR or an issue."
 #+end_src
 
 **** Releases Keymap
+
+***** release edit menu
 #+begin_src emacs-lisp
 
 ;;;;; Release Keymap
-;;;;;; Edit Issue Menu Keymap
+;;;;;; Edit Release Menu Keymap
 (defvar-keymap consult-gh-embark-releases-edit-menu-map
   :doc "Keymap for editing issues"
   :parent nil
@@ -16749,6 +16826,10 @@ CAND can be a PR or an issue."
   "p" '("mark/unmark prerelease" . consult-gh-embark-toggle-release-prerelease))
 
 (fset 'consult-gh-embark-releases-edit-menu-map consult-gh-embark-releases-edit-menu-map)
+#+end_src
+
+***** release main menu
+#+begin_src emacs-lisp
 
 ;;;;;; Release Main Menu Keymap
 (defvar-keymap consult-gh-embark-releases-actions-map
@@ -16770,6 +16851,8 @@ CAND can be a PR or an issue."
 #+end_src
 
 **** Notifications Keymap
+
+***** notifications edit menu
 #+begin_src emacs-lisp
 
 ;;;; Notifications Keymap
@@ -16781,11 +16864,20 @@ CAND can be a PR or an issue."
   "s" '("unsubscribe/resubscribe" . consult-gh-embark-notification-toggle-subscription))
 
 (fset 'consult-gh-embark-notifications-edit-menu-map consult-gh-embark-notifications-edit-menu-map)
+#+end_src
 
+***** notifications main menu
+#+begin_src emacs-lisp
+
+;;;;; Notifications Main Menu Keymap
 (defvar-keymap consult-gh-embark-notifications-actions-map
   :doc "Keymap for consult-gh-embark-notifications"
   :parent consult-gh-embark-general-actions-map
   "e" '("gh edit notification" . consult-gh-embark-notifications-edit-menu-map))
+#+end_src
+
+**** Dashboard Keymap
+#+begin_src emacs-lisp
 
 (defvar-keymap consult-gh-embark-dashboard-actions-map
   :doc "Keymap for consult-gh-embark-dashboard"

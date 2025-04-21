@@ -947,7 +947,6 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-bookmarks-menu-map consult-gh-embark-bookmarks-menu-map)
 
-
 ;;;;; Copy Menu Keymap
 ;;;;;; Copy  User's Info Keymap
 (defvar-keymap consult-gh-embark-user-copy-menu-map
@@ -984,6 +983,12 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-create-menu-map consult-gh-embark-create-menu-map)
 
+;;;;; Edit  Menu Keymap
+(defvar-keymap consult-gh-embark-edit-menu-map
+  :doc "Keymap for edit menu"
+  :parent nil)
+
+(fset 'consult-gh-embark-edit-menu-map consult-gh-embark-edit-menu-map)
 
 ;;;;; Find Menu Keymap
 (defvar-keymap consult-gh-embark-find-menu-map
@@ -996,7 +1001,6 @@ CAND can be a PR or an issue."
   "c" '("find code in repo" . consult-gh-embark-search-code-in-repo))
 
 (fset 'consult-gh-embark-find-menu-map consult-gh-embark-find-menu-map)
-
 
 ;;;;; Insert Menu Keymap
 ;;;;;; Insert  User's Info Keymap
@@ -1020,7 +1024,6 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-insert-menu-map consult-gh-embark-insert-menu-map)
 
-
 ;;;;; Links Menu Keymap
 (defvar-keymap consult-gh-embark-links-menu-map
   :doc "Keymap for links menu"
@@ -1033,7 +1036,6 @@ CAND can be a PR or an issue."
   "U" '("copy user page link" . consult-gh-embark-copy-user-link-as-kill))
 
 (fset 'consult-gh-embark-links-menu-map consult-gh-embark-links-menu-map)
-
 
 ;;;;; Open Menu Keymap
 (defvar-keymap consult-gh-embark-open-menu-map
@@ -1082,8 +1084,7 @@ CAND can be a PR or an issue."
 ;;;;; View Menu Keymap
 (defvar-keymap consult-gh-embark-view-menu-map
   :doc "Keymap for view actions menu"
-  :parent nil
-  "r" '("view readme" . consult-gh-embark-view-readme-of-repo))
+  :parent nil)
 
 (fset 'consult-gh-embark-view-menu-map consult-gh-embark-view-menu-map)
 
@@ -1125,18 +1126,26 @@ CAND can be a PR or an issue."
   "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map))
 
 ;;;;; Files Keymap
+;;;;;; Files Insert Menu Keymap
+(defvar-keymap consult-gh-embark-fiels-insert-menu-map
+  :doc "Keymap for editing issues"
+  :parent consult-gh-embark-user-insert-menu-map
+  "f" '("file content" . consult-gh-embark-insert-file-contents))
+
+(fset 'consult-gh-embark-fiels-insert-menu-map consult-gh-embark-fiels-insert-menu-map)
+
+;;;;;; Files Main Menu Keymap
 (defvar-keymap consult-gh-embark-files-actions-map
   :doc "Keymap for consult-gh-embark-files"
   :parent consult-gh-embark-general-actions-map
   "s" '("gh save file" . consult-gh-embark-save-file)
-  "w f" '("file content" . consult-gh-embark-insert-file-contents)
-  "i f" '("file content" . consult-gh-embark-copy-file-contents-as-kill))
+  "i" '("gh insert" . consult-gh-embark-fiels-insert-menu-map))
 
 ;;;;; Issue Keymap
 ;;;;;; Edit Issue Menu Keymap
 (defvar-keymap consult-gh-embark-issues-edit-menu-map
   :doc "Keymap for editing issues"
-  :parent nil
+  :parent consult-gh-embark-edit-menu-map
   "D" '("delete issue" . consult-gh-embark-delete-issue)
   "e" '("edit issue" . consult-gh-embark-edit-issue)
   "d" '("develop issue" . consult-gh-embark-develop-issue)
@@ -1160,7 +1169,7 @@ CAND can be a PR or an issue."
 ;;;;;; Edit PRs Menu Keymap
 (defvar-keymap consult-gh-embark-prs-edit-menu-map
   :doc "Keymap for editing PRs"
-  :parent nil
+  :parent consult-gh-embark-edit-menu-map
   "e" '("edit pr" . consult-gh-embark-edit-pr)
   "d" '("draft/undraft pr" . consult-gh-embark-toggle-pr-draft)
   "l" '("lock/unlock pr" . consult-gh-embark-toggle-pr-lock)
@@ -1174,7 +1183,8 @@ CAND can be a PR or an issue."
 (defvar-keymap consult-gh-embark-prs-view-menu-map
   :doc "Keymap for viewing PR details"
   :parent nil
-  "d" '("view diff" . consult-gh-embark-view-pr-diff))
+  "d" '("view diff" . consult-gh-embark-view-pr-diff)
+  "r" '("view repo" . consult-gh-embark-repo-view-menu-map))
 
 (fset 'consult-gh-embark-prs-view-menu-map consult-gh-embark-prs-view-menu-map)
 
@@ -1189,7 +1199,7 @@ CAND can be a PR or an issue."
   "v" '("gh view pr" . consult-gh-embark-prs-view-menu-map))
 
 ;;;;; Release Keymap
-;;;;;; Edit Issue Menu Keymap
+;;;;;; Edit Release Menu Keymap
 (defvar-keymap consult-gh-embark-releases-edit-menu-map
   :doc "Keymap for editing issues"
   :parent nil
@@ -1226,6 +1236,7 @@ CAND can be a PR or an issue."
 
 (fset 'consult-gh-embark-notifications-edit-menu-map consult-gh-embark-notifications-edit-menu-map)
 
+;;;;; Notifications Main Menu Keymap
 (defvar-keymap consult-gh-embark-notifications-actions-map
   :doc "Keymap for consult-gh-embark-notifications"
   :parent consult-gh-embark-general-actions-map
