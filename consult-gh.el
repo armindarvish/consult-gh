@@ -1870,26 +1870,26 @@ Description of Arguments:
                     ((string-prefix-p "finished" event)
                        (with-current-buffer ,proc-buf
                          (widen)
-                         (funcall ,when-done nil (buffer-string))
+                         (funcall ,when-done event (buffer-string))
                            (erase-buffer)))
                      ((string-prefix-p "killed" event)
-                      (message "consult-gh--async-process was %s" (propertize "killed" 'face 'warning)))
-                     (t (message "consult-gh--async-process %s" (propertize "failed" 'face 'error))))
+                      (message "%s was %s" (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event)))
+                     (t (message "%s failed: %s " (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event))))
                    (when (> (buffer-size ,proc-buf) 0)
                      (with-current-buffer (get-buffer-create consult-gh--async-log-buffer)
                        (goto-char (point-max))
-                       (insert ">>>>> stderr >>>>>\n")
+                       (insert (format ">>>>> stderr (%s) >>>>>\n" (process-name proc)))
                        (let ((beg (point)))
                          (insert-buffer-substring ,proc-buf)
                          (save-excursion
                            (goto-char beg)
                            (message #("%s" 0 2 (face error))
                                     (buffer-substring-no-properties (pos-bol) (pos-eol)))))
-                       (insert "<<<<< stderr <<<<<\n")))))
+                       (insert (format "<<<<< stderr (%s) <<<<<\n" (process-name proc)))))))
                (process-adaptive-read-buffering t))
           (with-current-buffer proc-buf
             (set-buffer-file-coding-system 'unix))
-          (consult-gh--async-log "consult-gh--make-process started %s\n" cmd-args)
+          (consult-gh--async-log "consult-gh--make-process %s started %s\n" name cmd-args)
           (make-process :name name
                         :buffer proc-buf
                         :noquery t
@@ -4074,7 +4074,7 @@ using `consult-gh--command-to-string'.
 ARGS are ignored."
   (let ((buffer (current-buffer)))
     (consult-gh--make-process (format "consult-gh-clone-%s" repo)
-                            :when-done `(lambda (_proc _str)
+                            :when-done `(lambda (_event _out)
                                           (with-current-buffer ,buffer
                                             (progn
                                             (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name ,name ,targetdir))
@@ -7748,7 +7748,7 @@ Description of Arguments:
                (body (and (not (equal body original-body)) body))
                (basebranch (when (and (not (equal basebranch original-basebranch)) (stringp basebranch)) basebranch))
                (args (list "--repo" baserepo)))
-(setq my:test (list add-projects remove-projects))
+
     (when (and add-reviewers (listp add-reviewers)) (setq add-reviewers (consult-gh--list-to-string add-reviewers)))
 
     (when (and remove-reviewers (listp remove-reviewers)) (setq remove-reviewers (consult-gh--list-to-string remove-reviewers)))
@@ -9385,6 +9385,9 @@ Description of Arguments:
          (package (consult-gh--get-package repo))
          (title (car parts))
          (state (cadr parts))
+         (draft (equal state "Draft"))
+         (latest (equal state "Latest"))
+         (prerelease (equal state "Pre-release"))
          (tagname (cadr (cdr parts)))
          (date (cadr (cddr parts)))
          (date (if (and (stringp date) (length> date 9)) (substring date 0 10) date))
@@ -9402,7 +9405,7 @@ Description of Arguments:
           (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t)))))
-    (add-text-properties 0 1 (list :repo repo :user user :package package :tagname tagname :title title :state state :date date :query query :class class :type type) str)
+    (add-text-properties 0 1 (list :repo repo :user user :package package :tagname tagname :title title :state state :draft draft :latest latest :prerelease prerelease :date date :query query :class class :type type) str)
     str))
 
 (defun consult-gh--release-state ()
@@ -9672,6 +9675,69 @@ without asking for confirmation."
         (consult-gh--release-delete repo tagname)
       (consult-gh--release-delete repo tagname t))))
 
+(defun consult-gh--release-download (repo tagname &optional skip-existing)
+  "Download assets of release TAGNAME in REPO.
+
+This is an internal function for non-interactive use.
+For interactive use see `consult-gh-release-download`.
+
+It runs the command “gh release download TAGNAME --repo REPO”
+using `consult-gh--command-to-string'.
+
+When SKIP-EXISTING is non-nil, does not overwrite existing files"
+  (let* ((nextsteps (append (list (cons "Download all the assets from the release" :download))
+                            (list (cons "Download the archive of the source code for release" :archive))
+                            (list (cons "Download files with specific patterns (e.g. '*.deb') from the assets" :pattern))
+                            (list (cons "Cancel" :cancel))))
+         (next (when nextsteps (consult--read nextsteps
+                                              :prompt "Choose What do you want to download? "
+                                              :lookup #'consult--lookup-cdr
+                                              :sort nil)))
+         (args (append
+                (list "release" "download" tagname "--repo" (substring-no-properties repo))
+                (if skip-existing
+                    (list "--skip-existing")
+                  (list "--clobber")))))
+
+    (when (and repo tagname next (not (equal next :cancel)))
+      (pcase next
+        (':download)
+        (':archive (let ((archive (consult--read (list "zip" "tar.gz")
+                                                 :prompt "Select the format for the archive: "
+                                                 :require-match t)))
+                     (setq args (append args (list (format "--archive=%s" archive))))))
+
+        (':pattern (let ((patterns (consult--read nil
+                                                  :prompt "Enter comma separated patterns (e.g. *.deb, *.rpm): "
+                                                  )))
+                     (when (and patterns
+                                (stringp patterns)
+                                (not (string-empty-p patterns)))
+                       (mapc (lambda (item) (setq args (append args (list "-p" item)))) (split-string patterns "," t "[\s\t\n\r]+"))))))
+
+      (let ((dir (read-directory-name (concat "Select Directory for " (propertize (format "%s - %s " repo tagname) 'face 'font-lock-keyword-face)) (or (and (stringp consult-gh-default-save-directory) (file-name-as-directory consult-gh-default-save-directory)) default-directory))))
+
+        (unless (file-exists-p dir)
+          (make-directory (file-truename dir) t))
+
+        (setq args (append args (if dir (list "--dir" (file-truename dir)))))
+        (consult-gh--make-process (format "consult-gh-release-download-all-%s-%s" repo tagname)
+                                  :when-done (lambda (_ str) (message str))
+                                  :cmd-args args)))))
+
+(defun consult-gh--release-download-action (cand)
+  "Download assets of a release candidate, CAND.
+
+This is a wrapper function around `consult-gh--release-download'.
+It parses CAND to extract relevant values \(e.g. repository's name\ and
+tag name) and passes them to `consult-gh--release-download'.
+
+To use this as the default action for releases,
+set `consult-gh-release-action' to `consult-gh--release-download-action'."
+  (let* ((repo (get-text-property 0 :repo cand))
+         (tagname (get-text-property 0 :tagname cand)))
+         (consult-gh--release-download repo tagname)))
+
 (defun consult-gh--release-generate-notes (repo &optional tagname previous-tag target topic)
   "Generate release notes for TAG in REPO.
 
@@ -9929,7 +9995,6 @@ Description of Arguments:
           (setq args (delq nil (append args
                                    (list tagname)
                                    (list "--repo" repo)
-                                   (list "--fail-on-no-commits")
                                    (and title (list "--title" (substring-no-properties title)))
                                    (and notes (list "--notes"  (substring-no-properties notes)))
                                    (and target (list "--target" target))
@@ -10229,7 +10294,6 @@ Description of Arguments:
                                      (if prerelease (list "--prerelease")
                                        (list "--prerelease=false"))
                                      (and discussion (list "--discussion-category" discussion)))))
-        (setq my:test args)
         (apply #'consult-gh--command-to-string "release" "edit" args))
        (t (message "No Changes to submit")
           nil)))))
@@ -13169,6 +13233,159 @@ For more details refer to the manual with “gh release edit --help”."
          (consult-gh-topics--insert-buffer-contents (consult-gh-topics--get-buffer-create buffer "release" newtopic)
                                                     newtopic :title title :body body :target target :tagname tagname :draft draft :prerelease prerelease :canwrite canwrite)
        (funcall consult-gh-pop-to-buffer-func buffer)))))))
+
+;;;###autoload
+(defun consult-gh-release-mark-draft (&optional release)
+  "Mark RELEASE as draft."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((release (or release consult-gh--topic (consult-gh-release-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (repo (get-text-property 0 :repo release))
+          (type (get-text-property 0 :type release))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (tagname (get-text-property 0 :tagname release))
+          (args (list "release" "edit" tagname "--repo" repo "--draft")))
+     (when (and canwrite (equal type "release"))
+       (consult-gh--make-process (format "consult-gh-release-draft-%s-%s" repo tagname)
+              :when-done `(lambda (_ str)
+                            (message "Release %s in %s was marked as %s"
+                                     (propertize ,tagname 'face 'consult-gh-pr)
+                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize "DRAFT" 'face 'consult-gh-success))
+                            (add-text-properties 0 1 (list :draft t) ,release))
+              :cmd-args args)
+       release))))
+
+;;;###autoload
+(defun consult-gh-release-toggle-prerelease (&optional release)
+  "(Un)mark RELEASE as pre-release."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((release (or release consult-gh--topic (consult-gh-release-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (repo (get-text-property 0 :repo release))
+          (type (get-text-property 0 :type release))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (user-error "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (tagname (get-text-property 0 :tagname release))
+          (prerelease (get-text-property 0 :prerelease release))
+          (prerelease (if (or (equal prerelease :false)
+                              (equal prerelease "false"))
+                          nil
+                        prerelease))
+          (args (list "release" "edit" tagname "--repo" repo)))
+     (when (and canwrite (equal type "release"))
+        (if prerelease
+            (consult-gh--make-process (format "consult-gh-release-prerelease-%s-%s" repo tagname)
+              :when-done `(lambda (_ str)
+                            (message "Release %s in %s was %s"
+                                     (propertize ,tagname 'face 'consult-gh-pr)
+                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize "unmarked as PRE-RELEASE" 'face 'consult-gh-warning))
+                            (add-text-properties 0 1 (list :prerelease nil) ,release)
+                            str)
+              :cmd-args (append args (list "--prerelease=false")))
+          (consult-gh--make-process (format "consult-gh-release-prerelease-%s-%s" repo tagname)
+              :when-done `(lambda (_ str)
+                            (message "Release %s in %s was %s"
+                                     (propertize ,tagname 'face 'consult-gh-pr)
+                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize "unmarked as PRE-RELEASE" 'face 'consult-gh-success))
+                            (add-text-properties 0 1 (list :prerelease t) ,release))
+              :cmd-args (append args (list "--prerelease"))))
+        release))))
+
+;;;###autoload
+(defun consult-gh-release-mark-latest (&optional release)
+  "Mark RELEASE as latest."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((release (or release consult-gh--topic (consult-gh-release-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (repo (get-text-property 0 :repo release))
+          (type (get-text-property 0 :type release))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (tagname (get-text-property 0 :tagname release))
+          (draft (get-text-property 0 :draft release))
+          (draft (if (or (equal draft :false)
+                         (equal draft "false"))
+                     nil
+                   draft))
+          (prerelease (get-text-property 0 :prerelease release))
+          (prerelease (if (or (equal prerelease :false)
+                              (equal prerelease "false"))
+                          nil
+                        prerelease))
+          (args (list "release" "edit" tagname "--repo" repo "--latest")))
+     (when (and canwrite (equal type "release"))
+       (if (or draft prerelease)
+               (message "Latest release cannot be %s." (propertize "draft or prerelease" 'face 'consult-gh-error))
+
+         (consult-gh--make-process (format "consult-gh-release-latest-%s-%s" repo tagname)
+                                   :when-done `(lambda (_ str)
+                                                 (message "Release %s in %s was %s"
+                                                          (propertize ,tagname 'face 'consult-gh-pr)
+                                                          (propertize ,repo 'face 'consult-gh-repo)
+                                                          (propertize "marked as LATEST" 'face 'consult-gh-success))
+                                                 (add-text-properties 0 1 (list :latest t) ,release))
+                                   :cmd-args args)
+         release)))))
+
+;;;###autoload
+(defun consult-gh-release-publish (&optional release)
+  "Publish RELEASE."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((release (or release consult-gh--topic (consult-gh-release-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (repo (get-text-property 0 :repo release))
+          (type (get-text-property 0 :type release))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (tagname (get-text-property 0 :tagname release))
+          (args (list "release" "edit" tagname "--repo" repo "--draft=false" "--latest=false")))
+     (when (and canwrite (equal type "release"))
+       (consult-gh--make-process (format "consult-gh-release-publish-%s-%s" repo tagname)
+              :when-done `(lambda (_ str)
+                            (message "Release %s in repo %s was %s"
+                                     (propertize ,tagname 'face 'consult-gh-pr)
+                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize "PUBLISHED" 'face 'consult-gh-success))
+                            (add-text-properties 0 1 (list :draft nil) ,release))
+              :cmd-args args)
+       release))))
+
+;;;###autoload
+(defun consult-gh-release-download (&optional repo tagname)
+  "Download teh release with TAGNAME from REPO.
+
+This mimicks the same function as running
+“gh release download TGNAME --repo REPO” in the terminal.
+
+For more details refer to the manual with “gh release download --help”."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((repo (or repo
+                    (and (stringp consult-gh--topic)
+                         (get-text-property 0 :repo consult-gh--topic))
+                    (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+          (tagname (or tagname
+                       (and (stringp consult-gh--topic)
+                            (get-text-property 0 :tagname consult-gh--topic))
+                       (get-text-property 0 :tagname (consult-gh-release-list repo t)))))
+     (consult-gh--release-download repo tagname))))
 
 ;;;###autoload
 (defun consult-gh-topics-comment-create (&optional topic)

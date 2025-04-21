@@ -1967,26 +1967,26 @@ Description of Arguments:
                     ((string-prefix-p "finished" event)
                        (with-current-buffer ,proc-buf
                          (widen)
-                         (funcall ,when-done nil (buffer-string))
+                         (funcall ,when-done event (buffer-string))
                            (erase-buffer)))
                      ((string-prefix-p "killed" event)
-                      (message "consult-gh--async-process was %s" (propertize "killed" 'face 'warning)))
-                     (t (message "consult-gh--async-process %s" (propertize "failed" 'face 'error))))
+                      (message "%s was %s" (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event)))
+                     (t (message "%s failed: %s " (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event))))
                    (when (> (buffer-size ,proc-buf) 0)
                      (with-current-buffer (get-buffer-create consult-gh--async-log-buffer)
                        (goto-char (point-max))
-                       (insert ">>>>> stderr >>>>>\n")
+                       (insert (format ">>>>> stderr (%s) >>>>>\n" (process-name proc)))
                        (let ((beg (point)))
                          (insert-buffer-substring ,proc-buf)
                          (save-excursion
                            (goto-char beg)
                            (message #("%s" 0 2 (face error))
                                     (buffer-substring-no-properties (pos-bol) (pos-eol)))))
-                       (insert "<<<<< stderr <<<<<\n")))))
+                       (insert (format "<<<<< stderr (%s) <<<<<\n" (process-name proc)))))))
                (process-adaptive-read-buffering t))
           (with-current-buffer proc-buf
             (set-buffer-file-coding-system 'unix))
-          (consult-gh--async-log "consult-gh--make-process started %s\n" cmd-args)
+          (consult-gh--async-log "consult-gh--make-process %s started %s\n" name cmd-args)
           (make-process :name name
                         :buffer proc-buf
                         :noquery t
@@ -4575,7 +4575,7 @@ using `consult-gh--command-to-string'.
 ARGS are ignored."
   (let ((buffer (current-buffer)))
     (consult-gh--make-process (format "consult-gh-clone-%s" repo)
-                            :when-done `(lambda (_proc _str)
+                            :when-done `(lambda (_event _out)
                                           (with-current-buffer ,buffer
                                             (progn
                                             (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name ,name ,targetdir))
@@ -8644,7 +8644,7 @@ Description of Arguments:
                (body (and (not (equal body original-body)) body))
                (basebranch (when (and (not (equal basebranch original-basebranch)) (stringp basebranch)) basebranch))
                (args (list "--repo" baserepo)))
-(setq my:test (list add-projects remove-projects))
+
     (when (and add-reviewers (listp add-reviewers)) (setq add-reviewers (consult-gh--list-to-string add-reviewers)))
 
     (when (and remove-reviewers (listp remove-reviewers)) (setq remove-reviewers (consult-gh--list-to-string remove-reviewers)))
@@ -10508,6 +10508,9 @@ Description of Arguments:
          (package (consult-gh--get-package repo))
          (title (car parts))
          (state (cadr parts))
+         (draft (equal state "Draft"))
+         (latest (equal state "Latest"))
+         (prerelease (equal state "Pre-release"))
          (tagname (cadr (cdr parts)))
          (date (cadr (cddr parts)))
          (date (if (and (stringp date) (length> date 9)) (substring date 0 10) date))
@@ -10525,7 +10528,7 @@ Description of Arguments:
           (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t)))))
-    (add-text-properties 0 1 (list :repo repo :user user :package package :tagname tagname :title title :state state :date date :query query :class class :type type) str)
+    (add-text-properties 0 1 (list :repo repo :user user :package package :tagname tagname :title title :state state :draft draft :latest latest :prerelease prerelease :date date :query query :class class :type type) str)
     str))
 #+end_src
 ***** state/preview
@@ -10838,6 +10841,74 @@ without asking for confirmation."
       (consult-gh--release-delete repo tagname t))))
 
 #+end_src
+****** download
+******* download backend
+#+begin_src emacs-lisp
+(defun consult-gh--release-download (repo tagname &optional skip-existing)
+  "Download assets of release TAGNAME in REPO.
+
+This is an internal function for non-interactive use.
+For interactive use see `consult-gh-release-download`.
+
+It runs the command “gh release download TAGNAME --repo REPO”
+using `consult-gh--command-to-string'.
+
+When SKIP-EXISTING is non-nil, does not overwrite existing files"
+  (let* ((nextsteps (append (list (cons "Download all the assets from the release" :download))
+                            (list (cons "Download the archive of the source code for release" :archive))
+                            (list (cons "Download files with specific patterns (e.g. '*.deb') from the assets" :pattern))
+                            (list (cons "Cancel" :cancel))))
+         (next (when nextsteps (consult--read nextsteps
+                                              :prompt "Choose What do you want to download? "
+                                              :lookup #'consult--lookup-cdr
+                                              :sort nil)))
+         (args (append
+                (list "release" "download" tagname "--repo" (substring-no-properties repo))
+                (if skip-existing
+                    (list "--skip-existing")
+                  (list "--clobber")))))
+
+    (when (and repo tagname next (not (equal next :cancel)))
+      (pcase next
+        (':download)
+        (':archive (let ((archive (consult--read (list "zip" "tar.gz")
+                                                 :prompt "Select the format for the archive: "
+                                                 :require-match t)))
+                     (setq args (append args (list (format "--archive=%s" archive))))))
+
+        (':pattern (let ((patterns (consult--read nil
+                                                  :prompt "Enter comma separated patterns (e.g. *.deb, *.rpm): "
+                                                  )))
+                     (when (and patterns
+                                (stringp patterns)
+                                (not (string-empty-p patterns)))
+                       (mapc (lambda (item) (setq args (append args (list "-p" item)))) (split-string patterns "," t "[\s\t\n\r]+"))))))
+
+      (let ((dir (read-directory-name (concat "Select Directory for " (propertize (format "%s - %s " repo tagname) 'face 'font-lock-keyword-face)) (or (and (stringp consult-gh-default-save-directory) (file-name-as-directory consult-gh-default-save-directory)) default-directory))))
+
+        (unless (file-exists-p dir)
+          (make-directory (file-truename dir) t))
+
+        (setq args (append args (if dir (list "--dir" (file-truename dir)))))
+        (consult-gh--make-process (format "consult-gh-release-download-all-%s-%s" repo tagname)
+                                  :when-done (lambda (_ str) (message str))
+                                  :cmd-args args)))))
+#+end_src
+******* download action
+#+begin_src emacs-lisp
+(defun consult-gh--release-download-action (cand)
+  "Download assets of a release candidate, CAND.
+
+This is a wrapper function around `consult-gh--release-download'.
+It parses CAND to extract relevant values \(e.g. repository's name\ and
+tag name) and passes them to `consult-gh--release-download'.
+
+To use this as the default action for releases,
+set `consult-gh-release-action' to `consult-gh--release-download-action'."
+  (let* ((repo (get-text-property 0 :repo cand))
+         (tagname (get-text-property 0 :tagname cand)))
+         (consult-gh--release-download repo tagname)))
+#+end_src
 ***** create
 
 ****** generate notes
@@ -11127,7 +11198,6 @@ Description of Arguments:
           (setq args (delq nil (append args
                                    (list tagname)
                                    (list "--repo" repo)
-                                   (list "--fail-on-no-commits")
                                    (and title (list "--title" (substring-no-properties title)))
                                    (and notes (list "--notes"  (substring-no-properties notes)))
                                    (and target (list "--target" target))
@@ -11456,7 +11526,6 @@ Description of Arguments:
                                      (if prerelease (list "--prerelease")
                                        (list "--prerelease=false"))
                                      (and discussion (list "--discussion-category" discussion)))))
-        (setq my:test args)
         (apply #'consult-gh--command-to-string "release" "edit" args))
        (t (message "No Changes to submit")
           nil)))))
@@ -14747,7 +14816,6 @@ For more details refer to the manual with “gh release create --help”."
             (insert (propertize body :consult-gh-draft-body t 'rear-nonsticky t))))))))
 #+end_src
 **** consult-gh-release-delete
-****** interactive command
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-release-delete (&optional repo release noconfirm)
@@ -14828,7 +14896,174 @@ For more details refer to the manual with “gh release edit --help”."
        (funcall consult-gh-pop-to-buffer-func buffer)))))))
 
 #+end_src
+**** consult-gh-release-mark-draft
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-release-mark-draft (&optional release)
+  "Mark RELEASE as draft."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((release (or release consult-gh--topic (consult-gh-release-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (repo (get-text-property 0 :repo release))
+          (type (get-text-property 0 :type release))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (tagname (get-text-property 0 :tagname release))
+          (args (list "release" "edit" tagname "--repo" repo "--draft")))
+     (when (and canwrite (equal type "release"))
+       (consult-gh--make-process (format "consult-gh-release-draft-%s-%s" repo tagname)
+              :when-done `(lambda (_ str)
+                            (message "Release %s in %s was marked as %s"
+                                     (propertize ,tagname 'face 'consult-gh-pr)
+                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize "DRAFT" 'face 'consult-gh-success))
+                            (add-text-properties 0 1 (list :draft t) ,release))
+              :cmd-args args)
+       release))))
+#+end_src
 
+**** consult-gh-release-toggle-prelease
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-release-toggle-prerelease (&optional release)
+  "(Un)mark RELEASE as pre-release."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((release (or release consult-gh--topic (consult-gh-release-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (repo (get-text-property 0 :repo release))
+          (type (get-text-property 0 :type release))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (user-error "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (tagname (get-text-property 0 :tagname release))
+          (prerelease (get-text-property 0 :prerelease release))
+          (prerelease (if (or (equal prerelease :false)
+                              (equal prerelease "false"))
+                          nil
+                        prerelease))
+          (args (list "release" "edit" tagname "--repo" repo)))
+     (when (and canwrite (equal type "release"))
+        (if prerelease
+            (consult-gh--make-process (format "consult-gh-release-prerelease-%s-%s" repo tagname)
+              :when-done `(lambda (_ str)
+                            (message "Release %s in %s was %s"
+                                     (propertize ,tagname 'face 'consult-gh-pr)
+                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize "unmarked as PRE-RELEASE" 'face 'consult-gh-warning))
+                            (add-text-properties 0 1 (list :prerelease nil) ,release)
+                            str)
+              :cmd-args (append args (list "--prerelease=false")))
+          (consult-gh--make-process (format "consult-gh-release-prerelease-%s-%s" repo tagname)
+              :when-done `(lambda (_ str)
+                            (message "Release %s in %s was %s"
+                                     (propertize ,tagname 'face 'consult-gh-pr)
+                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize "unmarked as PRE-RELEASE" 'face 'consult-gh-success))
+                            (add-text-properties 0 1 (list :prerelease t) ,release))
+              :cmd-args (append args (list "--prerelease"))))
+        release))))
+#+end_src
+
+
+**** consult-gh-release-mark-latest
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-release-mark-latest (&optional release)
+  "Mark RELEASE as latest."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((release (or release consult-gh--topic (consult-gh-release-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (repo (get-text-property 0 :repo release))
+          (type (get-text-property 0 :type release))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (tagname (get-text-property 0 :tagname release))
+          (draft (get-text-property 0 :draft release))
+          (draft (if (or (equal draft :false)
+                         (equal draft "false"))
+                     nil
+                   draft))
+          (prerelease (get-text-property 0 :prerelease release))
+          (prerelease (if (or (equal prerelease :false)
+                              (equal prerelease "false"))
+                          nil
+                        prerelease))
+          (args (list "release" "edit" tagname "--repo" repo "--latest")))
+     (when (and canwrite (equal type "release"))
+       (if (or draft prerelease)
+               (message "Latest release cannot be %s." (propertize "draft or prerelease" 'face 'consult-gh-error))
+
+         (consult-gh--make-process (format "consult-gh-release-latest-%s-%s" repo tagname)
+                                   :when-done `(lambda (_ str)
+                                                 (message "Release %s in %s was %s"
+                                                          (propertize ,tagname 'face 'consult-gh-pr)
+                                                          (propertize ,repo 'face 'consult-gh-repo)
+                                                          (propertize "marked as LATEST" 'face 'consult-gh-success))
+                                                 (add-text-properties 0 1 (list :latest t) ,release))
+                                   :cmd-args args)
+         release)))))
+#+end_src
+
+**** consult-gh-release-publish
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-release-publish (&optional release)
+  "Publish RELEASE."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((release (or release consult-gh--topic (consult-gh-release-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (repo (get-text-property 0 :repo release))
+          (type (get-text-property 0 :type release))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (tagname (get-text-property 0 :tagname release))
+          (args (list "release" "edit" tagname "--repo" repo "--draft=false" "--latest=false")))
+     (when (and canwrite (equal type "release"))
+       (consult-gh--make-process (format "consult-gh-release-publish-%s-%s" repo tagname)
+              :when-done `(lambda (_ str)
+                            (message "Release %s in repo %s was %s"
+                                     (propertize ,tagname 'face 'consult-gh-pr)
+                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize "PUBLISHED" 'face 'consult-gh-success))
+                            (add-text-properties 0 1 (list :draft nil) ,release))
+              :cmd-args args)
+       release))))
+#+end_src
+
+**** consult-gh-release-download
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-release-download (&optional repo tagname)
+  "Download teh release with TAGNAME from REPO.
+
+This mimicks the same function as running
+“gh release download TGNAME --repo REPO” in the terminal.
+
+For more details refer to the manual with “gh release download --help”."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((repo (or repo
+                    (and (stringp consult-gh--topic)
+                         (get-text-property 0 :repo consult-gh--topic))
+                    (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+          (tagname (or tagname
+                       (and (stringp consult-gh--topic)
+                            (get-text-property 0 :tagname consult-gh--topic))
+                       (get-text-property 0 :tagname (consult-gh-release-list repo t)))))
+     (consult-gh--release-download repo tagname))))
+#+end_src
 *** topics
 
 
@@ -15217,6 +15452,9 @@ and passes ARGS to it."
 :PROPERTIES:
 :header-args:emacs-lisp: :results none :mkdirp yes :link yes :tangle ./consult-gh-embark.el
 :END:
+
+This section includes additional useful embark actions as well as possible keymaps. This will be provided as examples and starting point to users, so that they can make their own custom embark actions and functions.
+
 *** Header
 #+begin_src  emacs-lisp
 ;;; consult-gh-embark.el --- Embark Actions for consult-gh -*- lexical-binding: t -*-
@@ -15255,13 +15493,17 @@ and passes ARGS to it."
 ;;; Code:
 #+end_src
 
-*** Main
-This section includes additional useful embark actions as well as possible keymaps. This will be provided as examples and starting point to users, so that they can make their own custom embark actions and functions.
-
+*** Requirements
 #+begin_src emacs-lisp
 ;;; Requirements
 (require 'embark-consult)
 (require 'consult-gh)
+#+end_src
+
+*** Actions
+**** General Actions
+***** default action
+#+begin_src emacs-lisp
 
 ;;; Define Embark Action Functions
 
@@ -15285,6 +15527,8 @@ This section includes additional useful embark actions as well as possible keyma
           (funcall consult-gh-notifications-action cand))
          ("dashboard"
           (funcall consult-gh-dashboard-action cand))
+         ("release"
+          (funcall consult-gh-release-action cand))
          (_
           (funcall consult-gh-repo-action cand)))))))
 
@@ -15307,8 +15551,14 @@ This section includes additional useful embark actions as well as possible keyma
           (funcall (consult-gh--notifications-state) 'preview cand))
          ("dashboard"
           (funcall (consult-gh--dashboard-state) 'preview cand))
+         ("release"
+          (funcall (consult-gh--release-state) 'preview cand))
          (_
           (funcall (consult-gh--repo-state) 'preview cand)))))))
+#+end_src
+
+***** add remove favorites
+#+begin_src emacs-lisp
 
 ;;;; Add/Remove from Favorites
 (defun consult-gh-embark-add-repo-to-known-repos (cand)
@@ -15350,6 +15600,10 @@ This section includes additional useful embark actions as well as possible keyma
       (setq consult-gh-favorite-orgs-list (delete org consult-gh-favorite-orgs-list)))))
 
 (define-obsolete-function-alias 'consult-gh-embark-remove-org-from-default-list #'consult-gh-embark-remove-org-from-favorite-list "2.0")
+#+end_src
+
+***** Get other props
+#+begin_src emacs-lisp
 
 ;;;; Get other props
 (defun consult-gh-embark-get-title (cand)
@@ -15424,7 +15678,10 @@ The candidate can be a repo, issue, PR, file path, or a branch."
     (let* ((repo (get-text-property 0 :repo cand))
            (user (consult-gh--get-username repo)))
       (consult-gh--get-user-link user))))
+#+end_src
 
+***** open actions
+#+begin_src emacs-lisp
 
 ;;;; Open Actions
 (defun consult-gh-embark-open-in-system-browser (cand)
@@ -15485,7 +15742,10 @@ The candidate can be a repo, issue, PR, file path, or a branch."
     (if-let* ((url (consult-gh-embark-get-user-link cand)))
         (funcall consult-gh-browse-url-func url)
       (message "No user's link at point!"))))
+#+end_src
 
+***** view actions
+#+begin_src emacs-lisp
 
 ;;;; View Actions
 (defun consult-gh-embark-view-readme-of-repo (cand)
@@ -15580,6 +15840,10 @@ The candidate can be a repo, issue, PR, file path, or a branch."
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (funcall #'consult-gh--pr-view-diff-action cand))))
+#+end_src
+
+***** copy/kill actions
+#+begin_src emacs-lisp
 
 ;;;; Copy/Kill Actions
 (defun consult-gh-embark-copy-title-as-kill (cand)
@@ -15684,6 +15948,10 @@ CAND can be a repo, issue, PR, file path, ..."
   (when (stringp cand)
     (when-let ((link (consult-gh-embark-get-user-link cand)))
       (kill-new link))))
+#+end_src
+
+***** insert actions
+#+begin_src emacs-lisp
 
 
 ;;;; Insert Actions
@@ -15751,11 +16019,11 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
         (message "No user at point!")))))
 
 (defun consult-gh-embark-insert-user-name (cand)
-    "Insert the name of the user in CAND at point."
-    (when (stringp cand)
-      (if-let ((user (consult-gh-embark-get-user-name cand)))
-          (embark-insert (list user))
-        (message "No user at point!"))))
+  "Insert the name of the user in CAND at point."
+  (when (stringp cand)
+    (if-let ((user (consult-gh-embark-get-user-name cand)))
+        (embark-insert (list user))
+      (message "No user at point!"))))
 
 (defun consult-gh-embark-insert-user-email (cand)
   "Insert the email of the user in CAND at point."
@@ -15788,6 +16056,10 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
                      (url (format " %s " url))
                      (t "")))))
         (message "No link found for user at point!")))))
+#+end_src
+
+***** Save/Fork/Clone Actions
+#+begin_src emacs-lisp
 
 ;;;; Svae/Clone/Fork Actions
 
@@ -15811,6 +16083,17 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (funcall #'consult-gh--files-save-file-action cand))))
+
+(defun consult-gh-embark-download-release (cand)
+  "Download the CAND release at point."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh--release-download-action cand))))
+#+end_src
+
+***** Create Actions
+#+begin_src emacs-lisp
 
 ;;;; Create Actions
 
@@ -15855,6 +16138,19 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
                    (_ nil)))
             (body (when ref (not (string-empty-p ref)) (format "%s" ref))))
        (funcall #'consult-gh-pr-create repo title body)))))
+
+(defun consult-gh-embark-create-release (cand)
+  "Create a release in repo of CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((repo (get-text-property 0 :repo cand)))
+       (funcall #'consult-gh-release-create repo)))))
+#+end_src
+
+**** Issue Actions
+***** Edit Issue Actions
+#+begin_src emacs-lisp
 
 ;;;; Edit Issue Actions
 
@@ -15931,7 +16227,10 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
            (number (get-text-property 0 :number cand)))
        (with-current-buffer (funcall #'consult-gh--issue-view repo number)
          (consult-gh-topics-comment-create))))))
-
+#+end_src
+**** PR Actions
+***** Edit PR Actions
+#+begin_src emacs-lisp
 
 ;;;; Edit PR Actions
 
@@ -16034,6 +16333,10 @@ CAND can be a PR or an issue."
               (when (and pr-number new-body)
                 (apply #'consult-gh--command-to-string "pr" "edit" pr-number (list "--repo" repo "--body" (substring-no-properties new-body))))))
            (_ nil)))))))
+#+end_src
+**** Notifications Actions
+***** Edit Notifications Actions
+#+begin_src emacs-lisp
 
 ;;;; Edit Notification Actions
 (defun consult-gh-embark-toggle-notification-read (cand)
@@ -16055,6 +16358,70 @@ CAND can be a PR or an issue."
        (if (eq subscription 't)
            (consult-gh--notifications-unsubscribe cand)
          (consult-gh--notifications-subscribe cand))))))
+#+end_src
+
+**** Release Actions
+***** Edit Release Actions
+#+begin_src emacs-lisp
+
+;;;; Edit Release Actions
+
+(defun consult-gh-embark-mark-release-draft (cand)
+  "Un(mark) the release in CAND as draft."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((type (get-text-property 0 :type cand)))
+       (when (equal type "release")
+         (funcall #'consult-gh-release-mark-draft cand))))))
+
+(defun consult-gh-embark-toggle-release-prerelease (cand)
+  "Mark/Unmark the release in CAND as prerelease."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((type (get-text-property 0 :type cand)))
+       (when (equal type "release")
+         (funcall #'consult-gh-release-toggle-prerelease cand))))))
+
+(defun consult-gh-embark-mark-release-latest (cand)
+  "Mark the release in CAND as latest."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (when-let* ((type (get-text-property 0 :type cand)))
+       (when (equal type "release")
+         (funcall #'consult-gh-release-mark-latest cand))))))
+
+(defun consult-gh-embark-publish-release (cand)
+  "Publish the release in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (print (format "emabrk--command: %s" embark--command))
+     (print (format "this command: %s" current-minibuffer-command))
+     (when-let* ((type (get-text-property 0 :type cand)))
+
+       (when (equal type "release")
+        (funcall #'consult-gh-release-publish cand))))))
+
+(defun consult-gh-embark-delete-release (cand)
+  "Delete the release in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-release-delete cand))))
+
+(defun consult-gh-embark-edit-release (cand)
+  "Edit the release in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-release-edit cand))))
+
+#+end_src
+**** Other Actions
+#+begin_src emacs-lisp
 
 ;;;; Other Actions
 
@@ -16072,7 +16439,11 @@ CAND can be a PR or an issue."
      (consult-gh--auth-account-host)
      (let ((repo (or (get-text-property 0 :repo cand) (substring-no-properties cand))))
        (consult-gh-search-code nil repo)))))
+#+end_src
 
+*** Keymaps
+**** General Keymap
+#+begin_src emacs-lisp
 
 ;;; Define Embark Keymaps
 
@@ -16135,6 +16506,7 @@ CAND can be a PR or an issue."
   "i" '("create issue" . consult-gh-embark-create-issue)
   "p" '("create pull request" . consult-gh-embark-create-pr)
   "r" '("create repo" . consult-gh-embark-create-repo)
+  "R" '("cretae release" . consult-gh-embark-create-release)
   "c" '("create a clone of repo" . consult-gh-embark-clone-repo)
   "f" '("create a fork repo" . consult-gh-embark-fork-repo))
 
@@ -16262,6 +16634,10 @@ CAND can be a PR or an issue."
 (defvar-keymap consult-gh-embark-orgs-actions-map
   :doc "Keymap for consult-gh-embark-orgs"
   :parent consult-gh-embark-general-actions-map)
+#+end_src
+
+**** Repo Keymap
+#+begin_src emacs-lisp
 
 ;;;; Repo Keymap
 ;;;;;; Repo View Menu Keymap
@@ -16278,8 +16654,11 @@ CAND can be a PR or an issue."
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
-   "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map))
+  "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map))
+#+end_src
 
+**** Files Keymap
+#+begin_src emacs-lisp
 
 ;;;;; Files Keymap
 (defvar-keymap consult-gh-embark-files-actions-map
@@ -16288,6 +16667,10 @@ CAND can be a PR or an issue."
   "s" '("gh save file" . consult-gh-embark-save-file)
   "w f" '("file content" . consult-gh-embark-insert-file-contents)
   "i f" '("file content" . consult-gh-embark-copy-file-contents-as-kill))
+#+end_src
+
+**** Issues Keymap
+#+begin_src emacs-lisp
 
 ;;;;; Issue Keymap
 ;;;;;; Edit Issue Menu Keymap
@@ -16312,7 +16695,10 @@ CAND can be a PR or an issue."
   "c" '("gh create" . consult-gh-embark-create-menu-map)
   "c C-c" '("comment on issue" . consult-gh-embark-comment-on-issue)
   "e" '("gh edit issue" . consult-gh-embark-issues-edit-menu-map))
+#+end_src
 
+**** PRs Keymap
+#+begin_src emacs-lisp
 
 ;;;;; Pull Request Keymap
 ;;;;;; Edit PRs Menu Keymap
@@ -16345,11 +16731,46 @@ CAND can be a PR or an issue."
   "c C-r" '("review for pr" . consult-gh-embark-review-pr)
   "e" '("gh edit pr" . consult-gh-embark-prs-edit-menu-map)
   "v" '("gh view pr" . consult-gh-embark-prs-view-menu-map))
+#+end_src
+
+**** Releases Keymap
+#+begin_src emacs-lisp
+
+;;;;; Release Keymap
+;;;;;; Edit Issue Menu Keymap
+(defvar-keymap consult-gh-embark-releases-edit-menu-map
+  :doc "Keymap for editing issues"
+  :parent nil
+  "D" '("delete release" . consult-gh-embark-delete-release)
+  "e" '("edit release" . consult-gh-embark-edit-release)
+  "d" '("mark as draft" . consult-gh-embark-mark-release-draft)
+  "P" '("publish release" . consult-gh-embark-publish-release)
+  "l" '("mark as latest" . consult-gh-embark-mark-release-latest)
+  "p" '("mark/unmark prerelease" . consult-gh-embark-toggle-release-prerelease))
+
+(fset 'consult-gh-embark-releases-edit-menu-map consult-gh-embark-releases-edit-menu-map)
+
+;;;;;; Release Main Menu Keymap
+(defvar-keymap consult-gh-embark-releases-actions-map
+  :doc "Keymap for consult-gh-embark-releases"
+  :parent consult-gh-embark-general-actions-map
+  "c" '("gh create" . consult-gh-embark-create-menu-map)
+  "d" '("gh download release" . consult-gh-embark-download-release)
+  "e" '("gh edit release" . consult-gh-embark-releases-edit-menu-map)
+  "T" '("gh test" . consult-gh-embark-test))
+#+end_src
+
+**** Codes Keymap
+#+begin_src emacs-lisp
 
 ;;;; Code Keymap
 (defvar-keymap consult-gh-embark-codes-actions-map
   :doc "Keymap for consult-gh-embark-codes"
   :parent consult-gh-embark-general-actions-map)
+#+end_src
+
+**** Notifications Keymap
+#+begin_src emacs-lisp
 
 ;;;; Notifications Keymap
 ;;;;; Edit Notifications Menu Keymap
@@ -16369,47 +16790,84 @@ CAND can be a PR or an issue."
 (defvar-keymap consult-gh-embark-dashboard-actions-map
   :doc "Keymap for consult-gh-embark-dashboard"
   :parent consult-gh-embark-general-actions-map)
+#+end_src
 
-;;; Define consult-gh-embark minor-mode
+*** Minor Modes
+#+begin_src emacs-lisp
 
 (defun consult-gh-embark--mode-on ()
   "Enable `consult-gh-embark-mode'."
-  (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-general-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-repos . consult-gh-embark-repos-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-issues . consult-gh-embark-issues-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-prs . consult-gh-embark-prs-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-codes . consult-gh-embark-codes-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-notifications . consult-gh-embark-notifications-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-dashboard . consult-gh-embark-dashboard-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-codes . consult-gh-embark-codes-actions-map))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-repos . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-issues . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-prs . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-files . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-codes . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-notifications . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-dashboard . consult-gh-embark-default-action)))
+  ;; add keymaps
+  (setq embark-keymap-alist
+        (append embark-keymap-alist
+                '((consult-gh . consult-gh-embark-general-actions-map)
+                  (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
+                  (consult-gh-repos . consult-gh-embark-repos-actions-map)
+                  (consult-gh-files . consult-gh-embark-files-actions-map)
+                  (consult-gh-issues . consult-gh-embark-issues-actions-map)
+                  (consult-gh-prs . consult-gh-embark-prs-actions-map)
+                  (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
+                  (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map)
+                  (consult-gh-releases . consult-gh-embark-releases-actions-map))))
+
+
+  ;; override default actions
+  (setq embark-default-action-overrides
+        (append embark-default-action-overrides
+                '((consult-gh-repos . consult-gh-embark-default-action)
+                  (consult-gh-issues . consult-gh-embark-default-action)
+                  (consult-gh-prs . consult-gh-embark-default-action)
+                  (consult-gh-files . consult-gh-embark-default-action)
+                  (consult-gh-codes . consult-gh-embark-default-action)
+                  (consult-gh-notifications . consult-gh-embark-default-action)
+                  (consult-gh-dashboard . consult-gh-embark-default-action)
+                  (consult-gh-releases . consult-gh-embark-default-action))))
+
+
+  ;; set post actions-hook
+  (setq embark-post-action-hooks
+        (append embark-post-action-hooks
+                '((consult-gh-embark-mark-release-draft embark--restart)
+                  (consult-gh-embark-toggle-release-prerelease embark--restart)
+                  (consult-gh-embark-publish-release embark--restart)
+                  (consult-gh-embark-mark-release-latest embark--restart)))))
+
+
 
 (defun consult-gh-embark--mode-off ()
   "Disable `consult-gh-embark-mode'."
-  (setq  embark-keymap-alist (seq-difference embark-keymap-alist '((consult-gh . consult-gh-embark-general-actions-map)
-                                                                   (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
-                                                                   (consult-gh-repos . consult-gh-embark-repos-actions-map)
-                                                                   (consult-gh-files . consult-gh-embark-files-actions-map)
-                                                                   (consult-gh-issues . consult-gh-embark-issues-actions-map)
-                                                                   (consult-gh-prs . consult-gh-embark-prs-actions-map)
-                                                                   (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
-                                                                   (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map))))
-  (setq embark-default-action-overrides (seq-difference embark-default-action-overrides
-                                                        '((consult-gh-repos . consult-gh-embark-default-action)
-                                                          (consult-gh-issues . consult-gh-embark-default-action)
-                                                          (consult-gh-prs . consult-gh-embark-default-action)
-                                                          (consult-gh-files . consult-gh-embark-default-action)
-                                                          (consult-gh-codes . consult-gh-embark-default-action)
-                                                          (consult-gh-notifications . consult-gh-embark-default-action)
-                                                          (consult-gh-dashboard . consult-gh-embark-default-action)))))
+  ;;unset keymaps
+  (setq  embark-keymap-alist
+         (seq-difference embark-keymap-alist
+                         '((consult-gh . consult-gh-embark-general-actions-map)
+                           (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
+                           (consult-gh-repos . consult-gh-embark-repos-actions-map)
+                           (consult-gh-files . consult-gh-embark-files-actions-map)
+                           (consult-gh-issues . consult-gh-embark-issues-actions-map)
+                           (consult-gh-prs . consult-gh-embark-prs-actions-map)
+                           (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
+                           (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map)
+                           (consult-gh-releases . consult-gh-embark-releases-actions-map))))
+
+;; unset default actions
+  (setq embark-default-action-overrides
+        (seq-difference embark-default-action-overrides
+                        '((consult-gh-repos . consult-gh-embark-default-action)
+                          (consult-gh-issues . consult-gh-embark-default-action)
+                          (consult-gh-prs . consult-gh-embark-default-action)
+                          (consult-gh-files . consult-gh-embark-default-action)
+                          (consult-gh-codes . consult-gh-embark-default-action)
+                          (consult-gh-notifications . consult-gh-embark-default-action)
+                          (consult-gh-dashboard . consult-gh-embark-default-action)
+                          (consult-gh-releases . consult-gh-embark-default-action))))
+
+  ;; unset post action hooks
+  (setq embark-post-action-hooks
+        (seq-difference embark-post-action-hooks
+                        '((consult-gh-embark-mark-release-draft embark--restart)
+                          (consult-gh-embark-toggle-release-prerelease embark--restart)
+                          (consult-gh-embark-publish-release embark--restart)
+                          (consult-gh-embark-mark-release-latest embark--restart)))))
 
 (defun consult-gh-embark-unload-function ()
   "Unload function for `consult-gh-embark'."
@@ -16425,7 +16883,10 @@ CAND can be a PR or an issue."
   (if consult-gh-embark-mode
       (consult-gh-embark--mode-on)
     (consult-gh-embark--mode-off)))
+#+end_src
 
+*** Footer
+#+begin_src emacs-lisp
 
 ;;; Provide `consul-gh-embark' module
 

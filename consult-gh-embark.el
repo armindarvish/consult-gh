@@ -59,6 +59,8 @@
           (funcall consult-gh-notifications-action cand))
          ("dashboard"
           (funcall consult-gh-dashboard-action cand))
+         ("release"
+          (funcall consult-gh-release-action cand))
          (_
           (funcall consult-gh-repo-action cand)))))))
 
@@ -81,6 +83,8 @@
           (funcall (consult-gh--notifications-state) 'preview cand))
          ("dashboard"
           (funcall (consult-gh--dashboard-state) 'preview cand))
+         ("release"
+          (funcall (consult-gh--release-state) 'preview cand))
          (_
           (funcall (consult-gh--repo-state) 'preview cand)))))))
 
@@ -199,7 +203,6 @@ The candidate can be a repo, issue, PR, file path, or a branch."
            (user (consult-gh--get-username repo)))
       (consult-gh--get-user-link user))))
 
-
 ;;;; Open Actions
 (defun consult-gh-embark-open-in-system-browser (cand)
   "Open the url link of CAND in the system's default browser."
@@ -259,7 +262,6 @@ The candidate can be a repo, issue, PR, file path, or a branch."
     (if-let* ((url (consult-gh-embark-get-user-link cand)))
         (funcall consult-gh-browse-url-func url)
       (message "No user's link at point!"))))
-
 
 ;;;; View Actions
 (defun consult-gh-embark-view-readme-of-repo (cand)
@@ -459,7 +461,6 @@ CAND can be a repo, issue, PR, file path, ..."
     (when-let ((link (consult-gh-embark-get-user-link cand)))
       (kill-new link))))
 
-
 ;;;; Insert Actions
 (defun consult-gh-embark-insert-title (cand)
   "Insert the title of CAND at point."
@@ -525,11 +526,11 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
         (message "No user at point!")))))
 
 (defun consult-gh-embark-insert-user-name (cand)
-    "Insert the name of the user in CAND at point."
-    (when (stringp cand)
-      (if-let ((user (consult-gh-embark-get-user-name cand)))
-          (embark-insert (list user))
-        (message "No user at point!"))))
+  "Insert the name of the user in CAND at point."
+  (when (stringp cand)
+    (if-let ((user (consult-gh-embark-get-user-name cand)))
+        (embark-insert (list user))
+      (message "No user at point!"))))
 
 (defun consult-gh-embark-insert-user-email (cand)
   "Insert the email of the user in CAND at point."
@@ -586,6 +587,13 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
      (consult-gh--auth-account-host)
      (funcall #'consult-gh--files-save-file-action cand))))
 
+(defun consult-gh-embark-download-release (cand)
+  "Download the CAND release at point."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh--release-download-action cand))))
+
 ;;;; Create Actions
 
 (defun consult-gh-embark-create-repo (cand)
@@ -629,6 +637,14 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
                    (_ nil)))
             (body (when ref (not (string-empty-p ref)) (format "%s" ref))))
        (funcall #'consult-gh-pr-create repo title body)))))
+
+(defun consult-gh-embark-create-release (cand)
+  "Create a release in repo of CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((repo (get-text-property 0 :repo cand)))
+       (funcall #'consult-gh-release-create repo)))))
 
 ;;;; Edit Issue Actions
 
@@ -705,7 +721,6 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
            (number (get-text-property 0 :number cand)))
        (with-current-buffer (funcall #'consult-gh--issue-view repo number)
          (consult-gh-topics-comment-create))))))
-
 
 ;;;; Edit PR Actions
 
@@ -830,6 +845,61 @@ CAND can be a PR or an issue."
            (consult-gh--notifications-unsubscribe cand)
          (consult-gh--notifications-subscribe cand))))))
 
+;;;; Edit Release Actions
+
+(defun consult-gh-embark-mark-release-draft (cand)
+  "Un(mark) the release in CAND as draft."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((type (get-text-property 0 :type cand)))
+       (when (equal type "release")
+         (funcall #'consult-gh-release-mark-draft cand))))))
+
+(defun consult-gh-embark-toggle-release-prerelease (cand)
+  "Mark/Unmark the release in CAND as prerelease."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((type (get-text-property 0 :type cand)))
+       (when (equal type "release")
+         (funcall #'consult-gh-release-toggle-prerelease cand))))))
+
+(defun consult-gh-embark-mark-release-latest (cand)
+  "Mark the release in CAND as latest."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (when-let* ((type (get-text-property 0 :type cand)))
+       (when (equal type "release")
+         (funcall #'consult-gh-release-mark-latest cand))))))
+
+(defun consult-gh-embark-publish-release (cand)
+  "Publish the release in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (print (format "emabrk--command: %s" embark--command))
+     (print (format "this command: %s" current-minibuffer-command))
+     (when-let* ((type (get-text-property 0 :type cand)))
+
+       (when (equal type "release")
+        (funcall #'consult-gh-release-publish cand))))))
+
+(defun consult-gh-embark-delete-release (cand)
+  "Delete the release in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-release-delete cand))))
+
+(defun consult-gh-embark-edit-release (cand)
+  "Edit the release in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-release-edit cand))))
+
 ;;;; Other Actions
 
 (defun consult-gh-embark-email-user (cand)
@@ -846,7 +916,6 @@ CAND can be a PR or an issue."
      (consult-gh--auth-account-host)
      (let ((repo (or (get-text-property 0 :repo cand) (substring-no-properties cand))))
        (consult-gh-search-code nil repo)))))
-
 
 ;;; Define Embark Keymaps
 
@@ -909,6 +978,7 @@ CAND can be a PR or an issue."
   "i" '("create issue" . consult-gh-embark-create-issue)
   "p" '("create pull request" . consult-gh-embark-create-pr)
   "r" '("create repo" . consult-gh-embark-create-repo)
+  "R" '("cretae release" . consult-gh-embark-create-release)
   "c" '("create a clone of repo" . consult-gh-embark-clone-repo)
   "f" '("create a fork repo" . consult-gh-embark-fork-repo))
 
@@ -1052,8 +1122,7 @@ CAND can be a PR or an issue."
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
-   "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map))
-
+  "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map))
 
 ;;;;; Files Keymap
 (defvar-keymap consult-gh-embark-files-actions-map
@@ -1087,7 +1156,6 @@ CAND can be a PR or an issue."
   "c C-c" '("comment on issue" . consult-gh-embark-comment-on-issue)
   "e" '("gh edit issue" . consult-gh-embark-issues-edit-menu-map))
 
-
 ;;;;; Pull Request Keymap
 ;;;;;; Edit PRs Menu Keymap
 (defvar-keymap consult-gh-embark-prs-edit-menu-map
@@ -1120,6 +1188,29 @@ CAND can be a PR or an issue."
   "e" '("gh edit pr" . consult-gh-embark-prs-edit-menu-map)
   "v" '("gh view pr" . consult-gh-embark-prs-view-menu-map))
 
+;;;;; Release Keymap
+;;;;;; Edit Issue Menu Keymap
+(defvar-keymap consult-gh-embark-releases-edit-menu-map
+  :doc "Keymap for editing issues"
+  :parent nil
+  "D" '("delete release" . consult-gh-embark-delete-release)
+  "e" '("edit release" . consult-gh-embark-edit-release)
+  "d" '("mark as draft" . consult-gh-embark-mark-release-draft)
+  "P" '("publish release" . consult-gh-embark-publish-release)
+  "l" '("mark as latest" . consult-gh-embark-mark-release-latest)
+  "p" '("mark/unmark prerelease" . consult-gh-embark-toggle-release-prerelease))
+
+(fset 'consult-gh-embark-releases-edit-menu-map consult-gh-embark-releases-edit-menu-map)
+
+;;;;;; Release Main Menu Keymap
+(defvar-keymap consult-gh-embark-releases-actions-map
+  :doc "Keymap for consult-gh-embark-releases"
+  :parent consult-gh-embark-general-actions-map
+  "c" '("gh create" . consult-gh-embark-create-menu-map)
+  "d" '("gh download release" . consult-gh-embark-download-release)
+  "e" '("gh edit release" . consult-gh-embark-releases-edit-menu-map)
+  "T" '("gh test" . consult-gh-embark-test))
+
 ;;;; Code Keymap
 (defvar-keymap consult-gh-embark-codes-actions-map
   :doc "Keymap for consult-gh-embark-codes"
@@ -1144,46 +1235,79 @@ CAND can be a PR or an issue."
   :doc "Keymap for consult-gh-embark-dashboard"
   :parent consult-gh-embark-general-actions-map)
 
-;;; Define consult-gh-embark minor-mode
-
 (defun consult-gh-embark--mode-on ()
   "Enable `consult-gh-embark-mode'."
-  (add-to-list 'embark-keymap-alist '(consult-gh . consult-gh-embark-general-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-orgs . consult-gh-embark-orgs-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-repos . consult-gh-embark-repos-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-files . consult-gh-embark-files-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-issues . consult-gh-embark-issues-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-prs . consult-gh-embark-prs-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-codes . consult-gh-embark-codes-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-notifications . consult-gh-embark-notifications-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-dashboard . consult-gh-embark-dashboard-actions-map))
-  (add-to-list 'embark-keymap-alist '(consult-gh-codes . consult-gh-embark-codes-actions-map))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-repos . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-issues . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-prs . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-files . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-codes . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-notifications . consult-gh-embark-default-action))
-  (add-to-list 'embark-default-action-overrides '(consult-gh-dashboard . consult-gh-embark-default-action)))
+  ;; add keymaps
+  (setq embark-keymap-alist
+        (append embark-keymap-alist
+                '((consult-gh . consult-gh-embark-general-actions-map)
+                  (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
+                  (consult-gh-repos . consult-gh-embark-repos-actions-map)
+                  (consult-gh-files . consult-gh-embark-files-actions-map)
+                  (consult-gh-issues . consult-gh-embark-issues-actions-map)
+                  (consult-gh-prs . consult-gh-embark-prs-actions-map)
+                  (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
+                  (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map)
+                  (consult-gh-releases . consult-gh-embark-releases-actions-map))))
+
+
+  ;; override default actions
+  (setq embark-default-action-overrides
+        (append embark-default-action-overrides
+                '((consult-gh-repos . consult-gh-embark-default-action)
+                  (consult-gh-issues . consult-gh-embark-default-action)
+                  (consult-gh-prs . consult-gh-embark-default-action)
+                  (consult-gh-files . consult-gh-embark-default-action)
+                  (consult-gh-codes . consult-gh-embark-default-action)
+                  (consult-gh-notifications . consult-gh-embark-default-action)
+                  (consult-gh-dashboard . consult-gh-embark-default-action)
+                  (consult-gh-releases . consult-gh-embark-default-action))))
+
+
+  ;; set post actions-hook
+  (setq embark-post-action-hooks
+        (append embark-post-action-hooks
+                '((consult-gh-embark-mark-release-draft embark--restart)
+                  (consult-gh-embark-toggle-release-prerelease embark--restart)
+                  (consult-gh-embark-publish-release embark--restart)
+                  (consult-gh-embark-mark-release-latest embark--restart)))))
+
+
 
 (defun consult-gh-embark--mode-off ()
   "Disable `consult-gh-embark-mode'."
-  (setq  embark-keymap-alist (seq-difference embark-keymap-alist '((consult-gh . consult-gh-embark-general-actions-map)
-                                                                   (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
-                                                                   (consult-gh-repos . consult-gh-embark-repos-actions-map)
-                                                                   (consult-gh-files . consult-gh-embark-files-actions-map)
-                                                                   (consult-gh-issues . consult-gh-embark-issues-actions-map)
-                                                                   (consult-gh-prs . consult-gh-embark-prs-actions-map)
-                                                                   (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
-                                                                   (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map))))
-  (setq embark-default-action-overrides (seq-difference embark-default-action-overrides
-                                                        '((consult-gh-repos . consult-gh-embark-default-action)
-                                                          (consult-gh-issues . consult-gh-embark-default-action)
-                                                          (consult-gh-prs . consult-gh-embark-default-action)
-                                                          (consult-gh-files . consult-gh-embark-default-action)
-                                                          (consult-gh-codes . consult-gh-embark-default-action)
-                                                          (consult-gh-notifications . consult-gh-embark-default-action)
-                                                          (consult-gh-dashboard . consult-gh-embark-default-action)))))
+  ;;unset keymaps
+  (setq  embark-keymap-alist
+         (seq-difference embark-keymap-alist
+                         '((consult-gh . consult-gh-embark-general-actions-map)
+                           (consult-gh-orgs . consult-gh-embark-orgs-actions-map)
+                           (consult-gh-repos . consult-gh-embark-repos-actions-map)
+                           (consult-gh-files . consult-gh-embark-files-actions-map)
+                           (consult-gh-issues . consult-gh-embark-issues-actions-map)
+                           (consult-gh-prs . consult-gh-embark-prs-actions-map)
+                           (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
+                           (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map)
+                           (consult-gh-releases . consult-gh-embark-releases-actions-map))))
+
+;; unset default actions
+  (setq embark-default-action-overrides
+        (seq-difference embark-default-action-overrides
+                        '((consult-gh-repos . consult-gh-embark-default-action)
+                          (consult-gh-issues . consult-gh-embark-default-action)
+                          (consult-gh-prs . consult-gh-embark-default-action)
+                          (consult-gh-files . consult-gh-embark-default-action)
+                          (consult-gh-codes . consult-gh-embark-default-action)
+                          (consult-gh-notifications . consult-gh-embark-default-action)
+                          (consult-gh-dashboard . consult-gh-embark-default-action)
+                          (consult-gh-releases . consult-gh-embark-default-action))))
+
+  ;; unset post action hooks
+  (setq embark-post-action-hooks
+        (seq-difference embark-post-action-hooks
+                        '((consult-gh-embark-mark-release-draft embark--restart)
+                          (consult-gh-embark-toggle-release-prerelease embark--restart)
+                          (consult-gh-embark-publish-release embark--restart)
+                          (consult-gh-embark-mark-release-latest embark--restart)))))
 
 (defun consult-gh-embark-unload-function ()
   "Unload function for `consult-gh-embark'."
@@ -1199,7 +1323,6 @@ CAND can be a PR or an issue."
   (if consult-gh-embark-mode
       (consult-gh-embark--mode-on)
     (consult-gh-embark--mode-off)))
-
 
 ;;; Provide `consul-gh-embark' module
 
