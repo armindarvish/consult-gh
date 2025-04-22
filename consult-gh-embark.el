@@ -879,8 +879,6 @@ CAND can be a PR or an issue."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
-     (print (format "emabrk--command: %s" embark--command))
-     (print (format "this command: %s" current-minibuffer-command))
      (when-let* ((type (get-text-property 0 :type cand)))
 
        (when (equal type "release")

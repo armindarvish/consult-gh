@@ -1544,7 +1544,6 @@ Uses simple regexp replacements."
                (insert (apply #'propertize "- " (text-properties-at 0 (match-string 0)))))
 
               ((pred (lambda (el) (string-match-p "```.*\n[[:ascii:][:nonascii:]]*```" el)))
-               (print "replace source block")
 
                (replace-match (concat
                                (apply #'propertize (concat  "#+begin_src " (match-string 4) "\n") (text-properties-at 0 (match-string 4)))
@@ -1554,7 +1553,6 @@ Uses simple regexp replacements."
 
 
               ((pred (lambda (el) (string-match-p "^\\*+\s" el)))
-               (print "replace heading")
 
                (replace-match (apply #'propertize (concat (make-string (length (match-string 1)) ?-) " ")
 (text-properties-at 0 (match-string 1)))
@@ -1815,6 +1813,18 @@ If any string in LIST contains comma, wrap it in quotes."
                                             item)))
              list
              ",")))
+
+(defun consult-gh-url-copy-file (url newname)
+  "Copy URL to NEWNAME.  Both arguments must be strings."
+  (let*  ((inhibit-message t)
+          (buffer (url-retrieve url
+                                `(lambda (_)
+                                  (let* ((handle (mm-dissect-buffer t)))
+                                    (let ((mm-attachment-file-modes (default-file-modes)))
+                                      (mm-save-part-to-file handle ,newname))
+                                    (mm-destroy-parts handle)
+                                    (kill-buffer (current-buffer))))))
+nil)))
 
 ;;; Backend functions for call to `gh` program
 
@@ -2523,12 +2533,57 @@ major mode and format the contents."
         (_ (unless (file-exists-p path)
                     (url-copy-file image-url path)))
         (image (create-image path nil nil :height (floor (* (frame-width) 0.25)))))
-    (concat (if image (concat (propertize " " 'display image) " "))
+    (concat (if (and (display-images-p) image) (concat (propertize " " 'display image) " "))
             (propertize user 'face 'consult-gh-user)
             (if name (concat "\n" name))
             (if email (concat "\n" (propertize email 'face 'consult-gh-date)))
             (if loc (concat "\n" (propertize loc 'face 'consult-gh-repo)))
             (if bio (concat "\n" (propertize bio 'face 'consult-gh-description))))))
+
+(defun consult-gh--get-user-tooltip (user &rest _args)
+  "Make tooltip for USER."
+  (let* ((dir (expand-file-name (format "users/%s/" user) consult-gh-tempdir))
+         (_ (unless (file-exists-p dir)
+             (make-directory (file-name-directory dir) t)))
+         (image-path (expand-file-name "avatar.png" dir))
+         (profile-path (expand-file-name "userprofile" dir)))
+    (unless (file-exists-p profile-path)
+      (consult-gh--make-process (format "consult-gh-user-tooltip-%s" user)
+                                :cmd-args (list "api" (format "users/%s" user) "-H" "Accept:application/vnd.github.diff")
+                                :when-done `(lambda (_ str)
+                                           (let* ((inhibit-message t)
+                                                  (table (consult-gh--json-to-hashtable str '(:avatar_url :name :email :location :bio)))
+                                                  (image-url (and (hash-table-p table)
+                                                                  (gethash :avatar_url table)))
+                                                  (name (and (hash-table-p table)
+                                                             (gethash :name table)))
+                                                  (email (and (hash-table-p table)
+                                                              (gethash :email table)))
+                                                  (loc (and (hash-table-p table)
+                                                            (gethash :location table)))
+                                                  (bio (and (hash-table-p table)
+                                                            (gethash :bio table)))
+                                                  (profile-text (concat (propertize ,user 'face 'consult-gh-user)
+                                                               (if name (concat "\n" name))
+                                                               (if email (concat "\n" (propertize email 'face 'consult-gh-date)))
+                                                               (if loc (concat "\n" (propertize loc 'face 'consult-gh-repo)))
+                                                               (if bio (concat "\n" (propertize bio 'face 'consult-gh-description))))))
+                                             (unless (file-exists-p ,image-path)
+                                               (consult-gh-url-copy-file image-url ,image-path))
+                                             (with-temp-file ,profile-path
+                                               (prin1 profile-text
+                                                      (current-buffer)))
+                                             nil))))
+
+    (let* ((image (create-image image-path nil nil :height (floor (* (frame-width) 0.25)))))
+
+      (concat (if (and (file-exists-p image-path) (display-images-p))
+                  (concat (propertize " " 'display image) " ")
+                consult-gh-user-icon)
+              (if (file-exists-p profile-path) (with-temp-buffer (insert-file-contents profile-path)
+                                                                 (goto-char (point-min))
+                                                                 (read (current-buffer)))
+                user)))))
 
 (defun consult-gh--get-repo-tooltip (repo &rest _args)
   "Make tooltip for REPO."
@@ -2562,7 +2617,7 @@ major mode and format the contents."
          (updated (and (hash-table-p table)
                        (gethash :updatedAt table))))
     (concat
-     (if graphimage
+     (if (and (display-images-p) graphimage)
          (let* ((dir (expand-file-name (format "repos/%s/" repo) consult-gh-tempdir))
                 (_ (unless (file-exists-p dir)
                      (make-directory (file-name-directory dir) t)))
@@ -2586,6 +2641,79 @@ major mode and format the contents."
      consult-gh-star-icon
      "\n"
      (propertize (concat "last updated: " updated) 'face 'consult-gh-date))))
+
+(defun consult-gh--get-repo-tooltip (repo &rest _args)
+  "Make tooltip for REPO."
+  (let* ((dir (expand-file-name (format "repos/%s/" repo) consult-gh-tempdir))
+         (_ (unless (file-exists-p dir)
+              (make-directory (file-name-directory dir) t)))
+         (image-path (expand-file-name "opengraphimage.png" dir))
+         (profile-path (expand-file-name "repoprofile" dir)))
+    (unless (file-exists-p profile-path)
+      (let* ((query (format "query={
+  repository(owner: \"%s\", name: \"%s\") {
+    openGraphImageUrl
+    visibility
+    nameWithOwner
+    languages(first:100) { nodes {name}}
+    stargazerCount
+    updatedAt
+    description
+  }}" (consult-gh--get-username repo)
+  (consult-gh--get-package repo))))
+        (consult-gh--make-process (format "consult-gh-repo-tooltip-%s" repo)
+                                  :cmd-args (list "api" "-H" "Accept:application/vnd.github.diff" "graphql" "-f" query)
+                                  :when-done `(lambda (_ str)
+                                                (let* ((inhibit-message t)
+                                                       (table (consult-gh--json-to-hashtable str :data))
+                                                       (_ (setq my:test table))
+                                                       (table (and (hash-table-p table) (gethash :repository table)))
+                                                       (image-url (and (hash-table-p table)
+                                                                        (gethash :openGraphImageUrl table)))
+                                                       (desc (and (hash-table-p table)
+                                                                  (gethash :description table)))
+                                                       (name (and (hash-table-p table)
+                                                                  (gethash :nameWithOwner table)))
+                                                       (vis (and (hash-table-p table)
+                                                                 (gethash :visibility table)))
+                                                       (langs (and (hash-table-p table)
+                                                                   (map-nested-elt table '(:languages :nodes))))
+                                                       (langs  (and (listp langs)
+                                                                    (mapconcat (lambda(item) (gethash :name item)) langs ", ")))
+                                                       (stars (and (hash-table-p table)
+                                                                   (gethash :stargazerCount table)))
+                                                       (updated (and (hash-table-p table)
+                                                                     (gethash :updatedAt table)))
+                                                       (profile-text (concat
+                                                                      consult-gh-repo-icon
+                                                                      "\s"
+                                                                      (propertize name 'face 'consult-gh-repo)
+                                                                      "\s\s"
+                                                                      (propertize vis 'face 'consult-gh-visibility)
+                                                                      "\n"
+                                                                      (propertize desc 'face 'consult-gh-description)
+                                                                      "\n"
+                                                                      (propertize langs 'face 'consult-gh-pr)
+                                                                      "\t"
+                                                                      (format "%s" stars)
+                                                                      " "
+                                                                      consult-gh-star-icon
+                                                                      "\n"
+                                                                      (propertize (concat "last updated: " updated) 'face 'consult-gh-date))))
+                                                  (unless (file-exists-p ,image-path)
+                                                  (consult-gh-url-copy-file image-url ,image-path))
+                                                (with-temp-file ,profile-path
+                                                  (prin1 profile-text
+                                                         (current-buffer)))
+                                                nil)))))
+    (let* ((image (create-image image-path nil nil :height (floor (* (frame-width) 1)))))
+
+      (concat (if (and (file-exists-p image-path) (display-images-p))
+                  (concat (propertize " " 'display image) "\n") "")
+              (if (file-exists-p profile-path) (with-temp-buffer (insert-file-contents profile-path)
+                                                                 (goto-char (point-min))
+                                                                 (read (current-buffer)))
+                repo)))))
 
 (defun consult-gh--get-label-tooltip (label description color &rest _args)
   "Get tooltip for LABEL.
