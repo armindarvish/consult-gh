@@ -1510,13 +1510,14 @@ it widens the buffer to get whole content not just narrowed region."
 Uses simple regexp replacements."
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
-      (save-mark-and-excursion
-        (save-restriction
-          (goto-char (point-max))
-          (insert "\n")
-          (while (re-search-backward "^\\[\\^\\(?1:.*\\)\\]:\s" nil t)
-            (replace-match "[fn:\\1]")))))
-    nil))
+      (save-match-data
+        (save-mark-and-excursion
+          (save-restriction
+            (goto-char (point-max))
+            (insert "\n")
+            (while (re-search-backward "^\\[\\^\\(?1:.*\\)\\]:\s" nil t)
+              (replace-match "[fn:\\1]")))))
+      nil)))
 
 (defun consult-gh--markdown-to-org-emphasis (&optional buffer)
   "Convert markdown style markings to \='org-mode style emphasis in BUFFER.
@@ -1528,10 +1529,26 @@ Uses simple regexp replacements."
       (save-mark-and-excursion
         (save-restriction
           (goto-char (point-min))
-          (while (re-search-forward "#\\|^\\*\s\\|\\*\\{1,2\\}\\(?1:[^\s].+?\\)\\*\\{1,2\\}\\|\\(?1:^\\*+?\\)\s\\|_\\{1,2\\}\\(?2:[^\s].+?\\)_\\{1,2\\}\\|~\\{1,2\\}\\(?2:[^\s].+?\\)~\\{1,2\\}\\|`\\(?3:[^`].+?\\)`\\|```\\(?4:.*\n\\)\\(?5:[[:ascii:][:nonascii:]]*?\\)```" nil t)
+          (while (re-search-forward "#\\|\\*\\{1,2\\}\\|_\\{1,2\\}\\|~\\{1,2\\}\\|`+" nil t)
             (pcase (match-string-no-properties 0)
+               ((and (guard (eq (char-before) ?`)) ticks)
+                (cond
+                 ((= (length ticks) 3)
+                  (backward-char 4)
+                  (save-match-data
+                    (when (re-search-forward "```\\(?1:.*\n\\)\\(?2:[[:ascii:][:nonascii:]]*?\\)```" nil t)
+                        (replace-match (concat
+                               (apply #'propertize (concat  "#+begin_src " (match-string 1) "\n") (text-properties-at 0 (match-string 1)))
+                               (concat (match-string 2) "\n")
+                               (apply #'propertize "#+end_src\n" (text-properties-at 0 (match-string 1))))
+                              nil t))))
+                 ((not (looking-at "`"))
+                  (backward-char 1)
+                  (save-match-data
+                    (when (re-search-forward "`\\(?1:[^`]+?\\)`" nil t)
+                      (replace-match (apply #'propertize (concat "=" (match-string 1) "=") (text-properties-at 0 (match-string 1))) nil t))))))
               ("#" (cond
-                    ((looking-at "#\\|[[:blank:]]")
+                    ((looking-at "\s\\|#+\s")
                      (delete-char -1)
                      (insert (apply #'propertize "*" (text-properties-at 0 (match-string 0)))))
 
@@ -1539,49 +1556,67 @@ Uses simple regexp replacements."
                      (delete-char -1)
                      (insert (apply #'propertize ",#" (text-properties-at 0 (match-string 0)))))))
 
-              ("* "
-               (delete-char -2)
-               (insert (apply #'propertize "- " (text-properties-at 0 (match-string 0)))))
+              ("**"
+                 (when (or (= (point) 3)
+                     (looking-back "\\(?:[[:word:][:punct:][:space:]\n]\\)\\*\\{2\\}"
+                              (max (- (point) 3) (point-min))))
+                   (backward-char 2)
+                   (save-match-data
+                      (when (re-search-forward "\\*\\{2\\}\\(?1:[^[:space:]].*[^[:space:]]?\\)\\*\\{2\\}" (line-end-position) t)
+                     (replace-match (apply #'propertize (concat "*" (match-string 1) "*") (text-properties-at 0 (match-string 0))))))))
 
-              ((pred (lambda (el) (string-match-p "```.*\n[[:ascii:][:nonascii:]]*```" el)))
+              ("*"
+               (cond
+                ((and (looking-at "\s")
+                     (or  (= (point) 2)
+                     (looking-back "^\s+\\*" (max (- (point) 4) (point-min)))))
+                (delete-char 1)
+                (insert "-"))
+                ((or (= (point) 2)
+                 (looking-back "\\(?:[[:space:]]\\)\\*"
+                               (max (- (point) 2) (point-min))))
+                 (backward-char 1)
+                 (save-match-data
+                   (when (re-search-forward "\\*\\(?1:[^[:space:]\\*].*?[^[:space:]]?\\)\\*" (line-end-position) t)
+                     (replace-match (apply #'propertize (concat "/" (match-string 1) "/") (text-properties-at 0 (match-string 0)))))))))
 
-               (replace-match (concat
-                               (apply #'propertize (concat  "#+begin_src " (match-string 4) "\n") (text-properties-at 0 (match-string 4)))
-                               (concat (match-string 5) "\n")
-                               (apply #'propertize "#+end_src\n" (text-properties-at 0 (match-string 4))))
-                              nil t))
+              ("__"
+                 (when (or (= (point) 3)
+                     (looking-back "\\(?:[[:word:][:punct:][:space:]\n]\\)_\\{2\\}"
+                              (max (- (point) 3) (point-min))))
+                   (backward-char 2)
+                   (save-match-data
+                      (if (re-search-forward "_\\{2\\}\\(?1:[^[:space:]].*?[^[:space:]]?\\)_\\{2\\}" (line-end-position) t)
+                     (replace-match (apply #'propertize (concat "*" (match-string 1) "*") (text-properties-at 0 (match-string 0))))))))
 
+              ("_"
+               (when (or (= (point) 2)
+                 (looking-back "\\(?:[[:space:]]\\)_"
+                               (max (- (point) 2) (point-min))))
+                 (backward-char 1)
+                 (save-match-data
+                   (if (re-search-forward "_\\{1\\}\\(?1:[^[:space:]_].*\\)[^[:space:]_]?)_\\{1\\}" (line-end-position) t)
+                     (replace-match (apply #'propertize (concat "/" (match-string 1) "/") (text-properties-at 0 (match-string 0))))))))
 
-              ((pred (lambda (el) (string-match-p "^\\*+\s" el)))
+              ("~~"
+                 (when (or (= (point) 3)
+                     (looking-back "\\(?:[[:word:][:punct:][:space:]\n]\\)~\\{2\\}"
+                              (max (- (point) 3) (point-min))))
+                   (backward-char 2)
+                   (save-match-data
+                      (if (re-search-forward "~\\{2\\}\\(?1:[^[:space:]].*\\)?[^[:space:]]?~\\{2\\}" (line-end-position) t)
+                     (replace-match (apply #'propertize (concat "+" (match-string 1) "+") (text-properties-at 0 (match-string 0))))))))
 
-               (replace-match (apply #'propertize (concat (make-string (length (match-string 1)) ?-) " ")
-(text-properties-at 0 (match-string 1)))
-                              nil t))
+              ("~"
+               (when (or (= (point) 2)
+                 (looking-back "\\(?:[[:space:]]\\)~"
+                               (max (- (point) 2) (point-min))))
+                 (backward-char 1)
+                 (save-match-data
+                   (if (re-search-forward "~\\{1\\}\\(?1:[^[:space:]].*\\)[^[:space:]]?~\\{1\\}" (line-end-position) t)
+                     (replace-match (apply #'propertize (concat "+" (match-string 1) "+") (text-properties-at 0 (match-string 0))))))))
 
-              ((pred (lambda (el) (string-match-p "#\\+begin.+" el)))
-               (replace-match (apply #'propertize (concat "," (match-string 1)) (text-properties-at 0 (match-string 1))) nil t))
-
-              ((pred (lambda (el) (string-match-p "#\\+end.+" el)))
-               (replace-match (apply #'propertize (concat "," (match-string 1)) (text-properties-at 0 (match-string 1))) nil t))
-
-              ((pred (lambda (el) (string-match-p "\\*\\{2\\}[^\s].+?\\*\\{2\\}" el)))
-               (replace-match (apply #'propertize (concat "*" (match-string 1) "*") (text-properties-at 0 (match-string 1))) nil t))
-
-              ((pred (lambda (el) (string-match-p "\\*\\{1\\}[^[\\*\s]].+?\\*\\{1\\}" el)))
-               (replace-match (apply #'propertize (concat "/" (match-string 1) "/") (text-properties-at 0 (match-string 1))) nil t))
-
-              ((pred (lambda (el) (string-match-p "_\\{2\\}.+?_\\{2\\}" el)))
-               (replace-match (apply #'propertize (concat "*" (match-string 2) "*") (text-properties-at 0 (match-string 2))) nil t))
-
-              ((pred (lambda (el) (string-match-p "_\\{1\\}[^_]*?_\\{1\\}" el)))
-               (replace-match (apply #'propertize (concat "/" (match-string 2) "/") (text-properties-at 0 (match-string 2))) nil t))
-
-              ((pred (lambda (el) (string-match-p "~\\{1,2\\}.+?~\\{1,2\\}" el)))
-               (replace-match (apply #'propertize (concat "+" (match-string 2) "+") (text-properties-at 0 (match-string 2))) nil t))
-
-              ((pred (lambda (el) (string-match-p "`[^`].+?`" el)))
-               (replace-match (apply #'propertize (concat "=" (match-string 3) "=") (text-properties-at 0 (match-string 3))) nil t))))))))
-    nil))
+))))))))
 
 (defun consult-gh--markdown-to-org-links (&optional buffer)
   "Convert markdown style links to \='org-mode links in BUFFER.
@@ -1815,16 +1850,18 @@ If any string in LIST contains comma, wrap it in quotes."
              ",")))
 
 (defun consult-gh-url-copy-file (url newname)
-  "Copy URL to NEWNAME.  Both arguments must be strings."
-  (let*  ((inhibit-message t)
-          (buffer (url-retrieve url
-                                `(lambda (_)
-                                  (let* ((handle (mm-dissect-buffer t)))
-                                    (let ((mm-attachment-file-modes (default-file-modes)))
-                                      (mm-save-part-to-file handle ,newname))
-                                    (mm-destroy-parts handle)
-                                    (kill-buffer (current-buffer))))))
-nil)))
+  "Copy URL to NEWNAME.
+
+Both arguments must be strings."
+  (let* ((inhibit-message t))
+    (url-retrieve url
+                  `(lambda (_)
+                     (let* ((handle (mm-dissect-buffer t)))
+                       (let ((mm-attachment-file-modes (default-file-modes)))
+                         (mm-save-part-to-file handle ,newname))
+                       (mm-destroy-parts handle)
+                       (kill-buffer (current-buffer))))))
+    nil)
 
 ;;; Backend functions for call to `gh` program
 
@@ -2515,33 +2552,6 @@ major mode and format the contents."
 
 (defun consult-gh--get-user-tooltip (user &rest _args)
   "Make tooltip for USER."
-  (let* ((table (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "users/%s" user)) '(:avatar_url :name :email :location :bio)))
-         (image-url (and (hash-table-p table)
-                         (gethash :avatar_url table)))
-         (name (and (hash-table-p table)
-                         (gethash :name table)))
-         (email (and (hash-table-p table)
-                         (gethash :email table)))
-         (loc (and (hash-table-p table)
-                         (gethash :location table)))
-         (bio (and (hash-table-p table)
-                         (gethash :bio table)))
-        (dir (expand-file-name (format "users/%s/" user) consult-gh-tempdir))
-        (_ (unless (file-exists-p dir)
-             (make-directory (file-name-directory dir) t)))
-        (path (expand-file-name "avatar.png" dir))
-        (_ (unless (file-exists-p path)
-                    (url-copy-file image-url path)))
-        (image (create-image path nil nil :height (floor (* (frame-width) 0.25)))))
-    (concat (if (and (display-images-p) image) (concat (propertize " " 'display image) " "))
-            (propertize user 'face 'consult-gh-user)
-            (if name (concat "\n" name))
-            (if email (concat "\n" (propertize email 'face 'consult-gh-date)))
-            (if loc (concat "\n" (propertize loc 'face 'consult-gh-repo)))
-            (if bio (concat "\n" (propertize bio 'face 'consult-gh-description))))))
-
-(defun consult-gh--get-user-tooltip (user &rest _args)
-  "Make tooltip for USER."
   (let* ((dir (expand-file-name (format "users/%s/" user) consult-gh-tempdir))
          (_ (unless (file-exists-p dir)
              (make-directory (file-name-directory dir) t)))
@@ -2584,63 +2594,6 @@ major mode and format the contents."
                                                                  (goto-char (point-min))
                                                                  (read (current-buffer)))
                 user)))))
-
-(defun consult-gh--get-repo-tooltip (repo &rest _args)
-  "Make tooltip for REPO."
-  (let* ((query (format "query={
-  repository(owner: \"%s\", name: \"%s\") {
-    openGraphImageUrl
-    visibility
-    nameWithOwner
-    languages(first:100) { nodes {name}}
-    stargazerCount
-    updatedAt
-    description
-  }}" (consult-gh--get-username repo)
-  (consult-gh--get-package repo)))
-         (table (consult-gh--json-to-hashtable (consult-gh--api-command-string "graphql" "-f" query) :data))
-         (table (and (hash-table-p table) (gethash :repository table)))
-         (graphimage (and (hash-table-p table)
-                          (gethash :openGraphImageUrl table)))
-         (desc (and (hash-table-p table)
-                    (gethash :description table)))
-         (name (and (hash-table-p table)
-                    (gethash :nameWithOwner table)))
-         (vis (and (hash-table-p table)
-                   (gethash :visibility table)))
-         (langs (and (hash-table-p table)
-                     (map-nested-elt table '(:languages :nodes))))
-         (langs  (and (listp langs)
-                      (mapconcat (lambda(item) (gethash :name item)) langs ", ")))
-         (stars (and (hash-table-p table)
-                     (gethash :stargazerCount table)))
-         (updated (and (hash-table-p table)
-                       (gethash :updatedAt table))))
-    (concat
-     (if (and (display-images-p) graphimage)
-         (let* ((dir (expand-file-name (format "repos/%s/" repo) consult-gh-tempdir))
-                (_ (unless (file-exists-p dir)
-                     (make-directory (file-name-directory dir) t)))
-                (path (expand-file-name "opengraphimage.png" dir))
-                (_ (unless (file-exists-p path)
-                              (url-copy-file graphimage path)))
-                (image (create-image path nil nil :height (floor (* (frame-width) 1)))))
-           (concat (propertize " " 'display image) "\n")))
-     consult-gh-repo-icon
-     "\s\s"
-     (propertize name 'face 'consult-gh-repo)
-     "\s\s"
-     (propertize vis 'face 'consult-gh-visibility)
-     "\n"
-     (propertize desc 'face 'consult-gh-description)
-     "\n"
-     (propertize langs 'face 'consult-gh-pr)
-     "\t"
-     (format "%s" stars)
-     " "
-     consult-gh-star-icon
-     "\n"
-     (propertize (concat "last updated: " updated) 'face 'consult-gh-date))))
 
 (defun consult-gh--get-repo-tooltip (repo &rest _args)
   "Make tooltip for REPO."
@@ -6183,7 +6136,11 @@ Description of Arguments:
                    (if preview
                        (insert "\n")
                      (when (cdr chunk)
-                     (insert (concat (propertize  "\n```diff\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil)) (propertize (cdr chunk) :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code t)) (propertize  "\n```\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil))))))))
+                       (let ((start (point)))
+                     (insert (concat (propertize  "\n```diff\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil)) (propertize (cdr chunk) :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code t)) (propertize  "\n```\n" :consult-gh (list :repo repo :number number :path (get-text-property 0 :path (car-safe chunk)) :commit-id commit-id :commit-url url :file t :code nil))))
+                     (save-excursion
+                       (while (re-search-backward "^\s?\\*+\s\\|^\s?#\\+" start t)
+                              (replace-match (apply #'propertize (concat  "," (match-string 0)) (text-properties-at 0 (match-string 0))) nil t))))))))
       (consult-gh--whole-buffer-string))))
 
 (defun consult-gh--pr-read-filter-comments-with-query (comments &optional maxnum)
