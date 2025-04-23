@@ -621,6 +621,14 @@ This is used as a prefix for milestones in
 
 (make-obsolete-variable 'consult-gh-completion-milestone-prefix consult-gh-milestone-icon  "2.5")
 
+(defcustom consult-gh-tag-icon "tag "
+  "Icon used for release tags.
+
+This is used as a prefix for tags in
+`consult-gh--topics-edit-capf'."
+  :group 'consult-gh
+  :type 'string)
+
 (defcustom consult-gh-completion-max-items "2000"
   "Maximum number of items to load for autocomplete suggestions.
 
@@ -1731,13 +1739,18 @@ etc. in org format.  It Uses `ox-gfm' for the conversion."
     (when (and text
                (stringp text)
                (not (string-empty-p text)))
-      (apply #'propertize (pcase mode
-                            ('org-mode (with-temp-buffer
-                                         (insert text)
-                                         (consult-gh--markdown-to-org)
-                                         (consult-gh--whole-buffer-string)))
-                            (_ text))
-             (text-properties-at 0 text)))))
+      (with-temp-buffer
+        (insert text)
+        (goto-char (point-min))
+        (save-excursion
+        (while (re-search-forward "\r\n" nil t)
+          (replace-match "\n")))
+        (apply #'propertize (pcase mode
+                            ('org-mode
+                             (consult-gh--markdown-to-org)
+                             (consult-gh--whole-buffer-string))
+                            (_ (consult-gh--whole-buffer-string)))
+             (text-properties-at 0 text))))))
 
 (defun consult-gh--time-ago (datetime)
   "Convert DATETIME to human-radable time difference.
@@ -2973,6 +2986,8 @@ the buffer-local variable `consult-gh--topic'."
     (consult-gh--completion-set-prs topic repo)
     ;; collect mentionable users for completion at point
     (consult-gh--completion-set-mentionable-users topic repo)
+    ;; collect branches of the repo
+    (consult-gh--completion-set-branches topic repo)
     ;; collect valid refs for completion at point
     (when (equal type "pr")
       (consult-gh--completion-set-pr-refs topic nil nil nil))
@@ -3403,6 +3418,102 @@ Completes “reviewers:.*” for adding reviewers."
       :exclusive 'yes
       :category 'string)))
 
+(defun consult-gh--topics-release-tags-capf ()
+  "Completion at point for reference release tags.
+
+Completes “target:.*” for referencing tag names in a release"
+  (let* ((topic consult-gh--topic)
+         (tags (completion-table-dynamic
+                      `(lambda (_)
+                         (get-text-property 0 :valid-release-tags ,topic))))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^.\\{1,3\\}tag: " (pos-bol) t)
+                        (point))
+                       ((looking-back " " (- (point) 1))
+                        (point))
+                       (t
+                        (backward-word)
+                        (point))))))
+         (end (pos-eol))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-tag-icon ""))
+                              list))))
+(list begin end tags
+      :affixation-function affix-fun
+      :exclusive 'yes
+      :category 'string)))
+
+(defun consult-gh--topics-branch-capf ()
+  "Completion at point for reference branches.
+
+Completes “target:.*” for referencing branches in a release"
+  (let* ((topic consult-gh--topic)
+         (targets (completion-table-dynamic
+                      `(lambda (_)
+                         (get-text-property 0 :valid-branches ,topic))))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^.\\{1,3\\}target: " (pos-bol) t)
+                        (point))
+                       ((looking-back " " (- (point) 1))
+                        (point))
+                       (t
+                        (backward-word)
+                        (point))))))
+         (end (pos-eol))
+         (affix-fun (lambda (list)
+                      (mapcar (lambda (item)
+                                (list item consult-gh-branch-icon ""))
+                              list))))
+(list begin end targets
+      :affixation-function affix-fun
+      :exclusive 'yes
+      :category 'string)))
+
+(defun consult-gh--topics-prerelease-capf ()
+  "Completion at point for release pre-release.
+
+Completes “prerelease:.*” for selecting pre-release in a release."
+  (let* ((targets '("true" "false"))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^.\\{1,3\\}prerelease: " (pos-bol) t)
+                        (point))
+                       ((looking-back " " (- (point) 1))
+                        (point))
+                       (t
+                        (backward-word)
+                        (point))))))
+         (end (pos-eol)))
+(list begin end targets
+      :exclusive 'yes
+      :category 'string)))
+
+(defun consult-gh--topics-draft-capf ()
+  "Completion at point for release draft.
+
+Completes “prerelease:.*” for selecting draft in a release."
+  (let* ((targets '("true" "false"))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^.\\{1,3\\}draft: " (pos-bol) t)
+                        (point))
+                       ((looking-back " " (- (point) 1))
+                        (point))
+                       (t
+                        (backward-word)
+                        (point))))))
+         (end (pos-eol)))
+(list begin end targets
+      :exclusive 'yes
+      :category 'string)))
+
 (defun consult-gh--topics-edit-capf ()
   "Completion at point for editing comments.
 
@@ -3429,7 +3540,15 @@ Completes for issue/pr numbers or user names."
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}projects: \\(?1:.*\\)" (pos-bol)))
         (consult-gh--topics-projects-capf))
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}reviewers: \\(?1:.*\\)" (pos-bol)))
-        (consult-gh--topics-reviewers-capf))))))
+        (consult-gh--topics-reviewers-capf))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}target: \\(?1:.*\\)" (pos-bol)))
+         (consult-gh--topics-branch-capf))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}draft: \\(?1:.*\\)" (pos-bol)))
+         (consult-gh--topics-draft-capf))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}prerelease: \\(?1:.*\\)" (pos-bol)))
+         (consult-gh--topics-prerelease-capf))
+       ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}tag: \\(?1:.*\\)" (pos-bol)))
+         (consult-gh--topics-release-tags-capf))))))
 
 (defun consult-gh--auth-accounts ()
   "Return a list of currently autheticated accounts.
