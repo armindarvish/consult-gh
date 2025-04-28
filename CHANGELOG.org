@@ -3,10 +3,18 @@
 #+language: en
 
 * Development
-- improved embark actions
-  clerane dup some actions
-  reordered actions for  better readability
-* Version 2.4 (2025-03-28)
+- Added support for interactively managing releases directly from Emacs
+  - Added =consult-gh-release-list= for browsing repository releases
+  - Implemented =consult-gh-release-create= for creating new releases with support for *auto-generated release notes*
+  - Created =consult-gh-release-edit= for modifying existing releases
+  - Added =consult-gh-release-delete= for removing releases
+- Added tooltips to users, repos, labels, ...
+  If the cursor is placed on a user name or repository name, ... a tooltip menu shows details. This can also be viewed by calling =M-x display-local-help=
+- Added more embark actions
+- Some clean up and refactoring to reduce repetition
+- other minor fixes
+
+* Version 2.4 (2025-04-17)
 - Refactored completion-at-point functions, and added support for completing references to issues with title (e.g. =#title= now can be competed to issue number), and improved the overall behavior of completion functions.
 - Fixed issue with loading the repo without internet (see #226) by defering loading the user organizations.
 - Fixed handling of projects names that conatin "," in theri name.
