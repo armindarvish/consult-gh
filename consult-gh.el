@@ -8704,21 +8704,48 @@ regions with an overlay of \=:consult-gh-header."
   "Parse the BUFFER to get title and body of comment.
 
 BUFFER defaults to the `current-buffer'."
-  (let* ((text (consult-gh-topics--buffer-string buffer)))
+  (let* ((text (consult-gh--whole-buffer-string buffer))
+         (header-regions (consult-gh--get-region-with-overlay ':consult-gh-header))
+         (header-beg (car-safe (car-safe header-regions)))
+         (header-end (cdr-safe (car-safe header-regions)))
+         (mode (cond
+                ((derived-mode-p 'gfm-mode) 'gfm-mode)
+                ((derived-mode-p 'markdown-mode) 'markdown-mode)
+                ((derived-mode-p 'org-mode) 'org-mode)
+                (t 'text-mode))))
     (with-temp-buffer
-      (insert text)
-      (goto-char (point-min))
-      (let ((title nil)
+      (let ((inhibit-read-only t)
+            (title nil)
             (body nil))
-        (goto-char (point-min))
-        (when (looking-at "\\`# title: *\\|\\`#\\+title: *")
+        (insert text)
+        (consult-gh--delete-region-with-prop :consult-gh-comments)
+        (consult-gh--delete-region-with-prop :consult-gh-markings)
+        (cond
+         ((eq mode 'gfm-mode)
+          (gfm-mode))
+         ((eq mode 'markdown-mode)
+          (markdown-mode))
+         ((eq mode 'org-mode)
+          (org-mode)
+          (consult-gh--org-to-markdown))
+         (t (text-mode)))
+        (goto-char (or header-beg (point-min)))
+        (cond
+         ((looking-at "\\`# title: *\\|\\`#\\+title: *")
           (goto-char (match-end 0))
           (setq title (string-trim
-                       (buffer-substring (point) (line-end-position))))
-          (forward-line))
-        (setq body (string-trim
-                    (buffer-substring (point) (point-max))))
-        (cons title body)))))
+                       (buffer-substring (point) (line-end-position)))))
+         (t
+          (goto-char (point-min))
+          (when (re-search-forward "^\\`# title: *\\|^\\`#\\+title: *" (if header-end header-end nil) t)
+            (setq title (string-trim
+                       (buffer-substring (point) (line-end-position)))))))
+        (goto-char (point-min))
+        (when header-regions
+          (cl-loop for region in header-regions
+                   do (delete-region (car region) (cdr region))))
+        (setq body (string-trim (consult-gh--whole-buffer-string)))
+(cons title body)))))
 
 (defun consult-gh-topics--format-field-header-string (string &optional prefix suffix)
   "Make a read-only field header from STRING.
