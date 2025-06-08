@@ -10155,13 +10155,13 @@ This is used for creating new releases."
            (add-text-properties 0 1 (list :target new-target) release)
            (save-excursion (goto-char (car header))
                              (when (re-search-forward "^.*target: \\(?1:.*\\)?" (cdr header) t)
-                                 (replace-match (get-text-property 0 :target release) nil nil nil 1))))
+                                 (replace-match (or (get-text-property 0 :target release) "") nil nil nil 1))))
 
     (add-text-properties 0 1 (list :tagname selection) release)
 
     (save-excursion (goto-char (car header))
                     (when (re-search-forward "^.*tag: \\(?1:.*\\)?" (cdr header) t)
-                      (replace-match (get-text-property 0 :tagname release) nil nil nil 1)))))
+                      (replace-match (or (get-text-property 0 :tagname release) "") nil nil nil 1)))))
 
 (defun consult-gh-topics--release-create-change-target (&optional repo release)
   "Change target of RELEASE topic for REPO.
@@ -10187,13 +10187,14 @@ This is used for creating new releases."
            (add-text-properties 0 1 (list :tagname new-tagname) release)
            (save-excursion (goto-char (car header))
                              (when (re-search-forward "^.*tag: \\(?1:.*\\)?" (cdr header) t)
-                                 (replace-match (get-text-property 0 :tagname release) nil nil nil 1))))
+                                (replace-match (or (get-text-property 0 :tagname release) "") nil nil nil 1))))
 
     (add-text-properties 0 1 (list :target selection) release)
 
+
              (save-excursion (goto-char (car header))
                              (when (re-search-forward "^.*target: \\(?1:.*\\)?" (cdr header) t)
-                                 (replace-match (get-text-property 0 :target release) nil nil nil 1)))))
+                                 (replace-match (or (get-text-property 0 :target release) "") nil nil nil 1)))))
 
 (defun consult-gh-topics--release-create-submit (repo tagname target title notes &optional notlatest prerelease discussion draft)
   "Create a new release in REPO with metadata.

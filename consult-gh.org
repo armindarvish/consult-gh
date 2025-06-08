@@ -11367,13 +11367,13 @@ This is used for creating new releases."
            (add-text-properties 0 1 (list :target new-target) release)
            (save-excursion (goto-char (car header))
                              (when (re-search-forward "^.*target: \\(?1:.*\\)?" (cdr header) t)
-                                 (replace-match (get-text-property 0 :target release) nil nil nil 1))))
+                                 (replace-match (or (get-text-property 0 :target release) "") nil nil nil 1))))
 
     (add-text-properties 0 1 (list :tagname selection) release)
 
     (save-excursion (goto-char (car header))
                     (when (re-search-forward "^.*tag: \\(?1:.*\\)?" (cdr header) t)
-                      (replace-match (get-text-property 0 :tagname release) nil nil nil 1)))))
+                      (replace-match (or (get-text-property 0 :tagname release) "") nil nil nil 1)))))
 
 #+end_src
 
@@ -11406,13 +11406,14 @@ This is used for creating new releases."
            (add-text-properties 0 1 (list :tagname new-tagname) release)
            (save-excursion (goto-char (car header))
                              (when (re-search-forward "^.*tag: \\(?1:.*\\)?" (cdr header) t)
-                                 (replace-match (get-text-property 0 :tagname release) nil nil nil 1))))
+                                (replace-match (or (get-text-property 0 :tagname release) "") nil nil nil 1))))
 
     (add-text-properties 0 1 (list :target selection) release)
 
+
              (save-excursion (goto-char (car header))
                              (when (re-search-forward "^.*target: \\(?1:.*\\)?" (cdr header) t)
-                                 (replace-match (get-text-property 0 :target release) nil nil nil 1)))))
+                                 (replace-match (or (get-text-property 0 :target release) "") nil nil nil 1)))))
 
 #+end_src
 
