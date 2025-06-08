@@ -10905,7 +10905,15 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                                      (propertize author 'help-echo (apply-partially #'consult-gh--get-user-tooltip author) 'rear-nonsticky t)))
          (tagname (gethash :tagName table))
          (draft (gethash :isDraft table))
+         (draft (if (or (equal draft :false)
+                                      (equal draft "false"))
+                                  nil
+                                draft))
          (prerelease (gethash :isPrerelease table))
+         (prerelease (if (or (equal prerelease :false)
+                                           (equal prerelease "false"))
+                                       nil
+                                     prerelease))
          (target (gethash :targetCommitish table))
          (createdAt (gethash :createdAt table))
          (publishedAt (gethash :publisheddAt table))
