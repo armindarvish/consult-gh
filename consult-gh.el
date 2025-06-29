@@ -10856,7 +10856,7 @@ and is used to preview or do other actions on the workflow."
              (when-let ((repo (get-text-property 0 :repo cand))
                         (query (get-text-property 0 :query cand))
                         (name (get-text-property 0 :name cand))
-                        (id (get-text-proprty 0 :id cand))
+                        (id (get-text-property 0 :id cand))
                         (match-str (consult--build-args query))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
@@ -10902,12 +10902,11 @@ in an external browser.
 To use this as the default action for workflow,
 set `consult-gh-workflow-action' to `consult-gh--workflow-browse-url-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
-         (id (substring-no-properties (get-text-property 0 :id cand)))
          (path (substring-no-properties (get-text-property 0 :path cand)))
-         (path-short (file-name-nondirectory path))
+         (path-name (file-name-nondirectory path))
          (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")))
 
-         (url (and repo-url (concat repo-url "/actions/workflows/" path-short))))
+         (url (and repo-url (concat repo-url "/actions/workflows/" path-name))))
     (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
 (defun consult-gh--workflow-read-json (repo workflow-id)
@@ -10990,7 +10989,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                (_ 'consult-gh-warning))))
        (propertize string 'face face)))
 
-(defun consult-gh--workflow-format-runs (repo workflow-id &optional runs topic)
+(defun consult-gh--workflow-format-runs (repo workflow-id &optional runs _topic)
   "Format runs for WORKFLOW-ID in REPO.
 
 RUNS is a hash-table output containing workflow information
@@ -11051,7 +11050,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
       (concat "# Recent Runs\n" (string-join content) "\n")
     )))
 
-(defun consult-gh--workflow-format-yaml (repo workflow-id &optional runs path topic)
+(defun consult-gh--workflow-format-yaml (repo workflow-id &optional topic)
   "Format yaml content for WORKFLOW-ID in REPO.
 
 RUNS is a hash-table output containing workflow information
@@ -11073,7 +11072,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             "```\n")
                 :consult-gh (list :yaml-url url)))))
 
-(defun consult-gh--workflow-view (repo id-or-name &optional buffer preview title)
+(defun consult-gh--workflow-view (repo id-or-name &optional buffer)
   "Open workflow with ID-OR-NAME of REPO in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of a
@@ -11094,10 +11093,6 @@ Description of Arguments:
   ID-OR-NAME a string; workflow id number or name
              (e.g. “170043631”, “action.yml”)
   BUFFER     a string; optional buffer name
-  PREVIEW    a boolean; whether to load reduced preview
-  TITLE      a string; an optional title string
-  STATE      a string; state of workflow (e.g. “active”)
-  PATH       a string; path of the workflow yaml file
 
 To use this as the default action for repos,
 see `consult-gh--workflow-view-action'."
@@ -11187,8 +11182,7 @@ Description of Arguments:
 
 To use this as the default action for repos,
 see `consult-gh--workflow-view-action'."
-  (let* ((topic (format "%s/actions/%s" repo id-or-name))
-         (args (list "workflow" "run" id-or-name "--repo" repo))
+  (let* ((args (list "workflow" "run" id-or-name "--repo" repo))
          (yaml (consult-gh--workflow-get-yaml repo id-or-name))
          (yaml--parsing-object-type 'hash-table)
          (yaml-table (yaml-parse-string yaml))
@@ -11363,7 +11357,7 @@ and is used to preview or do other actions on the run."
              (when-let ((repo (get-text-property 0 :repo cand))
                         (query (get-text-property 0 :query cand))
                         (name (get-text-property 0 :name cand))
-                        (id (get-text-proprty 0 :id cand))
+                        (id (get-text-property 0 :id cand))
                         (match-str (consult--build-args query))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
@@ -11463,9 +11457,9 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (title (gethash :display_title table))
          (url (gethash :html_url table))
          (path (gethash :path table))
-         (path-short (and path (file-name-nondirectory path)))
+         (path-name (and path (file-name-nondirectory path)))
          (workflow-id (gethash :workflow_id table))
-         (workflow-url (and path-short (stringp path-short) (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/actions/workflows/%s" path-short))))
+         (workflow-url (and path-name (stringp path-name) (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/actions/workflows/%s" path-name))))
          (actor (gethash :login (or (gethash :triggering_actor table) (gethash :actor table))))
          (actor (and (stringp actor) (propertize actor 'face 'consult-gh-user)))
          (actor (and (stringp actor)
@@ -11481,10 +11475,13 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (startedAt (and startedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time startedAt))))
          (age (consult-gh--time-ago startedAt)))
 
+     (when (stringp topic)
+      (add-text-properties 0 1 (list :workflow-id workflow-id :workflow-url workflow-url :workflow-name path-name :path path :status status :conclusion conclusion  :actor actor :event event) topic))
+
       (concat (and title (concat "title: " title "\n"))
               (and repo (concat "repository: " (propertize repo 'help-echo (apply-partially #'consult-gh--get-repo-tooltip repo)) "\n"))
             (and run-id (concat "id: " (propertize run-id 'face 'consult-gh-description) "\n"))
-            (and path-short (format "workflow: %s(%s)\n" path-short workflow-id))
+            (and path-name (format "workflow: %s(%s)\n" path-name workflow-id))
             (and workflow-url (format "workflow_url: %s\n" workflow-url))
             (and startedAt (concat "started: " startedAt "\n"))
             (and updatedAt (concat "updated: " updatedAt "\n"))
@@ -11505,25 +11502,23 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
   (when (hash-table-p job)
     (let* ((steps (gethash :steps job))
            (steps-list (when (listp steps)
-                        (remove nil (cl-loop for step in steps
-                             collect
-                             (let* ((name (gethash :name step))
-                                    (number (gethash :number step))
-                                    (status (gethash :status step))
-                                    (conclusion (gethash :conclusion step))
-                                    (state (consult-gh--workflow-format-status status conclusion))
-                                    (startedAt (gethash :startedAt step))
-                                    (completedAt (gethash :completedAt step))
-                                    (elapsed (and startedAt completedAt
-                                                  (time-convert (time-subtract (date-to-time completedAt)
-                                                    (date-to-time startedAt)
-                                                    ) 'integer)))
-         (completedAt (and completedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time completedAt))))
-         (startedAt (and startedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time startedAt))))
-                                    )
+                         (remove nil (cl-loop for step in steps
+                                              collect
+                                              (let* ((name (gethash :name step))
+                                                     (number (gethash :number step))
+                                                     (status (gethash :status step))
+                                                     (conclusion (gethash :conclusion step))
+                                                     (state (consult-gh--workflow-format-status status conclusion))
+                                                     (startedAt (gethash :startedAt step))
+                                                     (completedAt (gethash :completedAt step))
+                                                     (elapsed (and startedAt completedAt
+                                                                   (time-convert (time-subtract (date-to-time completedAt)
+                                                                                                (date-to-time startedAt)
+                                                                                                ) 'integer)))
+                                                     (completedAt (and completedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time completedAt)))))
 
-                               (concat  (format "%s" number) ". " name "\t" state "\t" (format "%ss" elapsed "\n"))))))))
-(when (listp steps-list) (string-join steps-list "\n")))))
+                                                (concat  (format "%s" number) ". " name "\t" state "\t" (format "completed at %s" completedAt) "\s" (format "%ss" elapsed) "\n")))))))
+      (when (listp steps-list) (string-join steps-list "\n")))))
 
 (defun consult-gh--run-format-jobs (repo run-id &optional topic)
   "Format jobs for RUN-ID in REPO.
@@ -11574,7 +11569,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             log
             "```\n"))))
 
-(defun consult-gh--run-view (repo run-id &optional buffer preview title)
+(defun consult-gh--run-view (repo run-id &optional buffer)
   "Open run with RUN-ID of REPO in an Emacs buffer, BUFFER.
 
 This is an internal function that takes REPO, the full name of a
@@ -11593,8 +11588,6 @@ Description of Arguments:
   REPO    a string; the full name of the repository
   RUN-ID  a string; run id number
   BUFFER  a string; optional buffer name
-  PREVIEW a boolean; whether to load reduced preview
-  TITLE   a string; an optional title string
 
 To use this as the default action for runs,
 see `consult-gh--run-view-action'."
@@ -14833,9 +14826,10 @@ Description of Arguments:
 (defun consult-gh-workflow-list (&optional initial noaction prompt min-input)
   "Interactively list workflow actions of a GitHub repository.
 
-This is an interactive wrapper function around `consult-gh--async-workflow-list'.
-With prefix ARG, first search for a repo using `consult-gh-search-repos',
-then list workflows of that selected repo with `consult-gh--async-workflow-list'.
+This is an interactive wrapper function around
+`consult-gh--async-workflow-list'.  With prefix ARG, first
+search for a repo using `consult-gh-search-repos', then list workflows
+of that selected repo with `consult-gh--async-workflow-list'.
 
 It queries the user to enter the full name of a GitHub repository in the
 minibuffer \(expected format is “OWNER/REPO”\), then fetches the list of
@@ -14983,6 +14977,9 @@ INPUT."
 (defun consult-gh--run-list-builder (workflow input)
   "Build gh command line for listing runs of the INPUT repository.
 
+WORKFLOW is an optional workflow id to further filter runs by a given
+workflow.
+
 INPUT must be the full name of a GitHub repository as a string
 e.g. “armindarvish/consult-gh”."
   (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-run-list-args))
@@ -15112,7 +15109,7 @@ URL `https://github.com/minad/consult'"
 
 ;;;###autoload
 (defun consult-gh-run-view (&optional repo run-id workflow)
-  "View a specific run of a workflow action in an emacs buffer."
+  "View run with RUN-ID of WORKFLOW in REPO in an Emacs buffer."
   (interactive)
   (let* ((topic consult-gh--topic)
          (workflow (or workflow
@@ -15121,7 +15118,6 @@ URL `https://github.com/minad/consult'"
                             topic)
                        (consult-gh-workflow-list (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))) t)))
          (repo  (or repo (and (stringp workflow) (get-text-property 0 :repo workflow))))
-         (type (and (stringp workflow) (get-text-property 0 :type workflow)))
          (workflow-id (and (stringp workflow)
                            (get-text-property 0 :id workflow)))
          (pl (get-text-property (point) :consult-gh))
