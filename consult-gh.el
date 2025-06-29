@@ -11081,7 +11081,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
   (when (stringp yaml)
     (when (stringp topic)
       (add-text-properties 0 1 (list :yaml yaml :yaml-url url) topic))
-    (propertize (concat "# YAML Content" (if ref (format " (from %s ref)" ref)) "\n\n"
+    (propertize (concat "# YAML Content" (if ref (format " - From Last Run [%s]" ref)) "\n\n"
                         "``` yaml\n"
                         yaml
                         "```\n")
