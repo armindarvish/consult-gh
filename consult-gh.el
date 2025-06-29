@@ -1472,6 +1472,7 @@ This is used to change grouping dynamically.")
 
 
 (defvar consult-gh--workflow-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
+                                                          ("C-c C-r" . consult-gh-workflow-change-yaml-ref)
                                                           ("C-c C-e" . consult-gh-workflow-enable)
                                                           ("C-c C-d" . consult-gh-workflow-disable)
                                                     ("C-c C-<return>" . consult-gh-topics-open-in-browser))
@@ -4978,7 +4979,7 @@ and is used to preview or do other actions on the issue."
                         (match-str (consult--build-args query))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer)
+               (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer t)
                (with-current-buffer buffer
                  (if consult-gh-highlight-matches
                      (cond
@@ -10866,7 +10867,8 @@ and is used to preview or do other actions on the workflow."
                      (cond
                       ((listp match-str)
                        (mapc (lambda (item)
-                                 (highlight-regexp item 'consult-gh-preview-match)) match-str))
+                                 (highlight-regexp item 'consult-gh-preview-match))
+                             match-str))
                       ((stringp match-str)
                        (highlight-regexp match-str 'consult-gh-preview-match)))))
                (funcall preview action
@@ -10929,13 +10931,26 @@ gh api “/repos/REPO/actions/workflows/ID/runs”,
 and returns the output as a hash-table."
   (consult-gh--json-to-hashtable (consult-gh--command-to-string "run" "list" "--workflow" workflow-id "--repo" repo "--json" "attempt,conclusion,createdAt,databaseId,displayTitle,event,headBranch,headSha,name,number,startedAt,status,updatedAt,url,workflowDatabaseId,workflowName")))
 
-(defun consult-gh--workflow-get-yaml (repo workflow-id)
-  "Get yaml content for WORKFLOW-ID in REPO.
+(defun consult-gh--workflow-get-runs-refs-history (repo workflow-id &optional runs)
+"Get a list of refs for WORKFLOW-ID in REPO.
+
+Optional arg RUNS is a list of previous runs of workflow.
+This returns the name of refs for previous runs of a workflow."
+  (let ((runs (or runs (consult-gh--workflow-get-runs repo workflow-id))))
+        (when (listp runs)
+          (mapcar (lambda (run) (when (hash-table-p run) (gethash :headBranch run))) runs))))
+
+(defun consult-gh--workflow-get-yaml (repo workflow-id &optional ref)
+  "Get yaml content for WORKFLOW-ID in REPO in REF.
 
 Runs a shell command with the command:
 
-gh workflow view  WORKFLOW-ID --repo REPO --yaml"
-(consult-gh--command-to-string "workflow" "view" workflow-id "--repo" repo "--yaml"))
+gh workflow view  WORKFLOW-ID --repo REPO --yaml --ref REF"
+  (let ((args (list "workflow" "view" workflow-id "--repo" repo "--yaml")))
+    (if (and (stringp ref)
+             (not (string-empty-p ref)))
+        (setq args (append args (list "--ref" ref))))
+    (apply #'consult-gh--command-to-string args)))
 
 (defun consult-gh--workflow-format-header (repo id-or-name runs &optional topic)
   "Format a header for ID-OR-NAME in REPO.
@@ -10989,7 +11004,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                (_ 'consult-gh-warning))))
        (propertize string 'face face)))
 
-(defun consult-gh--workflow-format-runs (repo workflow-id &optional runs _topic)
+(defun consult-gh--workflow-format-runs (repo workflow-id &optional runs topic)
   "Format runs for WORKFLOW-ID in REPO.
 
 RUNS is a hash-table output containing workflow information
@@ -11001,6 +11016,7 @@ from the header will get appended to the properties.  For an example, see
 the buffer-local variable `consult-gh--topic' in the buffer created by
 `consult-gh--workflow-view'."
   (let* ((runs (or runs (consult-gh--workflow-get-runs repo workflow-id)))
+         (ref-history (consult-gh--workflow-get-runs-refs-history repo workflow-id runs))
          (content (when (listp runs)
                     (cl-loop for run in runs
                              if (hash-table-p run)
@@ -11018,12 +11034,12 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                                             (updatedAt (gethash :updatedAt run))
                                             (elapsed (and startedAt updatedAt
                                                           (time-convert (time-subtract (date-to-time updatedAt)
-                                                                                       (date-to-time startedAt)
-                                                                                       ) 'integer)))
+                                                                                       (date-to-time startedAt)) 'integer)))
                                             (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time updatedAt))))
                                             (startedAt (and startedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time startedAt))))
-                                            (start (consult-gh--time-ago startedAt))
-                                            )
+                                            (start (consult-gh--time-ago startedAt)))
+                                       (when (stringp topic)
+                                         (add-text-properties 0 1 (list :ref-history ref-history) topic))
                                        (propertize (concat "## "
                                                (format "%s" number)
                                                ". "
@@ -11047,11 +11063,10 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                                                "\n")
                                                    :consult-gh (list :url url :run-id id)))))))
     (when (listp content)
-      (concat "# Recent Runs\n" (string-join content) "\n")
-    )))
+      (concat "# Recent Runs\n" (string-join content) "\n"))))
 
-(defun consult-gh--workflow-format-yaml (repo workflow-id &optional topic)
-  "Format yaml content for WORKFLOW-ID in REPO.
+(defun consult-gh--workflow-format-yaml (repo workflow-id &optional topic ref)
+  "Format yaml content for WORKFLOW-ID in REPO and REF.
 
 RUNS is a hash-table output containing workflow information
 from `consult-gh--workflow-get-runs'.  Returns a formatted string containing
@@ -11061,16 +11076,16 @@ The optional argument TOPIC is a propertized text where the related info
 from the header will get appended to the properties.  For an example, see
 the buffer-local variable `consult-gh--topic' in the buffer created by
 `consult-gh--workflow-view'."
-(let* ((yaml (consult-gh--workflow-get-yaml repo  workflow-id))
-        (url (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/actions/workflows/%s" repo  workflow-id)) :html_url)))
+(let* ((yaml (consult-gh--workflow-get-yaml repo workflow-id ref))
+       (url (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/actions/workflows/%s" repo workflow-id)) :html_url)))
   (when (stringp yaml)
     (when (stringp topic)
       (add-text-properties 0 1 (list :yaml yaml :yaml-url url) topic))
-    (propertize (concat "# YAML Content\n\n"
-            "``` yaml\n"
-            yaml
-            "```\n")
-                :consult-gh (list :yaml-url url)))))
+    (propertize (concat "# YAML Content" (if ref (format " (from %s ref)" ref)) "\n\n"
+                        "``` yaml\n"
+                        yaml
+                        "```\n")
+                :consult-gh (list :yaml-url url :ref ref) :consult-gh-workflow-yaml t))))
 
 (defun consult-gh--workflow-view (repo id-or-name &optional buffer)
   "Open workflow with ID-OR-NAME of REPO in an Emacs buffer, BUFFER.
@@ -11093,6 +11108,7 @@ Description of Arguments:
   ID-OR-NAME a string; workflow id number or name
              (e.g. “170043631”, “action.yml”)
   BUFFER     a string; optional buffer name
+  PREVIEW    a boolean; whether to load reduced preview
 
 To use this as the default action for repos,
 see `consult-gh--workflow-view-action'."
@@ -11101,9 +11117,12 @@ see `consult-gh--workflow-view-action'."
          (runs (consult-gh--workflow-get-runs repo id-or-name))
          (runs-text (consult-gh--workflow-format-runs repo id-or-name runs topic))
          (header-text (consult-gh--workflow-format-header repo id-or-name runs topic))
-         (yaml-text (consult-gh--workflow-format-yaml repo id-or-name)))
+         (last-run (car-safe runs))
+         (ref (and (hash-table-p last-run)
+                   (gethash :headBranch last-run)))
+         (yaml-text (consult-gh--workflow-format-yaml repo id-or-name topic ref)))
 
-    (add-text-properties 0 1 (list :repo repo :type "workflow" :view "workflow") topic)
+    (add-text-properties 0 1 (list :repo repo :type "workflow" :view "workflow" :last-ref ref) topic)
 
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
@@ -11167,8 +11186,10 @@ set `consult-gh-workflow-action' to `consult-gh--workflow-view-action'."
         (set-buffer-modified-p nil)
         (buffer-name (current-buffer))))))
 
-(defun consult-gh--workflow-run (repo id-or-name)
-  "Run workflow with ID-OR-NAME of REPO.
+(defun consult-gh--workflow-run (repo id-or-name &optional ref ref-history)
+  "Run workflow with ID-OR-NAME of REPO in REF branch/tag.
+
+REF defaults to REPO's main branch.
 
 This is an internal function that takes REPO, the full name of a
 repository \(e.g. “armindarvish/consult-gh”\) and ID-OR-NAME,
@@ -11179,11 +11200,24 @@ Description of Arguments:
   REPO       a string; the full name of the repository
   ID-OR-NAME a string; workflow id number or name
              (e.g. “170043631”, “action.yml”)
+  REF        a string; Branch or tag name which contains
+             the version of the workflow file to run
 
 To use this as the default action for repos,
 see `consult-gh--workflow-view-action'."
-  (let* ((args (list "workflow" "run" id-or-name "--repo" repo))
-         (yaml (consult-gh--workflow-get-yaml repo id-or-name))
+  (let* ((ref-history (or ref-history (consult-gh--workflow-get-runs-refs-history repo id-or-name)))
+         (ref (or ref
+                  (consult--read (append (consult-gh--get-branches repo)
+(consult-gh--get-release-tags repo))
+                                     :prompt "Select Branch or tag name with the version of the workflow to run: "
+                                     :sort t
+                                     :history (if ref-history 'ref-history t))))
+         (args (list "workflow" "run" (format "%s" id-or-name) "--repo" repo))
+         (args (if (and (stringp ref)
+                        (not (string-empty-p ref)))
+                   (append args (list "--ref" ref))
+                 args))
+         (yaml (consult-gh--workflow-get-yaml repo id-or-name ref))
          (yaml--parsing-object-type 'hash-table)
          (yaml-table (yaml-parse-string yaml))
          (dispatch (and (hash-table-p yaml-table) (map-nested-elt yaml-table '(on workflow_dispatch))))
@@ -11361,7 +11395,7 @@ and is used to preview or do other actions on the run."
                         (match-str (consult--build-args query))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (consult-gh--run-view (format "%s" repo) (format "%s" id) buffer)
+               (consult-gh--run-view (format "%s" repo) (format "%s" id) buffer t)
                (with-current-buffer buffer
                  (if consult-gh-highlight-matches
                      (cond
@@ -14877,6 +14911,37 @@ URL `https://github.com/minad/consult'"
         sel
       (funcall consult-gh-workflow-action sel))))
 
+(defun consult-gh-workflow-change-yaml-ref ()
+"Show the yaml file of workflow from a different ref.
+
+can be used in `consult-gh-workflow-view-mode' to see the yaml file
+of a GitHub action from a different branc or tagname."
+(interactive nil consult-gh-workflow-view-mode)
+(let* ((inhibit-read-only t)
+       (workflow (and (stringp consult-gh--topic)
+                      (equal (get-text-property 0 :type consult-gh--topic) "workflow")
+                      consult-gh--topic))
+       (repo (and workflow (get-text-property 0 :repo workflow)))
+       (workflow-id (and workflow (get-text-property 0 :id workflow)))
+       (ref (consult--read (append (consult-gh--get-branches repo)
+                                   (consult-gh--get-release-tags repo))
+                                     :prompt "Select Branch or tag name with the version of the workflow to see: "
+                                     :sort t))
+       (yaml-text (consult-gh--workflow-format-yaml repo workflow-id workflow ref))
+       (regions (consult-gh--get-region-with-prop :consult-gh-workflow-yaml))
+       (region (when (listp regions) (cons (caar regions) (cdar (last regions))))))
+  (when yaml-text
+    (when region
+      (goto-char (car region))
+      (delete-region (car region) (cdr region))
+      (delete-region (line-beginning-position) (line-end-position))
+      (insert "\n"))
+    (save-excursion
+        (insert (with-temp-buffer
+                  (insert yaml-text)
+                  (consult-gh--format-view-buffer "workflow")
+                  (buffer-string)))))))
+
 ;;;###autoload
 (defun consult-gh-workflow-enable (&optional workflow)
   "Enable a WORKFLOW.
@@ -14936,11 +15001,12 @@ returned by `consult-gh-workflow-list'."
 
        (consult-gh--workflow-disable repo workflow-id))))
 
-(defun consult-gh-workflow-run (&optional workflow)
-  "Run a WORKFLOW.
+(defun consult-gh-workflow-run (&optional workflow ref)
+  "Run a WORKFLOW in REF.
 
-WORKFLOW must be a propertized text describing a workflow similar to one
-returned by `consult-gh-workflow-list'."
+WORKFLOW must be a propertized text describing a workflow similar to
+one returned by `consult-gh-workflow-list'.  REF is the branch or
+tagname that contains the version of WORKFLOW to run."
   (interactive "P")
   (consult-gh-with-host
    (consult-gh--auth-account-host)
@@ -14961,8 +15027,10 @@ returned by `consult-gh-workflow-list'."
                           consult-gh--topic)
                      (consult-gh-workflow-list repo t)))
             (workflow-id (and (stringp workflow)
-                              (get-text-property 0 :id workflow))))
-(consult-gh--workflow-run repo workflow-id))))
+                              (get-text-property 0 :id workflow)))
+            (ref-history (and (stringp workflow)
+                              (get-text-property 0 :ref-history workflow))))
+(consult-gh--workflow-run repo workflow-id ref ref-history))))
 
 (defun consult-gh--run-list-transform (input)
 "Add annotation to run candidates in `consult-gh-run-list'.
