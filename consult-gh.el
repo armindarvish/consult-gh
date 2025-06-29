@@ -1342,6 +1342,12 @@ body of the pull requests from commits info, when this varibale is non-nil."
 (defvar consult-gh-releases-category 'consult-gh-releases
   "Category symbol for releases in `consult-gh' package.")
 
+(defvar consult-gh-workflows-category 'consult-gh-workflows
+  "Category symbol for workflows in `consult-gh' package.")
+
+(defvar consult-gh-runs-category 'consult-gh-runs
+  "Category symbol for runs in `consult-gh' package.")
+
 (defvar consult-gh-orgs-category 'consult-gh-orgs
   "Category symbol for orgs in `consult-gh' package.")
 
@@ -1442,7 +1448,7 @@ This is used to change grouping dynamically.")
 (defvar consult-gh--workflow-list-template (concat "{{range .}}" "{{.name}}" "\t" "{{.state}}" "\t" "{{printf \"%.0f\" .id}}" "\t" "{{.path}}" "\n\n" "{{end}}")
  "Template for retrieving workflows used in `consult-gh--workflow-list-builder'.")
 
-(defvar consult-gh--run-list-template (concat "{{range .}}" "{{.name}}" "\t" "{{.status}}" "\t" "{{.conclusion}}" "\t" "{{printf \"%.0f\" .databaseId}}" "\t" "{{.headBranch}}" "\t" "{{.event}}" "\t" "{{.startedAt}}" "\t" "{{.updatedAt}}" "\t" "{{.workflowName}}" "\t" "{{.workflowDatabaseId}}" "\n\n" "{{end}}")
+(defvar consult-gh--run-list-template (concat "{{range .}}" "{{.name}}" "\t" "{{.status}}" "\t" "{{.conclusion}}" "\t" "{{printf \"%.0f\" .databaseId}}" "\t" "{{.headBranch}}" "\t" "{{.event}}" "\t" "{{.startedAt}}" "\t" "{{.updatedAt}}" "\t" "{{.workflowName}}" "\t" "{{printf \"%.0f\" .workflowDatabaseId}}" "\n\n" "{{end}}")
  "Template for retrieving runs used in `consult-gh--run-list-builder'.")
 
 
@@ -10834,7 +10840,7 @@ Description of Arguments:
           (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t)))))
-    (add-text-properties 0 1 (list :repo repo :user user :package package :state state :id id :path path :query query :class class :type type) str)
+    (add-text-properties 0 1 (list :repo repo :user user :package package :state state :id id :path path :name path-name :query query :class class :type type) str)
     str))
 
 (defun consult-gh--workflow-state ()
@@ -10946,7 +10952,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
   (let* ((json (consult-gh--workflow-read-json repo id-or-name))
          (path (and (hash-table-p json)
                     (gethash :path json)))
-         (path-short (and (stringp path)
+         (path-name (and (stringp path)
                           (file-name-nondirectory path)))
          (id (and (hash-table-p json)
                     (format "%s" (gethash :id json))))
@@ -10959,12 +10965,12 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (title (when (hash-table-p first-run)
                   (gethash :workflowName first-run))))
     (when (stringp topic)
-      (add-text-properties 0 1 (list :total-runs run-count) topic))
+      (add-text-properties 0 1 (list :id id :path path :state state :name path-name :total-runs run-count) topic))
 
     (concat (and title (concat "title: " title "\n"))
             (and repo (concat "repository: " (propertize repo 'help-echo (apply-partially #'consult-gh--get-repo-tooltip repo)) "\n"))
             (and id (concat "id: " (propertize id 'face 'consult-gh-description) "\n"))
-            (and path-short (concat "name: " path-short "\n"))
+            (and path-name (concat "name: " path-name "\n"))
             (and path (concat "path: " path "\n"))
             (and url (concat "url: " url "\n"))
             (and (numberp run-count) (concat (format "runs: %s" run-count) "\n"))
@@ -11097,12 +11103,12 @@ To use this as the default action for repos,
 see `consult-gh--workflow-view-action'."
   (let* ((topic (format "%s/actions/%s" repo id-or-name))
          (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
-         (runs (consult-gh--workflow-get-runs repo id))
-         (runs-text (consult-gh--workflow-format-runs repo id runs topic))
-         (header-text (consult-gh--workflow-format-header repo id runs topic))
-         (yaml-text (consult-gh--workflow-format-yaml repo id)))
+         (runs (consult-gh--workflow-get-runs repo id-or-name))
+         (runs-text (consult-gh--workflow-format-runs repo id-or-name runs topic))
+         (header-text (consult-gh--workflow-format-header repo id-or-name runs topic))
+         (yaml-text (consult-gh--workflow-format-yaml repo id-or-name)))
 
-    (add-text-properties 0 1 (list :repo repo :type "workflow" :id id :path path :state state :view "workflow") topic)
+    (add-text-properties 0 1 (list :repo repo :type "workflow" :view "workflow") topic)
 
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
@@ -11135,10 +11141,7 @@ To use this as the default action for workflows,
 set `consult-gh-workflow-action' to `consult-gh--workflow-view-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
          (id (substring-no-properties (format "%s" (get-text-property 0 :id cand))))
-         (state (substring-no-properties (format "%s" (get-text-property 0 :state cand))))
-         (path (substring-no-properties (format "%s" (get-text-property 0 :path cand))))
-         (path-short (and path (stringp path) (file-name-nondirectory path)))
-         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/workflows/" path-short "*"))
+         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/workflows/" id "*"))
          (existing (get-buffer buffername))
          (confirm (if (and existing (not (= (buffer-size existing) 0)))
                       (consult--read
@@ -11197,7 +11200,7 @@ see `consult-gh--workflow-view-action'."
                        do
                        (let ((val (read-string (format "Enter value for \"%s\": " key))))
                          (setq args (append args (list "-f" (format "%s=%s" key val)))))))))
-       (consult-gh--make-process (format "consult-gh-workflow-run-%s-%s" repo workflow-id)
+       (consult-gh--make-process (format "consult-gh-workflow-run-%s-%s" repo id-or-name)
                                :when-done (lambda (_ str) (message str))
                                :cmd-args args)))
 
@@ -11214,6 +11217,79 @@ set `consult-gh-workflow-action' to `consult-gh--workflow-run-action'."
   (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
          (id (substring-no-properties (format "%s" (get-text-property 0 :id cand)))))
          (consult-gh--workflow-run repo id)))
+
+(defun consult-gh--workflow-enable (repo id-or-name)
+  "Enable workflow with ID-OR-NAME of REPO.
+
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and ID-OR-NAME,
+a workflow id of that repository, and enables the workflow.
+
+Description of Arguments:
+
+  REPO       a string; the full name of the repository
+  ID-OR-NAME a string; workflow id number or name
+             (e.g. “170043631”, “action.yml”)
+
+To use this as the default action for repos,
+see `consult-gh--workflow-view-action'."
+  (let* ((canwrite (consult-gh--user-canwrite repo))
+         (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (_ (unless canwrite
+              (user-error "The curent user, %s, %s to enable a workflow in repo, %s"
+                          (propertize user 'face 'consult-gh-error)
+                          (propertize "does not have permission" 'face 'consult-gh-error)
+                          (propertize repo 'face 'consult-gh-repo))))
+         (args (list "workflow" "enable" id-or-name "--repo" repo)))
+    (consult-gh--make-process (format "consult-gh-workflow-enable-%s-%s" repo id-or-name)
+                              :when-done (lambda (_ str) (message str))
+                              :cmd-args args)))
+
+(defun consult-gh--workflow-disable (repo id-or-name)
+  "Disable workflow with ID-OR-NAME of REPO.
+
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and ID-OR-NAME,
+a workflow id of that repository, and enables the workflow.
+
+Description of Arguments:
+
+  REPO       a string; the full name of the repository
+  ID-OR-NAME a string; workflow id number or name
+             (e.g. “170043631”, “action.yml”)
+
+To use this as the default action for repos,
+see `consult-gh--workflow-view-action'."
+  (let* ((canwrite (consult-gh--user-canwrite repo))
+         (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (_ (unless canwrite
+              (user-error "The curent user, %s, %s to enable a workflow in repo, %s"
+                          (propertize user 'face 'consult-gh-error)
+                          (propertize "does not have permission" 'face 'consult-gh-error)
+                          (propertize repo 'face 'consult-gh-repo))))
+         (args (list "workflow" "disable" id-or-name "--repo" repo)))
+    (consult-gh--make-process (format "consult-gh-workflow-enable-%s-%s" repo id-or-name)
+                              :when-done (lambda (_ str) (message str))
+                              :cmd-args args)))
+
+(defun consult-gh--workflow-enable-toggle-action (cand)
+  "Toggle a workflow candidate, CAND, enabled or disabled.
+
+This is a wrapper function around `consult-gh--workflow-enable'
+and `consult-gh--workflow-disable'.
+It parses CAND to extract relevant values
+\(e.g. repository's name and workflow id\)
+and passes them to `consult-gh--workflow-enable'
+or `consult-gh--workflow-disable' depending on the current state.
+
+To use this as the default action for workflows,
+set `consult-gh-workflow-action' to `consult-gh--workflow-enable-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (id (substring-no-properties (format "%s" (get-text-property 0 :id cand))))
+         (state (substring-no-properties (format "%s" (get-text-property 0 :state cand)))))
+    (if (equal state "active")
+        (consult-gh--workflow-disable repo id)
+        (consult-gh--workflow-enable repo id))))
 
 (defun consult-gh--run-format (string input highlight)
   "Format minibuffer candidates for actions runs in `consult-gh-run-list'.
@@ -14741,7 +14817,7 @@ Description of Arguments:
                            :initial initial
                            :group #'consult-gh--workflow-group
                            :require-match t
-                           :category 'consult-gh-releases
+                           :category 'consult-gh-workflows
                            :add-history  (let* ((topicrepo (consult-gh--get-repo-from-topic))
                                                 (localrepo (consult-gh--get-repo-from-directory)))
                                            (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
@@ -14833,11 +14909,8 @@ returned by `consult-gh-workflow-list'."
                           consult-gh--topic)
                      (consult-gh-workflow-list repo t)))
             (workflow-id (and (stringp workflow)
-                              (get-text-property 0 :id workflow)))
-            (args (list "workflow" "enable" workflow-id "--repo" repo)))
-     (consult-gh--make-process (format "consult-gh-workflow-enable-%s-%s" repo workflow-id)
-                               :when-done (lambda (_ str) (message str))
-                               :cmd-args args))))
+                              (get-text-property 0 :id workflow))))
+ (consult-gh--workflow-enable repo workflow-id))))
 
 ;;;###autoload
 (defun consult-gh-workflow-disable (&optional workflow)
@@ -14865,11 +14938,9 @@ returned by `consult-gh-workflow-list'."
                           consult-gh--topic)
                      (consult-gh-workflow-list repo t)))
             (workflow-id (and (stringp workflow)
-                              (get-text-property 0 :id workflow)))
-            (args (list "workflow" "disable" workflow-id "--repo" repo)))
-     (consult-gh--make-process (format "consult-gh-workflow-disable-%s-%s" repo workflow-id)
-                               :when-done (lambda (_ str) (message str))
-                               :cmd-args args))))
+                              (get-text-property 0 :id workflow))))
+
+       (consult-gh--workflow-disable repo workflow-id))))
 
 (defun consult-gh-workflow-run (&optional workflow)
   "Run a WORKFLOW.
@@ -14973,7 +15044,7 @@ Description of Arguments:
                            :initial initial
                            :group #'consult-gh--run-group
                            :require-match t
-                           :category 'consult-gh-releases
+                           :category 'consult-gh-runs
                            :add-history  (let* ((topicrepo (consult-gh--get-repo-from-topic))
                                                 (localrepo (consult-gh--get-repo-from-directory)))
                                            (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
