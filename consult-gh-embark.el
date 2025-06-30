@@ -1379,8 +1379,8 @@ CAND can be a PR or an issue."
                   (consult-gh-embark-toggle-release-prerelease embark--restart)
                   (consult-gh-embark-publish-release embark--restart)
                   (consult-gh-embark-mark-release-latest embark--restart)
-                  (consult-gh-embark-mark-release-latest embark--restart)))))
-
+                  (consult-gh-embark-workflow-enable embark--restart)
+                  (consult-gh-embark-workflow-disable embark--restart)))))
 
 
 (defun consult-gh-embark--mode-off ()
@@ -1396,7 +1396,9 @@ CAND can be a PR or an issue."
                            (consult-gh-prs . consult-gh-embark-prs-actions-map)
                            (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
                            (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map)
-                           (consult-gh-releases . consult-gh-embark-releases-actions-map))))
+                           (consult-gh-releases . consult-gh-embark-releases-actions-map)
+                           (consult-gh-workflows . consult-gh-embark-workflows-actions-map)
+                           (consult-gh-runs . consult-gh-embark-runs-actions-map))))
 
 ;; unset default actions
   (setq embark-default-action-overrides
@@ -1408,7 +1410,9 @@ CAND can be a PR or an issue."
                           (consult-gh-codes . consult-gh-embark-default-action)
                           (consult-gh-notifications . consult-gh-embark-default-action)
                           (consult-gh-dashboard . consult-gh-embark-default-action)
-                          (consult-gh-releases . consult-gh-embark-default-action))))
+                          (consult-gh-releases . consult-gh-embark-default-action)
+                          (consult-gh-workflows . consult-gh-embark-default-action)
+                          (consult-gh-runs . consult-gh-embark-default-action))))
 
   ;; unset post action hooks
   (setq embark-post-action-hooks
@@ -1416,9 +1420,9 @@ CAND can be a PR or an issue."
                         '((consult-gh-embark-mark-release-draft embark--restart)
                           (consult-gh-embark-toggle-release-prerelease embark--restart)
                           (consult-gh-embark-publish-release embark--restart)
+                          (consult-gh-embark-mark-release-latest embark--restart)
                           (consult-gh-embark-workflow-enable embark--restart)
-                          (consult-gh-embark-workflow-disable embark--restart)
-                          (consult-gh-embark-workflow-run embark--restart)))))
+                          (consult-gh-embark-workflow-disable embark--restart)))))
 
 (defun consult-gh-embark-unload-function ()
   "Unload function for `consult-gh-embark'."
