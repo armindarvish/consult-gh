@@ -1499,6 +1499,9 @@ This is used to change grouping dynamically.")
 
   "Keymap alist for `consult-gh-topics-edit-mode'.")
 
+(defvar consult-gh--last-command nil
+"Last command for `consult-gh--embark-restart'.")
+
 ;;; Faces
 
 (defface consult-gh-success
@@ -12439,6 +12442,8 @@ URL `https://github.com/minad/consult'"
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+      (setq consult-gh--last-command #'consult-gh-issue-list))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-issue-list prompt #'consult-gh--issue-list-builder initial min-input)))
     ;;add org and repo to known lists
@@ -12561,6 +12566,8 @@ URL `https://github.com/minad/consult'."
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-search-issues))
   (let* ((prompt (or prompt "Search Issues:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-issues prompt #'consult-gh--search-issues-builder initial min-input)))
@@ -13259,6 +13266,8 @@ URL `https://github.com/minad/consult'."
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-pr-list))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
          (sel (consult-gh--async-pr-list prompt #'consult-gh--pr-list-builder initial min-input)))
     ;;add org and repo to known lists
@@ -13383,6 +13392,8 @@ URL `https://github.com/minad/consult'."
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo  (consult-gh-search-repos repo t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-search-prs))
   (let* ((prompt (or prompt "Search Pull-Requests:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-prs prompt #'consult-gh--search-prs-builder initial min-input)))
@@ -14113,6 +14124,8 @@ If PROMPT is non-nil, use it as the query prompt."
   (interactive)
   (let* ((prompt (or prompt "Select Notification:  "))
          (sel (consult-gh--notifications prompt initial)))
+    (when (bound-and-true-p consult-gh-embark-mode)
+        (setq consult-gh--last-command #'consult-gh-notifications))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
@@ -14455,6 +14468,8 @@ URL `https://github.com/minad/consult'"
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-release-list))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-release-list prompt #'consult-gh--release-list-builder initial min-input)))
     ;;add org and repo to known lists
@@ -14900,6 +14915,8 @@ URL `https://github.com/minad/consult'"
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-workflow-list))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-workflow-list prompt #'consult-gh--workflow-list-builder initial min-input)))
     ;;add org and repo to known lists

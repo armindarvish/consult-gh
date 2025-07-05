@@ -37,6 +37,16 @@
 (require 'embark-consult)
 (require 'consult-gh)
 
+(defun consult-gh--embark-restart (&rest _)
+  "Restart current async search with current input.
+Use this to refresh the list of candidates for commands that do
+not handle that themselves."
+  (when (active-minibuffer-window)
+  (with-selected-window (minibuffer-window)
+    (let ((text  (minibuffer-contents)))
+      (when (commandp consult-gh--last-command)
+          (embark--become-command consult-gh--last-command text))))))
+
 ;;; Define Embark Action Functions
 
 ;;;; Default Actions
@@ -1375,12 +1385,20 @@ CAND can be a PR or an issue."
   ;; set post actions-hook
   (setq embark-post-action-hooks
         (append embark-post-action-hooks
-                '((consult-gh-embark-mark-release-draft embark--restart)
-                  (consult-gh-embark-toggle-release-prerelease embark--restart)
-                  (consult-gh-embark-publish-release embark--restart)
-                  (consult-gh-embark-mark-release-latest embark--restart)
-                  (consult-gh-embark-workflow-enable embark--restart)
-                  (consult-gh-embark-workflow-disable embark--restart)))))
+                '((consult-gh-embark-delete-issue consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-issue-open consult-gh--embark-restart)
+                  (consult-gh-embark-transfer-issue consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-pr-draft consult-gh--embark-restart)
+                  (consult-gh-embark-merge-pr consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-pr-open consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-notification-read consult-gh--embark-restart)
+                  (consult-gh-embark-notification-toggle-subscription consult-gh--embark-restart)
+                  (consult-gh-embark-mark-release-draft consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-release-prerelease consult-gh--embark-restart)
+                  (consult-gh-embark-publish-release consult-gh--embark-restart)
+                  (consult-gh-embark-mark-release-latest consult-gh--embark-restart)
+                  (consult-gh-embark-workflow-enable consult-gh--embark-restart)
+                  (consult-gh-embark-workflow-disable consult-gh--embark-restart)))))
 
 
 (defun consult-gh-embark--mode-off ()
@@ -1417,12 +1435,20 @@ CAND can be a PR or an issue."
   ;; unset post action hooks
   (setq embark-post-action-hooks
         (seq-difference embark-post-action-hooks
-                        '((consult-gh-embark-mark-release-draft embark--restart)
-                          (consult-gh-embark-toggle-release-prerelease embark--restart)
-                          (consult-gh-embark-publish-release embark--restart)
-                          (consult-gh-embark-mark-release-latest embark--restart)
-                          (consult-gh-embark-workflow-enable embark--restart)
-                          (consult-gh-embark-workflow-disable embark--restart)))))
+                        '((consult-gh-embark-delete-issue consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-issue-open consult-gh--embark-restart)
+                          (consult-gh-embark-transfer-issue consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-pr-draft consult-gh--embark-restart)
+                          (consult-gh-embark-merge-pr consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-pr-open consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-notification-read consult-gh--embark-restart)
+                          (consult-gh-embark-notification-toggle-subscription consult-gh--embark-restart)
+                          (consult-gh-embark-mark-release-draft consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-release-prerelease consult-gh--embark-restart)
+                          (consult-gh-embark-publish-release consult-gh--embark-restart)
+                          (consult-gh-embark-mark-release-latest consult-gh--embark-restart)
+                          (consult-gh-embark-workflow-enable consult-gh--embark-restart)
+                          (consult-gh-embark-workflow-disable consult-gh--embark-restart)))))
 
 (defun consult-gh-embark-unload-function ()
   "Unload function for `consult-gh-embark'."
