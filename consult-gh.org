@@ -12231,17 +12231,25 @@ This returns the name of refs for previous runs of a workflow."
 
 ******* get yaml
 #+begin_src emacs-lisp
-(defun consult-gh--workflow-get-yaml (repo workflow-id &optional ref)
+(defun consult-gh--workflow-get-yaml (repo workflow-id &optional ref sha)
   "Get yaml content for WORKFLOW-ID in REPO in REF.
+
+SHA is the Sha of the commit that was used for the last run.
 
 Runs a shell command with the command:
 
 gh workflow view  WORKFLOW-ID --repo REPO --yaml --ref REF"
-  (let ((args (list "workflow" "view" workflow-id "--repo" repo "--yaml")))
-    (if (and (stringp ref)
-             (not (string-empty-p ref)))
-        (setq args (append args (list "--ref" ref))))
-    (apply #'consult-gh--command-to-string args)))
+
+  (if sha
+      (when-let* ((path (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/actions/workflows/%s" repo workflow-id)) :path))
+            (file-url  (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "repos/%s/contents/%s?ref=%s" repo path sha)) :url)))
+            (consult-gh--files-get-content file-url))
+    (let ((args (list "workflow" "view" workflow-id "--repo" repo "--yaml")))
+      (if (and (stringp ref)
+               (not (string-empty-p ref)))
+          (setq args (append args (list "--ref" ref))))
+    (apply #'consult-gh--command-to-string args))))
+
 #+end_src
 
 ******* format header
@@ -12372,23 +12380,32 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
 ******* format yaml
 
 #+begin_src emacs-lisp
-(defun consult-gh--workflow-format-yaml (repo workflow-id &optional topic ref)
+(defun consult-gh--workflow-format-yaml (repo workflow-id &optional topic ref sha)
   "Format yaml content for WORKFLOW-ID in REPO and REF.
 
-RUNS is a hash-table output containing workflow information
-from `consult-gh--workflow-get-runs'.  Returns a formatted string containing
+SHA is the Sha of the commit that was used for the last run.
+Returns a formatted string containing
 yaml file for `consult-gh--workflow-view'.
 
 The optional argument TOPIC is a propertized text where the related info
 from the header will get appended to the properties.  For an example, see
 the buffer-local variable `consult-gh--topic' in the buffer created by
 `consult-gh--workflow-view'."
-(let* ((yaml (consult-gh--workflow-get-yaml repo workflow-id ref))
-       (url (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/actions/workflows/%s" repo workflow-id)) :html_url)))
+(let* ((yaml (consult-gh--workflow-get-yaml repo workflow-id ref sha))
+       (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+       (run-info (consult-gh--command-to-string "api" (format "/repos/%s/actions/workflows/%s" repo workflow-id)))
+       (html_url (consult-gh--json-to-hashtable run-info :html_url))
+       (path (consult-gh--json-to-hashtable run-info :path))
+       (url (if (and repo-url sha path)
+                (format "%s/blob/%s/%s" repo-url sha path)
+             html_url)))
   (when (stringp yaml)
     (when (stringp topic)
       (add-text-properties 0 1 (list :yaml yaml :yaml-url url) topic))
-    (propertize (concat "# YAML Content" (if ref (format " - From Last Run [%s]" ref)) "\n\n"
+    (propertize (concat "# YAML Content"
+                        (if ref (format " - From Last Run [%s]" ref))
+                        (if sha (format " commit: %s" (substring sha 0 6)))
+                        "\n\n"
                         "``` yaml\n"
                         yaml
                         "```\n")
@@ -12431,7 +12448,9 @@ see `consult-gh--workflow-view-action'."
          (last-run (car-safe runs))
          (ref (and (hash-table-p last-run)
                    (gethash :headBranch last-run)))
-         (yaml-text (consult-gh--workflow-format-yaml repo id-or-name topic ref)))
+         (sha (and (hash-table-p last-run)
+                   (gethash :headSha last-run)))
+         (yaml-text (consult-gh--workflow-format-yaml repo id-or-name topic ref sha)))
 
     (add-text-properties 0 1 (list :repo repo :type "workflow" :view "workflow" :last-ref ref) topic)
 
