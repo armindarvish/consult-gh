@@ -3,6 +3,22 @@
 #+language: en
 
 * Development
+- Added support for workflows and runs
+  - Added support for listing workflows ("gh workflow list ...")
+  - Added support for viewing workflows in Emacs ("gh workflow view ...")
+  - Added support for enabling/disabling workflows ("gh workflow enable/disable ...")
+  - Added support for running workflow ("gh workflow run ...")
+  - Added support for listing runs ("gh run list ...")
+  - Added suppport for viewing runs in Emacs ("gh run view ...")
+- Added ansi-color for seeing logs of actions runs
+- Added yaml as dependency for parsing github action files
+- Other fixes and improvements
+
+
+* Version 2.5.1 (2025-06-08)
+- fixes issues with parsing titles when creating pr or issue (#232)
+
+* Version 2.5 (2025-05-22)
 - Added support for interactively managing releases directly from Emacs
   - Added =consult-gh-release-list= for browsing repository releases
   - Implemented =consult-gh-release-create= for creating new releases with support for *auto-generated release notes*

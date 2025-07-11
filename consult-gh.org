@@ -56,6 +56,8 @@
 (require 'consult) ;; core dependency
 (require 'markdown-mode) ;; markdown-mode for viewing issues,prs, ...
 (require 'ox-gfm) ;; for exporting org-mode to github flavored markdown
+(require 'ansi-color) ;; for rendering ansi colors in shell output
+(require 'yaml) ;; for parsing github action files
 (require 'org) ;; for its awesomeness!
 
 
@@ -147,6 +149,22 @@ Can be either a string, or a list of strings or expressions."
 
 (defcustom consult-gh-release-list-args '("release" "list" "--repo")
   "Additional arguments for `consult-gh-release-list'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-workflow-list-args `("workflow" "list" "--json" "\"name,state,id,path\"" "--repo")
+  "Additional arguments for `consult-gh-workflow-list'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-run-list-args `("run" "list" "--json" "\"attempt,conclusion,createdAt,databaseId,displayTitle,event,headBranch,headSha,name,number,startedAt,status,updatedAt,url,workflowDatabaseId,workflowName\"" "--repo")
+  "Additional arguments for `consult-gh-run-list'.
 
 The dynamically computed arguments are appended.
 Can be either a string, or a list of strings or expressions."
@@ -278,51 +296,75 @@ temporary directories."
   :group 'consult-gh
   :type 'string)
 
-(defcustom consult-gh-repo-maxnum 30
+(defcustom consult-gh-maxnum 30
+"Maximum number of items to show for list and search operations.
+
+This is the value passed to “--limit” in the command line.
+The default is set to `consult-gh-maxnum'."
+  :group 'consult-gh
+  :type 'integer)
+
+(defcustom consult-gh-repo-maxnum consult-gh-maxnum
   "Maximum number of repos to show for list and search operations.
 
 This is the value passed to “--limit” in the command line.
-The default is set to gh's default config, 30."
+The default is set to `consult-gh-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-issue-maxnum 30
+(defcustom consult-gh-issue-maxnum consult-gh-maxnum
   "Maximum number of issues to show for list and search operations.
 
 This is the value passed to “--limit” in the command line.
-The default is set to gh's default config, 30"
+The default is set to `consult-gh-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-dashboard-maxnum 30
+(defcustom consult-gh-dashboard-maxnum consult-gh-maxnum
   "Maximum number of dashboard items to show for each search operations.
 
 This is the value passed to “--limit” in the command line.
-The default is set to 30."
+The default is set to `consult-gh-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-pr-maxnum 30
+(defcustom consult-gh-pr-maxnum consult-gh-maxnum
   "Maximum number of PRs to show for list and search operations.
 
 This is the value passed to “--limit” in the command line.
-The default is set to gh's default config, 30"
+The default is set to `consult-gh-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-code-maxnum 30
+(defcustom consult-gh-code-maxnum consult-gh-maxnum
   "Maximum number of codes to show for list and search operations.
 
 This is the value passed to “--limit” in the command line.
-The default is set to gh's default config, 30"
+The default is set to `consult-gh-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
-(defcustom consult-gh-release-maxnum 30
+(defcustom consult-gh-release-maxnum consult-gh-maxnum
   "Maximum number of releases to show for list operations.
 
 This is the value passed to “--limit” in the command line.
-The default is set to gh's default config, 30"
+The default is set to `consult-gh-maxnum'."
+  :group 'consult-gh
+  :type 'integer)
+
+(defcustom consult-gh-workflow-maxnum consult-gh-maxnum
+  "Maximum number of workflow actions to show for list operations.
+
+This is the value passed to “--limit” in the command line.
+The default is set to `consult-gh-maxnum'."
+  :group 'consult-gh
+  :type 'integer)
+
+(defcustom consult-gh-run-maxnum consult-gh-maxnum
+  "Maximum number of workflow actions to show for list operations.
+
+This is the value passed to “--limit” in the command line.
+The default is set to `consult-gh-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
@@ -383,6 +425,22 @@ The possible options are “open”, “closed”, or nil."
   :type '(choice (const :tag "(Default) Show open issues only" "open")
                  (const :tag "Show closed issues only" "closed")
                  (const :tag "Show both closed and open issue" nil)))
+
+(defcustom consult-gh-workflow-show-all t
+  "Whether to show inactive workflows in `consult-gh-workflow-list'?
+
+When non-nil “--all” argument is passed in the command line
+to `gh workflow list`."
+  :group 'consult-gh
+  :type 'boolean)
+
+(defcustom consult-gh-run-show-all t
+  "Whether to show runs of inactive workflows in `consult-gh-run-list'?
+
+When non-nil “--all” argument is passed in the command line
+to `gh run list`."
+  :group 'consult-gh
+  :type 'boolean)
 
 (defcustom consult-gh-prs-state-to-show "open"
   "Which type of PRs should be listed by `consult-gh-pr-list'?
@@ -511,6 +569,34 @@ Choices are:
 
 (defcustom consult-gh-release-preview-major-mode 'gfm-mode
   "Major mode to preview releases.
+
+Choices are:
+  - \='nil            Use `fundamental-mode'
+  - \='gfm-mode       Use `gfm-mode'
+  - \='markdown-mode  Use `markdown-mode'
+  - \='org-mode       Use `org-mode'"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use GitHub flavor markdown mode" gfm-mode)
+                 (const :tag "Use markdown mode" markdown-mode)
+                 (const :tag "Use org mode" org-mode)
+                 (const :tag "Use fundamental mode" nil)))
+
+(defcustom consult-gh-workflow-preview-major-mode 'gfm-mode
+  "Major mode to preview workflows.
+
+Choices are:
+  - \='nil            Use `fundamental-mode'
+  - \='gfm-mode       Use `gfm-mode'
+  - \='markdown-mode  Use `markdown-mode'
+  - \='org-mode       Use `org-mode'"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use GitHub flavor markdown mode" gfm-mode)
+                 (const :tag "Use markdown mode" markdown-mode)
+                 (const :tag "Use org mode" org-mode)
+                 (const :tag "Use fundamental mode" nil)))
+
+(defcustom consult-gh-run-preview-major-mode 'gfm-mode
+  "Major mode to preview runs.
 
 Choices are:
   - \='nil            Use `fundamental-mode'
@@ -880,6 +966,48 @@ By default it is set to t, but can be any of:
                  (const :tag "Repository's package name" :package)
                  (const :tag "Date the repo was last updated" :date)))
 
+(defcustom consult-gh-group-workflows-by consult-gh-group-by
+  "What field to use to group results in workflows list?
+
+This is used in `consult-gh-workflow-list'.
+By default it is set to t, but can be any of:
+
+  t         Use headers for marginalia info
+  nil       Do not group
+  :repo     Group by repository full name
+  :state    Group by status of workflow (i.e. enabled, diabled)
+  :user     Group by repository owner
+  :package  Group by package name
+  symbol    Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                 (const :tag "Do Not Group" nil)
+                 (const :tag "Repository's full name" :repo)
+                 (const :tag "State of workflow (e.g. enbaled)" :state)
+                 (const :tag "Repository's owner" :user)
+                 (const :tag "Repository's package name" :package)))
+
+(defcustom consult-gh-group-runs-by consult-gh-group-by
+  "What field to use to group results in runs list?
+
+This is used in `consult-gh-run-list'.
+By default it is set to t, but can be any of:
+
+  t         Use headers for marginalia info
+  nil       Do not group
+  :repo     Group by repository full name
+  :state    Group by status of workflow (i.e. enabled, diabled)
+  :user     Group by repository owner
+  :package  Group by package name
+  symbol    Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                 (const :tag "Do Not Group" nil)
+                 (const :tag "Repository's full name" :repo)
+                 (const :tag "State of run (e.g. enbaled)" :state)
+                 (const :tag "Repository's owner" :user)
+                 (const :tag "Repository's package name" :package)))
+
 (defcustom consult-gh-default-clone-directory "~/"
   "Where should GitHub repos be cloned to by default?"
   :group 'consult-gh
@@ -1142,6 +1270,40 @@ Common options include:
                    (const :tag "Open the release in an Emacs buffer" consult-gh--release-view-action)
                    (function :tag "Custom Function")))
 
+(defcustom consult-gh-workflow-action #'consult-gh--workflow-view-action
+  "What function to call when a workflow is selected?
+
+Common options include:
+ - `consult-gh--workflow-browse-url-action' Opens the workflow url in
+                                           default browser
+
+ - `consult-gh--workflow-view-action'       Opens workflow in Emacs
+
+ - A custom function                     A function that takes
+                                         only 1 input argument,
+                                         the workflow candidate."
+  :group 'consult-gh
+  :type  '(choice (const :tag "Open the workflow URL in default browser" consult-gh--workflow-browse-url-action)
+                   (const :tag "Open the workflow in an Emacs buffer" consult-gh--workflow-view-action)
+                   (function :tag "Custom Function")))
+
+(defcustom consult-gh-run-action #'consult-gh--run-view-action
+  "What function to call when a run is selected?
+
+Common options include:
+ - `consult-gh--run-browse-url-action' Opens the run url in
+                                           default browser
+
+ - `consult-gh--run-view-action'       Opens run in Emacs
+
+ - A custom function                     A function that takes
+                                         only 1 input argument,
+                                         the run candidate."
+  :group 'consult-gh
+  :type  '(choice (const :tag "Open the run URL in default browser" consult-gh--run-browse-url-action)
+                   (const :tag "Open the run in an Emacs buffer" consult-gh--run-view-action)
+                   (function :tag "Custom Function")))
+
 (defcustom consult-gh-highlight-matches t
   "Should queries or code snippets be highlighted in preview buffers?"
   :group 'consult-gh
@@ -1204,6 +1366,12 @@ body of the pull requests from commits info, when this varibale is non-nil."
 
 (defvar consult-gh-releases-category 'consult-gh-releases
   "Category symbol for releases in `consult-gh' package.")
+
+(defvar consult-gh-workflows-category 'consult-gh-workflows
+  "Category symbol for workflows in `consult-gh' package.")
+
+(defvar consult-gh-runs-category 'consult-gh-runs
+  "Category symbol for runs in `consult-gh' package.")
 
 (defvar consult-gh-orgs-category 'consult-gh-orgs
   "Category symbol for orgs in `consult-gh' package.")
@@ -1302,6 +1470,16 @@ This is used to change grouping dynamically.")
 (defvar consult-gh--release-view-json-fields "assets,author,body,createdAt,isDraft,isPrerelease,name,publishedAt,tagName,tarballUrl,targetCommitish,uploadUrl,url,zipballUrl"
   "String of comma separated json fields to retrieve for viewing releases.")
 
+(defvar consult-gh--workflow-list-template (concat "{{range .}}" "{{.name}}" "\t" "{{.state}}" "\t" "{{printf \"%.0f\" .id}}" "\t" "{{.path}}" "\n\n" "{{end}}")
+ "Template for retrieving workflows used in `consult-gh--workflow-list-builder'.")
+
+(defvar consult-gh--run-list-template (concat "{{range .}}" "{{.name}}" "\t" "{{.status}}" "\t" "{{.conclusion}}" "\t" "{{printf \"%.0f\" .databaseId}}" "\t" "{{.headBranch}}" "\t" "{{.event}}" "\t" "{{.startedAt}}" "\t" "{{.updatedAt}}" "\t" "{{.workflowName}}" "\t" "{{printf \"%.0f\" .workflowDatabaseId}}" "\n\n" "{{end}}")
+ "Template for retrieving runs used in `consult-gh--run-list-builder'.")
+
+
+(defvar consult-gh--repo-view-mode-keybinding-alist '(("C-c C-<return>" . consult-gh-topics-open-in-browser))
+
+  "Keymap alist for `consult-gh-repo-view-mode'.")
 
 (defvar consult-gh--issue-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
                                                        ("C-c C-e" . consult-gh-issue-edit)
@@ -1317,14 +1495,24 @@ This is used to change grouping dynamically.")
 
   "Keymap alist for `consult-gh-pr-view-mode'.")
 
-(defvar consult-gh--repo-view-mode-keybinding-alist '(("C-c C-<return>" . consult-gh-topics-open-in-browser))
 
-  "Keymap alist for `consult-gh-repo-view-mode'.")
+(defvar consult-gh--workflow-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
+                                                          ("C-c C-r" . consult-gh-workflow-change-yaml-ref)
+                                                          ("C-c C-e" . consult-gh-workflow-enable)
+                                                          ("C-c C-d" . consult-gh-workflow-disable)
+                                                    ("C-c C-<return>" . consult-gh-topics-open-in-browser))
+
+  "Keymap alist for `consult-gh-workflow-view-mode'.")
+
+(defvar consult-gh--run-view-mode-keybinding-alist '(("C-c C-<return>" . consult-gh-topics-open-in-browser))
+
+  "Keymap alist for `consult-gh-run-view-mode'.")
 
 (defvar consult-gh--release-view-mode-keybinding-alist '(("C-c C-e" . consult-gh-release-edit)
                                                          ("C-c C-<return>" . consult-gh-topics-open-in-browser))
 
   "Keymap alist for `consult-gh-release-view-mode'.")
+
 
 (defvar consult-gh--misc-view-mode-keybinding-alist '(("C-c C-k" . consult-gh-topics-cancel)
                                                       ("C-c C-<return>" . consult-gh-topics-open-in-browser))
@@ -1335,6 +1523,9 @@ This is used to change grouping dynamically.")
                                                         ("C-c C-k" . consult-gh-topics-cancel))
 
   "Keymap alist for `consult-gh-topics-edit-mode'.")
+
+(defvar consult-gh--last-command nil
+"Last command for `consult-gh--embark-restart'.")
 
 #+end_src
 
@@ -1731,7 +1922,7 @@ Uses simple regexp replacements."
             (when (re-search-forward "^-\\{2\\}$" nil t)
               (delete-char -2)
               (insert "-----\n")
-              (while (re-search-backward "\\(^[a-zA-Z]+:[[:blank:]]\\)" nil t)
+              (while (re-search-backward "\\(^[a-zA-Z0-9._-]+:[[:blank:]]\\)" nil t)
                 (replace-match "#+\\1" nil nil)))))))))
 #+end_src
 
@@ -2781,7 +2972,9 @@ major mode and format the contents."
                    ("repo" consult-gh-repo-preview-major-mode)
                    ("issue" consult-gh-issue-preview-major-mode)
                    ("pr" consult-gh-issue-preview-major-mode)
-                   ("release" consult-gh-release-preview-major-mode))))
+                   ("release" consult-gh-release-preview-major-mode)
+                   ("workflow" consult-gh-workflow-preview-major-mode)
+                   ("run" consult-gh-run-preview-major-mode))))
   (save-excursion
     (pcase mode
       ('gfm-mode
@@ -2802,6 +2995,7 @@ major mode and format the contents."
   (save-excursion
     (while (re-search-forward "\r\n" nil t)
       (replace-match "\n")))
+  (ansi-color-apply-on-region (point-min) (point-max))
   (set-buffer-file-coding-system 'utf-8-unix))))
 
 #+end_src
@@ -5355,7 +5549,7 @@ and is used to preview or do other actions on the issue."
                         (match-str (consult--build-args query))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer)
+               (consult-gh--issue-view (format "%s" repo) (format "%s" number) buffer t)
                (with-current-buffer buffer
                  (if consult-gh-highlight-matches
                      (cond
@@ -10905,7 +11099,15 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                                      (propertize author 'help-echo (apply-partially #'consult-gh--get-user-tooltip author) 'rear-nonsticky t)))
          (tagname (gethash :tagName table))
          (draft (gethash :isDraft table))
+         (draft (if (or (equal draft :false)
+                                      (equal draft "false"))
+                                  nil
+                                draft))
          (prerelease (gethash :isPrerelease table))
+         (prerelease (if (or (equal prerelease :false)
+                                           (equal prerelease "false"))
+                                       nil
+                                     prerelease))
          (target (gethash :targetCommitish table))
          (createdAt (gethash :createdAt table))
          (publishedAt (gethash :publisheddAt table))
@@ -11367,13 +11569,13 @@ This is used for creating new releases."
            (add-text-properties 0 1 (list :target new-target) release)
            (save-excursion (goto-char (car header))
                              (when (re-search-forward "^.*target: \\(?1:.*\\)?" (cdr header) t)
-                                 (replace-match (get-text-property 0 :target release) nil nil nil 1))))
+                                 (replace-match (or (get-text-property 0 :target release) "") nil nil nil 1))))
 
     (add-text-properties 0 1 (list :tagname selection) release)
 
     (save-excursion (goto-char (car header))
                     (when (re-search-forward "^.*tag: \\(?1:.*\\)?" (cdr header) t)
-                      (replace-match (get-text-property 0 :tagname release) nil nil nil 1)))))
+                      (replace-match (or (get-text-property 0 :tagname release) "") nil nil nil 1)))))
 
 #+end_src
 
@@ -11406,13 +11608,14 @@ This is used for creating new releases."
            (add-text-properties 0 1 (list :tagname new-tagname) release)
            (save-excursion (goto-char (car header))
                              (when (re-search-forward "^.*tag: \\(?1:.*\\)?" (cdr header) t)
-                                 (replace-match (get-text-property 0 :tagname release) nil nil nil 1))))
+                                (replace-match (or (get-text-property 0 :tagname release) "") nil nil nil 1))))
 
     (add-text-properties 0 1 (list :target selection) release)
 
+
              (save-excursion (goto-char (car header))
                              (when (re-search-forward "^.*target: \\(?1:.*\\)?" (cdr header) t)
-                                 (replace-match (get-text-property 0 :target release) nil nil nil 1)))))
+                                 (replace-match (or (get-text-property 0 :target release) "") nil nil nil 1)))))
 
 #+end_src
 
@@ -11863,6 +12066,1031 @@ buffer generated by `consult-gh--release-view'."
 
 #+end_src
 
+**** workflows
+***** format candidate
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-format (string input highlight)
+  "Format minibuffer candidates for workflows in `consult-gh-workflow-list'.
+
+Description of Arguments:
+
+  STRING    output of a “gh” call \(e.g. “gh workflow list ...”\).
+  INPUT     a query from the user
+            \(a.k.a. command line argument passed to the gh call\).
+  HIGHLIGHT if non-nil, input is highlighted with
+            `consult-gh-highlight-match' in the minibuffer."
+  (let* ((class "workflow")
+         (type "workflow")
+         (parts (string-split string "\t"))
+         (repo (car (consult--command-split input)))
+         (user (consult-gh--get-username repo))
+         (package (consult-gh--get-package repo))
+         (name (car parts))
+         (state (cadr parts))
+         (face (cond
+                ((string-prefix-p "active" state) 'consult-gh-success)
+                ((string-prefix-p "disabled" state) 'consult-gh-warning)
+                ((string-prefix-p "deleted" state) 'consult-gh-issue)
+                (t 'consult-gh-default)))
+         (id (cadr (cdr parts)))
+         (path (cadr (cddr parts)))
+         (path-name (and path (stringp path) (file-name-nondirectory path)))
+         (query input)
+         (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
+         (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
+                       (consult-gh--set-string-width (propertize (format "%s" name) 'face 'consult-gh-default) 40)
+                       (propertize (consult-gh--set-string-width state 20) 'face face)
+                       (consult-gh--set-string-width (propertize (format "%s" id) 'face 'consult-gh-description) 10)
+                       (consult-gh--set-string-width (propertize (format "%s" path-name) 'face 'consult-gh-branch) 20)
+                       (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user)) (and package "/") (and package (propertize package 'face 'consult-gh-package))) 40))))
+    (if (and consult-gh-highlight-matches highlight)
+        (cond
+         ((listp match-str)
+          (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+         ((stringp match-str)
+          (setq str (consult-gh--highlight-match match-str str t)))))
+    (add-text-properties 0 1 (list :repo repo :user user :package package :state state :id id :path path :name path-name :query query :class class :type type) str)
+    str))
+#+end_src
+
+
+***** state/preview
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-state ()
+  "State function for workflow candidates.
+
+This is passed as STATE to `consult--read' in `consult-gh-workflow-list'
+and is used to preview or do other actions on the workflow."
+  (lambda (action cand)
+    (let* ((preview (consult--buffer-preview)))
+      (pcase action
+        ('preview
+         (if (and consult-gh-show-preview cand)
+             (when-let ((repo (get-text-property 0 :repo cand))
+                        (query (get-text-property 0 :query cand))
+                        (name (get-text-property 0 :name cand))
+                        (id (get-text-property 0 :id cand))
+                        (match-str (consult--build-args query))
+                        (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
+               (consult-gh--workflow-view (format "%s" repo) (format "%s" id) buffer)
+               (with-current-buffer buffer
+                 (if consult-gh-highlight-matches
+                     (cond
+                      ((listp match-str)
+                       (mapc (lambda (item)
+                                 (highlight-regexp item 'consult-gh-preview-match))
+                             match-str))
+                      ((stringp match-str)
+                       (highlight-regexp match-str 'consult-gh-preview-match)))))
+               (funcall preview action
+                        buffer))))
+        ('return
+         cand)))))
+#+end_src
+***** group
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-group (cand transform)
+  "Group function for workflow.
+
+This is passed as GROUP to `consult--read' in `consult-gh-issue-list'
+or `consult-gh-workflow-list', and is used to group workflows.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-workflows-by)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "Name " 38 nil ?-)
+       (consult-gh--set-string-width " State " 22 nil ?-)
+       (consult-gh--set-string-width " ID " 12 nil ?-)
+       (consult-gh--set-string-width " Path " 22 nil ?-)
+       (consult-gh--set-string-width " Repo " 40 nil ?-))))))
+#+end_src
+***** actions
+****** browse workflow URL
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-browse-url-action (cand)
+  "Browse the url for a workflow action candidate, CAND.
+
+This is an internal action function that gets a workflow candidate, CAND,
+from `consult-gh-workflow-list' and opens the url of the workflow
+in an external browser.
+
+To use this as the default action for workflow,
+set `consult-gh-workflow-action' to `consult-gh--workflow-browse-url-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (path (substring-no-properties (get-text-property 0 :path cand)))
+         (path-name (file-name-nondirectory path))
+         (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")))
+
+         (url (and repo-url (concat repo-url "/actions/workflows/" path-name))))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
+#+end_src
+
+****** view workflow
+******* read json
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-read-json (repo workflow-id)
+  "Get details of WORKFLOW-ID in REPO.
+
+Runs an async shell command with the command:
+gh api “/repos/REPO/actions/workflows/ID”,
+and returns the output as a hash-table."
+  (let* ((json-object-type 'hash-table)
+         (json-array-type 'list)
+         (json-key-type 'keyword)
+         (json-false :false))
+    (json-read-from-string (consult-gh--command-to-string "api" (format "/repos/%s/actions/workflows/%s" repo workflow-id)))))
+#+end_src
+
+******* get runs
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-get-runs (repo workflow-id)
+  "Get list of runs for WORKFLOW-ID in REPO.
+
+Runs an async shell command with the command:
+gh api “/repos/REPO/actions/workflows/ID/runs”,
+and returns the output as a hash-table."
+  (consult-gh--json-to-hashtable (consult-gh--command-to-string "run" "list" "--workflow" workflow-id "--repo" repo "--json" "attempt,conclusion,createdAt,databaseId,displayTitle,event,headBranch,headSha,name,number,startedAt,status,updatedAt,url,workflowDatabaseId,workflowName")))
+#+end_src
+
+
+******* get ref history
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-get-runs-refs-history (repo workflow-id &optional runs)
+"Get a list of refs for WORKFLOW-ID in REPO.
+
+Optional arg RUNS is a list of previous runs of workflow.
+This returns the name of refs for previous runs of a workflow."
+  (let ((runs (or runs (consult-gh--workflow-get-runs repo workflow-id))))
+        (when (listp runs)
+          (mapcar (lambda (run) (when (hash-table-p run) (gethash :headBranch run))) runs))))
+#+end_src
+
+******* get yaml
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-get-yaml (repo workflow-id &optional ref sha)
+  "Get yaml content for WORKFLOW-ID in REPO in REF.
+
+SHA is the Sha of the commit that was used for the last run.
+
+Runs a shell command with the command:
+
+gh workflow view  WORKFLOW-ID --repo REPO --yaml --ref REF"
+
+  (if sha
+      (when-let* ((path (consult-gh--json-to-hashtable (consult-gh--command-to-string "api" (format "/repos/%s/actions/workflows/%s" repo workflow-id)) :path))
+            (file-url  (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "repos/%s/contents/%s?ref=%s" repo path sha)) :url)))
+            (consult-gh--files-get-content file-url))
+    (let ((args (list "workflow" "view" workflow-id "--repo" repo "--yaml")))
+      (if (and (stringp ref)
+               (not (string-empty-p ref)))
+          (setq args (append args (list "--ref" ref))))
+    (apply #'consult-gh--command-to-string args))))
+
+#+end_src
+
+******* format header
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-format-header (repo id-or-name runs &optional topic)
+  "Format a header for ID-OR-NAME in REPO.
+
+RUNS is a hash-table output containing runs information
+from `consult-gh--workflow-get-runs'.  Returns a formatted string containing
+the header section for `consult-gh--workflow-view'.
+
+The optional argument TOPIC is a propertized text where the related info
+from the header will get appended to the properties.  For an example, see
+the buffer-local variable `consult-gh--topic' in the buffer created by
+`consult-gh--workflow-view'."
+  (let* ((json (consult-gh--workflow-read-json repo id-or-name))
+         (path (and (hash-table-p json)
+                    (gethash :path json)))
+         (path-name (and (stringp path)
+                          (file-name-nondirectory path)))
+         (id (and (hash-table-p json)
+                    (format "%s" (gethash :id json))))
+         (state (and (hash-table-p json)
+                    (gethash :state json)))
+         (url (and (hash-table-p json)
+                    (gethash :html_url json)))
+         (run-count (when (listp runs) (length runs)))
+         (first-run (when (listp runs) (car runs)))
+         (title (when (hash-table-p first-run)
+                  (gethash :workflowName first-run))))
+    (when (stringp topic)
+      (add-text-properties 0 1 (list :id id :path path :state state :name path-name :total-runs run-count) topic))
+
+    (concat (and title (concat "title: " title "\n"))
+            (and repo (concat "repository: " (propertize repo 'help-echo (apply-partially #'consult-gh--get-repo-tooltip repo)) "\n"))
+            (and id (concat "id: " (propertize id 'face 'consult-gh-description) "\n"))
+            (and path-name (concat "name: " path-name "\n"))
+            (and path (concat "path: " path "\n"))
+            (and url (concat "url: " url "\n"))
+            (and (numberp run-count) (concat (format "runs: %s" run-count) "\n"))
+            (and state (concat "state: " state))
+            "\n--\n")))
+
+#+end_src
+
+******* format status
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-format-status (status conclusion)
+  "Format STATUS and CONCLUSION for workflow runs, jobs, and etc."
+(let* ((string (pcase status
+                 ("completed" "✓")
+                 ("canceled"  "x")
+                 ("action_required" "!")
+                 (_ status)))
+       (face (pcase conclusion
+               ("success" 'consult-gh-success)
+               ("failure" 'consult-gh-error)
+               (_ 'consult-gh-warning))))
+       (propertize string 'face face)))
+
+#+end_src
+
+******* format runs
+
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-format-runs (repo workflow-id &optional runs topic)
+  "Format runs for WORKFLOW-ID in REPO.
+
+RUNS is a hash-table output containing workflow information
+from `consult-gh--workflow-get-runs'.  Returns a formatted string containing
+list of runs for `consult-gh--workflow-view'.
+
+The optional argument TOPIC is a propertized text where the related info
+from the header will get appended to the properties.  For an example, see
+the buffer-local variable `consult-gh--topic' in the buffer created by
+`consult-gh--workflow-view'."
+  (let* ((runs (or runs (consult-gh--workflow-get-runs repo workflow-id)))
+         (ref-history (consult-gh--workflow-get-runs-refs-history repo workflow-id runs))
+         (content (when (listp runs)
+                    (cl-loop for run in runs
+                             if (hash-table-p run)
+                             collect (let* ((conclusion (gethash :conclusion run))
+                                            (event (gethash :event run))
+                                            (name (gethash :name run))
+                                            (number (gethash :number run))
+                                            (status (gethash :status run))
+                                            (state (consult-gh--workflow-format-status status conclusion))
+                                            (title (gethash :displayTitle run))
+                                            (branch (gethash :headBranch run))
+                                            (id (gethash :databaseId run))
+                                            (url (gethash :url run))
+                                            (startedAt (gethash :startedAt run))
+                                            (updatedAt (gethash :updatedAt run))
+                                            (elapsed (and startedAt updatedAt
+                                                          (time-convert (time-subtract (date-to-time updatedAt)
+                                                                                       (date-to-time startedAt)) 'integer)))
+                                            (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time updatedAt))))
+                                            (startedAt (and startedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time startedAt))))
+                                            (start (consult-gh--time-ago startedAt)))
+                                       (when (stringp topic)
+                                         (add-text-properties 0 1 (list :ref-history ref-history) topic))
+                                       (propertize (concat "## "
+                                               (format "%s" number)
+                                               ". "
+                                               state
+                                               "\s\s"
+                                               (format "[[%s][%s]]" url title)
+                                               (format "  [%s]  " branch)
+                                               (format "(%s)" start)
+                                               "\s"
+                                               (format "%ss" elapsed)
+                                               "\n"
+                                               (and id (format "`ID:` %s\n" id))
+                                               (and name (format "`NAME:` %s\n" name))
+                                               (and branch (format "`BRANCH:` %s\n" branch))
+                                               (and event (format "`EVENT:` %s\n" event))
+                                               (and startedAt (format "`STARTED:` %s\n" startedAt))
+                                               (and updatedAt (format "`UPDATED:` %s\n" startedAt))
+                                               (and elapsed (format "`ELAPSED TIME:` %ss\n" elapsed))
+                                               (and status (format "`STATUS:` %s - %s\n" status conclusion))
+                                               (and url  (format "`URL:` %s\n" url))
+                                               "\n")
+                                                   :consult-gh (list :url url :run-id id)))))))
+    (when (listp content)
+      (concat "# Recent Runs\n" (string-join content) "\n"))))
+#+end_src
+
+******* format yaml
+
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-format-yaml (repo workflow-id &optional topic ref sha)
+  "Format yaml content for WORKFLOW-ID in REPO and REF.
+
+SHA is the Sha of the commit that was used for the last run.
+Returns a formatted string containing
+yaml file for `consult-gh--workflow-view'.
+
+The optional argument TOPIC is a propertized text where the related info
+from the header will get appended to the properties.  For an example, see
+the buffer-local variable `consult-gh--topic' in the buffer created by
+`consult-gh--workflow-view'."
+(let* ((yaml (consult-gh--workflow-get-yaml repo workflow-id ref sha))
+       (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+       (run-info (consult-gh--command-to-string "api" (format "/repos/%s/actions/workflows/%s" repo workflow-id)))
+       (html_url (consult-gh--json-to-hashtable run-info :html_url))
+       (path (consult-gh--json-to-hashtable run-info :path))
+       (url (if (and repo-url sha path)
+                (format "%s/blob/%s/%s" repo-url sha path)
+             html_url)))
+  (when (stringp yaml)
+    (when (stringp topic)
+      (add-text-properties 0 1 (list :yaml yaml :yaml-url url) topic))
+    (propertize (concat "# YAML Content"
+                        (if ref (format " - From Last Run [%s]" ref))
+                        (if sha (format " commit: %s" (substring sha 0 6)))
+                        "\n\n"
+                        "``` yaml\n"
+                        yaml
+                        "```\n")
+                :consult-gh (list :yaml-url url :ref ref) :consult-gh-workflow-yaml t))))
+#+end_src
+
+******* workflow-view
+******** view backend
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-view (repo id-or-name &optional buffer)
+  "Open workflow with ID-OR-NAME of REPO in an Emacs buffer, BUFFER.
+
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and ID,
+a workflow id of that repository, and shows
+the sontents and actoin runs in an Emacs buffer.
+
+It fetches the preview of the workflow by running the command
+“gh workflow view ID --repo REPO” using `consult-gh--call-process'
+and put it as raw text in either BUFFER or if BUFFER is nil,
+in a buffer named by `consult-gh-preview-buffer-name'.
+If `consult-gh-workflow-preview-major-mode' is non-nil, uses it as
+major-mode, otherwise shows the raw text in \='fundamental-mode.
+
+Description of Arguments:
+
+  REPO       a string; the full name of the repository
+  ID-OR-NAME a string; workflow id number or name
+             (e.g. “170043631”, “action.yml”)
+  BUFFER     a string; optional buffer name
+  PREVIEW    a boolean; whether to load reduced preview
+
+To use this as the default action for repos,
+see `consult-gh--workflow-view-action'."
+  (let* ((topic (format "%s/actions/%s" repo id-or-name))
+         (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
+         (runs (consult-gh--workflow-get-runs repo id-or-name))
+         (runs-text (consult-gh--workflow-format-runs repo id-or-name runs topic))
+         (header-text (consult-gh--workflow-format-header repo id-or-name runs topic))
+         (last-run (car-safe runs))
+         (ref (and (hash-table-p last-run)
+                   (gethash :headBranch last-run)))
+         (sha (and (hash-table-p last-run)
+                   (gethash :headSha last-run)))
+         (yaml-text (consult-gh--workflow-format-yaml repo id-or-name topic ref sha)))
+
+    (add-text-properties 0 1 (list :repo repo :type "workflow" :view "workflow" :last-ref ref) topic)
+
+    (with-current-buffer buffer
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (fundamental-mode)
+        (when header-text
+          (insert header-text)
+          (save-excursion
+          (when (eq consult-gh-workflow-preview-major-mode 'org-mode)
+           (consult-gh--github-header-to-org buffer))))
+        (when runs-text
+          (insert runs-text))
+        (when yaml-text
+          (insert yaml-text))
+        (consult-gh--format-view-buffer "workflow")
+        (outline-hide-sublevels 1)
+        (consult-gh-workflow-view-mode +1)
+        (setq-local consult-gh--topic topic)
+        (current-buffer)))))
+
+#+end_src
+******** view action
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-view-action (cand)
+  "Open the preview of a workflow candidate, CAND.
+
+This is a wrapper function around `consult-gh--workflow-view'.
+It parses CAND to extract relevant values
+\(e.g. repository's name and workflow id\)
+and passes them to `consult-gh--workflow-view'.
+
+To use this as the default action for workflows,
+set `consult-gh-workflow-action' to `consult-gh--workflow-view-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (id (substring-no-properties (format "%s" (get-text-property 0 :id cand))))
+         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/workflows/" id "*"))
+         (existing (get-buffer buffername))
+         (confirm (if (and existing (not (= (buffer-size existing) 0)))
+                      (consult--read
+                       (list (cons "Switch to existing buffer." :resume)
+                             (cons "Reload the workflow in the existing buffer." :replace)
+                             (cons "Make a new buffer and load the workflow in it (without killing the old buffer)." :new))
+                       :prompt "You already have this workflow open in another buffer.  Would you like to switch to that buffer or make a new one? "
+                       :lookup #'consult--lookup-cdr
+                       :sort nil
+                       :require-match t))))
+
+(if existing
+      (cond
+       ((eq confirm :resume) (funcall consult-gh-switch-to-buffer-func existing))
+       ((eq confirm :replace)
+        (message "Reloading action in the existing buffer...")
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--workflow-view repo id existing))
+        (set-buffer-modified-p nil)
+        (buffer-name (current-buffer)))
+       ((eq confirm :new)
+        (message "Opening action in a new buffer...")
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--workflow-view repo id (generate-new-buffer buffername nil)))
+        (set-buffer-modified-p nil)
+        (buffer-name (current-buffer))))
+      (progn
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--workflow-view repo id))
+        (rename-buffer buffername t)
+        (set-buffer-modified-p nil)
+        (buffer-name (current-buffer))))))
+
+#+end_src
+****** run workflow
+******* run backend
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-run (repo id-or-name &optional ref ref-history)
+  "Run workflow with ID-OR-NAME of REPO in REF branch/tag.
+
+REF defaults to REPO's main branch.
+
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and ID-OR-NAME,
+a workflow id of that repository,runs the workflow.
+
+Description of Arguments:
+
+  REPO       a string; the full name of the repository
+  ID-OR-NAME a string; workflow id number or name
+             (e.g. “170043631”, “action.yml”)
+  REF        a string; Branch or tag name which contains
+             the version of the workflow file to run
+
+To use this as the default action for repos,
+see `consult-gh--workflow-view-action'."
+  (let* ((ref-history (or ref-history (consult-gh--workflow-get-runs-refs-history repo id-or-name)))
+         (ref (or ref
+                  (consult--read (append (consult-gh--get-branches repo)
+(consult-gh--get-release-tags repo))
+                                     :prompt "Select Branch or tag name with the version of the workflow to run: "
+                                     :sort t
+                                     :history (if ref-history 'ref-history t))))
+         (args (list "workflow" "run" (format "%s" id-or-name) "--repo" repo))
+         (args (if (and (stringp ref)
+                        (not (string-empty-p ref)))
+                   (append args (list "--ref" ref))
+                 args))
+         (yaml (consult-gh--workflow-get-yaml repo id-or-name ref))
+         (yaml--parsing-object-type 'hash-table)
+         (yaml-table (yaml-parse-string yaml))
+         (dispatch (and (hash-table-p yaml-table) (map-nested-elt yaml-table '(on workflow_dispatch))))
+         (inputs (and (hash-table-p dispatch) (gethash 'inputs dispatch)))
+         (keys (and (hash-table-p inputs) (hash-table-keys inputs)))
+         (_ (when (listp keys)
+              (cl-loop for key in keys
+                       do
+                       (let ((val (read-string (format "Enter value for \"%s\": " key))))
+                         (setq args (append args (list "-f" (format "%s=%s" key val)))))))))
+       (consult-gh--make-process (format "consult-gh-workflow-run-%s-%s" repo id-or-name)
+                               :when-done (lambda (_ str) (message str))
+                               :cmd-args args)))
+
+#+end_src
+******* run action
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-run-action (cand)
+  "Run a workflow candidate, CAND.
+
+This is a wrapper function around `consult-gh--workflow-run.
+It parses CAND to extract relevant values
+\(e.g. repository's name and workflow id\)
+and passes them to `consult-gh--workflow-run'.
+
+To use this as the default action for workflows,
+set `consult-gh-workflow-action' to `consult-gh--workflow-run-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (id (substring-no-properties (format "%s" (get-text-property 0 :id cand)))))
+         (consult-gh--workflow-run repo id)))
+
+#+end_src
+****** enable workflow
+******* enable backend
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-enable (repo id-or-name)
+  "Enable workflow with ID-OR-NAME of REPO.
+
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and ID-OR-NAME,
+a workflow id of that repository, and enables the workflow.
+
+Description of Arguments:
+
+  REPO       a string; the full name of the repository
+  ID-OR-NAME a string; workflow id number or name
+             (e.g. “170043631”, “action.yml”)
+
+To use this as the default action for repos,
+see `consult-gh--workflow-view-action'."
+  (let* ((canwrite (consult-gh--user-canwrite repo))
+         (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (_ (unless canwrite
+              (user-error "The curent user, %s, %s to enable a workflow in repo, %s"
+                          (propertize user 'face 'consult-gh-error)
+                          (propertize "does not have permission" 'face 'consult-gh-error)
+                          (propertize repo 'face 'consult-gh-repo))))
+         (args (list "workflow" "enable" id-or-name "--repo" repo)))
+    (consult-gh--make-process (format "consult-gh-workflow-enable-%s-%s" repo id-or-name)
+                              :when-done (lambda (_ str) (message str))
+                              :cmd-args args)))
+
+#+end_src
+******* disable backend
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-disable (repo id-or-name)
+  "Disable workflow with ID-OR-NAME of REPO.
+
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and ID-OR-NAME,
+a workflow id of that repository, and enables the workflow.
+
+Description of Arguments:
+
+  REPO       a string; the full name of the repository
+  ID-OR-NAME a string; workflow id number or name
+             (e.g. “170043631”, “action.yml”)
+
+To use this as the default action for repos,
+see `consult-gh--workflow-view-action'."
+  (let* ((canwrite (consult-gh--user-canwrite repo))
+         (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (_ (unless canwrite
+              (user-error "The curent user, %s, %s to enable a workflow in repo, %s"
+                          (propertize user 'face 'consult-gh-error)
+                          (propertize "does not have permission" 'face 'consult-gh-error)
+                          (propertize repo 'face 'consult-gh-repo))))
+         (args (list "workflow" "disable" id-or-name "--repo" repo)))
+    (consult-gh--make-process (format "consult-gh-workflow-enable-%s-%s" repo id-or-name)
+                              :when-done (lambda (_ str) (message str))
+                              :cmd-args args)))
+#+end_src
+******* enable toggle action
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-enable-toggle-action (cand)
+  "Toggle a workflow candidate, CAND, enabled or disabled.
+
+This is a wrapper function around `consult-gh--workflow-enable'
+and `consult-gh--workflow-disable'.
+It parses CAND to extract relevant values
+\(e.g. repository's name and workflow id\)
+and passes them to `consult-gh--workflow-enable'
+or `consult-gh--workflow-disable' depending on the current state.
+
+To use this as the default action for workflows,
+set `consult-gh-workflow-action' to `consult-gh--workflow-enable-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (id (substring-no-properties (format "%s" (get-text-property 0 :id cand))))
+         (state (substring-no-properties (format "%s" (get-text-property 0 :state cand)))))
+    (if (equal state "active")
+        (consult-gh--workflow-disable repo id)
+        (consult-gh--workflow-enable repo id))))
+
+#+end_src
+**** runs
+***** format candidate
+#+begin_src emacs-lisp
+
+(defun consult-gh--run-format (string input highlight)
+  "Format minibuffer candidates for actions runs in `consult-gh-run-list'.
+
+Description of Arguments:
+
+  STRING    output of a “gh” call \(e.g. “gh run list ...”\).
+  INPUT     a query from the user
+            \(a.k.a. command line argument passed to the gh call\).
+  HIGHLIGHT if non-nil, input is highlighted with
+            `consult-gh-highlight-match' in the minibuffer."
+  (let* ((class "run")
+         (type "run")
+         (parts (string-split string "\t"))
+         (repo (car (consult--command-split input)))
+         (user (consult-gh--get-username repo))
+         (package (consult-gh--get-package repo))
+         (name (car parts))
+         (state (cadr parts))
+         (conclusion (cadr (cdr parts)))
+         (face (cond
+                ((string-prefix-p "completed" state) 'consult-gh-success)
+                ((or (string-prefix-p "canceled" state) (string-prefix-p "failure" state))
+                 'consult-gh-issue)
+                (t 'consult-gh-warning)))
+         (id (cadr (cddr parts)))
+         (branch (cadr (cdddr parts)))
+         (event (cadr (cdddr (cdr parts))))
+         (startedAt (cadr (cdddr (cddr parts))))
+         (updatedAt (cadr (cdddr (cdddr parts))))
+         (elapsed (and startedAt updatedAt
+                       (time-convert (time-subtract (date-to-time updatedAt)
+                                                    (date-to-time startedAt)
+                                                    ) 'integer)))
+         (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time updatedAt))))
+         (startedAt (and startedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time startedAt))))
+         (age (consult-gh--time-ago startedAt))
+         (workflow-name (cadr (cdddr (cdddr (cdr parts)))))
+         (workflow-id (cadr (cdddr (cdddr (cddr parts)))))
+         (query input)
+         (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
+         (str (format "%s\s\s%s\s%s\s%s\s%s\s%s\s%s\s%s\s\s%s"
+                       (consult-gh--set-string-width (propertize (format "%s" name) 'face 'consult-gh-default) 35)
+                       (propertize (consult-gh--set-string-width state 12) 'face face)
+                       (consult-gh--set-string-width (propertize workflow-name 'face 'consult-gh-default) 12)
+                       (consult-gh--set-string-width (propertize branch 'face 'consult-gh-branch) 8)
+                       (consult-gh--set-string-width (propertize event 'face 'consult-gh-date) 12)
+                       (consult-gh--set-string-width (propertize (format "%s" id) 'face 'consult-gh-description) 12)
+                       (consult-gh--set-string-width (propertize (format "%ss" elapsed) 'face 'consult-gh-branch) 9)
+                       (consult-gh--set-string-width (propertize (format "%s" age) 'face 'consult-gh-branch) 12)
+                       (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user)) (and package "/") (and package (propertize package 'face 'consult-gh-package))) 40))))
+    (if (and consult-gh-highlight-matches highlight)
+        (cond
+         ((listp match-str)
+          (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+         ((stringp match-str)
+          (setq str (consult-gh--highlight-match match-str str t)))))
+    (add-text-properties 0 1 (list :repo repo :user user :package package :state state :conclusion conclusion :id id :workflow workflow-name :workflow-id workflow-id :event event :branch branch :startedAt startedAt :updatedAt updatedAt :elapsed elapsed :age age :query query :class class :type type) str)
+    str))
+#+end_src
+
+
+***** state/preview
+#+begin_src emacs-lisp
+(defun consult-gh--run-state ()
+  "State function for run candidates.
+
+This is passed as STATE to `consult--read' in `consult-gh-workflow-list'
+and is used to preview or do other actions on the run."
+  (lambda (action cand)
+    (let* ((preview (consult--buffer-preview)))
+      (pcase action
+        ('preview
+         (if (and consult-gh-show-preview cand)
+             (when-let ((repo (get-text-property 0 :repo cand))
+                        (query (get-text-property 0 :query cand))
+                        (name (get-text-property 0 :name cand))
+                        (id (get-text-property 0 :id cand))
+                        (match-str (consult--build-args query))
+                        (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
+               (consult-gh--run-view (format "%s" repo) (format "%s" id) buffer t)
+               (with-current-buffer buffer
+                 (if consult-gh-highlight-matches
+                     (cond
+                      ((listp match-str)
+                       (mapc (lambda (item)
+                                 (highlight-regexp item 'consult-gh-preview-match)) match-str))
+                      ((stringp match-str)
+                       (highlight-regexp match-str 'consult-gh-preview-match)))))
+               (funcall preview action
+                        buffer))))
+        ('return
+         cand)))))
+#+end_src
+***** group
+#+begin_src emacs-lisp
+(defun consult-gh--run-group (cand transform)
+  "Group function for run.
+
+This is passed as GROUP to `consult--read' in `consult-gh-issue-list'
+or `consult-gh-workflow-list', and is used to group runs.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-runs-by)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "Name " 33 nil ?-)
+       (consult-gh--set-string-width " State " 13 nil ?-)
+       (consult-gh--set-string-width " Workflow " 13 nil ?-)
+       (consult-gh--set-string-width " Branch " 9 nil ?-)
+       (consult-gh--set-string-width " Event " 13 nil ?-)
+       (consult-gh--set-string-width " ID " 13 nil ?-)
+       (consult-gh--set-string-width " Elapsed " 10 nil ?-)
+       (consult-gh--set-string-width " Age " 14 nil ?-)
+       (consult-gh--set-string-width " Repo " 40 nil ?-))))))
+#+end_src
+***** actions
+****** browse run URL
+#+begin_src emacs-lisp
+(defun consult-gh--run-browse-url-action (cand)
+  "Browse the url for an action run candidate, CAND.
+
+This is an internal action function that gets a run candidate, CAND,
+from `consult-gh-run-list' and opens the url of the run
+in an external browser.
+
+To use this as the default action for run,
+set `consult-gh-run-action' to `consult-gh--run-browse-url-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (id (substring-no-properties (get-text-property 0 :id cand)))
+         (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")))
+
+         (url (and repo-url (concat repo-url "/actions/runs/" id))))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
+#+end_src
+
+****** view run
+******** read json
+#+begin_src emacs-lisp
+(defun consult-gh--run-read-json (repo run-id)
+  "Get details of RUN-ID in REPO.
+
+Runs an async shell command with the command:
+gh run view RUN-ID,
+and returns the output as a hash-table."
+  (let* ((json-object-type 'hash-table)
+         (json-array-type 'list)
+         (json-key-type 'keyword)
+         (json-false :false))
+    (json-read-from-string (consult-gh--command-to-string "api" (format "/repos/%s/actions/runs/%s" repo run-id)))))
+#+end_src
+
+******** get jobs
+#+begin_src emacs-lisp
+(defun consult-gh--run-get-jobs (repo run-id)
+  "Get list of jobs for RUN-ID in REPO.
+
+Runs an async shell command with the command:
+gh run view RUN-ID,
+and returns the output as a hash-table."
+  (consult-gh--json-to-hashtable (consult-gh--command-to-string "run" "view" run-id "--repo" repo "--json" "jobs") :jobs))
+#+end_src
+******** get log
+#+begin_src emacs-lisp
+(defun consult-gh--run-get-log (repo run-id)
+  "Get log for RUN-ID in REPO."
+ (consult-gh--command-to-string "run" "view" run-id "--repo" repo "--log" "--verbose"))
+#+end_src
+******** format header
+
+#+begin_src emacs-lisp
+(defun consult-gh--run-format-header (repo run-id &optional table topic)
+  "Format a body for RUN-ID in REPO.
+
+TABLE is a hash-table output containing information
+from `consult-gh--run-get-jobs'.  Returns a formatted string containing
+the header section for `consult-gh--run-view'.
+
+The optional argument TOPIC is a propertized text where the related info
+from the header will get appended to the properties.  For an example, see
+the buffer-local variable `consult-gh--topic' in the buffer created by
+`consult-gh--run-view'."
+  (when (hash-table-p table)
+  (let* ((status (gethash :status table))
+         (conclusion (gethash :conclusion table))
+         (state (consult-gh--workflow-format-status status conclusion))
+         (branch (gethash :head_branch table))
+         (branch (and (stringp branch) (propertize branch 'face 'consult-gh-branch)))
+         (title (gethash :display_title table))
+         (url (gethash :html_url table))
+         (path (gethash :path table))
+         (path-name (and path (file-name-nondirectory path)))
+         (workflow-id (gethash :workflow_id table))
+         (workflow-url (and path-name (stringp path-name) (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/actions/workflows/%s" path-name))))
+         (actor (gethash :login (or (gethash :triggering_actor table) (gethash :actor table))))
+         (actor (and (stringp actor) (propertize actor 'face 'consult-gh-user)))
+         (actor (and (stringp actor)
+                                     (propertize actor 'help-echo (apply-partially #'consult-gh--get-user-tooltip actor) 'rear-nonsticky t)))
+         (event (gethash :event table))
+         (startedAt (gethash :run_started_at table))
+         (updatedAt (gethash :updated_at table))
+         (elapsed (and startedAt updatedAt
+                       (time-convert (time-subtract (date-to-time updatedAt)
+                                                    (date-to-time startedAt)
+                                                    ) 'integer)))
+         (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time updatedAt))))
+         (startedAt (and startedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time startedAt))))
+         (age (consult-gh--time-ago startedAt)))
+
+     (when (stringp topic)
+      (add-text-properties 0 1 (list :workflow-id workflow-id :workflow-url workflow-url :workflow-name path-name :path path :status status :conclusion conclusion  :actor actor :event event) topic))
+
+      (concat (and title (concat "title: " title "\n"))
+              (and repo (concat "repository: " (propertize repo 'help-echo (apply-partially #'consult-gh--get-repo-tooltip repo)) "\n"))
+            (and run-id (concat "id: " (propertize run-id 'face 'consult-gh-description) "\n"))
+            (and path-name (format "workflow: %s(%s)\n" path-name workflow-id))
+            (and workflow-url (format "workflow_url: %s\n" workflow-url))
+            (and startedAt (concat "started: " startedAt "\n"))
+            (and updatedAt (concat "updated: " updatedAt "\n"))
+            (and elapsed (format "run_time: %ss\n" elapsed))
+            (and status (concat "status: " status "\n"))
+            (and conclusion (concat "conclusion: " status "\n"))
+            "\n--\n"
+            state
+            "\s"
+            (and branch (concat "[" branch "]" "\s"))
+            (and title (concat title "\s"))
+            (and url (format ". [%s](%s)" run-id url))
+            "\n\n"
+            (format "Trigerred via %s about %s by %s and took %ss\n" event age actor elapsed)))))
+
+#+end_src
+
+******** format steps of job
+#+begin_src emacs-lisp
+(defun consult-gh--run-format-job-steps (job)
+  "Format steps of JOB."
+  (when (hash-table-p job)
+    (let* ((steps (gethash :steps job))
+           (steps-list (when (listp steps)
+                         (remove nil (cl-loop for step in steps
+                                              collect
+                                              (let* ((name (gethash :name step))
+                                                     (number (gethash :number step))
+                                                     (status (gethash :status step))
+                                                     (conclusion (gethash :conclusion step))
+                                                     (state (consult-gh--workflow-format-status status conclusion))
+                                                     (startedAt (gethash :startedAt step))
+                                                     (completedAt (gethash :completedAt step))
+                                                     (elapsed (and startedAt completedAt
+                                                                   (time-convert (time-subtract (date-to-time completedAt)
+                                                                                                (date-to-time startedAt)
+                                                                                                ) 'integer)))
+                                                     (completedAt (and completedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time completedAt)))))
+
+                                                (concat  (format "%s" number) ". " name "\t" state "\t" (format "completed at %s" completedAt) "\s" (format "%ss" elapsed) "\n")))))))
+      (when (listp steps-list) (string-join steps-list "\n")))))
+#+end_src
+
+******** format jobs
+#+begin_src emacs-lisp
+(defun consult-gh--run-format-jobs (repo run-id &optional topic)
+  "Format jobs for RUN-ID in REPO.
+
+Returns a formatted string containing
+list of jobs in a run for `consult-gh--run-view'.
+
+The optional argument TOPIC is a propertized text where the related info
+from the header will get appended to the properties.  For an example, see
+the buffer-local variable `consult-gh--topic' in the buffer created by
+`consult-gh--workflow-view'."
+(let* ((jobs (consult-gh--run-get-jobs repo run-id))
+       (content (cl-loop for job in jobs
+                         collect
+                         (let* ((name (gethash :name job))
+                                (id (gethash :databaseId job))
+                                (status (gethash :status job))
+                                (conclusion (gethash :conclusion job))
+                                (state  (consult-gh--workflow-format-status status conclusion))
+                                (steps (consult-gh--run-format-job-steps job)))
+                                (concat "## "
+                                        state
+                                        "\t"
+                                        (format "%s (%s)" name id)
+                                        "\n"
+                                        steps
+                                        )))))
+  (when (and (listp jobs) (stringp topic))
+      (add-text-properties 0 1 (list :jobs jobs) topic))
+  (when (listp content) (concat "# Jobs\n" (string-join content "\n") "\n"))))
+#+end_src
+******** format log
+
+#+begin_src emacs-lisp
+(defun consult-gh--run-format-log (repo run-id &optional topic)
+  "Format log content for RUN-ID in REPO.
+
+Returns a formatted string containing
+log of RUN-ID for `consult-gh--run-view'.
+
+The optional argument TOPIC is a propertized text where the related info
+from the header will get appended to the properties.  For an example, see
+the buffer-local variable `consult-gh--topic' in the buffer created by
+`consult-gh--run-view'."
+(let* ((log (consult-gh--run-get-log repo run-id)))
+  (when (stringp log)
+    (when (stringp topic)
+      (add-text-properties 0 1 (list :log log) topic))
+   (concat "# Log\n\n"
+            "``` log\n"
+            log
+            "```\n"))))
+#+end_src
+
+******** run-view
+********* view backend
+#+begin_src emacs-lisp
+(defun consult-gh--run-view (repo run-id &optional buffer)
+  "Open run with RUN-ID of REPO in an Emacs buffer, BUFFER.
+
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and RUN-ID,
+an action run id of that repository, and shows
+the run details in an Emacs buffer.
+
+It fetches the preview of the run from `consult-gh--run-get-jobs',
+and put it as raw text in either BUFFER or if BUFFER is nil,
+in a buffer named by `consult-gh-preview-buffer-name'.
+If `consult-gh-run-preview-major-mode' is non-nil, uses it as
+major-mode, otherwise shows the raw text in \='fundamental-mode.
+
+Description of Arguments:
+
+  REPO    a string; the full name of the repository
+  RUN-ID  a string; run id number
+  BUFFER  a string; optional buffer name
+
+To use this as the default action for runs,
+see `consult-gh--run-view-action'."
+  (let* ((topic (format "%s/actions/run/%s" repo run-id))
+         (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
+         (json (consult-gh--run-read-json repo run-id))
+         (header-text (consult-gh--run-format-header repo run-id json topic))
+         (jobs-text (consult-gh--run-format-jobs repo run-id topic))
+         (log-text (consult-gh--run-format-log repo run-id topic)))
+
+    (add-text-properties 0 1 (list :repo repo :type "run" :id run-id :view "run") topic)
+
+    (with-current-buffer buffer
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (fundamental-mode)
+        (when header-text
+          (insert header-text)
+          (save-excursion
+          (when (eq consult-gh-run-preview-major-mode 'org-mode)
+           (consult-gh--github-header-to-org buffer)))
+          (insert "\n"))
+        (when jobs-text
+          (insert jobs-text))
+        (when log-text
+          (insert log-text))
+        (consult-gh--format-view-buffer "run")
+        (outline-hide-sublevels 1)
+        (consult-gh-run-view-mode +1)
+        (setq-local consult-gh--topic topic)
+        (current-buffer)))))
+
+#+end_src
+********* view action
+#+begin_src emacs-lisp
+(defun consult-gh--run-view-action (cand)
+  "Open the preview of a run candidate, CAND.
+
+This is a wrapper function around `consult-gh--run-view'.
+It parses CAND to extract relevant values
+\(e.g. repository's name and run id\)
+and passes them to `consult-gh--run-view'.
+
+To use this as the default action for workflows,
+set `consult-gh-run-action' to `consult-gh--run-view-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (id (substring-no-properties (format "%s" (get-text-property 0 :id cand))))
+         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/runs/" id "*"))
+         (existing (get-buffer buffername))
+         (confirm (if (and existing (not (= (buffer-size existing) 0)))
+                      (consult--read
+                       (list (cons "Switch to existing buffer." :resume)
+                             (cons "Reload the workflow in the existing buffer." :replace)
+                             (cons "Make a new buffer and load the run in it (without killing the old buffer)." :new))
+                       :prompt "You already have this run open in another buffer.  Would you like to switch to that buffer or make a new one? "
+                       :lookup #'consult--lookup-cdr
+                       :sort nil
+                       :require-match t))))
+
+    (if existing
+        (cond
+         ((eq confirm :resume) (funcall consult-gh-switch-to-buffer-func existing))
+         ((eq confirm :replace)
+          (message "Reloading action in the existing buffer...")
+          (funcall consult-gh-switch-to-buffer-func (consult-gh--run-view repo id existing))
+          (set-buffer-modified-p nil)
+          (buffer-name (current-buffer)))
+         ((eq confirm :new)
+          (message "Opening action in a new buffer...")
+          (funcall consult-gh-switch-to-buffer-func (consult-gh--run-view repo id (generate-new-buffer buffername nil)))
+          (set-buffer-modified-p nil)
+          (buffer-name (current-buffer))))
+      (progn
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--run-view repo id))
+        (rename-buffer buffername t)
+        (set-buffer-modified-p nil)
+        (buffer-name (current-buffer))))))
+
+#+end_src
+
 ** Minor Modes
 *** consult-gh-repo-view-mode
 #+begin_src emacs-lisp
@@ -11935,6 +13163,46 @@ buffer generated by `consult-gh--release-view'."
   :keymap consult-gh-release-view-mode-map
   (read-only-mode +1))
 #+end_src
+*** consult-gh-workflow-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-workflow-view-mode-map
+  :doc "Keymap for `consult-gh-workflow-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-workflow-view-mode
+  "Minor-mode for viewing GitHub workflows."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-workflow-view"
+  :keymap consult-gh-workflow-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
+
+
+
+*** consult-gh-run-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-run-view-mode-map
+  :doc "Keymap for `consult-gh-run-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-run-view-mode
+  "Minor-mode for viewing GitHub action runs."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-run-view"
+  :keymap consult-gh-run-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
+
+
+
 *** consult-gh-misc-view-mode
 #+begin_src emacs-lisp
 (defvar-keymap consult-gh-misc-view-mode-map
@@ -12695,6 +13963,8 @@ URL `https://github.com/minad/consult'"
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+      (setq consult-gh--last-command #'consult-gh-issue-list))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-issue-list prompt #'consult-gh--issue-list-builder initial min-input)))
     ;;add org and repo to known lists
@@ -12834,6 +14104,8 @@ URL `https://github.com/minad/consult'."
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-search-issues))
   (let* ((prompt (or prompt "Search Issues:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-issues prompt #'consult-gh--search-issues-builder initial min-input)))
@@ -13202,7 +14474,11 @@ For more details refer to the manual with “gh issue pin --help”."
   (consult-gh-with-host
    (consult-gh--auth-account-host)
    (let* ((consult-gh-issue-list-args (list "issue" "list" "--json" "number,title,isPinned,labels,updatedAt,state" "--template" "\"{{range .}}{{if (not .isPinned)}}{{.number}}\t{{.state}}\t{{.title}}\t{{range .labels}}{{.name}}, {{end}}\t{{.updatedAt}}\n{{end}}{{end}}\"" "--repo"))
-          (issue (or issue consult-gh--topic (consult-gh-issue-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (issue (or issue
+                     (and consult-gh--topic
+                          (equal (get-text-property 0 :type consult-gh--topic) "issue")
+                          consult-gh--topic)
+                     (consult-gh-issue-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
           (repo (and (stringp issue) (get-text-property 0 :repo issue)))
           (type (and (stringp issue) (get-text-property 0 :type issue)))
           (number (and (stringp issue) (get-text-property 0 :number issue)))
@@ -13227,7 +14503,11 @@ For more details refer to the manual with “gh issue unpin --help”."
   (consult-gh-with-host
    (consult-gh--auth-account-host)
    (let* ((consult-gh-issue-list-args (list "issue" "list" "--json" "number,title,isPinned,labels,updatedAt,state" "--template" "\"{{range .}}{{if .isPinned}}{{.number}}\t{{.state}}\t{{.title}}\t{{range .labels}}{{.name}}, {{end}}\t{{.updatedAt}}\n{{end}}{{end}}\"" "--repo"))
-          (issue (or issue consult-gh--topic (consult-gh-issue-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
+          (issue (or issue
+                     (and consult-gh--topic
+                          (equal (get-text-property 0 :type consult-gh--topic) "issue")
+                          consult-gh--topic)
+                     (consult-gh-issue-list (get-text-property 0 :repo (consult-gh-search-repos nil t)) t)))
           (repo (and (stringp issue) (get-text-property 0 :repo issue)))
           (type (and (stringp issue) (get-text-property 0 :type issue)))
           (number (and (stringp issue) (get-text-property 0 :number issue)))
@@ -13251,7 +14531,12 @@ For more details refer to the manual with “gh issue lock --help”."
   (interactive "P")
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-   (let* ((issue (or issue consult-gh--topic (consult-gh-issue-list (concat (get-text-property 0 :repo (consult-gh-search-repos nil t)) " -- " "--search " "is:unlocked") t)))
+   (let* ((issue (or issue
+                     (and consult-gh--topic
+                          (equal (get-text-property 0 :type consult-gh--topic) "issue")
+                          consult-gh--topic)
+                     (consult-gh-issue-list
+                      (concat (get-text-property 0 :repo (consult-gh-search-repos nil t)) " -- " "--search " "is:unlocked") t)))
           (repo (and (stringp issue) (get-text-property 0 :repo issue)))
           (type (and (stringp issue) (get-text-property 0 :type issue)))
           (number (and (stringp issue) (get-text-property 0 :number issue)))
@@ -13271,7 +14556,7 @@ For more details refer to the manual with “gh issue lock --help”."
                              (list "--reason" reason))))
      (consult-gh--make-process (format "consult-gh-issue-lock-%s-%s" repo number)
                                :when-done `(lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
-                                            (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "locked" 'face 'consult-gh-error))))
+                                                             (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "locked" 'face 'consult-gh-error))))
                                :cmd-args args))))
 
 #+end_src
@@ -13312,19 +14597,31 @@ For more details refer to the manual with “gh issue transfer --help”."
   (interactive "P")
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-   (let* ((topic (or issue consult-gh--topic))
-          (repo (or (and (stringp topic) (get-text-property 0 :repo topic))
+   (let* ((repo (or (and (stringp issue) (get-text-property 0 :repo issue))
+                    (and (stringp consult-gh--topic)
+                         (get-text-property 0 :repo consult-gh--topic))
                     (get-text-property 0 :repo (consult-gh-search-repos nil t))))
-          (type (or (and (stringp topic) (get-text-property 0 :type topic))
-                    "issue"))
           (issueEnabled (consult-gh--repo-has-issues-enabled-p repo))
           (_ (unless (eq issueEnabled 't)
                (error "Issue is not enabled for the repo %s" repo)))
-          (number (or (and (stringp topic) (get-text-property 0 :number topic))
-                      (get-text-property 0 :number (consult-gh-issue-list repo t))))
+          (owner (consult-gh--get-username repo))
+          (issue (or issue
+                     (and consult-gh--topic
+                          (equal (get-text-property 0 :type consult-gh--topic) "issue")
+                          consult-gh--topic)
+                     (consult-gh-issue-list repo t)))
+          (number (and (stringp issue) (get-text-property 0 :number issue)))
+          (type (and (stringp issue) (get-text-property 0 :type issue)))
           (_ (unless (equal type "issue")
                (error "Can only transfer an issue.  Did not get one!")))
-          (target-repo (or target-repo (get-text-property 0 :repo (consult-gh-search-repos nil t "Search and Select Target Repository: "))))
+          (target-repo (or target-repo
+                           (get-text-property 0 :repo (consult-gh-repo-list owner t "Select Target Repository: "))))
+          (new-issueEnabled (consult-gh--repo-has-issues-enabled-p target-repo))
+          (target-repo (if (eq new-issueEnabled 't)
+                           target-repo
+                         (progn
+                           (message "Issue is not enabled for the repo %s" target-repo)
+                           (get-text-property 0 :repo (consult-gh-repo-list owner t "Select Another Target Repository: ")))))
           (args (list "issue" "transfer" number target-repo "--repo" repo )))
      (when (equal type "issue")
        (consult-gh--make-process "consult-gh-issue-close"
@@ -13346,18 +14643,22 @@ For more details refer to the manual with “gh issue delete --help”."
   (interactive "P")
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-   (let* ((topic (or issue consult-gh--topic))
-          (repo (or (and (stringp topic) (get-text-property 0 :repo topic))
+   (let* ((repo (or (and (stringp issue) (get-text-property 0 :repo issue))
+                    (and (stringp consult-gh--topic)
+                         (get-text-property 0 :repo consult-gh--topic))
                     (get-text-property 0 :repo (consult-gh-search-repos nil t))))
-          (type (or (and (stringp topic) (get-text-property 0 :type topic))
-                    "issue"))
           (issueEnabled (consult-gh--repo-has-issues-enabled-p repo))
           (_ (unless (eq issueEnabled 't)
                (error "Issue is not enabled for the repo %s" repo)))
-          (number (or (and (stringp topic) (get-text-property 0 :number topic))
-                      (get-text-property 0 :number (consult-gh-issue-list repo t))))
+          (issue (or issue
+                     (and consult-gh--topic
+                          (equal (get-text-property 0 :type consult-gh--topic) "issue")
+                          consult-gh--topic)
+                     (consult-gh-issue-list repo t)))
+          (type (and (stringp issue) (get-text-property 0 :type issue)))
           (_ (unless (equal type "issue")
                (error "Can only transfer an issue.  Did not get one!")))
+          (number (and (stringp issue) (get-text-property 0 :number issue)))
           (args (list "issue" "delete" number "--repo" repo "--yes"))
           (count 1)
           (confirm (if no-confirm number
@@ -13387,18 +14688,22 @@ For more details refer to the manual with “gh issue develop --help”."
   (interactive "P")
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-   (let* ((topic (or issue consult-gh--topic))
-          (repo (or (and (stringp topic) (get-text-property 0 :repo topic))
+   (let* ((repo (or (and (stringp issue) (get-text-property 0 :repo issue))
+                    (and (stringp consult-gh--topic)
+                         (get-text-property 0 :repo consult-gh--topic))
                     (get-text-property 0 :repo (consult-gh-search-repos nil t))))
-          (type (or (and (stringp topic) (get-text-property 0 :type topic))
-                    "issue"))
           (issueEnabled (consult-gh--repo-has-issues-enabled-p repo))
           (_ (unless (eq issueEnabled 't)
-               (error "Issue is not enabled for the repo %s" (propertize repo 'face 'consult-gh-repo))))
-          (number (or (and (stringp topic) (get-text-property 0 :number topic))
-                      (get-text-property 0 :number (consult-gh-issue-list repo t))))
+               (error "Issue is not enabled for the repo %s" repo)))
+          (issue (or issue
+                     (and consult-gh--topic
+                          (equal (get-text-property 0 :type consult-gh--topic) "issue")
+                          consult-gh--topic)
+                     (consult-gh-issue-list repo t)))
+          (type (and (stringp issue) (get-text-property 0 :type issue)))
           (_ (unless (equal type "issue")
                (error "Can only use an issue.  Did not get one!")))
+          (number (and (stringp issue) (get-text-property 0 :number issue)))
           (branches (consult-gh--command-to-string "issue" "develop" "--list" "--repo" repo number))
           (options (append (list (list "Make a New Branch" :new))
                            (mapcar (lambda (item)
@@ -13575,6 +14880,8 @@ URL `https://github.com/minad/consult'."
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-pr-list))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
          (sel (consult-gh--async-pr-list prompt #'consult-gh--pr-list-builder initial min-input)))
     ;;add org and repo to known lists
@@ -13718,6 +15025,8 @@ URL `https://github.com/minad/consult'."
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo  (consult-gh-search-repos repo t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-search-prs))
   (let* ((prompt (or prompt "Search Pull-Requests:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-prs prompt #'consult-gh--search-prs-builder initial min-input)))
@@ -14553,6 +15862,8 @@ If PROMPT is non-nil, use it as the query prompt."
   (interactive)
   (let* ((prompt (or prompt "Select Notification:  "))
          (sel (consult-gh--notifications prompt initial)))
+    (when (bound-and-true-p consult-gh-embark-mode)
+        (setq consult-gh--last-command #'consult-gh-notifications))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
@@ -14967,6 +16278,8 @@ URL `https://github.com/minad/consult'"
   (interactive)
   (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-release-list))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-release-list prompt #'consult-gh--release-list-builder initial min-input)))
     ;;add org and repo to known lists
@@ -15317,6 +16630,486 @@ For more details refer to the manual with “gh release download --help”."
                        (get-text-property 0 :tagname (consult-gh-release-list repo t)))))
      (consult-gh--release-download repo tagname))))
 #+end_src
+
+*** workflows
+**** consult-gh-workflow-list
+****** transform
+#+begin_src emacs-lisp :lexical t
+(defun consult-gh--workflow-list-transform (input)
+"Add annotation to workflow candidates in `consult-gh-workflow-list'.
+
+Format each candidates with `consult-gh--workflow-list-format' and
+INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--workflow-format cand input nil))))
+#+end_src
+
+****** builder
+#+begin_src emacs-lisp
+(defun consult-gh--workflow-list-builder (input)
+  "Build gh command line for listing workflow actions of the INPUT repository.
+
+INPUT must be the full name of a GitHub repository as a string
+e.g. “armindarvish/consult-gh”."
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-workflow-list-args))
+               (cmd (consult--build-args consult-gh-args))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-workflow-maxnum)))))
+    (if consult-gh-workflow-show-all
+         (setq opts (append opts (list "--all"))))
+    (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
+      (if re
+        (cons (append cmd
+                      (list (string-join re " "))
+                      opts
+                      (list "--template" consult-gh--workflow-list-template))
+              hl)
+        (cons (append cmd opts) nil)))))
+
+#+end_src
+
+
+****** internal async command
+#+begin_src emacs-lisp
+(defun consult-gh--async-workflow-list (prompt builder &optional initial min-input)
+  "List workflow actions of GitHub repos asynchronously.
+
+This is a non-interactive internal function.
+For the interactive version see `consult-gh-workflow-list'.
+
+This runs the command line from `consult-gh--workflow-list-builder'
+in an async process and returns the results \(list of workflows
+for a repository\) as a completion table in minibuffer.  The completion
+table gets dynamically updated as the user types in the minibuffer to
+change the entry.
+Each candidate in the minibuffer is formatted by
+`consult-gh--workflow-list-transform' to add annotation and other info
+to the candidate.
+
+Description of Arguments:
+
+  PROMPT    the prompt in the minibuffer
+            \(passed as PROMPT to `consult--read'\)
+  BUILDER   an async builder function passed to
+            `consult--process-collection'.
+  INITIAL   an optional arg for the initial input in the minibuffer
+            \(passed as INITITAL to `consult--read'\)
+  MIN-INPUT is the minimum input length and defaults to
+            `consult-async-min-input'"
+  (let* ((initial (or initial
+                      (if (equal consult-gh-prioritize-local-folder 't)
+                          (consult-gh--get-repo-from-directory)
+                        nil))))
+    (consult-gh-with-host (consult-gh--auth-account-host)
+                          (consult--read (consult--process-collection builder
+                             :transform (consult--async-transform-by-input #'consult-gh--workflow-list-transform)
+                             :min-input min-input)
+                           :prompt prompt
+                           :lookup #'consult--lookup-member
+                           :state (funcall #'consult-gh--workflow-state)
+                           :initial initial
+                           :group #'consult-gh--workflow-group
+                           :require-match t
+                           :category 'consult-gh-workflows
+                           :add-history  (let* ((topicrepo (consult-gh--get-repo-from-topic))
+                                                (localrepo (consult-gh--get-repo-from-directory)))
+                                           (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
+                                                 (append (list (when topicrepo topicrepo)
+                                                               (when localrepo localrepo)
+                                                               (thing-at-point 'symbol))
+                                                         consult-gh--known-repos-list)))
+                           :history '(:input consult-gh--repos-history)
+                           :preview-key consult-gh-preview-key
+                           :sort nil))))
+#+end_src
+
+****** interactive command
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-workflow-list (&optional initial noaction prompt min-input)
+  "Interactively list workflow actions of a GitHub repository.
+
+This is an interactive wrapper function around
+`consult-gh--async-workflow-list'.  With prefix ARG, first
+search for a repo using `consult-gh-search-repos', then list workflows
+of that selected repo with `consult-gh--async-workflow-list'.
+
+It queries the user to enter the full name of a GitHub repository in the
+minibuffer \(expected format is “OWNER/REPO”\), then fetches the list of
+workflows of that repository and present them as a minibuffer completion
+table for selection.  The list of candidates in the completion table are
+dynamically updated as the user changes the minibuffer input.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil candidate is returned.
+ - if NOACTION is nil     candidate is passed to
+   `consult-gh-workflow-action'.
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+armindarvish/consult-gh -- -L 100
+and the async process will run
+“gh workflow list --repo armindarvish/consult-gh -L 100”, which sets the limit
+for the maximum number of results to 100.
+
+User selection is tracked in `consult-gh--known-repos-list' for quick
+access in the future \(added to future history list\) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer.
+\(passed as INITITAL to `consult-gh--async-workflow-list'\).
+
+If PROMPT is non-nil, use it as the query prompt.
+
+MIN-INPUT is passed to `consult-gh--async-workflow-list'
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'"
+  (interactive)
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
+      (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-workflow-list))
+  (let* ((prompt (or prompt "Enter Repo Name:  "))
+        (sel (consult-gh--async-workflow-list prompt #'consult-gh--workflow-list-builder initial min-input)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list reponame))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list username))
+    (if noaction
+        sel
+      (funcall consult-gh-workflow-action sel))))
+
+#+END_src
+
+**** consult-gh-workflow-change-yaml-ref
+#+begin_src emacs-lisp
+(defun consult-gh-workflow-change-yaml-ref ()
+"Show the yaml file of workflow from a different ref.
+
+can be used in `consult-gh-workflow-view-mode' to see the yaml file
+of a GitHub action from a different branc or tagname."
+(interactive nil consult-gh-workflow-view-mode)
+(let* ((inhibit-read-only t)
+       (workflow (and (stringp consult-gh--topic)
+                      (equal (get-text-property 0 :type consult-gh--topic) "workflow")
+                      consult-gh--topic))
+       (repo (and workflow (get-text-property 0 :repo workflow)))
+       (workflow-id (and workflow (get-text-property 0 :id workflow)))
+       (ref (consult--read (append (consult-gh--get-branches repo)
+                                   (consult-gh--get-release-tags repo))
+                                     :prompt "Select Branch or tag name with the version of the workflow to see: "
+                                     :sort t))
+       (yaml-text (consult-gh--workflow-format-yaml repo workflow-id workflow ref))
+       (regions (consult-gh--get-region-with-prop :consult-gh-workflow-yaml))
+       (region (when (listp regions) (cons (caar regions) (cdar (last regions))))))
+  (when yaml-text
+    (when region
+      (goto-char (car region))
+      (delete-region (car region) (cdr region))
+      (delete-region (line-beginning-position) (line-end-position))
+      (insert "\n"))
+    (save-excursion
+        (insert (with-temp-buffer
+                  (insert yaml-text)
+                  (consult-gh--format-view-buffer "workflow")
+                  (buffer-string)))))))
+#+end_src
+
+**** consult-gh-workflow-enable
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-workflow-enable (&optional workflow)
+  "Enable a WORKFLOW.
+
+WORKFLOW must be a propertized text describing a workflow similar to one
+returned by `consult-gh-workflow-list'."
+  (interactive "P")
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+     (let* ((repo (or (and (stringp workflow) (get-text-property 0 :repo workflow))
+                      (and (stringp consult-gh--topic)
+                         (get-text-property 0 :repo consult-gh--topic))
+                      (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+            (canwrite (consult-gh--user-canwrite repo))
+            (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+            (_ (unless canwrite
+                   (user-error "The curent user, %s, %s to enable a workflow in repo, %s"
+                          (propertize user 'face 'consult-gh-error)
+                          (propertize "does not have permission" 'face 'consult-gh-error)
+                          (propertize repo 'face 'consult-gh-repo))))
+            (workflow (or workflow
+                     (and consult-gh--topic
+                          (equal (get-text-property 0 :type consult-gh--topic) "workflow")
+                          consult-gh--topic)
+                     (consult-gh-workflow-list repo t)))
+            (workflow-id (and (stringp workflow)
+                              (get-text-property 0 :id workflow))))
+ (consult-gh--workflow-enable repo workflow-id))))
+#+end_src
+
+
+**** consult-gh-workflow-disable
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-workflow-disable (&optional workflow)
+  "Disable a WORKFLOW.
+
+WORKFLOW must be a propertized text describing a workflow similar to one
+returned by `consult-gh-workflow-list'."
+  (interactive "P")
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+     (let* ((repo (or (and (stringp workflow) (get-text-property 0 :repo workflow))
+                      (and (stringp consult-gh--topic)
+                         (get-text-property 0 :repo consult-gh--topic))
+                      (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+            (canwrite (consult-gh--user-canwrite repo))
+            (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+            (_ (unless canwrite
+                   (user-error "The curent user, %s, %s to disable a workflow in repo, %s"
+                          (propertize user 'face 'consult-gh-error)
+                          (propertize "does not have permission" 'face 'consult-gh-error)
+                          (propertize repo 'face 'consult-gh-repo))))
+            (workflow (or workflow
+                     (and consult-gh--topic
+                          (equal (get-text-property 0 :type consult-gh--topic) "workflow")
+                          consult-gh--topic)
+                     (consult-gh-workflow-list repo t)))
+            (workflow-id (and (stringp workflow)
+                              (get-text-property 0 :id workflow))))
+
+       (consult-gh--workflow-disable repo workflow-id))))
+
+#+end_src
+
+**** consult-gh-workflow-run
+#+begin_src emacs-lisp
+(defun consult-gh-workflow-run (&optional workflow ref)
+  "Run a WORKFLOW in REF.
+
+WORKFLOW must be a propertized text describing a workflow similar to
+one returned by `consult-gh-workflow-list'.  REF is the branch or
+tagname that contains the version of WORKFLOW to run."
+  (interactive "P")
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+     (let* ((repo (or (and (stringp workflow) (get-text-property 0 :repo workflow))
+                      (and (stringp consult-gh--topic)
+                         (get-text-property 0 :repo consult-gh--topic))
+                      (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+            (canwrite (consult-gh--user-canwrite repo))
+            (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+            (_ (unless canwrite
+                   (user-error "The curent user, %s, %s to run a workflow in repo, %s"
+                          (propertize user 'face 'consult-gh-error)
+                          (propertize "does not have permission" 'face 'consult-gh-error)
+                          (propertize repo 'face 'consult-gh-repo))))
+            (workflow (or workflow
+                     (and consult-gh--topic
+                          (equal (get-text-property 0 :type consult-gh--topic) "workflow")
+                          consult-gh--topic)
+                     (consult-gh-workflow-list repo t)))
+            (workflow-id (and (stringp workflow)
+                              (get-text-property 0 :id workflow)))
+            (ref-history (and (stringp workflow)
+                              (get-text-property 0 :ref-history workflow))))
+(consult-gh--workflow-run repo workflow-id ref ref-history))))
+#+end_src
+
+*** runs
+**** consult-gh-run-list
+****** transform
+#+begin_src emacs-lisp :lexical t
+(defun consult-gh--run-list-transform (input)
+"Add annotation to run candidates in `consult-gh-run-list'.
+
+Format each candidates with `consult-gh--run-list-format' and
+INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--run-format cand input nil))))
+#+end_src
+
+****** builder
+#+begin_src emacs-lisp
+(defun consult-gh--run-list-builder (workflow input)
+  "Build gh command line for listing runs of the INPUT repository.
+
+WORKFLOW is an optional workflow id to further filter runs by a given
+workflow.
+
+INPUT must be the full name of a GitHub repository as a string
+e.g. “armindarvish/consult-gh”."
+  (pcase-let* ((consult-gh-args (append consult-gh-args consult-gh-run-list-args))
+               (cmd (consult--build-args consult-gh-args))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-workflow-maxnum)))))
+    (unless (or (member "-w" flags) (member "--workflow" flags))
+      (if workflow
+          (setq opts (append opts (list "--workflow" workflow)))))
+    (if consult-gh-run-show-all
+         (setq opts (append opts (list "--all"))))
+    (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
+      (if re
+        (cons (append cmd
+                      (list (string-join re " "))
+                      opts
+                      (list "--template" consult-gh--run-list-template))
+              hl)
+        (cons (append cmd opts) nil)))))
+
+#+end_src
+
+
+****** internal async command
+#+begin_src emacs-lisp
+(defun consult-gh--async-run-list (prompt builder &optional initial min-input)
+  "List action runs of GitHub repos asynchronously.
+
+This is a non-interactive internal function.
+For the interactive version see `consult-gh-workflow-list'.
+
+This runs the command line from `consult-gh--run-list-builder'
+in an async process and returns the results \(list of runs
+for a repository\) as a completion table in minibuffer.  The completion
+table gets dynamically updated as the user types in the minibuffer to
+change the entry.
+Each candidate in the minibuffer is formatted by
+`consult-gh--run-list-transform' to add annotation and other info
+to the candidate.
+
+Description of Arguments:
+
+  PROMPT    the prompt in the minibuffer
+            \(passed as PROMPT to `consult--read'\)
+  BUILDER   an async builder function passed to
+            `consult--process-collection'.
+  INITIAL   an optional arg for the initial input in the minibuffer
+            \(passed as INITITAL to `consult--read'\)
+  MIN-INPUT is the minimum input length and defaults to
+            `consult-async-min-input'"
+  (let* ((initial (or initial
+                      (if (equal consult-gh-prioritize-local-folder 't)
+                          (consult-gh--get-repo-from-directory)
+                        nil))))
+    (consult-gh-with-host (consult-gh--auth-account-host)
+                          (consult--read (consult--process-collection builder
+                             :transform (consult--async-transform-by-input #'consult-gh--run-list-transform)
+                             :min-input min-input)
+                           :prompt prompt
+                           :lookup #'consult--lookup-member
+                           :state (funcall #'consult-gh--run-state)
+                           :initial initial
+                           :group #'consult-gh--run-group
+                           :require-match t
+                           :category 'consult-gh-runs
+                           :add-history  (let* ((topicrepo (consult-gh--get-repo-from-topic))
+                                                (localrepo (consult-gh--get-repo-from-directory)))
+                                           (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
+                                                 (append (list (when topicrepo topicrepo)
+                                                               (when localrepo localrepo)
+                                                               (thing-at-point 'symbol))
+                                                         consult-gh--known-repos-list)))
+                           :history '(:input consult-gh--repos-history)
+                           :preview-key consult-gh-preview-key
+                           :sort nil))))
+#+end_src
+
+****** interactive command
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-run-list (&optional initial noaction prompt min-input workflow)
+  "Interactively list action runs of a GitHub repository.
+
+This is an interactive wrapper function around `consult-gh--async-run-list'.
+With prefix ARG, first search for a repo using `consult-gh-search-repos',
+then list workflows of that selected repo with `consult-gh--async-run-list'.
+
+It queries the user to enter the full name of a GitHub repository in the
+minibuffer \(expected format is “OWNER/REPO”\), then fetches the list of
+workflows of that repository and present them as a minibuffer completion
+table for selection.  The list of candidates in the completion table are
+dynamically updated as the user changes the minibuffer input.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil candidate is returned.
+ - if NOACTION is nil     candidate is passed to
+   `consult-gh-run-action'.
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+armindarvish/consult-gh -- -L 100
+and the async process will run
+“gh workflow list --repo armindarvish/consult-gh -L 100”, which sets the limit
+for the maximum number of results to 100.
+
+User selection is tracked in `consult-gh--known-repos-list' for quick
+access in the future \(added to future history list\) in future calls.
+
+INITIAL is an optional arg for the initial input in the minibuffer.
+\(passed as INITITAL to `consult-gh--async-run-list'\).
+
+If PROMPT is non-nil, use it as the query prompt.
+
+MIN-INPUT is passed to `consult-gh--async-run-list'
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'"
+  (interactive)
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
+      (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
+  (let* ((prompt (or prompt "Enter Repo Name:  "))
+        (sel (consult-gh--async-run-list prompt (apply-partially #'consult-gh--run-list-builder workflow) initial min-input)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list reponame))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list username))
+    (if noaction
+        sel
+      (funcall consult-gh-run-action sel))))
+
+#+END_src
+
+**** consult-gh-run-view
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-run-view (&optional repo run-id workflow)
+  "View run with RUN-ID of WORKFLOW in REPO in an Emacs buffer."
+  (interactive)
+  (let* ((topic consult-gh--topic)
+         (workflow (or workflow
+                       (and (stringp topic)
+                            (equal (get-text-property 0 :type topic) "workflow")
+                            topic)
+                       (consult-gh-workflow-list (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))) t)))
+         (repo  (or repo (and (stringp workflow) (get-text-property 0 :repo workflow))))
+         (workflow-id (and (stringp workflow)
+                           (get-text-property 0 :id workflow)))
+         (pl (get-text-property (point) :consult-gh))
+         (run-id (or run-id
+                     (and (plistp pl)
+                          (plist-get pl :run-id))
+                     (and workflow-id
+                     (get-text-property 0 :id (consult-gh-run-list repo t nil nil workflow-id)))))
+         (cand (propertize (format "%s" run-id) :repo repo :id run-id)))
+         (funcall consult-gh-run-action cand)))
+
+
+#+end_src
+
 *** topics
 
 
@@ -15530,7 +17323,7 @@ TOPIC defaults to `consult-gh--topic'.
 
 This funciton uses `consult-gh-browse-url-func' for opening a url in the
 browser."
-  (interactive "P" consult-gh-pr-view-mode consult-gh-issue-view-mode consult-gh-misc-view-mode)
+  (interactive "P" consult-gh-pr-view-mode consult-gh-issue-view-mode consult-gh-workflow-view-mode consult-gh-misc-view-mode)
   (consult-gh-with-host
    (consult-gh--auth-account-host)
    (let* ((topic (or topic consult-gh--topic))
@@ -15544,7 +17337,8 @@ browser."
           (local-info (get-text-property (point) :consult-gh))
           (local-url (or (plist-get local-info :url)
                          (plist-get local-info :comment-url)
-                         (plist-get local-info :commit-url)))
+                         (plist-get local-info :commit-url)
+                         (plist-get local-info :yaml-url)))
           (url (or local-url (and (stringp type) (pcase type
                                                    ("repo"
                                                     (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
@@ -15556,6 +17350,8 @@ browser."
                                                     (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number)))
                                                    ("release"
                                                     (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/releases/%s" tagname)))
+                                                   ("workflow"
+                                                    (and path (stringp path) (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/actions/workflows/%s" (file-name-nondirectory path)))))
                                                    ("compare"
                                                     (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/compare/%s" ref))))))))
      (if (stringp url)
@@ -15570,17 +17366,40 @@ browser."
 (defun consult-gh-ctrl-c-ctrl-c ()
   "Submit topic or invoke `org-ctrl-c-ctrl-c' in `org-mode'."
   (interactive)
-  (if (and (derived-mode-p 'org-mode)
+  (cond
+
+   ((and (derived-mode-p 'org-mode)
            (or consult-gh-topics-edit-mode
                consult-gh-repo-view-mode
                consult-gh-issue-view-mode)
            (org-in-src-block-p))
-      (org-ctrl-c-ctrl-c)
-      (cond
-       ((or consult-gh-pr-view-mode consult-gh-issue-view-mode)
+      (org-ctrl-c-ctrl-c))
+   ((or consult-gh-pr-view-mode consult-gh-issue-view-mode)
         (consult-gh-topics-comment-create))
-       (consult-gh-topics-edit-mode
-        (consult-gh-topics-submit)))))
+   (consult-gh-workflow-view-mode
+    (let* ((in-block (equal (and (derived-mode-p 'org-mode)
+                          (org-in-src-block-p)
+                          (car (org-babel-get-src-block-info)))
+                            "yaml"))
+           (props (get-text-property (point) :consult-gh))
+           (yaml-url (and (plistp props) (plist-get props :yaml-url)))
+           (run-id (and (plistp props) (plist-get props :run-id))))
+      (cond
+       ((or in-block yaml-url)
+        (consult-gh-workflow-run))
+       (run-id
+        (consult-gh-run-view))
+       (t
+        (pcase (consult--read (list (cons "Run Workflow" :run)
+                                      (cons "View A Run Details" :view)
+                                      (cons "Cacnel" :cancel))
+                                :prompt "What would you like to do?"
+                                :lookup #'consult--lookup-cdr
+                                :sort nil)
+          (':run (consult-gh-workflow-run))
+          (':view (consult-gh-run-view)))))))
+   (consult-gh-topics-edit-mode
+        (consult-gh-topics-submit))))
 
 #+end_src
 
@@ -15602,6 +17421,12 @@ browser."
 
   ;; consult-gh-release-view-mode-map
   (consult-gh--enable-keybindings-alist consult-gh-release-view-mode-map  consult-gh--release-view-mode-keybinding-alist)
+
+  ;; consult-gh-workflow-view-mode-map
+  (consult-gh--enable-keybindings-alist consult-gh-workflow-view-mode-map  consult-gh--workflow-view-mode-keybinding-alist)
+
+  ;; consult-gh-run-view-mode-map
+  (consult-gh--enable-keybindings-alist consult-gh-run-view-mode-map  consult-gh--run-view-mode-keybinding-alist)
 
   ;; consult-gh-misc-view-mode-map
   (consult-gh--enable-keybindings-alist consult-gh-misc-view-mode-map  consult-gh--misc-view-mode-keybinding-alist)
@@ -15625,8 +17450,14 @@ browser."
   ;; consult-gh-pr-view-mode-map
   (consult-gh--disable-keybindings-alist consult-gh-pr-view-mode-map  consult-gh--pr-view-mode-keybinding-alist)
 
-  ;; consult-gh-repo-view-mode-map
+  ;; consult-gh-release-view-mode-map
   (consult-gh--disable-keybindings-alist consult-gh-release-view-mode-map  consult-gh--release-view-mode-keybinding-alist)
+
+   ;; consult-gh-workflow-view-mode-map
+  (consult-gh--disable-keybindings-alist consult-gh-workflow-view-mode-map  consult-gh--workflow-view-mode-keybinding-alist)
+
+  ;; consult-gh-run-view-mode-map
+  (consult-gh--disable-keybindings-alist consult-gh-run-view-mode-map  consult-gh--run-view-mode-keybinding-alist)
 
   ;; consult-gh-misc-view-mode-map
   (consult-gh--disable-keybindings-alist consult-gh-misc-view-mode-map  consult-gh--misc-view-mode-keybinding-alist)
@@ -15643,7 +17474,7 @@ browser."
 ;;;###autoload
 (defun consult-gh-refresh-view ()
   "Refresh the buffer viewing a consult-gh topic."
-  (interactive nil consult-gh-repo-view-mode consult-gh-issue-view-mode consult-gh-pr-view-mode consult-gh-release-view-mode consult-gh-misc-view-mode)
+  (interactive nil consult-gh-repo-view-mode consult-gh-issue-view-mode consult-gh-pr-view-mode consult-gh-release-view-mode consult-gh-workflow-view-mode consult-gh-run-view-mode consult-gh-misc-view-mode)
   (consult-gh-with-host
    (consult-gh--auth-account-host)
    (let* ((topic consult-gh--topic)
@@ -15665,6 +17496,9 @@ browser."
       ((equal type "release")
        (let* ((tagname (get-text-property 0 :tagname topic)))
          (funcall #'consult-gh--release-view repo tagname (current-buffer))))
+      ((equal type "workflow")
+       (let* ((workflow-id (get-text-property 0 :id topic)))
+         (funcall #'consult-gh--workflow-view repo workflow-id (current-buffer))))
       ((equal type "compareDiff")
        (funcall #'consult-gh-topics--pr-create-view-diff nil t))
       ((equal type "compareCommits")
@@ -15753,6 +17587,19 @@ This section includes additional useful embark actions as well as possible keyma
 (require 'consult-gh)
 #+end_src
 
+*** Helpers
+#+begin_src emacs-lisp
+(defun consult-gh--embark-restart (&rest _)
+  "Restart current async search with current input.
+Use this to refresh the list of candidates for commands that do
+not handle that themselves."
+  (when (active-minibuffer-window)
+  (with-selected-window (minibuffer-window)
+    (let ((text  (minibuffer-contents)))
+      (when (commandp consult-gh--last-command)
+          (embark--become-command consult-gh--last-command text))))))
+
+#+end_src
 *** Actions
 **** General Actions
 ***** default action
@@ -15855,7 +17702,7 @@ This section includes additional useful embark actions as well as possible keyma
 (define-obsolete-function-alias 'consult-gh-embark-remove-org-from-default-list #'consult-gh-embark-remove-org-from-favorite-list "2.0")
 #+end_src
 
-***** Get other props
+***** get other props
 #+begin_src emacs-lisp
 
 ;;;; Get other props
@@ -16017,6 +17864,18 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   (when (stringp cand)
     (let ((repo (or (get-text-property 0 :repo cand))))
       (consult-gh-pr-list repo))))
+
+(defun consult-gh-embark-view-workflows-of-repo (cand)
+  "Browse GitHub actions of CAND repo at point."
+  (when (stringp cand)
+    (let ((repo (or (get-text-property 0 :repo cand))))
+      (consult-gh-workflow-list repo))))
+
+(defun consult-gh-embark-view-runs-of-repo (cand)
+  "Browse GitHub action runs of CAND repo at point."
+  (when (stringp cand)
+    (let ((repo (or (get-text-property 0 :repo cand))))
+      (consult-gh-run-list repo))))
 
 (defun consult-gh-embark-view-issues-involves-user (cand)
   "Browse issues involving the user in CAND."
@@ -16671,6 +18530,62 @@ CAND can be a PR or an issue."
      (funcall #'consult-gh-release-edit cand))))
 
 #+end_src
+**** Workflow Actions
+***** view workflow
+#+begin_src emacs-lisp
+(defun consult-gh-embark-workflow-view (cand)
+  "View workflow in CAND."
+ (when (stringp cand)
+    (consult-gh--workflow-view-action cand)))
+#+end_src
+***** list runs
+#+begin_src emacs-lisp
+(defun consult-gh-embark-workflow-runs-list (cand)
+  "Browse runs of workflow in CAND."
+ (when (stringp cand)
+    (let ((repo (get-text-property 0 :repo cand))
+          (id (get-text-property 0 :id cand)))
+(consult-gh-run-list repo nil nil nil id))))
+#+end_src
+***** run
+#+begin_src emacs-lisp
+(defun consult-gh-embark-workflow-run (cand)
+  "Run the workflow in CAND."
+ (when (stringp cand)
+(consult-gh-workflow-run cand)))
+#+end_src
+***** enable
+#+begin_src emacs-lisp
+(defun consult-gh-embark-workflow-enable (cand)
+  "Enable the workflow in CAND."
+ (when (stringp cand)
+(consult-gh-workflow-enable cand)))
+#+end_src
+***** disable
+#+begin_src emacs-lisp
+(defun consult-gh-embark-workflow-disable (cand)
+  "Enable the workflow in CAND."
+ (when (stringp cand)
+(consult-gh-workflow-disable cand)))
+#+end_src
+**** Run Actions
+***** view run's workflow
+#+begin_src emacs-lisp
+(defun consult-gh-embark-run-view-workflow (cand)
+"View the workflow for run in CAND."
+(when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+          (workflow-id (get-text-property 0 :workflow-id cand))
+          (newcand (propertize (format "repo/actions/%s" workflow-id) :repo repo :id workflow-id)))
+      (consult-gh--workflow-view-action newcand))))
+#+end_src
+***** view run
+#+begin_src emacs-lisp
+(defun consult-gh-embark-run-view (cand)
+"View the run in CAND."
+  (when (stringp cand)
+    (consult-gh--run-view-action cand)))
+#+end_src
 **** Other Actions
 #+begin_src emacs-lisp
 
@@ -16691,6 +18606,7 @@ CAND can be a PR or an issue."
      (let ((repo (or (get-text-property 0 :repo cand) (substring-no-properties cand))))
        (consult-gh-search-code nil repo)))))
 #+end_src
+
 
 *** Keymaps
 **** General Keymap
@@ -16790,7 +18706,9 @@ CAND can be a PR or an issue."
   "r" '("find repos by user" . consult-gh-embark-get-other-repos-by-same-user)
   "i" '("find issues of repo" . consult-gh-embark-view-issues-of-repo)
   "p" '("find prs of repo" . consult-gh-embark-view-prs-of-repo)
-  "c" '("find code in repo" . consult-gh-embark-search-code-in-repo))
+  "c" '("find code in repo" . consult-gh-embark-search-code-in-repo)
+  "a" '("find action workflows in repo" . consult-gh-embark-view-workflows-of-repo)
+  "g" '("find action runs in repo" . consult-gh-embark-view-runs-of-repo))
 
 (fset 'consult-gh-embark-find-menu-map consult-gh-embark-find-menu-map)
 #+end_src
@@ -16861,6 +18779,8 @@ CAND can be a PR or an issue."
   "r" '("other repos of user" . consult-gh-embark-get-other-repos-by-same-user)
   "i" '("issues of repo" . consult-gh-embark-view-issues-of-repo)
   "p" '("prs of repo" . consult-gh-embark-view-prs-of-repo)
+  "a" '("action workflows of repo" . consult-gh-embark-view-workflows-of-repo)
+  "g" '("action runs of repo" . consult-gh-embark-view-runs-of-repo)
   "s" '("search for code in repo" . consult-gh-embark-search-code-in-repo)
   "b" '("browse files of repo" . consult-gh-embark-view-files-of-repo)
   "o" '("open repo page in default browser" .  consult-gh-embark-open-repo-in-default-browser)
@@ -16937,7 +18857,9 @@ CAND can be a PR or an issue."
   :parent nil
   "r" '("view readme" . consult-gh-embark-view-readme-of-repo)
   "i" '("view issues" . consult-gh-embark-view-issues-of-repo)
-  "p" '("view pull requests" . consult-gh-embark-view-prs-of-repo))
+  "p" '("view pull requests" . consult-gh-embark-view-prs-of-repo)
+  "a" '("view action workflows" . consult-gh-embark-view-workflows-of-repo)
+  "g" '("view action runs" . consult-gh-embark-view-runs-of-repo))
 
 (fset 'consult-gh-embark-repo-view-menu-map consult-gh-embark-repo-view-menu-map)
 #+end_src
@@ -17013,7 +18935,6 @@ CAND can be a PR or an issue."
 #+end_src
 
 **** PRs Keymap
-
 ***** prs edit menu
 #+begin_src emacs-lisp
 
@@ -17060,7 +18981,6 @@ CAND can be a PR or an issue."
 #+end_src
 
 **** Releases Keymap
-
 ***** release edit menu
 #+begin_src emacs-lisp
 
@@ -17091,6 +19011,63 @@ CAND can be a PR or an issue."
   "e" '("gh edit release" . consult-gh-embark-releases-edit-menu-map)
   "T" '("gh test" . consult-gh-embark-test))
 #+end_src
+
+**** Workflows Keymap
+***** workflow main menu
+#+begin_src emacs-lisp
+
+;;;;;; Workflow Main Menu Keymap
+(defvar-keymap consult-gh-embark-workflows-actions-map
+  :doc "Keymap for consult-gh-embark-workflows"
+  :parent consult-gh-embark-general-actions-map
+  "r" '("gh run workflow" . consult-gh-embark-workflow-run)
+  "e" '("gh enable workflow" . consult-gh-embark-workflow-enable)
+  "d" '("gh disable workflow" . consult-gh-embark-workflow-disable)
+  "g" '("gh list action runs" . consult-gh-embark-workflow-runs-list)
+  "v" '("gh view workflow menu" . consult-gh-embark-workflows-view-menu-map))
+
+#+end_src
+***** workflows view menu
+#+begin_src emacs-lisp
+
+;;;;;; PR View Menu Keymap
+(defvar-keymap consult-gh-embark-workflows-view-menu-map
+  :doc "Keymap for viewing workflow details"
+  :parent nil
+  "r" '("view repo" . consult-gh-embark-repo-view-menu-map)
+  "g" '("view runs" . consult-gh-embark-workflow-runs-list)
+  "v" '("view workflow" . consult-gh-embark-workflow-view))
+
+(fset 'consult-gh-embark-workflows-view-menu-map consult-gh-embark-workflows-view-menu-map)
+#+end_src
+
+
+**** Runs Keymap
+***** runs main menu
+#+begin_src emacs-lisp
+
+;;;;;; Workflow Main Menu Keymap
+(defvar-keymap consult-gh-embark-runs-actions-map
+  :doc "Keymap for consult-gh-embark-runs"
+  :parent consult-gh-embark-general-actions-map
+  "a" '("gh view run's workflow" . consult-gh-embark-run-view-workflow)
+  "v" '("gh view workflows view menu" . consult-gh-embark-runs-view-menu-map))
+
+#+end_src
+***** runs view menu
+#+begin_src emacs-lisp
+
+;;;;;; PR View Menu Keymap
+(defvar-keymap consult-gh-embark-runs-view-menu-map
+  :doc "Keymap for viewing workflow details"
+  :parent nil
+  "r" '("view repo" . consult-gh-embark-repo-view-menu-map)
+  "a" '("view run's workflow" . consult-gh-embark-run-view-workflow)
+  "v" '("view run" . consult-gh-embark-run-view))
+
+(fset 'consult-gh-embark-runs-view-menu-map consult-gh-embark-runs-view-menu-map)
+#+end_src
+
 
 **** Codes Keymap
 #+begin_src emacs-lisp
@@ -17151,7 +19128,9 @@ CAND can be a PR or an issue."
                   (consult-gh-prs . consult-gh-embark-prs-actions-map)
                   (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
                   (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map)
-                  (consult-gh-releases . consult-gh-embark-releases-actions-map))))
+                  (consult-gh-releases . consult-gh-embark-releases-actions-map)
+                  (consult-gh-workflows . consult-gh-embark-workflows-actions-map)
+                  (consult-gh-runs . consult-gh-embark-runs-actions-map))))
 
 
   ;; override default actions
@@ -17164,17 +19143,28 @@ CAND can be a PR or an issue."
                   (consult-gh-codes . consult-gh-embark-default-action)
                   (consult-gh-notifications . consult-gh-embark-default-action)
                   (consult-gh-dashboard . consult-gh-embark-default-action)
-                  (consult-gh-releases . consult-gh-embark-default-action))))
+                  (consult-gh-releases . consult-gh-embark-default-action)
+                  (consult-gh-workflows . consult-gh-embark-default-action)
+                  (consult-gh-runs . consult-gh-embark-default-action))))
 
 
   ;; set post actions-hook
   (setq embark-post-action-hooks
         (append embark-post-action-hooks
-                '((consult-gh-embark-mark-release-draft embark--restart)
-                  (consult-gh-embark-toggle-release-prerelease embark--restart)
-                  (consult-gh-embark-publish-release embark--restart)
-                  (consult-gh-embark-mark-release-latest embark--restart)))))
-
+                '((consult-gh-embark-delete-issue consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-issue-open consult-gh--embark-restart)
+                  (consult-gh-embark-transfer-issue consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-pr-draft consult-gh--embark-restart)
+                  (consult-gh-embark-merge-pr consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-pr-open consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-notification-read consult-gh--embark-restart)
+                  (consult-gh-embark-notification-toggle-subscription consult-gh--embark-restart)
+                  (consult-gh-embark-mark-release-draft consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-release-prerelease consult-gh--embark-restart)
+                  (consult-gh-embark-publish-release consult-gh--embark-restart)
+                  (consult-gh-embark-mark-release-latest consult-gh--embark-restart)
+                  (consult-gh-embark-workflow-enable consult-gh--embark-restart)
+                  (consult-gh-embark-workflow-disable consult-gh--embark-restart)))))
 
 
 (defun consult-gh-embark--mode-off ()
@@ -17190,7 +19180,9 @@ CAND can be a PR or an issue."
                            (consult-gh-prs . consult-gh-embark-prs-actions-map)
                            (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
                            (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map)
-                           (consult-gh-releases . consult-gh-embark-releases-actions-map))))
+                           (consult-gh-releases . consult-gh-embark-releases-actions-map)
+                           (consult-gh-workflows . consult-gh-embark-workflows-actions-map)
+                           (consult-gh-runs . consult-gh-embark-runs-actions-map))))
 
 ;; unset default actions
   (setq embark-default-action-overrides
@@ -17202,15 +19194,27 @@ CAND can be a PR or an issue."
                           (consult-gh-codes . consult-gh-embark-default-action)
                           (consult-gh-notifications . consult-gh-embark-default-action)
                           (consult-gh-dashboard . consult-gh-embark-default-action)
-                          (consult-gh-releases . consult-gh-embark-default-action))))
+                          (consult-gh-releases . consult-gh-embark-default-action)
+                          (consult-gh-workflows . consult-gh-embark-default-action)
+                          (consult-gh-runs . consult-gh-embark-default-action))))
 
   ;; unset post action hooks
   (setq embark-post-action-hooks
         (seq-difference embark-post-action-hooks
-                        '((consult-gh-embark-mark-release-draft embark--restart)
-                          (consult-gh-embark-toggle-release-prerelease embark--restart)
-                          (consult-gh-embark-publish-release embark--restart)
-                          (consult-gh-embark-mark-release-latest embark--restart)))))
+                        '((consult-gh-embark-delete-issue consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-issue-open consult-gh--embark-restart)
+                          (consult-gh-embark-transfer-issue consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-pr-draft consult-gh--embark-restart)
+                          (consult-gh-embark-merge-pr consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-pr-open consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-notification-read consult-gh--embark-restart)
+                          (consult-gh-embark-notification-toggle-subscription consult-gh--embark-restart)
+                          (consult-gh-embark-mark-release-draft consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-release-prerelease consult-gh--embark-restart)
+                          (consult-gh-embark-publish-release consult-gh--embark-restart)
+                          (consult-gh-embark-mark-release-latest consult-gh--embark-restart)
+                          (consult-gh-embark-workflow-enable consult-gh--embark-restart)
+                          (consult-gh-embark-workflow-disable consult-gh--embark-restart)))))
 
 (defun consult-gh-embark-unload-function ()
   "Unload function for `consult-gh-embark'."

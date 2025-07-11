@@ -37,6 +37,16 @@
 (require 'embark-consult)
 (require 'consult-gh)
 
+(defun consult-gh--embark-restart (&rest _)
+  "Restart current async search with current input.
+Use this to refresh the list of candidates for commands that do
+not handle that themselves."
+  (when (active-minibuffer-window)
+  (with-selected-window (minibuffer-window)
+    (let ((text  (minibuffer-contents)))
+      (when (commandp consult-gh--last-command)
+          (embark--become-command consult-gh--last-command text))))))
+
 ;;; Define Embark Action Functions
 
 ;;;; Default Actions
@@ -280,6 +290,18 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   (when (stringp cand)
     (let ((repo (or (get-text-property 0 :repo cand))))
       (consult-gh-pr-list repo))))
+
+(defun consult-gh-embark-view-workflows-of-repo (cand)
+  "Browse GitHub actions of CAND repo at point."
+  (when (stringp cand)
+    (let ((repo (or (get-text-property 0 :repo cand))))
+      (consult-gh-workflow-list repo))))
+
+(defun consult-gh-embark-view-runs-of-repo (cand)
+  "Browse GitHub action runs of CAND repo at point."
+  (when (stringp cand)
+    (let ((repo (or (get-text-property 0 :repo cand))))
+      (consult-gh-run-list repo))))
 
 (defun consult-gh-embark-view-issues-involves-user (cand)
   "Browse issues involving the user in CAND."
@@ -898,6 +920,46 @@ CAND can be a PR or an issue."
      (consult-gh--auth-account-host)
      (funcall #'consult-gh-release-edit cand))))
 
+(defun consult-gh-embark-workflow-view (cand)
+  "View workflow in CAND."
+ (when (stringp cand)
+    (consult-gh--workflow-view-action cand)))
+
+(defun consult-gh-embark-workflow-runs-list (cand)
+  "Browse runs of workflow in CAND."
+ (when (stringp cand)
+    (let ((repo (get-text-property 0 :repo cand))
+          (id (get-text-property 0 :id cand)))
+(consult-gh-run-list repo nil nil nil id))))
+
+(defun consult-gh-embark-workflow-run (cand)
+  "Run the workflow in CAND."
+ (when (stringp cand)
+(consult-gh-workflow-run cand)))
+
+(defun consult-gh-embark-workflow-enable (cand)
+  "Enable the workflow in CAND."
+ (when (stringp cand)
+(consult-gh-workflow-enable cand)))
+
+(defun consult-gh-embark-workflow-disable (cand)
+  "Enable the workflow in CAND."
+ (when (stringp cand)
+(consult-gh-workflow-disable cand)))
+
+(defun consult-gh-embark-run-view-workflow (cand)
+"View the workflow for run in CAND."
+(when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand))
+          (workflow-id (get-text-property 0 :workflow-id cand))
+          (newcand (propertize (format "repo/actions/%s" workflow-id) :repo repo :id workflow-id)))
+      (consult-gh--workflow-view-action newcand))))
+
+(defun consult-gh-embark-run-view (cand)
+"View the run in CAND."
+  (when (stringp cand)
+    (consult-gh--run-view-action cand)))
+
 ;;;; Other Actions
 
 (defun consult-gh-embark-email-user (cand)
@@ -996,7 +1058,9 @@ CAND can be a PR or an issue."
   "r" '("find repos by user" . consult-gh-embark-get-other-repos-by-same-user)
   "i" '("find issues of repo" . consult-gh-embark-view-issues-of-repo)
   "p" '("find prs of repo" . consult-gh-embark-view-prs-of-repo)
-  "c" '("find code in repo" . consult-gh-embark-search-code-in-repo))
+  "c" '("find code in repo" . consult-gh-embark-search-code-in-repo)
+  "a" '("find action workflows in repo" . consult-gh-embark-view-workflows-of-repo)
+  "g" '("find action runs in repo" . consult-gh-embark-view-runs-of-repo))
 
 (fset 'consult-gh-embark-find-menu-map consult-gh-embark-find-menu-map)
 
@@ -1055,6 +1119,8 @@ CAND can be a PR or an issue."
   "r" '("other repos of user" . consult-gh-embark-get-other-repos-by-same-user)
   "i" '("issues of repo" . consult-gh-embark-view-issues-of-repo)
   "p" '("prs of repo" . consult-gh-embark-view-prs-of-repo)
+  "a" '("action workflows of repo" . consult-gh-embark-view-workflows-of-repo)
+  "g" '("action runs of repo" . consult-gh-embark-view-runs-of-repo)
   "s" '("search for code in repo" . consult-gh-embark-search-code-in-repo)
   "b" '("browse files of repo" . consult-gh-embark-view-files-of-repo)
   "o" '("open repo page in default browser" .  consult-gh-embark-open-repo-in-default-browser)
@@ -1113,7 +1179,9 @@ CAND can be a PR or an issue."
   :parent nil
   "r" '("view readme" . consult-gh-embark-view-readme-of-repo)
   "i" '("view issues" . consult-gh-embark-view-issues-of-repo)
-  "p" '("view pull requests" . consult-gh-embark-view-prs-of-repo))
+  "p" '("view pull requests" . consult-gh-embark-view-prs-of-repo)
+  "a" '("view action workflows" . consult-gh-embark-view-workflows-of-repo)
+  "g" '("view action runs" . consult-gh-embark-view-runs-of-repo))
 
 (fset 'consult-gh-embark-repo-view-menu-map consult-gh-embark-repo-view-menu-map)
 
@@ -1219,6 +1287,43 @@ CAND can be a PR or an issue."
   "e" '("gh edit release" . consult-gh-embark-releases-edit-menu-map)
   "T" '("gh test" . consult-gh-embark-test))
 
+;;;;;; Workflow Main Menu Keymap
+(defvar-keymap consult-gh-embark-workflows-actions-map
+  :doc "Keymap for consult-gh-embark-workflows"
+  :parent consult-gh-embark-general-actions-map
+  "r" '("gh run workflow" . consult-gh-embark-workflow-run)
+  "e" '("gh enable workflow" . consult-gh-embark-workflow-enable)
+  "d" '("gh disable workflow" . consult-gh-embark-workflow-disable)
+  "g" '("gh list action runs" . consult-gh-embark-workflow-runs-list)
+  "v" '("gh view workflow menu" . consult-gh-embark-workflows-view-menu-map))
+
+;;;;;; PR View Menu Keymap
+(defvar-keymap consult-gh-embark-workflows-view-menu-map
+  :doc "Keymap for viewing workflow details"
+  :parent nil
+  "r" '("view repo" . consult-gh-embark-repo-view-menu-map)
+  "g" '("view runs" . consult-gh-embark-workflow-runs-list)
+  "v" '("view workflow" . consult-gh-embark-workflow-view))
+
+(fset 'consult-gh-embark-workflows-view-menu-map consult-gh-embark-workflows-view-menu-map)
+
+;;;;;; Workflow Main Menu Keymap
+(defvar-keymap consult-gh-embark-runs-actions-map
+  :doc "Keymap for consult-gh-embark-runs"
+  :parent consult-gh-embark-general-actions-map
+  "a" '("gh view run's workflow" . consult-gh-embark-run-view-workflow)
+  "v" '("gh view workflows view menu" . consult-gh-embark-runs-view-menu-map))
+
+;;;;;; PR View Menu Keymap
+(defvar-keymap consult-gh-embark-runs-view-menu-map
+  :doc "Keymap for viewing workflow details"
+  :parent nil
+  "r" '("view repo" . consult-gh-embark-repo-view-menu-map)
+  "a" '("view run's workflow" . consult-gh-embark-run-view-workflow)
+  "v" '("view run" . consult-gh-embark-run-view))
+
+(fset 'consult-gh-embark-runs-view-menu-map consult-gh-embark-runs-view-menu-map)
+
 ;;;; Code Keymap
 (defvar-keymap consult-gh-embark-codes-actions-map
   :doc "Keymap for consult-gh-embark-codes"
@@ -1257,7 +1362,9 @@ CAND can be a PR or an issue."
                   (consult-gh-prs . consult-gh-embark-prs-actions-map)
                   (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
                   (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map)
-                  (consult-gh-releases . consult-gh-embark-releases-actions-map))))
+                  (consult-gh-releases . consult-gh-embark-releases-actions-map)
+                  (consult-gh-workflows . consult-gh-embark-workflows-actions-map)
+                  (consult-gh-runs . consult-gh-embark-runs-actions-map))))
 
 
   ;; override default actions
@@ -1270,17 +1377,28 @@ CAND can be a PR or an issue."
                   (consult-gh-codes . consult-gh-embark-default-action)
                   (consult-gh-notifications . consult-gh-embark-default-action)
                   (consult-gh-dashboard . consult-gh-embark-default-action)
-                  (consult-gh-releases . consult-gh-embark-default-action))))
+                  (consult-gh-releases . consult-gh-embark-default-action)
+                  (consult-gh-workflows . consult-gh-embark-default-action)
+                  (consult-gh-runs . consult-gh-embark-default-action))))
 
 
   ;; set post actions-hook
   (setq embark-post-action-hooks
         (append embark-post-action-hooks
-                '((consult-gh-embark-mark-release-draft embark--restart)
-                  (consult-gh-embark-toggle-release-prerelease embark--restart)
-                  (consult-gh-embark-publish-release embark--restart)
-                  (consult-gh-embark-mark-release-latest embark--restart)))))
-
+                '((consult-gh-embark-delete-issue consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-issue-open consult-gh--embark-restart)
+                  (consult-gh-embark-transfer-issue consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-pr-draft consult-gh--embark-restart)
+                  (consult-gh-embark-merge-pr consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-pr-open consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-notification-read consult-gh--embark-restart)
+                  (consult-gh-embark-notification-toggle-subscription consult-gh--embark-restart)
+                  (consult-gh-embark-mark-release-draft consult-gh--embark-restart)
+                  (consult-gh-embark-toggle-release-prerelease consult-gh--embark-restart)
+                  (consult-gh-embark-publish-release consult-gh--embark-restart)
+                  (consult-gh-embark-mark-release-latest consult-gh--embark-restart)
+                  (consult-gh-embark-workflow-enable consult-gh--embark-restart)
+                  (consult-gh-embark-workflow-disable consult-gh--embark-restart)))))
 
 
 (defun consult-gh-embark--mode-off ()
@@ -1296,7 +1414,9 @@ CAND can be a PR or an issue."
                            (consult-gh-prs . consult-gh-embark-prs-actions-map)
                            (consult-gh-notifications . consult-gh-embark-notifications-actions-map)
                            (consult-gh-dashboard . consult-gh-embark-dashboard-actions-map)
-                           (consult-gh-releases . consult-gh-embark-releases-actions-map))))
+                           (consult-gh-releases . consult-gh-embark-releases-actions-map)
+                           (consult-gh-workflows . consult-gh-embark-workflows-actions-map)
+                           (consult-gh-runs . consult-gh-embark-runs-actions-map))))
 
 ;; unset default actions
   (setq embark-default-action-overrides
@@ -1308,15 +1428,27 @@ CAND can be a PR or an issue."
                           (consult-gh-codes . consult-gh-embark-default-action)
                           (consult-gh-notifications . consult-gh-embark-default-action)
                           (consult-gh-dashboard . consult-gh-embark-default-action)
-                          (consult-gh-releases . consult-gh-embark-default-action))))
+                          (consult-gh-releases . consult-gh-embark-default-action)
+                          (consult-gh-workflows . consult-gh-embark-default-action)
+                          (consult-gh-runs . consult-gh-embark-default-action))))
 
   ;; unset post action hooks
   (setq embark-post-action-hooks
         (seq-difference embark-post-action-hooks
-                        '((consult-gh-embark-mark-release-draft embark--restart)
-                          (consult-gh-embark-toggle-release-prerelease embark--restart)
-                          (consult-gh-embark-publish-release embark--restart)
-                          (consult-gh-embark-mark-release-latest embark--restart)))))
+                        '((consult-gh-embark-delete-issue consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-issue-open consult-gh--embark-restart)
+                          (consult-gh-embark-transfer-issue consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-pr-draft consult-gh--embark-restart)
+                          (consult-gh-embark-merge-pr consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-pr-open consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-notification-read consult-gh--embark-restart)
+                          (consult-gh-embark-notification-toggle-subscription consult-gh--embark-restart)
+                          (consult-gh-embark-mark-release-draft consult-gh--embark-restart)
+                          (consult-gh-embark-toggle-release-prerelease consult-gh--embark-restart)
+                          (consult-gh-embark-publish-release consult-gh--embark-restart)
+                          (consult-gh-embark-mark-release-latest consult-gh--embark-restart)
+                          (consult-gh-embark-workflow-enable consult-gh--embark-restart)
+                          (consult-gh-embark-workflow-disable consult-gh--embark-restart)))))
 
 (defun consult-gh-embark-unload-function ()
   "Unload function for `consult-gh-embark'."
