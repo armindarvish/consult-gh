@@ -1725,97 +1725,103 @@ Uses simple regexp replacements."
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
       (save-match-data
-      (save-mark-and-excursion
-        (save-restriction
-          (goto-char (point-min))
-          (while (re-search-forward "#\\|\\*\\{1,2\\}\\|_\\{1,2\\}\\|~\\{1,2\\}\\|`+" nil t)
-            (pcase (match-string-no-properties 0)
-               ((and (guard (eq (char-before) ?`)) ticks)
-                (cond
-                 ((= (length ticks) 3)
-                  (backward-char 4)
-                  (save-match-data
-                    (when (re-search-forward "```\\(?1:.*\n\\)\\(?2:[[:ascii:][:nonascii:]]*?\\)```" nil t)
-                        (replace-match (concat
-                               (apply #'propertize (concat  "#+begin_src " (match-string 1) "\n") (text-properties-at 0 (match-string 1)))
-                               (concat (match-string 2) "\n")
-                               (apply #'propertize "#+end_src\n" (text-properties-at 0 (match-string 1))))
-                              nil t))))
-                 ((not (looking-at "`"))
-                  (backward-char 1)
-                  (save-match-data
-                    (when (re-search-forward "`\\(?1:[^`]+?\\)`" nil t)
-                      (replace-match (apply #'propertize (concat "=" (match-string 1) "=") (text-properties-at 0 (match-string 1))) nil t))))))
-              ("#" (cond
-                    ((looking-at "\s\\|#+\s")
-                     (delete-char -1)
-                     (insert (apply #'propertize "*" (text-properties-at 0 (match-string 0)))))
+        (save-mark-and-excursion
+          (save-restriction
+            (goto-char (point-min))
+            (while (re-search-forward "#\\|\\*\\{1,2\\}\\|_\\{1,2\\}\\|~\\{1,2\\}\\|`+" nil t)
+              (pcase (match-string-no-properties 0)
+                ((and (guard (eq (char-before) ?`)) ticks)
+                 (cond
+                  ((= (length ticks) 3)
+                   (backward-char 4)
+                   (save-match-data
+                     (if (re-search-forward "```\\(?1:.*\n\\)\\(?2:[[:ascii:][:nonascii:]]*?\\)```" nil t)
+                       (replace-match (concat
+                                       (apply #'propertize (concat  "#+begin_src " (match-string 1) "\n") (text-properties-at 0 (match-string 1)))
+                                       (concat (match-string 2) "\n")
+                                       (apply #'propertize "#+end_src\n" (text-properties-at 0 (match-string 1))))
+                                      nil t)
+                       (forward-char 4))))
+                  ((not (looking-at "`"))
+                   (backward-char 1)
+                   (save-match-data
+                     (if (re-search-forward "`\\(?1:[^`]+?\\)`" nil t)
+                       (replace-match (apply #'propertize (concat "=" (match-string 1) "=") (text-properties-at 0 (match-string 1))) nil t)
+                       (forward-char 1))))))
+                ("#" (cond
+                      ((looking-at "\s\\|#+\s")
+                       (delete-char -1)
+                       (insert (apply #'propertize "*" (text-properties-at 0 (match-string 0)))))
 
-                    ((looking-at "\\+begin.+\\|\\+end.+")
-                     (delete-char -1)
-                     (insert (apply #'propertize ",#" (text-properties-at 0 (match-string 0)))))))
+                      ((looking-at "\\+begin.+\\|\\+end.+")
+                       (delete-char -1)
+                       (insert (apply #'propertize ",#" (text-properties-at 0 (match-string 0)))))))
 
-              ("**"
+                ("**"
                  (when (or (= (point) 3)
-                     (looking-back "\\(?:[[:word:][:punct:][:space:]\n]\\)\\*\\{2\\}"
-                              (max (- (point) 3) (point-min))))
+                           (looking-back "\\(?:[[:word:][:punct:][:space:]\n]\\)\\*\\{2\\}"
+                                         (max (- (point) 3) (point-min))))
                    (backward-char 2)
                    (save-match-data
-                      (when (re-search-forward "\\*\\{2\\}\\(?1:[^[:space:]].*[^[:space:]]?\\)\\*\\{2\\}" (line-end-position) t)
-                     (replace-match (apply #'propertize (concat "*" (match-string 1) "*") (text-properties-at 0 (match-string 0))))))))
+                     (if (re-search-forward "\\*\\{2\\}\\(?1:[^[:space:]].*[^[:space:]]?\\)\\*\\{2\\}" (line-end-position) t)
+                       (replace-match (apply #'propertize (concat "*" (match-string 1) "*") (text-properties-at 0 (match-string 0))))
+                      (forward-char 2)))))
 
-              ("*"
-               (cond
-                ((and (looking-at "\s")
-                     (or  (= (point) 2)
-                     (looking-back "^\s+\\*" (max (- (point) 4) (point-min)))))
-                (delete-char 1)
-                (insert "-"))
-                ((or (= (point) 2)
-                 (looking-back "\\(?:[[:space:]]\\)\\*"
-                               (max (- (point) 2) (point-min))))
-                 (backward-char 1)
-                 (save-match-data
-                   (when (re-search-forward "\\*\\(?1:[^[:space:]\\*].*?[^[:space:]]?\\)\\*" (line-end-position) t)
-                     (replace-match (apply #'propertize (concat "/" (match-string 1) "/") (text-properties-at 0 (match-string 0)))))))))
+                ("*"
+                 (cond
+                  ((and (looking-at "\s")
+                        (or  (= (point) 2)
+                             (looking-back "^\s+\\*" (max (- (point) 4) (point-min)))))
+                   (delete-char 1)
+                   (insert "-"))
+                  ((or (= (point) 2)
+                       (looking-back "\\(?:[[:space:]]\\)\\*"
+                                     (max (- (point) 2) (point-min))))
+                   (backward-char 1)
+                   (save-match-data
+                     (if (re-search-forward "\\*\\(?1:[^[:space:]\\*].*?[^[:space:]]?\\)\\*" (line-end-position) t)
+                       (replace-match (apply #'propertize (concat "/" (match-string 1) "/") (text-properties-at 0 (match-string 0))))
+                       (forward-char 1))))))
 
-              ("__"
+                ("__"
                  (when (or (= (point) 3)
-                     (looking-back "\\(?:[[:word:][:punct:][:space:]\n]\\)_\\{2\\}"
-                              (max (- (point) 3) (point-min))))
+                           (looking-back "\\(?:[[:word:][:punct:][:space:]\n]\\)_\\{2\\}"
+                                         (max (- (point) 3) (point-min))))
                    (backward-char 2)
                    (save-match-data
-                      (if (re-search-forward "_\\{2\\}\\(?1:[^[:space:]].*?[^[:space:]]?\\)_\\{2\\}" (line-end-position) t)
-                     (replace-match (apply #'propertize (concat "*" (match-string 1) "*") (text-properties-at 0 (match-string 0))))))))
+                     (if (re-search-forward "_\\{2\\}\\(?1:[^[:space:]].*?[^[:space:]]?\\)_\\{2\\}" (line-end-position) t)
+                         (replace-match (apply #'propertize (concat "*" (match-string 1) "*") (text-properties-at 0 (match-string 0))))
+                       (forward-char 2)))))
 
-              ("_"
-               (when (or (= (point) 2)
-                 (looking-back "\\(?:[[:space:]]\\)_"
-                               (max (- (point) 2) (point-min))))
-                 (backward-char 1)
-                 (save-match-data
-                   (if (re-search-forward "_\\{1\\}\\(?1:[^[:space:]_].*\\)[^[:space:]_]?)_\\{1\\}" (line-end-position) t)
-                     (replace-match (apply #'propertize (concat "/" (match-string 1) "/") (text-properties-at 0 (match-string 0))))))))
+                ("_"
+                 (when (or (= (point) 2)
+                           (looking-back "\\(?:[[:space:]]\\)_"
+                                         (max (- (point) 2) (point-min))))
+                   (backward-char 1)
+                   (save-match-data
+                     (if (re-search-forward "_\\{1\\}\\(?1:[^[:space:]_].*\\)[^[:space:]_]?)_\\{1\\}" (line-end-position) t)
+                         (replace-match (apply #'propertize (concat "/" (match-string 1) "/") (text-properties-at 0 (match-string 0))))
+                       (forward-char 1)))))
 
-              ("~~"
+                ("~~"
                  (when (or (= (point) 3)
-                     (looking-back "\\(?:[[:word:][:punct:][:space:]\n]\\)~\\{2\\}"
-                              (max (- (point) 3) (point-min))))
+                           (looking-back "\\(?:[[:word:][:punct:][:space:]\n]\\)~\\{2\\}"
+                                         (max (- (point) 3) (point-min))))
                    (backward-char 2)
                    (save-match-data
-                      (if (re-search-forward "~\\{2\\}\\(?1:[^[:space:]].*\\)?[^[:space:]]?~\\{2\\}" (line-end-position) t)
-                     (replace-match (apply #'propertize (concat "+" (match-string 1) "+") (text-properties-at 0 (match-string 0))))))))
+                     (if (re-search-forward "~\\{2\\}\\(?1:[^[:space:]].*\\)?[^[:space:]]?~\\{2\\}" (line-end-position) t)
+                         (replace-match (apply #'propertize (concat "+" (match-string 1) "+") (text-properties-at 0 (match-string 0))))
+                       (forward-char 2)))))
 
-              ("~"
-               (when (or (= (point) 2)
-                 (looking-back "\\(?:[[:space:]]\\)~"
-                               (max (- (point) 2) (point-min))))
-                 (backward-char 1)
-                 (save-match-data
-                   (if (re-search-forward "~\\{1\\}\\(?1:[^[:space:]].*\\)[^[:space:]]?~\\{1\\}" (line-end-position) t)
-                     (replace-match (apply #'propertize (concat "+" (match-string 1) "+") (text-properties-at 0 (match-string 0))))))))
-
-))))))))
+                ("~"
+                 (when (or (= (point) 2)
+                           (looking-back "\\(?:[[:space:]]\\)~"
+                                         (max (- (point) 2) (point-min))))
+                   (backward-char 1)
+                   (save-match-data
+                     (if (re-search-forward "~\\{1\\}\\(?1:[^[:space:]].*\\)[^[:space:]]?~\\{1\\}" (line-end-position) t)
+                         (replace-match (apply #'propertize (concat "+" (match-string 1) "+") (text-properties-at 0 (match-string 0))))
+                       (forward-char 1)))))))))))))
 
 (defun consult-gh--markdown-to-org-links (&optional buffer)
   "Convert markdown style links to \='org-mode links in BUFFER.
