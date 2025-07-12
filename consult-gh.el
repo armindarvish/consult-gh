@@ -8926,8 +8926,7 @@ BUFFER defaults to the `current-buffer'."
          ((eq mode 'markdown-mode)
           (markdown-mode))
          ((eq mode 'org-mode)
-          (org-mode)
-          (consult-gh--org-to-markdown))
+          (org-mode))
          (t (text-mode)))
         (goto-char (or header-beg (point-min)))
         (cond
@@ -8944,7 +8943,10 @@ BUFFER defaults to the `current-buffer'."
         (when header-regions
           (cl-loop for region in header-regions
                    do (delete-region (car region) (cdr region))))
-        (setq body (string-trim (consult-gh--whole-buffer-string)))
+        (setq body (string-trim
+                    (if (eq mode 'org-mode)
+                        (consult-gh--org-to-markdown)
+                      (consult-gh--whole-buffer-string))))
 (cons title body)))))
 
 (defun consult-gh-topics--format-field-header-string (string &optional prefix suffix)
@@ -10147,8 +10149,7 @@ When SKIP-EXISTING is non-nil, does not overwrite existing files"
                      (setq args (append args (list (format "--archive=%s" archive))))))
 
         (':pattern (let ((patterns (consult--read nil
-                                                  :prompt "Enter comma separated patterns (e.g. *.deb, *.rpm): "
-                                                  )))
+                                                  :prompt "Enter comma separated patterns (e.g. *.deb, *.rpm): ")))
                      (when (and patterns
                                 (stringp patterns)
                                 (not (string-empty-p patterns)))
@@ -11377,8 +11378,7 @@ Description of Arguments:
          (updatedAt (cadr (cdddr (cdddr parts))))
          (elapsed (and startedAt updatedAt
                        (time-convert (time-subtract (date-to-time updatedAt)
-                                                    (date-to-time startedAt)
-                                                    ) 'integer)))
+                                                    (date-to-time startedAt)) 'integer)))
          (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time updatedAt))))
          (startedAt (and startedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time startedAt))))
          (age (consult-gh--time-ago startedAt))
@@ -11530,8 +11530,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (updatedAt (gethash :updated_at table))
          (elapsed (and startedAt updatedAt
                        (time-convert (time-subtract (date-to-time updatedAt)
-                                                    (date-to-time startedAt)
-                                                    ) 'integer)))
+                                                    (date-to-time startedAt)) 'integer)))
          (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time updatedAt))))
          (startedAt (and startedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time startedAt))))
          (age (consult-gh--time-ago startedAt)))
@@ -11574,8 +11573,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                                                      (completedAt (gethash :completedAt step))
                                                      (elapsed (and startedAt completedAt
                                                                    (time-convert (time-subtract (date-to-time completedAt)
-                                                                                                (date-to-time startedAt)
-                                                                                                ) 'integer)))
+                                                                                                (date-to-time startedAt)) 'integer)))
                                                      (completedAt (and completedAt (format-time-string "[%Y-%m-%d %H:%M:%S]" (date-to-time completedAt)))))
 
                                                 (concat  (format "%s" number) ". " name "\t" state "\t" (format "completed at %s" completedAt) "\s" (format "%ss" elapsed) "\n")))))))
@@ -11605,8 +11603,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                                         "\t"
                                         (format "%s (%s)" name id)
                                         "\n"
-                                        steps
-                                        )))))
+                                        steps)))))
   (when (and (listp jobs) (stringp topic))
       (add-text-properties 0 1 (list :jobs jobs) topic))
   (when (listp content) (concat "# Jobs\n" (string-join content "\n") "\n"))))
