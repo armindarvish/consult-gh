@@ -31,6 +31,7 @@
   - [[#browsing-files-in-a-repository][Browsing Files in a Repository]]
   - [[#searching-codes][Searching Codes]]
   - [[#creating-a-new-repository,-issue-or-pull-request-on-github][Creating a New Repository, Issue or Pull Request on GitHub]]
+  - [[#managing-github-actions][Managing GitHub Actions]]
   - [[#embark-integration][Embark Integration]]
   - [[#magitforge-integration][Magit/Forge Integration]]
   - [[#pr-review-integration][PR-Review Integration]]
