@@ -3,17 +3,20 @@
 #+language: en
 
 * Development
+
+* Version 2.6 (2025-07-10)
 - Added support for workflows and runs
-  - Added support for listing workflows ("gh workflow list ...")
+  - Added support for listing workflows ("gh workflow list ...") with =consult-gh-workflow-list=
   - Added support for viewing workflows in Emacs ("gh workflow view ...")
-  - Added support for enabling/disabling workflows ("gh workflow enable/disable ...")
-  - Added support for running workflow ("gh workflow run ...")
-  - Added support for listing runs ("gh run list ...")
-  - Added suppport for viewing runs in Emacs ("gh run view ...")
+  - Added support for enabling/disabling workflows ("gh workflow enable/disable ...") with =consult-gh-workflow-enbale= or =consult-gh-workflow-disable=
+  - Added support for running workflow ("gh workflow run ...") with =consult-gh-workflow-run=
+  - Added support for listing runs ("gh run list ...") with =consult-gh-run-list=
+  - Added suppport for viewing runs in Emacs ("gh run view ...") =consult-gh-run-view=
 - Added ansi-color for seeing logs of actions runs
 - Added yaml as dependency for parsing github action files
 - Other fixes and improvements
-
+  - Fixes reading title and body in org-format
+  - Fixes getting stuck in conversion form markdown to org-mode
 
 * Version 2.5.1 (2025-06-08)
 - fixes issues with parsing titles when creating pr or issue (#232)
