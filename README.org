@@ -404,6 +404,17 @@ Here is a screenshot showing making anew repository from scratch:
 
 Similarly you can use =consult-gh-issue-create= or =consult-gh-pr-create= to create new issues or pull requests.
 
+** Managing GitHub Actions
+Since Version 2.6, you can also manage GitHub actions from inside Emacs. You can call =consult-gh-workflow-list= to see a list of workflows, or call =consult-gh-run-list= to see a list of all actions runs. You can enable/disable actions by =consult-gh-workflow-enable= and =consult-gh-workflow-disable=. You can also manully run workflows by calling =consult-gh-workflow-run=.
+
+Here is a screenshot showing how you can list and see details of workflow runs:
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-workflow.gif]]
+
+
 ** Embark Integration
 =consult-gh= also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu.
 For example, you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's URL in a browser, but then call embark on any item for running alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= etc. You can also call embark and select items with =embark-select= (by default bound to =SPC=) before running some commands on all of them, for example select multiple repos and run clone for all of them.
