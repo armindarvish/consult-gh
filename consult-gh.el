@@ -11855,7 +11855,7 @@ set `consult-gh-run-action' to `consult-gh--run-rerun-action'."
   (read-only-mode +1))
 
 (defvar-keymap consult-gh-misc-view-mode-map
-  :doc "Keymap for `consult-gh-topic-view-mode'.")
+  :doc "Keymap for `consult-gh-misc-view-mode'.")
 
 ;;;###autoload
 (define-minor-mode consult-gh-misc-view-mode
