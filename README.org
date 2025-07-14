@@ -470,7 +470,7 @@ To change the default keybindings, you can customize the relevant variables. Her
 #+end_src
 
 The default keybindings are:
-| mode                          | key       | command                             | function                                                                        |
+| mode                          | key       | command                             | description                                                                     |
 |-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
 | consult-gh-repo-view-mode     | C-c C-RET | consult-gh-topics-open-in-browser   | open repo in browser                                                            |
 |-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
