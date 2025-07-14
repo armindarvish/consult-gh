@@ -17203,8 +17203,9 @@ If JOB-ID is non-nil, rerun the specific job with JOB-ID."
                           (get-text-property 0 :id run))
                      (and (plistp pl)
                           (plist-get pl :run-id))))
-         (job-id (and (plistp pl)
-                      (plist-get pl :job-id)))
+         (job-id (or job-id
+                     (and (plistp pl)
+                      (plist-get pl :job-id))))
          (cand (when (and repo run-id)
                  (propertize (format "%s/%s" repo run-id) :repo repo :id run-id :job-id job-id))))
     (when cand
