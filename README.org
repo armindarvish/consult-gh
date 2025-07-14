@@ -470,37 +470,37 @@ To change the default keybindings, you can customize the relevant variables. Her
 #+end_src
 
 The default keybindings are:
-| mode                          | key       | command                             | function                                                                        |   |   |   |
-|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------+---+---+---|
-| consult-gh-repo-view-mode     | C-c C-RET | consult-gh-topics-open-in-browser   | open repo in browser-back                                                       |   |   |   |
-|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------+---+---+---|
-| consult-gh-issue-view-mode    | C-c C-RET | consult-gh-topics-open-in-browser   | open issue in browser-back                                                      |   |   |   |
-|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | make comment on issue                                                           |   |   |   |
-|                               | C-c C-e   | consult-gh-issue-edit               | edit issue                                                                      |   |   |   |
-|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------+---+---+---|
-| consult-gh-pr-view-mode       | C-c C-RET | consult-gh-topics-open-in-browser   | open pullrequest in browser                                                     |   |   |   |
-|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | make comment on pullrequest                                                     |   |   |   |
-|                               | C-c C-e   | consult-gh-issue-edit               | edit pull request                                                               |   |   |   |
-|                               | C-c C-r   | consult-gh-pr-review                | make a review on pull request                                                   |   |   |   |
-|                               | C-c C-m   | consult-gh-pr-merge                 | merge the pull request                                                          |   |   |   |
-|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------+---+---+---|
-| consult-gh-workflow-view-mode | C-c C-RET | consult-gh-topics-open-in-browser   | open workflow in browser                                                        |   |   |   |
-|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | either open a run view or run the workflow depending on positions of the cursor |   |   |   |
-|                               | C-c C-e   | consult-gh-workflow-enable          | enable workflow                                                                 |   |   |   |
-|                               | C-c C-d   | consult-gh-workflow-disable         | disbale workflow                                                                |   |   |   |
-|                               | C-c C-r   | consult-gh-workflow-change-yaml-ref | change the YAML content ref when inside the YAML block                          |   |   |   |
-|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------+---+---+---|
-| consult-gh-run-view-mode      | C-c C-RET | consult-gh-topics-open-in-browser   | open run in browser                                                             |   |   |   |
-|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | rerun the whole run or the specific job depending on the position of the cursor |   |   |   |
-|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------+---+---+---|
-| consult-gh-release-view-mode  | C-c C-RET | consult-gh-topics-open-in-browser   | open release in browser                                                         |   |   |   |
-|                               | C-c C-e   | consult-gh-release-edit             | edit release                                                                    |   |   |   |
-|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------+---+---+---|
-| consult-gh-topics-edit-mode   | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | submit the edits on the topic                                                   |   |   |   |
-|                               | C-c C-k   | consult-gh-topics-cancel            | cancel the edits and close the buffer                                           |   |   |   |
-|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------+---+---+---|
-| consult-gh-misc-view-mode     | C-c C-RET | consult-gh-topics-open-in-browser   | open the gh topic in the buffer in browser                               |   |   |   |
-|                               | C-c C-k   | consult-gh-topics-cancel            | close/kill the buffer or window                          |   |   |   |
+| mode                          | key       | command                             | function                                                                        |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-repo-view-mode     | C-c C-RET | consult-gh-topics-open-in-browser   | open repo in browser                                                            |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-issue-view-mode    | C-c C-RET | consult-gh-topics-open-in-browser   | open issue in browser                                                           |
+|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | make comment on issue                                                           |
+|                               | C-c C-e   | consult-gh-issue-edit               | edit issue                                                                      |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-pr-view-mode       | C-c C-RET | consult-gh-topics-open-in-browser   | open pullrequest in browser                                                     |
+|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | make comment on pull request                                                    |
+|                               | C-c C-e   | consult-gh-issue-edit               | edit pull request                                                               |
+|                               | C-c C-r   | consult-gh-pr-review                | make a review on pull request                                                   |
+|                               | C-c C-m   | consult-gh-pr-merge                 | merge the pull request                                                          |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-workflow-view-mode | C-c C-RET | consult-gh-topics-open-in-browser   | open workflow in browser                                                        |
+|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | either open a run view or run the workflow depending on positions of the cursor |
+|                               | C-c C-e   | consult-gh-workflow-enable          | enable workflow                                                                 |
+|                               | C-c C-d   | consult-gh-workflow-disable         | disbale workflow                                                                |
+|                               | C-c C-r   | consult-gh-workflow-change-yaml-ref | change the YAML content ref when inside the YAML block                          |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-run-view-mode      | C-c C-RET | consult-gh-topics-open-in-browser   | open run in browser                                                             |
+|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | rerun the whole run or the specific job depending on the position of the cursor |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-release-view-mode  | C-c C-RET | consult-gh-topics-open-in-browser   | open release in browser                                                         |
+|                               | C-c C-e   | consult-gh-release-edit             | edit release                                                                    |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-topics-edit-mode   | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | submit the edits on the topic                                                   |
+|                               | C-c C-k   | consult-gh-topics-cancel            | cancel the edits and close the buffer                                           |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-misc-view-mode     | C-c C-RET | consult-gh-topics-open-in-browser   | open the gh topic in the buffer in browser                                      |
+|                               | C-c C-k   | consult-gh-topics-cancel            | close/kill the buffer or window                                                 |
 
 ** Embark Integration
 =consult-gh= also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu.
