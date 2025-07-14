@@ -478,7 +478,7 @@ The default keybindings are:
 |                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | make comment on issue                                                           |
 |                               | C-c C-e   | consult-gh-issue-edit               | edit issue                                                                      |
 |-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
-| consult-gh-pr-view-mode       | C-c C-RET | consult-gh-topics-open-in-browser   | open pullrequest in browser                                                     |
+| consult-gh-pr-view-mode       | C-c C-RET | consult-gh-topics-open-in-browser   | open pull request in browser                                                    |
 |                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | make comment on pull request                                                    |
 |                               | C-c C-e   | consult-gh-issue-edit               | edit pull request                                                               |
 |                               | C-c C-r   | consult-gh-pr-review                | make a review on pull request                                                   |
@@ -497,10 +497,10 @@ The default keybindings are:
 |                               | C-c C-e   | consult-gh-release-edit             | edit release                                                                    |
 |-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
 | consult-gh-topics-edit-mode   | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | submit the edits on the topic                                                   |
-|                               | C-c C-k   | consult-gh-topics-cancel            | cancel the edits and close the buffer                                           |
+|                               | C-c C-k   | consult-gh-topics-cancel            | cancel the edits and close/kill the buffer and/or window                        |
 |-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
 | consult-gh-misc-view-mode     | C-c C-RET | consult-gh-topics-open-in-browser   | open the gh topic in the buffer in browser                                      |
-|                               | C-c C-k   | consult-gh-topics-cancel            | close/kill the buffer or window                                                 |
+|                               | C-c C-k   | consult-gh-topics-cancel            | close/kill the buffer and/or window                                             |
 
 ** Embark Integration
 =consult-gh= also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu.
