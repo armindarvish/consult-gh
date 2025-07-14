@@ -1471,10 +1471,10 @@ This is used to change grouping dynamically.")
   "String of comma separated json fields to retrieve for viewing releases.")
 
 (defvar consult-gh--workflow-list-template (concat "{{range .}}" "{{.name}}" "\t" "{{.state}}" "\t" "{{printf \"%.0f\" .id}}" "\t" "{{.path}}" "\n\n" "{{end}}")
- "Template for retrieving workflows used in `consult-gh--workflow-list-builder'.")
+  "Template for retrieving workflows used in `consult-gh--workflow-list-builder'.")
 
 (defvar consult-gh--run-list-template (concat "{{range .}}" "{{.name}}" "\t" "{{.status}}" "\t" "{{.conclusion}}" "\t" "{{printf \"%.0f\" .databaseId}}" "\t" "{{.headBranch}}" "\t" "{{.event}}" "\t" "{{.startedAt}}" "\t" "{{.updatedAt}}" "\t" "{{.workflowName}}" "\t" "{{printf \"%.0f\" .workflowDatabaseId}}" "\n\n" "{{end}}")
- "Template for retrieving runs used in `consult-gh--run-list-builder'.")
+  "Template for retrieving runs used in `consult-gh--run-list-builder'.")
 
 
 (defvar consult-gh--repo-view-mode-keybinding-alist '(("C-c C-<return>" . consult-gh-topics-open-in-browser))
@@ -1500,11 +1500,12 @@ This is used to change grouping dynamically.")
                                                           ("C-c C-r" . consult-gh-workflow-change-yaml-ref)
                                                           ("C-c C-e" . consult-gh-workflow-enable)
                                                           ("C-c C-d" . consult-gh-workflow-disable)
-                                                    ("C-c C-<return>" . consult-gh-topics-open-in-browser))
+                                                          ("C-c C-<return>" . consult-gh-topics-open-in-browser))
 
   "Keymap alist for `consult-gh-workflow-view-mode'.")
 
-(defvar consult-gh--run-view-mode-keybinding-alist '(("C-c C-<return>" . consult-gh-topics-open-in-browser))
+(defvar consult-gh--run-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
+                                                     ("C-c C-<return>" . consult-gh-topics-open-in-browser))
 
   "Keymap alist for `consult-gh-run-view-mode'.")
 
@@ -1525,7 +1526,7 @@ This is used to change grouping dynamically.")
   "Keymap alist for `consult-gh-topics-edit-mode'.")
 
 (defvar consult-gh--last-command nil
-"Last command for `consult-gh--embark-restart'.")
+  "Last command for `consult-gh--embark-restart'.")
 
 #+end_src
 
@@ -17471,19 +17472,18 @@ browser."
   "Submit topic or invoke `org-ctrl-c-ctrl-c' in `org-mode'."
   (interactive)
   (cond
-
    ((and (derived-mode-p 'org-mode)
-           (or consult-gh-topics-edit-mode
-               consult-gh-repo-view-mode
-               consult-gh-issue-view-mode)
-           (org-in-src-block-p))
-      (org-ctrl-c-ctrl-c))
+         (or consult-gh-topics-edit-mode
+             consult-gh-repo-view-mode
+             consult-gh-issue-view-mode)
+         (org-in-src-block-p))
+    (org-ctrl-c-ctrl-c))
    ((or consult-gh-pr-view-mode consult-gh-issue-view-mode)
-        (consult-gh-topics-comment-create))
+    (consult-gh-topics-comment-create))
    (consult-gh-workflow-view-mode
     (let* ((in-block (equal (and (derived-mode-p 'org-mode)
-                          (org-in-src-block-p)
-                          (car (org-babel-get-src-block-info)))
+                                 (org-in-src-block-p)
+                                 (car (org-babel-get-src-block-info)))
                             "yaml"))
            (props (get-text-property (point) :consult-gh))
            (yaml-url (and (plistp props) (plist-get props :yaml-url)))
@@ -17495,15 +17495,17 @@ browser."
         (consult-gh-run-view))
        (t
         (pcase (consult--read (list (cons "Run Workflow" :run)
-                                      (cons "View A Run Details" :view)
-                                      (cons "Cacnel" :cancel))
-                                :prompt "What would you like to do?"
-                                :lookup #'consult--lookup-cdr
-                                :sort nil)
+                                    (cons "View A Run Details" :view)
+                                    (cons "Cacnel" :cancel))
+                              :prompt "What would you like to do?"
+                              :lookup #'consult--lookup-cdr
+                              :sort nil)
           (':run (consult-gh-workflow-run))
           (':view (consult-gh-run-view)))))))
+   (consult-gh-run-view-mode
+    (consult-gh-run-rerun))
    (consult-gh-topics-edit-mode
-        (consult-gh-topics-submit))))
+    (consult-gh-topics-submit))))
 
 #+end_src
 
