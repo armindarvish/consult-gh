@@ -12817,7 +12817,7 @@ set `consult-gh-run-action' to `consult-gh--run-browse-url-action'."
 #+end_src
 
 ****** view run
-******** read json
+******* read json
 #+begin_src emacs-lisp
 (defun consult-gh--run-read-json (repo run-id)
   "Get details of RUN-ID in REPO.
@@ -12832,7 +12832,7 @@ and returns the output as a hash-table."
     (json-read-from-string (consult-gh--command-to-string "api" (format "/repos/%s/actions/runs/%s" repo run-id)))))
 #+end_src
 
-******** get jobs
+******* get jobs
 #+begin_src emacs-lisp
 (defun consult-gh--run-get-jobs (repo run-id)
   "Get list of jobs for RUN-ID in REPO.
@@ -12842,13 +12842,13 @@ gh run view RUN-ID,
 and returns the output as a hash-table."
   (consult-gh--json-to-hashtable (consult-gh--command-to-string "run" "view" run-id "--repo" repo "--json" "jobs") :jobs))
 #+end_src
-******** get log
+******* get log
 #+begin_src emacs-lisp
 (defun consult-gh--run-get-log (repo run-id)
   "Get log for RUN-ID in REPO."
  (consult-gh--command-to-string "run" "view" run-id "--repo" repo "--log" "--verbose"))
 #+end_src
-******** format header
+******* format header
 
 #+begin_src emacs-lisp
 (defun consult-gh--run-format-header (repo run-id &optional table topic)
@@ -12912,7 +12912,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
 
 #+end_src
 
-******** format steps of job
+******* format steps of job
 #+begin_src emacs-lisp
 (defun consult-gh--run-format-job-steps (job)
   "Format steps of JOB."
@@ -12937,7 +12937,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
       (when (listp steps-list) (string-join steps-list "\n")))))
 #+end_src
 
-******** format jobs
+******* format jobs
 #+begin_src emacs-lisp
 (defun consult-gh--run-format-jobs (repo run-id &optional topic)
   "Format jobs for RUN-ID in REPO.
@@ -12958,17 +12958,19 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                                 (conclusion (gethash :conclusion job))
                                 (state  (consult-gh--workflow-format-status status conclusion))
                                 (steps (consult-gh--run-format-job-steps job)))
-                                (concat "## "
+                                (propertize (concat "## "
                                         state
                                         "\t"
                                         (format "%s (%s)" name id)
                                         "\n"
-                                        steps)))))
+                                        steps)
+                                            :consult-gh (list :run-id run-id
+                                            :job-id id))))))
   (when (and (listp jobs) (stringp topic))
       (add-text-properties 0 1 (list :jobs jobs) topic))
   (when (listp content) (concat "# Jobs\n" (string-join content "\n") "\n"))))
 #+end_src
-******** format log
+******* format log
 
 #+begin_src emacs-lisp
 (defun consult-gh--run-format-log (repo run-id &optional topic)
@@ -12991,7 +12993,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             "```\n"))))
 #+end_src
 
-******** run-view
+******* run-view
 ********* view backend
 #+begin_src emacs-lisp
 (defun consult-gh--run-view (repo run-id &optional buffer)
@@ -13092,7 +13094,61 @@ set `consult-gh-run-action' to `consult-gh--run-view-action'."
         (buffer-name (current-buffer))))))
 
 #+end_src
+****** re-run
+******* run-rerun
+********* rerun backend
+#+begin_src emacs-lisp
+(defun consult-gh--run-rerun (repo run-id &optional job-id)
+  "Rerun run with RUN-ID of REPO.
 
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and RUN-ID,
+an action run id of that repository, and reruns it using
+“gh run rerun”.
+
+If JOB-ID is non-nil only reruns the specific job with:
+“gh run rerun --job JOB-ID”
+
+Description of Arguments:
+
+  REPO    a string; the full name of the repository
+  RUN-ID  a string; run id number
+  JOB-ID  a string: job id
+
+To use this as the default action for runs,
+see `consult-gh--run-view-action'."
+  (let* ((args (list "run" "rerun" (format "%s" run-id) "--repo" repo))
+         (args (if (and job-id
+                        (stringp job-id)
+                        (not (string-empty-p job-id)))
+                   (append args (list "--job" job-id))
+                 args)))
+    (print args)
+    (consult-gh--make-process (format "consult-gh-run-rerun-%s-%s" repo run-id)
+                               :when-done (lambda (_ str) (message str))
+                               :cmd-args args)))
+
+#+end_src
+********* rerun action
+#+begin_src emacs-lisp
+(defun consult-gh--run-rerun-action (cand)
+  "Rerun a run candidate, CAND.
+
+This is a wrapper function around `consult-gh--run-rerun'.
+It parses CAND to extract relevant values
+\(e.g. repository's name and run id\)
+and passes them to `consult-gh--run-rerun'.
+
+To use this as the default action for workflows,
+set `consult-gh-run-action' to `consult-gh--run-rerun-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (id (substring-no-properties (format "%s" (get-text-property 0 :id cand))))
+         (job-id (get-text-property 0 :job-id cand))
+         (job-id (if (and job-id (stringp job-id) (not (string-empty-p job-id)))
+                     (format "%s" job-id)
+                   job-id)))
+    (consult-gh--run-rerun repo id job-id)))
+#+end_src
 ** Minor Modes
 *** consult-gh-repo-view-mode
 #+begin_src emacs-lisp
@@ -17035,11 +17091,11 @@ Description of Arguments:
 
 This is an interactive wrapper function around `consult-gh--async-run-list'.
 With prefix ARG, first search for a repo using `consult-gh-search-repos',
-then list workflows of that selected repo with `consult-gh--async-run-list'.
+then list runs of that selected repo with `consult-gh--async-run-list'.
 
 It queries the user to enter the full name of a GitHub repository in the
 minibuffer \(expected format is “OWNER/REPO”\), then fetches the list of
-workflows of that repository and present them as a minibuffer completion
+action runs of that repository and present them as a minibuffer completion
 table for selection.  The list of candidates in the completion table are
 dynamically updated as the user changes the minibuffer input.
 
@@ -17053,7 +17109,7 @@ by typing `--` followed by command line arguments.
 For example the user can enter the following in the minibuffer:
 armindarvish/consult-gh -- -L 100
 and the async process will run
-“gh workflow list --repo armindarvish/consult-gh -L 100”, which sets the limit
+“gh run list --repo armindarvish/consult-gh -L 100”, which sets the limit
 for the maximum number of results to 100.
 
 User selection is tracked in `consult-gh--known-repos-list' for quick
@@ -17106,8 +17162,53 @@ URL `https://github.com/minad/consult'"
                           (plist-get pl :run-id))
                      (and workflow-id
                      (get-text-property 0 :id (consult-gh-run-list repo t nil nil workflow-id)))))
-         (cand (propertize (format "%s" run-id) :repo repo :id run-id)))
-         (funcall consult-gh-run-action cand)))
+         (cand (when (and repo run-id)
+                 (propertize (format "%s" run-id) :repo repo :id run-id))))
+    (when cand
+        (funcall consult-gh-run-action cand))))
+
+
+#+end_src
+
+**** consult-gh-run-rerun
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-run-rerun (&optional run job-id)
+  "Rerun RUN.
+
+RUN is a string with properties that identifies a run.  For an
+example, see the buffer-local variable `consult-gh--topic' in the
+buffer generated by `consult-gh--run-view'.  RUN defaults to
+`consult-gh--topic', and if that is nil or not from a run, then the
+user is asked to chose a run interactively.
+
+If JOB-ID is non-nil, rerun the specific job with JOB-ID."
+  (interactive)
+  (let* ((repo (or (and (stringp run)
+                        (equal (get-text-property 0 :type run) "run")
+                        (get-text-property 0 :repo run))
+                    (and (stringp consult-gh--topic)
+                         (get-text-property 0 :repo consult-gh--topic))
+                   (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+         (pl (get-text-property (point) :consult-gh))
+         (run (or run
+                  (and (stringp consult-gh--topic)
+                       (equal (get-text-property 0 :type consult-gh--topic) "run")
+                       consult-gh--topic)
+                  (and (stringp consult-gh--topic)
+                       (equal (get-text-property 0 :type consult-gh--topic) "workflow")
+                       "workflow")
+                  (consult-gh-run-list repo t)))
+         (run-id (or (and (stringp run)
+                          (get-text-property 0 :id run))
+                     (and (plistp pl)
+                          (plist-get pl :run-id))))
+         (job-id (and (plistp pl)
+                      (plist-get pl :job-id)))
+         (cand (when (and repo run-id)
+                 (propertize (format "%s/%s" repo run-id) :repo repo :id run-id :job-id job-id))))
+    (when cand
+         (funcall #'consult-gh--run-rerun-action cand))))
 
 
 #+end_src
