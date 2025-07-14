@@ -32,6 +32,7 @@
   - [[#searching-codes][Searching Codes]]
   - [[#creating-a-new-repository,-issue-or-pull-request-on-github][Creating a New Repository, Issue or Pull Request on GitHub]]
   - [[#managing-github-actions][Managing GitHub Actions]]
+  - [[#default-keybindings][Default Keybindings]]
   - [[#embark-integration][Embark Integration]]
   - [[#magitforge-integration][Magit/Forge Integration]]
   - [[#pr-review-integration][PR-Review Integration]]
@@ -415,6 +416,91 @@ Here is a screenshot showing how you can list and see details of workflow runs:
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-workflow.gif]]
 
+
+** Default Keybindings
+consult-gh defines some default key bindings in view modes (e.g., =consult-gh-issue-view-mode=, =consult-gh-pr-view-mode=) but they are not enabled by default. To enable the default keybinding, you need to call the interactive command =M-x consult-gh-enable-default-keybindings= or add the following to your config:
+
+#+begin_src emacs-lisp
+(consult-gh-enable-default-keybindings)
+#+end_src
+
+Keep in mind that you cna always disable the default keybinding by calling =M-x consult-gh-disable-default-keybindings= when it is enabled.
+
+To change the default keybindings, you can customize the relevant variables. Here is a list of these variables and their default definition, each an alist with =(key . function)= elements:
+#+begin_src emacs-lisp
+(setq consult-gh--repo-view-mode-keybinding-alist
+      '(("C-c C-<return>" . consult-gh-topics-open-in-browser)))
+
+(setq consult-gh--issue-view-mode-keybinding-alist
+      '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
+        ("C-c C-e" . consult-gh-issue-edit)
+        ("C-c C-<return>" . consult-gh-topics-open-in-browser)))
+
+(setq consult-gh--pr-view-mode-keybinding-alist
+      '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
+        ("C-c C-e" . consult-gh-pr-edit)
+        ("C-c C-m" . consult-gh-pr-merge)
+        ("C-c C-r" . consult-gh-pr-review)
+        ("C-c C-<return>" . consult-gh-topics-open-in-browser)))
+
+(setq consult-gh--workflow-view-mode-keybinding-alist
+      '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
+        ("C-c C-r" . consult-gh-workflow-change-yaml-ref)
+        ("C-c C-e" . consult-gh-workflow-enable)
+        ("C-c C-d" . consult-gh-workflow-disable)
+        ("C-c C-<return>" . consult-gh-topics-open-in-browser)))
+
+(setq consult-gh--run-view-mode-keybinding-alist
+      '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
+        ("C-c C-<return>" . consult-gh-topics-open-in-browser)))
+
+(setq consult-gh--release-view-mode-keybinding-alist
+      '(("C-c C-e" . consult-gh-release-edit)
+        ("C-c C-<return>" . consult-gh-topics-open-in-browser)))
+
+
+(setq consult-gh--misc-view-mode-keybinding-alist
+      '(("C-c C-k" . consult-gh-topics-cancel)
+        ("C-c C-<return>" . consult-gh-topics-open-in-browser)))
+
+(setq consult-gh--topics-edit-mode-keybinding-alist
+      '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
+        ("C-c C-k" . consult-gh-topics-cancel)))
+
+#+end_src
+
+The default keybindings are:
+| mode                          | key       | command                             | description                                                                     |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-repo-view-mode     | C-c C-RET | consult-gh-topics-open-in-browser   | open repo in browser                                                            |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-issue-view-mode    | C-c C-RET | consult-gh-topics-open-in-browser   | open issue in browser                                                           |
+|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | make comment on issue                                                           |
+|                               | C-c C-e   | consult-gh-issue-edit               | edit issue                                                                      |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-pr-view-mode       | C-c C-RET | consult-gh-topics-open-in-browser   | open pull request in browser                                                    |
+|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | make comment on pull request                                                    |
+|                               | C-c C-e   | consult-gh-issue-edit               | edit pull request                                                               |
+|                               | C-c C-r   | consult-gh-pr-review                | make a review on pull request                                                   |
+|                               | C-c C-m   | consult-gh-pr-merge                 | merge the pull request                                                          |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-workflow-view-mode | C-c C-RET | consult-gh-topics-open-in-browser   | open workflow in browser                                                        |
+|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | either open a run view or run the workflow depending on positions of the cursor |
+|                               | C-c C-e   | consult-gh-workflow-enable          | enable workflow                                                                 |
+|                               | C-c C-d   | consult-gh-workflow-disable         | disbale workflow                                                                |
+|                               | C-c C-r   | consult-gh-workflow-change-yaml-ref | change the YAML content ref when inside the YAML block                          |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-run-view-mode      | C-c C-RET | consult-gh-topics-open-in-browser   | open run in browser                                                             |
+|                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | rerun the whole run or the specific job depending on the position of the cursor |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-release-view-mode  | C-c C-RET | consult-gh-topics-open-in-browser   | open release in browser                                                         |
+|                               | C-c C-e   | consult-gh-release-edit             | edit release                                                                    |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-topics-edit-mode   | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | submit the edits on the topic                                                   |
+|                               | C-c C-k   | consult-gh-topics-cancel            | cancel the edits and close/kill the buffer and/or window                        |
+|-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
+| consult-gh-misc-view-mode     | C-c C-RET | consult-gh-topics-open-in-browser   | open the gh topic in the buffer in browser                                      |
+|                               | C-c C-k   | consult-gh-topics-cancel            | close/kill the buffer and/or window                                             |
 
 ** Embark Integration
 =consult-gh= also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu.
