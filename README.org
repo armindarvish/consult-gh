@@ -96,7 +96,7 @@ _Create New Repos, Issues, or Pull Requests_:
 
 - =consult-gh-repo-create=: Create repos from scratch (or templates), or push existing git repositories to GitHub.
 - =consult-gh-issue-create=: Create new issues from within emacs on any repository.
-- =consult-gh-pr-create=: Create pull reuests from within emacs for any repository.
+- =consult-gh-pr-create=: Create pull requests from within Emacs for any repository.
 
 
 _Notifications and Dashboard_:
@@ -119,7 +119,7 @@ While there are other Emacs packages to interact with GitHub API, we use "gh" co
 *** [[https://github.com/minad/consult][Consult]]
 To install consult follow the official instructions here: [[https://github.com/minad/consult#configuration][Configuration of Consult.]]
 
-Also, make sure you review Consult's README since it recommends some other packages and useful configurations for different settings. Some of those may improve your experience of =consult-gh= as well. In particular the section about [[https://github.com/minad/consult#asynchronous-search][asynchronous search]] is important for learning how to use inputs to search for result and narrow down in minibuffer.
+Also, make sure you review [[https://github.com/minad/consult][Consult's README]] since it recommends some other packages and useful configurations for different settings. Some of those may improve your experience of =consult-gh= as well. In particular the section about [[https://github.com/minad/consult#asynchronous-search][asynchronous search]] is important for learning how to use inputs to search for result and narrow down in minibuffer.
 
 *** [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Parsing-JSON.html][json library]] in Emacs
 As of Emacs 27, json is available as built-in *if Emacs is compiled with json.* You can run the command =json-available-p= to see if it is available in your version of Emacs. If json is not available you may still be able to use =consult-gh= with limited functionality (for example you cannot view file contents).
@@ -407,7 +407,7 @@ Here is a screenshot showing making anew repository from scratch:
 Similarly you can use =consult-gh-issue-create= or =consult-gh-pr-create= to create new issues or pull requests.
 
 ** Managing GitHub Actions
-Since Version 2.6, you can also manage GitHub actions from inside Emacs. You can call =consult-gh-workflow-list= to see a list of workflows, or call =consult-gh-run-list= to see a list of all actions runs. You can enable/disable actions by =consult-gh-workflow-enable= and =consult-gh-workflow-disable=. You can also manully run workflows by calling =consult-gh-workflow-run=.
+Since Version 2.6, you can also manage GitHub actions from inside Emacs. You can call =consult-gh-workflow-list= to see a list of workflows, or call =consult-gh-run-list= to see a list of all actions runs. You can enable/disable actions by =consult-gh-workflow-enable= and =consult-gh-workflow-disable=. You can also manually run workflows by calling =consult-gh-workflow-run=.
 
 Here is a screenshot showing how you can list and see details of workflow runs:
 
@@ -424,7 +424,7 @@ consult-gh defines some default key bindings in view modes (e.g., =consult-gh-is
 (consult-gh-enable-default-keybindings)
 #+end_src
 
-Keep in mind that you cna always disable the default keybinding by calling =M-x consult-gh-disable-default-keybindings= when it is enabled.
+Keep in mind that you can always disable the default keybinding by calling =M-x consult-gh-disable-default-keybindings= when it is enabled.
 
 To change the default keybindings, you can customize the relevant variables. Here is a list of these variables and their default definition, each an alist with =(key . function)= elements:
 #+begin_src emacs-lisp
@@ -487,7 +487,7 @@ The default keybindings are:
 | consult-gh-workflow-view-mode | C-c C-RET | consult-gh-topics-open-in-browser   | open workflow in browser                                                        |
 |                               | C-c C-c   | consult-gh-ctrl-c-ctrl-c            | either open a run view or run the workflow depending on positions of the cursor |
 |                               | C-c C-e   | consult-gh-workflow-enable          | enable workflow                                                                 |
-|                               | C-c C-d   | consult-gh-workflow-disable         | disbale workflow                                                                |
+|                               | C-c C-d   | consult-gh-workflow-disable         | disable workflow                                                                |
 |                               | C-c C-r   | consult-gh-workflow-change-yaml-ref | change the YAML content ref when inside the YAML block                          |
 |-------------------------------+-----------+-------------------------------------+---------------------------------------------------------------------------------|
 | consult-gh-run-view-mode      | C-c C-RET | consult-gh-topics-open-in-browser   | open run in browser                                                             |
@@ -574,7 +574,7 @@ In addition, with =consult-gh-forge=, you get one more customization variable as
 This variable sets the maximum time in *seconds* that =consult-gh-forge= tries to load an issue in forge buffer, and if for some reason, it cannot do so, it reverts back to using =consult-gh-issue-=-view= function that opens the issue in a normal Emacs buffer. This provides a fail safe mechanism in case there are issues with magit/forge. By default, it is set to 10 seconds, which should be sufficient for most issues to load but this depends on your network performance and the size of the content that needs to be downloaded. Some issues especially the ones with many comments and posts can take longer to load depending on your network performance. If you experience this often, you may want to consider adjusting this variable to even longer times. On the other hand, if there is an issue with magit/forge, consult-gh would not try to open the issue in a normal buffer before reaching this timeout!
 
 **** =consult-gh-forge-confirm-account=
-Whether consult-gh-forge should ask for confirmation when chosing the account for authorization.  If this is set to =nil=, consult-gh uses the =gh= setting to get the account name and token for authorization. Otherwise, it compares the setting from =gh= with that of forge settings (e.g. the credentials stored in authinfo), and when they are different, queries the user to pick which account should be used.
+Whether consult-gh-forge should ask for confirmation when choosing the account for authorization.  If this is set to =nil=, consult-gh uses the =gh= setting to get the account name and token for authorization. Otherwise, it compares the setting from =gh= with that of forge settings (e.g. the credentials stored in authinfo), and when they are different, queries the user to pick which account should be used.
 
 ** PR-Review Integration
 
@@ -595,7 +595,7 @@ Here is a screenshot:
 In addition, with =consult-gh-with-pr-view=, you get one more customization variable as well:
 
 **** =consult-gh-with-pr-review-confirm-account=
-Whether consult-gh-with-pr-review should ask for confirmation when chosing the account for authorization.  If this is set to =nil=, consult-gh uses the =gh= setting to get the account name and token for authorization. Otherwise, it compares the setting from =gh= with that of pr-review settings (e.g. the credentials stored in authinfo), and when they are different, queries the user to pick which account should be used.
+Whether consult-gh-with-pr-review should ask for confirmation when choosing the account for authorization.  If this is set to =nil=, consult-gh uses the =gh= setting to get the account name and token for authorization. Otherwise, it compares the setting from =gh= with that of pr-review settings (e.g. the credentials stored in authinfo), and when they are different, queries the user to pick which account should be used.
 
 ** Transient Menu
 consult-gh provides a transient menu as well. It can be accessed by running =M-x consult-gh-transient= after loading consult-gh-transient module e.g. =(require 'consult-gh-transient)=. Here is a screenshot:
