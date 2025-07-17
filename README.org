@@ -96,7 +96,7 @@ _Create New Repos, Issues, or Pull Requests_:
 
 - =consult-gh-repo-create=: Create repos from scratch (or templates), or push existing git repositories to GitHub.
 - =consult-gh-issue-create=: Create new issues from within emacs on any repository.
-- =consult-gh-pr-create=: Create pull reuests from within emacs for any repository.
+- =consult-gh-pr-create=: Create pull requests from within Emacs for any repository.
 
 
 _Notifications and Dashboard_:
