@@ -6522,122 +6522,122 @@ TOPIC defaults to `consult-gh--topic'."
 
 ******* restore defaults
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-restore-default (&optional topic)
-  "Restore default values when editing a repo TOPIC."
+(defun consult-gh-repo--edit-restore-default (&optional repo)
+  "Restore default values when editing a REPO."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo topic))
-             (canadmin (consult-gh--user-canadmin repo))
-             (default-branch (get-text-property 0 :original-default-branch topic))
-             (description (get-text-property 0 :original-description topic))
-             (homepage-url (get-text-property 0 :original-homepage-url topic))
-             (repo-topics (get-text-property 0 :original-repo-topics topic))
-             (template (get-text-property 0 :original-isTemplate topic))
-             (issues (get-text-property 0 :original-issuesEnabled topic))
-             (projects (get-text-property 0 :original-projectsEnabled topic))
-             (discussions (get-text-property 0 :original-discussionsEnabled topic))
-             (wiki (get-text-property 0 :original-wikiEnabled topic))
-             (merge-commit (get-text-property 0 :original-mergeCommitAllowed topic))
-             (squash-merge (get-text-property 0 :original-squashMergeAllowed topic))
-             (rebase-merge (get-text-property 0 :original-rebaseMergeAllowed topic))
-             (delete-on-merge (get-text-property 0 :original-deleteOnMerge topic))
+      (let* ((repo (or repo consult-gh--topic))
+             (repo-name (substring-no-properties (get-text-property 0 :repo repo)))
+             (canadmin (consult-gh--user-canadmin repo-name))
+             (default-branch (get-text-property 0 :original-default-branch repo))
+             (description (get-text-property 0 :original-description repo))
+             (homepage-url (get-text-property 0 :original-homepage-url repo))
+             (repo-topics (get-text-property 0 :original-repo-topics repo))
+             (template (get-text-property 0 :original-isTemplate repo))
+             (issues (get-text-property 0 :original-issuesEnabled repo))
+             (projects (get-text-property 0 :original-projectsEnabled repo))
+             (discussions (get-text-property 0 :original-discussionsEnabled repo))
+             (wiki (get-text-property 0 :original-wikiEnabled repo))
+             (merge-commit (get-text-property 0 :original-mergeCommitAllowed repo))
+             (squash-merge (get-text-property 0 :original-squashMergeAllowed repo))
+             (rebase-merge (get-text-property 0 :original-rebaseMergeAllowed repo))
+             (delete-on-merge (get-text-property 0 :original-deleteOnMerge repo))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
 
         (when canadmin
-          (add-text-properties 0 1 (list :default-branch default-branch :description description :homepage-url homepage-url :repo-topics repo-topics :isTemplate template :issuesEnabled issues :projectsEnabled projects :discussionsEnabled discussions :wikiEnabled wiki :mergeCommitAllowed merge-commit :squashMergeAllowed squash-merge :rebaseMergeAllowed rebase-merge :deleteOnMerge delete-on-merge) topic)
+          (add-text-properties 0 1 (list :default-branch default-branch :description description :homepage-url homepage-url :repo-topics repo-topics :isTemplate template :issuesEnabled issues :projectsEnabled projects :discussionsEnabled discussions :wikiEnabled wiki :mergeCommitAllowed merge-commit :squashMergeAllowed squash-merge :rebaseMergeAllowed rebase-merge :deleteOnMerge delete-on-merge) repo)
 
           (save-excursion
             ;; restore default branch
             (goto-char (point-min))
             (when (re-search-forward "^.*default_branch: \\(?1:.*\\)?" nil t)
-              (replace-match (get-text-property 0 :default-branch topic) nil nil nil 1))
+              (replace-match (get-text-property 0 :default-branch repo) nil nil nil 1))
 
             ;; restore description
             (goto-char (point-min))
             (when (re-search-forward "^.*description: \\(?1:.*\\)?" nil t)
-              (replace-match (get-text-property 0 :description topic) nil nil nil 1))
+              (replace-match (get-text-property 0 :description repo) nil nil nil 1))
 
             ;; restore homepage
             (goto-char (point-min))
             (when (re-search-forward "^.*homepage: \\(?1:.*\\)?" nil t)
-              (replace-match (get-text-property 0 :homepage-url topic) nil nil nil 1))
+              (replace-match (get-text-property 0 :homepage-url repo) nil nil nil 1))
 
             ;; restore topics
             (goto-char (car header))
             (when (re-search-forward "^.*topics: \\(?1:.*\\)?" (cdr header) t)
-              (replace-match (mapconcat #'identity (get-text-property 0 :repo-topics topic) ", ") nil nil nil 1))
+              (replace-match (mapconcat #'identity (get-text-property 0 :repo-topics repo) ", ") nil nil nil 1))
 
             ;; restore template
             (goto-char (point-min))
             (when (re-search-forward "^.*template: \\(?1:.*\\)?" nil t)
-              (replace-match (if (get-text-property 0 :isTemplate topic) "true" "false") nil nil nil 1))
+              (replace-match (if (get-text-property 0 :isTemplate repo) "true" "false") nil nil nil 1))
 
             ;; restore issues
             (goto-char (point-min))
             (when (re-search-forward "^.*issues: \\(?1:.*\\)?" nil t)
-              (replace-match (if (get-text-property 0 :issuesEnabled topic) "enabled" "disabled") nil nil nil 1))
+              (replace-match (if (get-text-property 0 :issuesEnabled repo) "enabled" "disabled") nil nil nil 1))
 
             ;; restore projects
             (goto-char (point-min))
             (when (re-search-forward "^.*projects: \\(?1:.*\\)?" nil t)
-              (replace-match (if (get-text-property 0 :projectsEnabled topic) "enabled" "disabled") nil nil nil 1))
+              (replace-match (if (get-text-property 0 :projectsEnabled repo) "enabled" "disabled") nil nil nil 1))
 
             ;; restore discussions
             (goto-char (point-min))
             (when (re-search-forward "^.*discussions: \\(?1:.*\\)?" nil t)
-              (replace-match (if (get-text-property 0 :discussionsEnabled topic) "enabled" "disabled") nil nil nil 1))
+              (replace-match (if (get-text-property 0 :discussionsEnabled repo) "enabled" "disabled") nil nil nil 1))
 
             ;; restore wiki
             (goto-char (point-min))
             (when (re-search-forward "^.*wiki: \\(?1:.*\\)?" nil t)
-              (replace-match (if (get-text-property 0 :wikiEnabled topic) "enabled" "disabled") nil nil nil 1))
+              (replace-match (if (get-text-property 0 :wikiEnabled repo) "enabled" "disabled") nil nil nil 1))
 
             ;; restore merge commit
             (goto-char (point-min))
             (when (re-search-forward "^.*merge_commit: \\(?1:.*\\)?" nil t)
-              (replace-match (if (get-text-property 0 :mergeCommitAllowed topic) "allowed" "not allowed") nil nil nil 1))
+              (replace-match (if (get-text-property 0 :mergeCommitAllowed repo) "allowed" "not allowed") nil nil nil 1))
 
             ;; restore squash merge
             (goto-char (point-min))
             (when (re-search-forward "^.*squash_merge: \\(?1:.*\\)?" nil t)
-              (replace-match (if (get-text-property 0 :squashMergeAllowed topic) "allowed" "not allowed") nil nil nil 1))
+              (replace-match (if (get-text-property 0 :squashMergeAllowed repo) "allowed" "not allowed") nil nil nil 1))
 
             ;; restore rebase merge
             (goto-char (point-min))
             (when (re-search-forward "^.*rebase_merge: \\(?1:.*\\)?" nil t)
-              (replace-match (if (get-text-property 0 :rebaseMergeAllowed topic) "allowed" "not allowed") nil nil nil 1))
+              (replace-match (if (get-text-property 0 :rebaseMergeAllowed repo) "allowed" "not allowed") nil nil nil 1))
 
             ;; restore delete on merge
             (goto-char (point-min))
             (when (re-search-forward "^.*delete_on_merge: \\(?1:.*\\)?" nil t)
-              (replace-match (if (get-text-property 0 :deleteOnMerge topic) "yes" "no") nil nil nil 1)))))
+              (replace-match (if (get-text-property 0 :deleteOnMerge repo) "yes" "no") nil nil nil 1)))))
     (error "Not in an issue editing buffer!")))
 
 #+end_src
 
 ******* edit readme
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-readme (&optional topic)
-  "Edit readme of repo TOPIC."
+(defun consult-gh-repo--edit-readme (&optional repo)
+  "Edit readme of REPO."
   (cond
    ((and consult-gh-topics-edit-mode
          (equal (get-text-property 0 :type consult-gh--topic) "repo"))
     (with-current-buffer (get-text-property 0 :view-buffer consult-gh--topic) (consult-gh-repo--edit-readme)))
    (consult-gh-repo-view-mode
-    (let* ((topic consult-gh--topic)
-           (repo (substring-no-properties (get-text-property 0 :repo topic)))
-           (path (get-text-property 0 :readme-path topic))
-           (branch (get-text-property 0 :default-branch topic))
-           (size (get-text-property 0 :readme-size topic))
-           (url (get-text-property 0 :readme-url topic))
-           (newtopic (format "%s/%s" repo path)))
-    (add-text-properties 0 1 (list :repo (substring-no-properties repo) :type "file" :path path :url url :size size :branch branch) newtopic)
+    (let* ((repo (or repo consult-gh--topic))
+           (repo-name (substring-no-properties (get-text-property 0 :repo repo)))
+           (path (get-text-property 0 :readme-path repo))
+           (branch (get-text-property 0 :default-branch repo))
+           (size (get-text-property 0 :readme-size repo))
+           (url (get-text-property 0 :readme-url repo))
+           (newtopic (format "%s/%s" repo-name path)))
+    (add-text-properties 0 1 (list :repo repo-name :type "file" :path path :url url :size size :branch branch) newtopic)
     (with-current-buffer (funcall #'consult-gh--files-view-action newtopic)
     (consult-gh-edit-file))))
-   (t (let* ((topic (or topic consult-gh--topic))
-             (repo (substring-no-properties (get-text-property 0 :repo topic)))
-             (cand (propertize repo :repo repo)))
-        (when repo
+   (t (let* ((repo (or repo consult-gh--topic))
+             (repo-name (substring-no-properties (get-text-property 0 :repo repo)))
+             (cand (propertize repo-name :repo repo-name)))
+        (when repo-name
           (with-current-buffer (funcall #'consult-gh--repo-view-action cand)
             (consult-gh-repo--edit-readme)))))))
 
@@ -6918,10 +6918,12 @@ OLD is a boolean, whether delete on merge is currently enabled."
 
 ******* submit edit repo
 #+begin_src emacs-lisp
-(defun  consult-gh-topics--edit-repo-submit (topic &optional default-branch description homepage-url repo-topics template issues discussions wiki projects merge-commit squash-merge rebase-merge  delete-on-merge)
-  "Edit repo TOPIC with new metadata.
+(defun  consult-gh-topics--edit-repo-submit (repo &optional default-branch description homepage-url repo-topics template issues discussions wiki projects merge-commit squash-merge rebase-merge  delete-on-merge)
+  "Edit REPO with new metadata.
 
 Description of Arguments:
+  REPO                  a propertized string; properties are repo
+                        details. Defaults to `consult-gh--topic'.
   DEFAULT-BRANCH        a string; name of the default branch
   DESCRIPTION           a string; description of repo
   HOMEPAGE-URL          a string; homepage url of repo
@@ -6936,45 +6938,44 @@ Description of Arguments:
   REBASE-MERGE          a boolean; whether rebase merge is allowed
   DELETE-ON-MERGE       a boolean; whether to delete head branch on merge"
 
-  (pcase-let* ((topic (or topic consult-gh--topic))
-               (repo (or (get-text-property 0 :repo topic) (get-text-property 0 :repo (consult-gh-search-repos nil t))))
-               (canadmin (consult-gh--user-canadmin repo))
-               (original-default-branch (get-text-property 0 :original-default-branch topic))
-             (original-description (get-text-property 0 :original-description topic))
-             (original-homepage-url (get-text-property 0 :original-homepage-url topic))
-             (original-repo-topics (get-text-property 0 :original-repo-topics topic))
-             (original-template (get-text-property 0 :original-isTemplate topic))
-             (original-issues (get-text-property 0 :original-issuesEnabled topic))
-             (original-projects (get-text-property 0 :original-projectsEnabled topic))
-             (original-discussions (get-text-property 0 :original-discussionsEnabled topic))
-             (original-wiki (get-text-property 0 :original-wikiEnabled topic))
-             (original-merge-commit (get-text-property 0 :original-mergeCommitAllowed topic))
-             (original-squash-merge (get-text-property 0 :original-squashMergeAllowed topic))
-             (original-rebase-merge (get-text-property 0 :original-rebaseMergeAllowed topic))
-             (original-delete-on-merge (get-text-property 0 :original-deleteOnMerge topic))
-              (change-default-branch (and (not (equal default-branch original-default-branch)) (stringp default-branch) (not (string-empty-p default-branch))  default-branch))
-              (change-description (and (not (equal description original-description)) (stringp description) description))
-              (change-homepage (and (not (equal homepage-url original-homepage-url)) (stringp homepage-url) homepage-url))
-              (`(,add-topics ,remove-topics)                          (consult-gh--separate-add-and-remove repo-topics original-repo-topics))
-              (change-template (when (not (equal template original-template)) (if template "true" "false")))
-              (enable-issues (when (not (equal issues original-issues))
-                                      (if issues
-                                          "true"
-                                        "false")))
-              (enable-projects (when (not (equal projects original-projects))
-                                      (if projects
-                                          "true"
-                                        "false")))
-              (enable-discussions (when (not (equal discussions original-discussions))
-                                      (if discussions
-                                          "true"
-                                        "false")))
-              (enable-wiki (when (not (equal wiki original-wiki))
-                                      (if wiki
-                                          "true"
-                                        "false")))
-
-
+  (pcase-let* ((repo (or repo consult-gh--topic))
+               (repo-name (or (get-text-property 0 :repo repo)
+                              (get-text-property 0 :repo (consult-gh-user-repos nil t))))
+               (canadmin (consult-gh--user-canadmin repo-name))
+               (original-default-branch (get-text-property 0 :original-default-branch repo))
+               (original-description (get-text-property 0 :original-description repo))
+               (original-homepage-url (get-text-property 0 :original-homepage-url repo))
+               (original-repo-topics (get-text-property 0 :original-repo-topics repo))
+               (original-template (get-text-property 0 :original-isTemplate repo))
+               (original-issues (get-text-property 0 :original-issuesEnabled repo))
+               (original-projects (get-text-property 0 :original-projectsEnabled repo))
+               (original-discussions (get-text-property 0 :original-discussionsEnabled repo))
+               (original-wiki (get-text-property 0 :original-wikiEnabled repo))
+               (original-merge-commit (get-text-property 0 :original-mergeCommitAllowed repo))
+               (original-squash-merge (get-text-property 0 :original-squashMergeAllowed repo))
+               (original-rebase-merge (get-text-property 0 :original-rebaseMergeAllowed repo))
+               (original-delete-on-merge (get-text-property 0 :original-deleteOnMerge repo))
+               (change-default-branch (and (not (equal default-branch original-default-branch)) (stringp default-branch) (not (string-empty-p default-branch))  default-branch))
+               (change-description (and (not (equal description original-description)) (stringp description) description))
+               (change-homepage (and (not (equal homepage-url original-homepage-url)) (stringp homepage-url) homepage-url))
+               (`(,add-topics ,remove-topics)                          (consult-gh--separate-add-and-remove repo-topics original-repo-topics))
+               (change-template (when (not (equal template original-template)) (if template "true" "false")))
+               (enable-issues (when (not (equal issues original-issues))
+                                (if issues
+                                    "true"
+                                  "false")))
+               (enable-projects (when (not (equal projects original-projects))
+                                  (if projects
+                                      "true"
+                                    "false")))
+               (enable-discussions (when (not (equal discussions original-discussions))
+                                     (if discussions
+                                         "true"
+                                       "false")))
+               (enable-wiki (when (not (equal wiki original-wiki))
+                              (if wiki
+                                  "true"
+                                "false")))
                (enable-merge-commit (when (not (equal merge-commit original-merge-commit))
                                       (if merge-commit
                                           "true"
@@ -6983,17 +6984,14 @@ Description of Arguments:
                                       (if squash-merge
                                           "true"
                                         "false")))
-
                (enable-rebase-merge (when (not (equal rebase-merge original-rebase-merge))
                                       (if rebase-merge
                                           "true"
                                         "false")))
-
-
                (delete-branch-on-merge (when (not (equal delete-on-merge original-delete-on-merge))
-                                      (if delete-on-merge
-                                          "true"
-                                        "false")))
+                                         (if delete-on-merge
+                                             "true"
+                                           "false")))
                (args (list)))
 
     (if canadmin
@@ -7001,52 +6999,45 @@ Description of Arguments:
          ((or change-default-branch change-description change-homepage add-topics remove-topics change-template enable-issues enable-projects enable-discussions enable-wiki enable-merge-commit enable-squash-merge enable-rebase-merge delete-branch-on-merge)
 
           (when (and add-topics (listp add-topics)) (setq add-topics (consult-gh--list-to-string add-topics)))
-
           (when (and remove-topics (listp remove-topics)) (setq remove-topics (consult-gh--list-to-string remove-topics)))
 
-
           (setq args (delq nil (append args
-                                   (and change-default-branch (list "--default-branch" (concat (substring-no-properties change-default-branch))))
-                                   (and change-description (list "--description" (concat (substring-no-properties change-description))))
+                                       (and change-default-branch (list "--default-branch" (concat (substring-no-properties change-default-branch))))
+                                       (and change-description (list "--description" (concat (substring-no-properties change-description))))
+                                       (and change-homepage (list "--homepage" (concat (substring-no-properties change-homepage))))
+                                       (and add-topics (list "--add-topic" add-topics))
+                                       (and remove-topics (list "--remove-topic" remove-topics))
+                                       (and change-template (list (format "--template=%s" change-template)))
+                                       (and enable-issues (list (format "--enable-issues=%s" enable-issues)))
+                                       (and enable-projects (list (format "--enable-projects=%s" enable-projects)))
+                                       (and enable-discussions (list (format "--enable-discussions=%s" enable-discussions)))
+                                       (and enable-wiki (list (format "--enable-wiki=%s" enable-wiki)))
+                                       (and enable-merge-commit (list (format "--enable-merge-commit=%s" enable-merge-commit)))
+                                       (and enable-squash-merge (list (format "--enable-squash-merge=%s" enable-squash-merge)))
+                                       (and enable-rebase-merge (list (format "--enable-rebase-merge=%s" enable-rebase-merge)))
+                                       (and delete-branch-on-merge (list (format "--delete-branch-on-merge=%s" delete-branch-on-merge))))))
 
-                                   (and change-homepage (list "--homepage" (concat (substring-no-properties change-homepage))))
-
-
-                                   (and add-topics (list "--add-topic" add-topics))
-                                   (and remove-topics (list "--remove-topic" remove-topics))
-                                   (and change-template (list (format "--template=%s" change-template)))
-
-                                   (and enable-issues (list (format "--enable-issues=%s" enable-issues)))
-                                   (and enable-projects (list (format "--enable-projects=%s" enable-projects)))
-                                   (and enable-discussions (list (format "--enable-discussions=%s" enable-discussions)))
-                                   (and enable-wiki (list (format "--enable-wiki=%s" enable-wiki)))
-                                   (and enable-merge-commit (list (format "--enable-merge-commit=%s" enable-merge-commit)))
-                                   (and enable-squash-merge (list (format "--enable-squash-merge=%s" enable-squash-merge)))
-                                   (and enable-rebase-merge (list (format "--enable-rebase-merge=%s" enable-rebase-merge)))
-                                   (and delete-branch-on-merge (list (format "--delete-branch-on-merge=%s" delete-branch-on-merge))))))
-
-          (apply #'consult-gh--command-to-string "repo" "edit" (substring-no-properties repo) args))
+          (apply #'consult-gh--command-to-string "repo" "edit" (substring-no-properties repo-name) args))
          (t (message "Nothing to change!")
             nil))
       (progn (message "User does not have admin rights to change the repo.")
              nil))))
 
-
 #+end_src
 ******* prepare edit repo for submitting
 #+begin_src emacs-lisp
-(defun consult-gh-topics--edit-repo-presubmit (topic)
-  "Prepare edits on repo TOPIC to submit.
+(defun consult-gh-topics--edit-repo-presubmit (repo)
+  "Prepare edits on REPO to submit.
 
-TOPIC is a string with properties that identify a github repo.
+REPO is a string with properties that identify a github repo.
 For an example see the buffer-local variable `consult-gh--topic' in the
 buffer generated by `consult-gh--repo-view'."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo topic))
-             (canadmin (consult-gh--user-canadmin repo))
+      (let* ((repo (or repo consult-gh--topic))
+             (repo-name (get-text-property 0 :repo topic))
+             (canadmin (consult-gh--user-canadmin repo-name))
              (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-             (is-template (get-text-property 0 :isTemplate topic))
+             (is-template (get-text-property 0 :isTemplate repo))
              (nextsteps (if canadmin
                             (append (list (cons "Submit" :submit))
                                     (list (cons "Edit Readme" :readme))
@@ -15885,7 +15876,7 @@ For more details refer to the manual with “gh repo edit --help”."
    (if (not consult-gh-repo-view-mode)
        (let* ((repo (or (and repo (get-text-property 0 :repo repo))
                         (and consult-gh--topic (get-text-property 0 :repo consult-gh--topic))
-                        (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+                        (get-text-property 0 :repo (consult-gh-user-repos nil t))))
               (cand (propertize repo :repo repo))
               (canadmin (consult-gh--user-canadmin repo))
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account)))))
