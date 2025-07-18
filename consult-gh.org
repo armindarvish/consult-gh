@@ -3122,7 +3122,6 @@ major mode and format the contents."
                                   :when-done `(lambda (_ str)
                                                 (let* ((inhibit-message t)
                                                        (table (consult-gh--json-to-hashtable str :data))
-                                                       (_ (setq my:test table))
                                                        (table (and (hash-table-p table) (gethash :repository table)))
                                                        (image-url (and (hash-table-p table)
                                                                         (gethash :openGraphImageUrl table)))
@@ -3586,12 +3585,11 @@ This is a filter function suitable for passing to
   "Make async process to get list of popular topics for TOPIC.
 
 When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
-  (let* ((topic (or topic consult-gh--topic))
-         (repo (or repo (get-text-property 0 :repo topic))))
+  (let* ((topic (or topic consult-gh--topic)))
     (consult-gh--make-process "consult-gh-valid-assignees"
                               :when-done `(lambda (_ out)
                                  (add-text-properties 0 1 (list
-                                                           :valid-topics (consult-gh--completion-get-repo-topics-list out))
+                                                           :popular-topics (consult-gh--completion-get-repo-topics-list out))
                                                       ,topic))
 
                               :cmd-args (list "api" "repos/github/explore/contents/topics"))))
@@ -4234,7 +4232,7 @@ Completes “topics:.*” for adding topics."
   (let* ((topic consult-gh--topic)
          (candidates (completion-table-dynamic
                       `(lambda (_)
-                         (cl-remove-duplicates (delq nil (get-text-property 0 :valid-topics ,topic))))))
+                         (cl-remove-duplicates (delq nil (get-text-property 0 :popular-topics ,topic))))))
         (begin (save-excursion
                   (cond
                    ((looking-back ", " (- (point) 2))
@@ -4259,7 +4257,7 @@ Completes “topics:.*” for adding topics."
                                 (list item consult-gh-topic-icon ""))
                               list)))
          (exit-fun `(lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :valid-topics ,topic))))))
+                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :popular-topics ,topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -4704,15 +4702,15 @@ If PROMPT is non-nil, use it as the query prompt"
 "Suggest a name for new branch created in REPO by USER."
 (let* ((branches (consult-gh--files-branches-list-items repo))
        (name (format "%s-patch-" user))
-       (existing (all-completions name branches)) 
+       (existing (all-completions name branches))
        (last-branch (if existing (car (sort existing
                             (lambda (x y)
                               (let ((x-num (string-remove-prefix name x))
                                     (y-num (string-remove-prefix name y)))
-                                (if (< (string-to-number x-num) (string-to-number y-num)) 
-                                    nil 
+                                (if (< (string-to-number x-num) (string-to-number y-num))
+                                    nil
                                   t)))))))
-       (last-num (if (stringp last-branch) 
+       (last-num (if (stringp last-branch)
                      (string-to-number (string-remove-prefix name last-branch))
                    0)))
   (when (numberp last-num)
@@ -4728,7 +4726,7 @@ If PROMPT is non-nil, use it as the query prompt"
          (_  (unless canwrite
                (user-error "Current user, %s, does not have permissions to create a branch in %s" user repo)))
          (initial (or (consult-gh--branch-create-suggest-name repo user)
-                      (format "%s-patch-%s" 
+                      (format "%s-patch-%s"
                               user
                               (format-time-string "%Y-%m-%d-%H%M%S%Z" (current-time)))))
          (branch-name (or branch-name
@@ -4748,7 +4746,7 @@ If PROMPT is non-nil, use it as the query prompt"
                                           "-f" (format "ref=refs/heads/%s" branch-name)
                                           "-f" (format "sha=%s" sha))))
             (consult-gh--make-process "consult-gh-create-branch"
-                                      :when-done (lambda (_ str) 
+                                      :when-done (lambda (_event _str)
                                                    (message "branch %s %s" (propertize branch-name 'face 'consult-gh-branch) (propertize "created!" 'face 'consult-gh--success)))
                                       :cmd-args args)
             branch-name)))
@@ -4847,7 +4845,9 @@ buffer generated by `consult-gh--commit-create'."
 (defun consult-gh--commit-by-pullrequest (&optional repo path content commit-message branch committer-info author-info)
 "Submit commit by creating a pull request.
 
-This is used when BRANCH is protected and does not allow direct commits.  A new branch is created and a pull request is made to merge the new branch to BRANCH.
+This is used when BRANCH is protected and does not allow direct
+commits.  A new branch is created and a pull request is made to merge
+the new branch to BRANCH.
 
 Description of Arguments:
   REPO           a string; full name of repository
@@ -4877,8 +4877,7 @@ Description of Arguments:
          (sha (when (hash-table-p ref-commit)
                  (gethash :sha ref-commit)))
          (file-name (when (stringp path) (file-name-nondirectory path)))
-         (args (list "api" "-X" "POST"))
-         (window (selected-window)))
+         (args (list "api" "-X" "POST")))
     (when (and repo new-branch sha)
       (setq args (append args (list (format "/repos/%s/git/refs" repo)
                                     "-f" (format "ref=refs/heads/%s" new-branch)
@@ -4898,7 +4897,7 @@ Description of Arguments:
 (defun consult-gh--commit-by-fork (&optional repo path content commit-message branch committer-info author-info)
   "Submit commit by forking REPO and creating a pull request.
 
-This is used when user does not have write access in REPO. The REPO is
+This is used when user does not have write access in REPO.  The REPO is
 first forked, then the changes are commited in the fork and pull
 request is made to merge the new branch in the fork back to BRANCH in
 REPO.
@@ -5002,10 +5001,10 @@ Description of Arguments:
              (isForked (equal (consult-gh--json-to-hashtable info :isFork) 't))
              (isPrivate (equal (consult-gh--json-to-hashtable info :isPrivate) 't)))
         (when (and (not isForked) (not isPrivate))
-          (and (y-or-n-p (format "User %s does not have write acccess in %s. Do you want to fork the repo and make a puul request?" user repo))
+          (and (y-or-n-p (format "User %s does not have write acccess in %s.  Do you want to fork the repo and make a puul request?" user repo))
                (consult-gh--commit-by-fork repo path content commit-message branch committer-info author-info)))))
      ((equal protected t)
-      (and (y-or-n-p "The branch you are trying to edit is protected. Do you want to submit a pull request? ")
+      (and (y-or-n-p "The branch you are trying to edit is protected.  Do you want to submit a pull request? ")
            (consult-gh--commit-by-pullrequest repo path content commit-message branch committer-info author-info)))
      (t
       (let* ((args (list "api"
@@ -5455,11 +5454,7 @@ buffer generated by `consult-gh--files-view'.  It defaults to
           (branch  (get-text-property 0 :branch file))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (committer-info (consult-gh--get-user-info user))
-          (committer-email (when (hash-table-p committer-info)
-                             (gethash :email committer-info)))
           (author-info (consult-gh--get-user-info user))
-          (author-email (when (hash-table-p author-info)
-                          (gethash :email author-info)))
           (buffer (format "*consult-gh-file-edit-commit-message: %s/%s/%s" repo branch path))
           (base64-content (when (stringp new-content) (base64-encode-string (substring-no-properties (encode-coding-string new-content 'utf-8)))))
           (newtopic (format "%s/%s/%s" branch repo path))
@@ -5491,7 +5486,6 @@ buffer generated by `consult-gh--files-view'."
                        (and (stringp consult-gh--topic)
                             (equal (get-text-property 0 :type consult-gh--topic) "file")
                             consult-gh--topic)))
-             (repo (get-text-property 0 :repo file))
              (nextsteps (append (list (cons "Create a Commit" :submit))
                                 (list (cons "Cancel" :cancel))))
              (next (consult--read nextsteps
@@ -5660,8 +5654,10 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-url-action'."
   "Insert REPO's Readme in GitHub flavor markdown format at point.
 
 The optional argument TOPIC is a propertized text where the related info
-from the header will get appended to the properties.  For an example, see the buffer-local variable `consult-gh--topic' in the buffer created by `consult-gh--repo-view'."
-  (let* ((topic (or topic (consult-gh--topic)))
+from the header will get appended to the properties.  For an example,
+see the buffer-local variable `consult-gh--topic' in the buffer created
+by `consult-gh--repo-view'."
+  (let* ((topic (or topic consult-gh--topic))
          (readme (consult-gh--command-to-string "repo" "view" repo))
          (info  (consult-gh--api-get-command-string (format "repos/%s/readme" repo)))
          (path (consult-gh--json-to-hashtable info :path))
@@ -5684,8 +5680,10 @@ from the header will get appended to the properties.  For an example, see the bu
   "Insert REPO's Readme in markdown format at point.
 
 The optional argument TOPIC is a propertized text where the related info
-from the header will get appended to the properties.  For an example, see the buffer-local variable `consult-gh--topic' in the buffer created by `consult-gh--repo-view'."
-  (let* ((topic (or topic (consult-gh--topic)))
+from the header will get appended to the properties.  For an example,
+see the buffer-local variable `consult-gh--topic' in the buffer created
+by `consult-gh--repo-view'."
+  (let* ((topic (or topic consult-gh--topic))
          (readme (consult-gh--command-to-string "repo" "view" repo))
          (info  (consult-gh--api-get-command-string (format "repos/%s/readme" repo)))
          (path (consult-gh--json-to-hashtable info :path))
@@ -5710,8 +5708,10 @@ from the header will get appended to the properties.  For an example, see the bu
   "Insert REPO's Readme in org format at point.
 
 The optional argument TOPIC is a propertized text where the related info
-from the header will get appended to the properties.  For an example, see the buffer-local variable `consult-gh--topic' in the buffer created by `consult-gh--repo-view'."
-  (let* ((topic (or topic (consult-gh--topic)))
+from the header will get appended to the properties.  For an example,
+see the buffer-local variable `consult-gh--topic' in the buffer created
+by `consult-gh--repo-view'."
+  (let* ((topic (or topic consult-gh--topic))
          (org-display-remote-inline-images 'download)
          (info (cadr (consult-gh--api-get-json (format "repos/%s" repo))))
          (name (consult-gh--json-to-hashtable info :name))
@@ -5752,8 +5752,10 @@ from the header will get appended to the properties.  For an example, see the bu
   "Insert REPO's Readme at point.
 
 The optional argument TOPIC is a propertized text where the related info
-from the header will get appended to the properties.  For an example, see the buffer-local variable `consult-gh--topic' in the buffer created by `consult-gh--repo-view'."
-  (let* ((topic (or topic (consult-gh--topic)))
+from the header will get appended to the properties.  For an example,
+see the buffer-local variable `consult-gh--topic' in the buffer created
+by `consult-gh--repo-view'."
+  (let* ((topic (or topic consult-gh--topic))
          (info (cadr (consult-gh--api-get-json (format "repos/%s" repo))))
          (name (consult-gh--json-to-hashtable info :name))
          (desc (consult-gh--json-to-hashtable info :description))
@@ -6087,8 +6089,9 @@ and passes them to `consult-gh--repo-rename'.
 To use this as the default action for repos, set
 `consult-gh-repo-action' to `consult-gh--repo-rename-action'.
 
-If `consult-gh-confirm-before-rename-repo' is non-nil it asks for confirmation before deleting the repo, otherise deletes the repo without asking for confirmation."
-
+If `consult-gh-confirm-before-rename-repo' is non-nil it asks for
+confirmation before deleting the repo, otherise deletes the repo
+without asking for confirmation."
   (let* ((reponame (get-text-property 0 :repo cand)))
     (if consult-gh-confirm-before-rename-repo
         (consult-gh--repo-rename reponame)
@@ -6380,7 +6383,7 @@ backend functions, `consult-gh--repo-create-scratch',
                       (match-string 1 header)))
          (delete-on-merge (when (and header (string-match ".*\\(?:\n.*delete_on_merge:\\)\\(?1:[[:ascii:][:nonascii:]]*?\\)\n\\(.*?:\\|\n\\|-\\)?" header))
                       (match-string 1 header))))
-(setq my:test1 header)
+
   (list (and (stringp default-branch)
              (string-trim default-branch))
         (and (stringp description)
@@ -6411,28 +6414,27 @@ backend functions, `consult-gh--repo-create-scratch',
 
 ******* get metadata
 #+begin_src emacs-lisp
-(defun consult-gh-topics--repo-get-metadata (&optional topic)
-  "Get metadata of repo TOPIC.
+(defun consult-gh-topics--repo-get-metadata (&optional repo)
+  "Get metadata of REPO.
 
 TOPIC defaults to `consult-gh--topic'."
 
-  (let* ((topic (or topic consult-gh--topic))
-         (repo (get-text-property 0 :repo topic))
-         (default-branch (get-text-property 0 :default-branch topic))
-         (description (get-text-property 0 :description topic))
-         (homepage-url (get-text-property 0 :homepage-url topic))
-         (repo-topics (get-text-property 0 :repo-topics topic))
-         (template (get-text-property 0 :isTemplate topic))
-         (issues (get-text-property 0 :issuesEnabled topic))
-         (projects (get-text-property 0 :projectsEnabled topic))
-         (discussions (get-text-property 0 :discussionsEnabled topic))
-         (wiki (get-text-property 0 :wikiEnabled topic))
-         (merge-commit (get-text-property 0 :mergeCommitAllowed topic))
-         (squash-merge (get-text-property 0 :squashMergeAllowed topic))
-         (rebase-merge (get-text-property 0 :rebaseMergeAllowed topic))
-         (delete-on-merge (get-text-property 0 :deleteOnMerge topic)))
+  (let* ((repo (or repo consult-gh--topic))
+         (default-branch (get-text-property 0 :default-branch repo))
+         (description (get-text-property 0 :description repo))
+         (homepage-url (get-text-property 0 :homepage-url repo))
+         (repo-topics (get-text-property 0 :repo-repos repo))
+         (template (get-text-property 0 :isTemplate repo))
+         (issues (get-text-property 0 :issuesEnabled repo))
+         (projects (get-text-property 0 :projectsEnabled repo))
+         (discussions (get-text-property 0 :discussionsEnabled repo))
+         (wiki (get-text-property 0 :wikiEnabled repo))
+         (merge-commit (get-text-property 0 :mergeCommitAllowed repo))
+         (squash-merge (get-text-property 0 :squashMergeAllowed repo))
+         (rebase-merge (get-text-property 0 :rebaseMergeAllowed repo))
+         (delete-on-merge (get-text-property 0 :deleteOnMerge repo)))
 
-      (pcase-let* ((`(,text-default-branch ,text-description ,text-homepage-url ,text-topics ,text-template ,text-issues ,text-projects ,text-discussions ,text-wiki ,text-merge-commit ,text-squash-merge ,text-rebase-merge ,text-delete-on-merge) (consult-gh-topics--repo-parse-metadata)))
+      (pcase-let* ((`(,text-default-branch ,text-description ,text-homepage-url ,text-repo-topics ,text-template ,text-issues ,text-projects ,text-discussions ,text-wiki ,text-merge-commit ,text-squash-merge ,text-rebase-merge ,text-delete-on-merge) (consult-gh-topics--repo-parse-metadata)))
 
         (when (stringp text-default-branch)
           (setq default-branch (string-trim text-default-branch)))
@@ -6443,9 +6445,9 @@ TOPIC defaults to `consult-gh--topic'."
         (when (stringp text-homepage-url)
           (setq homepage-url text-homepage-url))
 
-        (when (stringp text-topics)
-          (setq topics (cl-remove-duplicates
-                         (split-string text-topics "," t "[ \t]+")
+        (when (stringp text-repo-topics)
+          (setq repo-topics (cl-remove-duplicates
+                         (split-string text-repo-topics "," t "[ \t]+")
                         :test #'equal)))
 
         (when (stringp text-template)
@@ -6505,7 +6507,7 @@ TOPIC defaults to `consult-gh--topic'."
     (list (cons "default-branch" default-branch)
           (cons "description" description)
           (cons "homepage-url" homepage-url)
-          (cons "topics" topics)
+          (cons "topics" repo-topics)
           (cons "template" template)
           (cons "issues" issues)
           (cons "projects" projects)
@@ -6643,18 +6645,18 @@ TOPIC defaults to `consult-gh--topic'."
 
 ******* change default branch
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-default-branch (&optional new old topic)
-  "Change default branch of repo TOPIC from OLD to NEW."
+(defun consult-gh-repo--edit-default-branch (&optional new repo)
+  "Change default branch of REPO to NEW branch."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo topic))
-             (new (or new (consult--read (consult-gh--files-branches-list-items repo)
+      (let* ((repo (or repo consult-gh--topic))
+             (repo-name (substring-no-properties (get-text-property 0 :repo repo)))
+             (new (or new (consult--read (consult-gh--files-branches-list-items repo-name)
                                      :initial nil
                                      :require-match t
                                      :prompt "New Default Branch Name: ")))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
          )
-    (add-text-properties 0 1 (list :default-branch new) topic)
+    (add-text-properties 0 1 (list :default-branch new) repo)
 
     (when (stringp new)
       (save-excursion (goto-char (point-min))
@@ -6666,53 +6668,50 @@ TOPIC defaults to `consult-gh--topic'."
 
 ******* change description
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-description (&optional new old topic)
-  "Change description of repo TOPIC from OLD to NEW."
+(defun consult-gh-repo--edit-description (&optional new old repo)
+  "Change description of REPO from OLD to NEW."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (or new (consult--read nil
                                      :initial old
                                      :prompt "New Description: ")))
-             (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
-         )
-    (add-text-properties 0 1 (list :description new) topic)
+             (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
+    (add-text-properties 0 1 (list :description new) repo)
 
     (when (stringp new)
       (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*description: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (get-text-property 0 :description topic) nil nil nil 1)))))
+                        (replace-match (get-text-property 0 :description repo) nil nil nil 1)))))
     (error "Not in a repo editing buffer!")))
 
 #+end_src
 
 ******* change homepage
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-homepage-url (&optional new old topic)
-  "Change homepage of repo TOPIC from OLD to NEW."
+(defun consult-gh-repo--edit-homepage-url (&optional new old repo)
+  "Change homepage of REPO from OLD to NEW."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (or new (consult--read nil
                                      :initial old
                                      :prompt "New URL: ")))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-    (add-text-properties 0 1 (list :homepage-url new) topic)
+    (add-text-properties 0 1 (list :homepage-url new) repo)
 
     (when (stringp new)
       (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*homepage: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (get-text-property 0 :homepage-url topic) nil nil nil 1)))))
+                        (replace-match (get-text-property 0 :homepage-url repo) nil nil nil 1)))))
     (error "Not in a repo editing buffer!")))
 
 #+end_src
 
 ******* change topics
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-change-topics (&optional new old topic)
-  "Change topics of repo TOPIC from OLD to NEW."
+(defun consult-gh-repo--edit-change-topics (&optional new old repo)
+  "Change topics of REPO from OLD to NEW."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
+      (let* ((repo (or repo consult-gh--topic))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
              (sep (replace-regexp-in-string "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" "" crm-separator))
              (old (cond ((stringp old) old)
@@ -6721,37 +6720,36 @@ TOPIC defaults to `consult-gh--topic'."
              (old (if (and (stringp old) (not (string-suffix-p sep old)))
                       (concat old sep)
                     old))
-             (pop-topics (or (get-text-property :valid-topics topic) (consult-gh--json-to-hashtable (consult-gh--api-get-command-string "/repos/github/explore/contents/topics/") :name)))
+             (pop-topics (or (get-text-property :popular-topics repo) (consult-gh--json-to-hashtable (consult-gh--api-get-command-string "/repos/github/explore/contents/topics/") :name)))
              (new (or new
                       (completing-read-multiple "Enter/Select Topics: " pop-topics nil t old))))
 
         (when (listp new)
           (setq new (cl-remove-duplicates new :test #'equal))
-          (add-text-properties 0 1 (list :topics new) topic)
+          (add-text-properties 0 1 (list :topics new) repo)
 
           (save-excursion (goto-char (car header))
                           (when (re-search-forward "^.*topics: \\(?1:.*\\)?" (cdr header) t)
-                            (replace-match (mapconcat #'identity (get-text-property 0 :topics topic) ", ") nil nil nil 1)))))
+                            (replace-match (mapconcat #'identity (get-text-property 0 :topics repo) ", ") nil nil nil 1)))))
     (error "Not in a repo editing buffer!")))
 
 #+end_src
 
 ******* toggle template repository
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-toggle-template (&optional old topic)
-  "Toggle repo TOPIC to (non)template.
+(defun consult-gh-repo--edit-toggle-template (&optional old repo)
+  "Toggle REPO to (non)template.
 
 OLD is a boolean, whether repo is currently a template."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (not old))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-        (add-text-properties 0 1 (list :isTemplate new) topic)
+        (add-text-properties 0 1 (list :isTemplate new) repo)
 
     (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*template: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :isTemplate topic) "true" "false")
+                        (replace-match (if (get-text-property 0 :isTemplate repo) "true" "false")
                                        nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
@@ -6759,52 +6757,39 @@ OLD is a boolean, whether repo is currently a template."
 
 ******* toggle issues enabled
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-toggle-issues (&optional old topic)
-  "Toggle issues in repo TOPIC.
+(defun consult-gh-repo--edit-toggle-issues (&optional old repo)
+  "Toggle issues in REPO.
 
 OLD is a boolean, whether issues are currently enabled."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (not old))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-    (add-text-properties 0 1 (list :issuesEnabled new) topic)
+    (add-text-properties 0 1 (list :issuesEnabled new) repo)
 
     (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*issues: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :issuesEnabled topic) "enabled" "disabled")
-                                       nil nil nil 1))
-                    (cond
-                     ((not (get-text-property 0 :issuesEnabled topic))
-                      (goto-char (point-min))
-                      (when (re-search-forward "^.*blank_issues: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match "n/a"
-                                       nil nil nil 1)))
-                     (t
-                      (goto-char (point-min))
-                      (when (re-search-forward "^.*blank_issues: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :blankIssuesAllowed topic) "allowed" "not allowed")
-                        nil nil nil 1))))))
+                        (replace-match (if (get-text-property 0 :issuesEnabled repo) "enabled" "disabled")
+                                       nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
 #+end_src
 
 ******* toggle projects enabled
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-toggle-projects (&optional old topic)
-  "Toggle projects in repo TOPIC.
+(defun consult-gh-repo--edit-toggle-projects (&optional old repo)
+  "Toggle projects in REPO.
 
 OLD is a boolean, whether projects are currently enabled."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (not old))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-    (add-text-properties 0 1 (list :projectsEnabled new) topic)
+    (add-text-properties 0 1 (list :projectsEnabled new) repo)
 
     (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*projects: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :projectsEnabled topic) "enabled" "disabled")
+                        (replace-match (if (get-text-property 0 :projectsEnabled repo) "enabled" "disabled")
                                        nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
@@ -6812,20 +6797,19 @@ OLD is a boolean, whether projects are currently enabled."
 
 ******* toggle discussions enabled
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-toggle-discussions (&optional old topic)
-  "Toggle discussions in repo TOPIC.
+(defun consult-gh-repo--edit-toggle-discussions (&optional old repo)
+  "Toggle discussions in REPO.
 
 OLD is a boolean, whether discussions are currently enabled."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (not old))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-    (add-text-properties 0 1 (list :discussionsEnabled new) topic)
+    (add-text-properties 0 1 (list :discussionsEnabled new) repo)
 
     (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*discussions: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :discussionsEnabled topic) "enabled" "disabled")
+                        (replace-match (if (get-text-property 0 :discussionsEnabled repo) "enabled" "disabled")
                                        nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
@@ -6833,20 +6817,19 @@ OLD is a boolean, whether discussions are currently enabled."
 
 ******* toggle wiki enabled
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-toggle-wiki (&optional old topic)
-  "Toggle wiki in repo TOPIC.
+(defun consult-gh-repo--edit-toggle-wiki (&optional old repo)
+  "Toggle wiki in REPO.
 
 OLD is a boolean, whether wiki is currently enabled."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (not old))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-        (add-text-properties 0 1 (list :wikiEnabled new) topic)
+        (add-text-properties 0 1 (list :wikiEnabled new) repo)
 
     (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*wiki: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :wikiEnabled topic) "enabled" "disabled")
+                        (replace-match (if (get-text-property 0 :wikiEnabled repo) "enabled" "disabled")
                                        nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
@@ -6854,20 +6837,19 @@ OLD is a boolean, whether wiki is currently enabled."
 
 ******* toggle merge commit
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-toggle-merge-commit (&optional old topic)
-  "Toggle merge commit in repo TOPIC.
+(defun consult-gh-repo--edit-toggle-merge-commit (&optional old repo)
+  "Toggle merge commit in REPO.
 
 OLD is a boolean, whether merge commit is currently allowed."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (not old))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-        (add-text-properties 0 1 (list :mergeCommitAllowed new) topic)
+        (add-text-properties 0 1 (list :mergeCommitAllowed new) repo)
 
     (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*merge_commit: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :mergeCommitAllowed topic) "allowed" "not allowed")
+                        (replace-match (if (get-text-property 0 :mergeCommitAllowed repo) "allowed" "not allowed")
                                        nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
@@ -6875,20 +6857,19 @@ OLD is a boolean, whether merge commit is currently allowed."
 
 ******* toggle squash merge
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-toggle-squash-merge (&optional old topic)
-  "Toggle squash merge in repo TOPIC.
+(defun consult-gh-repo--edit-toggle-squash-merge (&optional old repo)
+  "Toggle squash merge in REPO.
 
 OLD is a boolean, whether squash merge is currently allowed."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (not old))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-        (add-text-properties 0 1 (list :squashMergeAllowed new) topic)
+        (add-text-properties 0 1 (list :squashMergeAllowed new) repo)
 
     (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*squash_merge: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :squashMergeAllowed topic) "allowed" "not allowed")
+                        (replace-match (if (get-text-property 0 :squashMergeAllowed repo) "allowed" "not allowed")
                                        nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
@@ -6896,20 +6877,20 @@ OLD is a boolean, whether squash merge is currently allowed."
 
 ******* toggle rebase merge
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-toggle-rebase-merge (&optional old topic)
-  "Toggle rebase merge in repo TOPIC.
+(defun consult-gh-repo--edit-toggle-rebase-merge (&optional old repo)
+  "Toggle rebase merge in REPO.
 
 OLD is a boolean, whether rebase merge is currently allowed."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
+      (let* ((repo (or repo consult-gh--topic))
              (repo (get-text-property 0 :repo repo))
              (new (not old))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-        (add-text-properties 0 1 (list :rebaseMergeAllowed new) topic)
+        (add-text-properties 0 1 (list :rebaseMergeAllowed new) repo)
 
     (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*rebase_merge: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :rebaseMergeAllowed topic) "allowed" "not allowed")
+                        (replace-match (if (get-text-property 0 :rebaseMergeAllowed repo) "allowed" "not allowed")
                                        nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
@@ -6917,20 +6898,19 @@ OLD is a boolean, whether rebase merge is currently allowed."
 
 ******* toggle delete on merge
 #+begin_src emacs-lisp
-(defun consult-gh-repo--edit-toggle-delete-on-merge (&optional old topic)
-  "Toggle delete on merge in repo TOPIC.
+(defun consult-gh-repo--edit-toggle-delete-on-merge (&optional old repo)
+  "Toggle delete on merge in REPO.
 
 OLD is a boolean, whether delete on merge is currently enabled."
   (if consult-gh-topics-edit-mode
-      (let* ((topic (or topic consult-gh--topic))
-             (repo (get-text-property 0 :repo repo))
+      (let* ((repo (or repo consult-gh--topic))
              (new (not old))
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
-        (add-text-properties 0 1 (list :deleteOnMerge new) topic)
+        (add-text-properties 0 1 (list :deleteOnMerge new) repo)
 
     (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*delete_on_merge: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
-                        (replace-match (if (get-text-property 0 :deleteOnMerge topic) "yes" "no")
+                        (replace-match (if (get-text-property 0 :deleteOnMerge repo) "yes" "no")
                                        nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
@@ -7045,8 +7025,6 @@ Description of Arguments:
                                    (and enable-rebase-merge (list (format "--enable-rebase-merge=%s" enable-rebase-merge)))
                                    (and delete-branch-on-merge (list (format "--delete-branch-on-merge=%s" delete-branch-on-merge))))))
 
-          (print args)
-
           (apply #'consult-gh--command-to-string "repo" "edit" (substring-no-properties repo) args))
          (t (message "Nothing to change!")
             nil))
@@ -7058,17 +7036,16 @@ Description of Arguments:
 ******* prepare edit repo for submitting
 #+begin_src emacs-lisp
 (defun consult-gh-topics--edit-repo-presubmit (topic)
-  "Prepare edits on REPO to submit.
+  "Prepare edits on repo TOPIC to submit.
 
-REPO is a string with properties that identify a github repo.
+TOPIC is a string with properties that identify a github repo.
 For an example see the buffer-local variable `consult-gh--topic' in the
 buffer generated by `consult-gh--repo-view'."
   (if consult-gh-topics-edit-mode
       (let* ((topic (or topic consult-gh--topic))
              (repo (get-text-property 0 :repo topic))
-             (canwrite (consult-gh--user-canwrite repo))
-             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
              (canadmin (consult-gh--user-canadmin repo))
+             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
              (is-template (get-text-property 0 :isTemplate topic))
              (nextsteps (if canadmin
                             (append (list (cons "Submit" :submit))
@@ -11800,14 +11777,10 @@ Description of Arguments:
                      (`(,title-marker ,header-marker)
                       (consult-gh-topics--markers-for-metadata)))
 
-          (consult-gh-topics--insert-field-header-string (concat title-marker "name: "))
-          (when name
-            (insert name))
+          (consult-gh-topics--insert-field-header-string (concat title-marker "name: " name))
           (insert "\n")
 
-          (consult-gh-topics--insert-field-header-string (concat header-marker "owner: "))
-          (when (stringp owner)
-            (insert owner))
+          (consult-gh-topics--insert-field-header-string (concat header-marker "owner: " owner))
           (insert "\n")
 
           (save-mark-and-excursion
@@ -11830,12 +11803,12 @@ Description of Arguments:
                 (insert "\n")
 
                 (consult-gh-topics--insert-field-header-string (concat header-marker "topics: "))
-              (when repo-topics
+              (when repoTopics
                   (cond
-                   ((stringp repo-topics)
-                    (insert repo-topics))
-                   ((and repo-topics (listp repo-topics))
-                    (insert (consult-gh--list-to-string repo-topics)))))
+                   ((stringp repoTopics)
+                    (insert repoTopics))
+                   ((and repoTopics (listp repoTopics))
+                    (insert (consult-gh--list-to-string repoTopics)))))
                 (insert "\n")
 
                 (consult-gh-topics--insert-field-header-string (concat header-marker "template: "))
@@ -12258,29 +12231,12 @@ Description of Arguments:
 
 ***** submit a commit when changing files
 #+begin_src emacs-lisp
-(defun consult-gh-topics--commit-submit (&optional commit commit-message)
-  "Sbmit COMMIT with COMMIT-MESSAGE.
-
-COMMIT-MESSAGE defaults to buffer string from
-`consult-gh--whole-buffer-string'."
+(defun consult-gh-topics--commit-submit (&optional commit)
+  "Sbmit COMMIT."
   (let* ((commit (or commit
                   (and (stringp consult-gh--topic)
                        (equal (get-text-property 0 :type consult-gh--topic) "commit")
-                         consult-gh--topic)))
-         (repo (get-text-property 0 :repo commit))
-         (branch (or (get-text-property 0 :commit-branch commit)
-                     (get-text-property 0 :branch commit)))
-         (canwrite (consult-gh--user-canwrite repo))
-         (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-         (committer-info (or (get-text-property 0 :committer-info commit)
-                             (consult-gh--get-user-info user)))
-         (committer-email (when (hash-table-p committer-info)
-                            (gethash :email committer-info)))
-         (author-info (or (get-text-property 0 :author-info commit)
-                          committer-info))
-         (author-email (when (hash-table-p author-info)
-                         (gethash :email author-info)))
-         (commit-message (or commit-message (substring-no-properties (consult-gh--whole-buffer-string)))))
+                         consult-gh--topic))))
         (consult-gh--commit-presubmit commit)))
 #+end_src
 
@@ -15895,7 +15851,8 @@ When NOCONFIRM is non-nil, do not ask for confirmation"
 (defun consult-gh-repo-rename (&optional repo new-name noconfirm)
   "Interactively rename REPO to NEW-NAME.
 
-It runs the command “gh repo rename --repo REPO ...” to rename a repository using the internal function `consult-gh--repo-rename'.
+It runs the command “gh repo rename --repo REPO ...” to rename a
+repository using the internal function `consult-gh--repo-rename'.
 
 If REPOS are not supplied, interactively asks user to pick them from
 `consult-gh-user-repos'.
@@ -15972,7 +15929,7 @@ For more details refer to the manual with “gh repo edit --help”."
        (consult-gh--completion-set-repo-topics newtopic)
 
        (with-timeout (1 nil)
-         (while (not (plist-member (text-properties-at 0 topic) :valid-topics))
+         (while (not (plist-member (text-properties-at 0 topic) :popular-topics))
            (sit-for 0.01)))
 
        (add-text-properties 0 1 (text-properties-at 0 topic) newtopic)
@@ -17345,8 +17302,7 @@ Description of Arguments:
   BODY        a string; body of the pr
   BASEBRANCH  a string; name of the base ref branch
   HEADREPO    a string; name of the head (source) repository
-  HEADBRANCH  a string; name of the head ref branch
-"
+  HEADBRANCH  a string; name of the head ref branch"
   (interactive "P")
   (consult-gh-with-host
    (consult-gh--auth-account-host)
@@ -18005,7 +17961,8 @@ INITIAL is an optional arg for the initial input in the minibuffer
 (defun consult-gh-edit-file (&optional file)
   "Edit FILE and commit to GitHub.
 
-FILE must be a string with properties describing a file similar to the local variable `consult-gh--topic' in  a buffer created by
+FILE must be a string with properties describing a file similar to the
+local variable `consult-gh--topic' in  a buffer created by
 `consult-gh-find-file'."
   (interactive)
    (consult-gh-with-host
