@@ -3,6 +3,20 @@
 #+language: en
 
 * Development
+- Added support for editing files
+  - Files that are viewed by consult-gh can now be edited and directly commited to GitHub, using =consult-gh-edit-file=. In file buffers that are created by consult-gh, an =after-save-hook= is added to ask the suer if they want to commit the changes directly to GitHub. Changes that have already ben saved can be commited to GitHub using =consult-gh-commit-file=.
+    If the file that is being committed is on a protected branch, a pull request is created instead after user confirmation. If the file is a repo that the user cannot edit, the repo is forked first after user confirmation.
+  - Introduced a new minor-mode for file-viewing buffers (for local =after-save-hook= and keybindings for editing files).
+  - YAML files of workflows can now be edited directly using the file editing capabilities. In a workflow view buffer, you cna use =consult-gh-workflow-edit-yaml= to edit YAML files.
+- Added support for creating new branches with =consult-gh-branch-create=.
+- Added support for editing repos.
+  - Added support for editing repository's settings with =consult-gh-repo-edit-settings=
+  - Added support for directly editing repository's README with =consult-gh-repo-edit-readme=
+  - Added support for renaming a repo with =consult-gh-repo-rename=
+- Added Embark actions for editing files and repos
+- Other fixes and improvements
+  - Added completion functions for repo editing (i.e. complete branch names for default branch)
+  - Fixed documentation strings for various functions
 
 * Version 2.6 (2025-07-10)
 - Added support for workflows and runs

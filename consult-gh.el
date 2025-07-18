@@ -5,7 +5,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.6
+;; Version: 2.7
 ;; Package-Requires: ((emacs "29.4") (consult "2.0") (markdown-mode "2.6") (ox-gfm "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
@@ -17342,20 +17342,6 @@ If JOB-ID is non-nil, rerun the specific job with JOB-ID."
          (funcall #'consult-gh--run-rerun-action cand))))
 
 (defun consult-gh-branch-create (&optional repo ref branch-name)
-"Create a new branch in REPO.
-
-REF is the reference for creating a new branch.
-BRANCH-NAME is the name of the new branch.
-
-This is wrapper around `consult-gh--branch-create'."
-
-(interactive)
-(let* ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (consult-gh--branch-create repo ref branch-name))))
-
-(defun consult-gh-commit-create (&optional repo branch)
 "Create a new branch in REPO.
 
 REF is the reference for creating a new branch.

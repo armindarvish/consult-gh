@@ -5,7 +5,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.6
+;; Version: 2.7
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 

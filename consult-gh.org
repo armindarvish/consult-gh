@@ -12,7 +12,7 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.6
+;; Version: 2.7
 ;; Package-Requires: ((emacs "29.4") (consult "2.0") (markdown-mode "2.6") (ox-gfm "1.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
@@ -19479,26 +19479,7 @@ This is wrapper around `consult-gh--branch-create'."
 
 #+end_src
 
-*** commit
-#+begin_src emacs-lisp
-(defun consult-gh-commit-create (&optional repo branch)
-"Create a new branch in REPO.
-
-REF is the reference for creating a new branch.
-BRANCH-NAME is the name of the new branch.
-
-This is wrapper around `consult-gh--branch-create'."
-
-(interactive)
-(let* ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (consult-gh--branch-create repo ref branch-name))))
-#+end_src
-
 *** topics
-
-
 **** consult-gh-topics-comment-create
 #+begin_src emacs-lisp
 ;;;###autoload
@@ -19866,7 +19847,6 @@ browser."
 #+end_src
 
 *** misc
-
 **** consult-gh-refresh-view
 #+begin_src emacs-lisp
 ;;;###autoload
@@ -19949,8 +19929,8 @@ This section includes additional useful embark actions as well as possible keyma
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.6
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.6") (embark-consult "1.1"))
+;; Version: 2.7
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.7") (embark-consult "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -21733,8 +21713,8 @@ uses `compose-mail' for composing an email."
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.6
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "2.6"))
+;; Version: 2.7
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "2.7"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -22164,8 +22144,8 @@ default behavior of `ghub--host' to allow using
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.6
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (pr-review "0.1") (consult-gh "2.6"))
+;; Version: 2.7
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (pr-review "0.1") (consult-gh "2.7"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, completion
 
@@ -22396,7 +22376,7 @@ default behavior of `ghub--host' to allow using
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.6
+;; Version: 2.7
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
