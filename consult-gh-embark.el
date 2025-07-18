@@ -51,7 +51,7 @@ not handle that themselves."
 
 ;;;; Default Actions
 (defun consult-gh-embark-default-action (cand)
-  "Open CAND link in an Emacs buffer."
+  "Open CAND."
   (when (stringp cand)
     (let* ((class (get-text-property 0 :class cand)))
       (consult-gh-with-host
@@ -207,7 +207,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
       (consult-gh--get-user-email user))))
 
 (defun consult-gh-embark-get-user-link (cand)
-  "Get the email of the user from CAND at point."
+  "Get the link of the user from CAND at point."
   (when (stringp cand)
     (let* ((repo (get-text-property 0 :repo cand))
            (user (consult-gh--get-username repo)))
@@ -241,7 +241,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
       (funcall consult-gh-browse-url-func url))))
 
 (defun consult-gh-embark-open-repo-in-system-browser (cand)
-  "Open the url link for user in CAND in the system's default browser."
+  "Open the url link for repo in CAND in the system's default browser."
   (when (stringp cand)
     (if-let* ((repo (get-text-property 0 :repo cand)))
         (consult-gh-with-host
@@ -250,7 +250,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
       (message "No repo at point!"))))
 
 (defun consult-gh-embark-open-repo-in-default-browser (cand)
-  "Open the url link for user in CAND in the system's default browser."
+  "Open the url link for repo in CAND in the system's default browser."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
@@ -562,7 +562,7 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
       (message "No email found for user at point!"))))
 
 (defun consult-gh-embark-insert-user-link (cand)
-  "Copy the org-format url link of CAND to `kill-ring'."
+  "Insert the org-format url link of CAND at point."
   (when (stringp cand)
     (let* ((repo (get-text-property 0 :repo cand))
            (title (consult-gh--get-username repo))
@@ -668,6 +668,35 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
      (let* ((repo (get-text-property 0 :repo cand)))
        (funcall #'consult-gh-release-create repo)))))
 
+;;;; Edit Repo Actions
+(defun consult-gh-embark-delete-repo (cand)
+  "Delete the repo in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-repo-delete cand))))
+
+(defun consult-gh-embark-rename-repo (cand)
+  "Rename the repo in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-repo-rename cand))))
+
+(defun consult-gh-embark-edit-repo-settings (cand)
+  "Edit the settings of repo in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-repo-edit-settings cand))))
+
+(defun consult-gh-embark-edit-repo-readme (cand)
+  "Edit the README of repo in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-repo-edit-readme cand))))
+
 ;;;; Edit Issue Actions
 
 (defun consult-gh-embark-toggle-issue-open (cand)
@@ -701,7 +730,7 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
      (when-let* ((repo (get-text-property 0 :repo cand))
                  (number (get-text-property 0 :number cand))
                  (state (when (and repo number)
-                          (consult-gh--json-to-hashtable  (consult-gh--api-command-string (format "/repos/%s/issues/%s" repo number)) :locked))))
+                          (consult-gh--json-to-hashtable  (consult-gh--api-get-command-string (format "/repos/%s/issues/%s" repo number)) :locked))))
        (if (eq state 't)
            (funcall #'consult-gh-issue-unlock cand)
          (funcall #'consult-gh-issue-lock cand))))))
@@ -728,14 +757,14 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
      (funcall #'consult-gh-issue-develop cand))))
 
 (defun consult-gh-embark-edit-issue (cand)
-  "Make a linked branch for the issue in CAND."
+  "Edit the issue in CAND."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (funcall #'consult-gh-issue-edit cand))))
 
 (defun consult-gh-embark-comment-on-issue (cand)
-  "Edit the issue in CAND."
+  "Comment on the issue in CAND."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
@@ -743,6 +772,14 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
            (number (get-text-property 0 :number cand)))
        (with-current-buffer (funcall #'consult-gh--issue-view repo number)
          (consult-gh-topics-comment-create))))))
+
+;;;; Edit File Actions
+(defun consult-gh-embark-edit-file (cand)
+  "Edit the file in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (funcall #'consult-gh-edit-file cand))))
 
 ;;;; Edit PR Actions
 
@@ -768,7 +805,7 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
      (funcall #'consult-gh-pr-review cand))))
 
 (defun consult-gh-embark-comment-on-pr (cand)
-  "Make a linked branch for the issue in CAND."
+  "Comment on the pull request in CAND."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
@@ -795,7 +832,7 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
      (when-let* ((repo (get-text-property 0 :repo cand))
                  (number (get-text-property 0 :number cand))
                  (state (when (and repo number)
-                          (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/repos/%s/pulls/%s" repo number)) :locked))))
+                          (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/pulls/%s" repo number)) :locked))))
        (if (eq state 't)
            (funcall #'consult-gh-pr-unlock cand)
          (funcall #'consult-gh-pr-lock cand))))))
@@ -857,12 +894,12 @@ CAND can be a PR or an issue."
            (consult-gh--notifications-mark-as-read cand))))))
 
 (defun consult-gh-embark-notification-toggle-subscription (cand)
-  "Mark the notification in CAND as read/unread."
+  "Subscribe/Unsubscribe to the notification in CAND."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (let* ((thread (get-text-property 0 :thread cand))
-            (subscription (consult-gh--json-to-hashtable (consult-gh--api-command-string (format "/notifications/threads/%s/subscription" thread)) :subscribed)))
+            (subscription (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/notifications/threads/%s/subscription" thread)) :subscribed)))
        (if (eq subscription 't)
            (consult-gh--notifications-unsubscribe cand)
          (consult-gh--notifications-subscribe cand))))))
@@ -870,7 +907,7 @@ CAND can be a PR or an issue."
 ;;;; Edit Release Actions
 
 (defun consult-gh-embark-mark-release-draft (cand)
-  "Un(mark) the release in CAND as draft."
+  "Mark/Unmark the release in CAND as draft."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
@@ -943,27 +980,29 @@ CAND can be a PR or an issue."
 (consult-gh-workflow-enable cand)))
 
 (defun consult-gh-embark-workflow-disable (cand)
-  "Enable the workflow in CAND."
+  "Disable the workflow in CAND."
  (when (stringp cand)
 (consult-gh-workflow-disable cand)))
 
 (defun consult-gh-embark-run-view-workflow (cand)
-"View the workflow for run in CAND."
-(when (stringp cand)
+  "View the workflow for run in CAND."
+  (when (stringp cand)
     (let* ((repo (get-text-property 0 :repo cand))
-          (workflow-id (get-text-property 0 :workflow-id cand))
-          (newcand (propertize (format "repo/actions/%s" workflow-id) :repo repo :id workflow-id)))
+           (workflow-id (get-text-property 0 :workflow-id cand))
+           (newcand (propertize (format "repo/actions/%s" workflow-id) :repo repo :id workflow-id)))
       (consult-gh--workflow-view-action newcand))))
 
 (defun consult-gh-embark-run-view (cand)
-"View the run in CAND."
+  "View the run in CAND."
   (when (stringp cand)
     (consult-gh--run-view-action cand)))
 
 ;;;; Other Actions
 
 (defun consult-gh-embark-email-user (cand)
-  "Insert the email of the user in CAND at point."
+  "Email the user in CAND at point.
+
+uses `compose-mail' for composing an email."
   (when (stringp cand)
     (if-let ((email (consult-gh-embark-get-user-email cand)))
         (compose-mail email)
@@ -1173,6 +1212,17 @@ CAND can be a PR or an issue."
   :parent consult-gh-embark-general-actions-map)
 
 ;;;; Repo Keymap
+;;;;;; Repo Edit Menu Keymap
+(defvar-keymap consult-gh-embark-repo-edit-menu-map
+  :doc "Keymap for editing repos"
+  :parent consult-gh-embark-edit-menu-map
+  "D" '("delete repo" . consult-gh-embark-delete-repo)
+  "R" '("rename repo" . consult-gh-embark-rename-repo)
+  "e" '("edit repo's settings" . consult-gh-embark-edit-repo-settings)
+  "r" '("edit repo's README" . consult-gh-embark-edit-repo-readme))
+
+(fset 'consult-gh-embark-repo-edit-menu-map consult-gh-embark-repo-edit-menu-map)
+
 ;;;;;; Repo View Menu Keymap
 (defvar-keymap consult-gh-embark-repo-view-menu-map
   :doc "Keymap for viewing Repo details"
@@ -1189,23 +1239,34 @@ CAND can be a PR or an issue."
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
-  "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map))
+  "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map)
+  "e" '("gh edit repo" . consult-gh-embark-repo-edit-menu-map))
 
 ;;;;; Files Keymap
 ;;;;;; Files Insert Menu Keymap
-(defvar-keymap consult-gh-embark-fiels-insert-menu-map
-  :doc "Keymap for editing issues"
+(defvar-keymap consult-gh-embark-files-insert-menu-map
+  :doc "Keymap for inserting files"
   :parent consult-gh-embark-user-insert-menu-map
   "f" '("file content" . consult-gh-embark-insert-file-contents))
 
-(fset 'consult-gh-embark-fiels-insert-menu-map consult-gh-embark-fiels-insert-menu-map)
+(fset 'consult-gh-embark-files-insert-menu-map consult-gh-embark-files-insert-menu-map)
+
+;;;;;; Files Edit Keymap
+(defvar-keymap consult-gh-embark-files-edit-menu-map
+  :doc "Keymap for editing files"
+  :parent consult-gh-embark-edit-menu-map
+  "e" '("edit file" . consult-gh-embark-edit-file))
+
+(fset 'consult-gh-embark-files-edit-menu-map consult-gh-embark-files-edit-menu-map)
 
 ;;;;;; Files Main Menu Keymap
 (defvar-keymap consult-gh-embark-files-actions-map
   :doc "Keymap for consult-gh-embark-files"
   :parent consult-gh-embark-general-actions-map
   "s" '("gh save file" . consult-gh-embark-save-file)
-  "i" '("gh insert" . consult-gh-embark-fiels-insert-menu-map))
+  "i" '("gh insert" . consult-gh-embark-files-insert-menu-map)
+  "e" '("gh edit file" . consult-gh-embark-files-edit-menu-map)
+  "e e" '("edit file" . consult-gh-embark-edit-file))
 
 ;;;;; Issue Keymap
 ;;;;;; Edit Issue Menu Keymap
@@ -1225,7 +1286,7 @@ CAND can be a PR or an issue."
 
 ;;;;;; Issue Main Menu Keymap
 (defvar-keymap consult-gh-embark-issues-actions-map
-  :doc "Keymap for consult-gh-embark-repos"
+  :doc "Keymap for consult-gh-embark-issues"
   :parent consult-gh-embark-general-actions-map
   "c" '("gh create" . consult-gh-embark-create-menu-map)
   "c C-c" '("comment on issue" . consult-gh-embark-comment-on-issue)
@@ -1256,7 +1317,7 @@ CAND can be a PR or an issue."
 
 ;;;;; PR Main Menu Keymap
 (defvar-keymap consult-gh-embark-prs-actions-map
-  :doc "Keymap for consult-gh-embark-repos"
+  :doc "Keymap for consult-gh-embark-prs"
   :parent consult-gh-embark-general-actions-map
   "c" '("gh create" . consult-gh-embark-create-menu-map)
   "c C-c" '("comment on pr" . consult-gh-embark-comment-on-pr)
@@ -1267,7 +1328,7 @@ CAND can be a PR or an issue."
 ;;;;; Release Keymap
 ;;;;;; Edit Release Menu Keymap
 (defvar-keymap consult-gh-embark-releases-edit-menu-map
-  :doc "Keymap for editing issues"
+  :doc "Keymap for editing releases"
   :parent nil
   "D" '("delete release" . consult-gh-embark-delete-release)
   "e" '("edit release" . consult-gh-embark-edit-release)
@@ -1287,16 +1348,6 @@ CAND can be a PR or an issue."
   "e" '("gh edit release" . consult-gh-embark-releases-edit-menu-map)
   "T" '("gh test" . consult-gh-embark-test))
 
-;;;;;; Workflow Main Menu Keymap
-(defvar-keymap consult-gh-embark-workflows-actions-map
-  :doc "Keymap for consult-gh-embark-workflows"
-  :parent consult-gh-embark-general-actions-map
-  "r" '("gh run workflow" . consult-gh-embark-workflow-run)
-  "e" '("gh enable workflow" . consult-gh-embark-workflow-enable)
-  "d" '("gh disable workflow" . consult-gh-embark-workflow-disable)
-  "g" '("gh list action runs" . consult-gh-embark-workflow-runs-list)
-  "v" '("gh view workflow menu" . consult-gh-embark-workflows-view-menu-map))
-
 ;;;;;; PR View Menu Keymap
 (defvar-keymap consult-gh-embark-workflows-view-menu-map
   :doc "Keymap for viewing workflow details"
@@ -1308,21 +1359,31 @@ CAND can be a PR or an issue."
 (fset 'consult-gh-embark-workflows-view-menu-map consult-gh-embark-workflows-view-menu-map)
 
 ;;;;;; Workflow Main Menu Keymap
-(defvar-keymap consult-gh-embark-runs-actions-map
-  :doc "Keymap for consult-gh-embark-runs"
+(defvar-keymap consult-gh-embark-workflows-actions-map
+  :doc "Keymap for consult-gh-embark-workflows"
   :parent consult-gh-embark-general-actions-map
-  "a" '("gh view run's workflow" . consult-gh-embark-run-view-workflow)
-  "v" '("gh view workflows view menu" . consult-gh-embark-runs-view-menu-map))
+  "r" '("gh run workflow" . consult-gh-embark-workflow-run)
+  "e" '("gh enable workflow" . consult-gh-embark-workflow-enable)
+  "d" '("gh disable workflow" . consult-gh-embark-workflow-disable)
+  "g" '("gh list action runs" . consult-gh-embark-workflow-runs-list)
+  "v" '("gh view workflow menu" . consult-gh-embark-workflows-view-menu-map))
 
 ;;;;;; PR View Menu Keymap
 (defvar-keymap consult-gh-embark-runs-view-menu-map
-  :doc "Keymap for viewing workflow details"
+  :doc "Keymap for viewing run details"
   :parent nil
   "r" '("view repo" . consult-gh-embark-repo-view-menu-map)
   "a" '("view run's workflow" . consult-gh-embark-run-view-workflow)
   "v" '("view run" . consult-gh-embark-run-view))
 
 (fset 'consult-gh-embark-runs-view-menu-map consult-gh-embark-runs-view-menu-map)
+
+;;;;;; Workflow Main Menu Keymap
+(defvar-keymap consult-gh-embark-runs-actions-map
+  :doc "Keymap for consult-gh-embark-runs"
+  :parent consult-gh-embark-general-actions-map
+  "a" '("gh view run's workflow" . consult-gh-embark-run-view-workflow)
+  "v" '("gh view workflows view menu" . consult-gh-embark-runs-view-menu-map))
 
 ;;;; Code Keymap
 (defvar-keymap consult-gh-embark-codes-actions-map
