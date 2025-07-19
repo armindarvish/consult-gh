@@ -1335,6 +1335,25 @@ body of the pull requests from commits info, when this varibale is non-nil."
   :group 'consult-gh
   :type 'boolean)
 
+
+(defcustom consult-gh-commit-messgae-ignore-char "#"
+  "The string used to ignore lines in commit messages.
+
+When creating a commit message, lines starting with this string will be ignored."
+  :group 'consult-gh
+  :type 'string)
+
+
+(defcustom consult-gh-workflow-template "# Short Description of the Workflow\n\nname: Name of Workflow\n\n# Controls when the action will run. Workflow runs when manually triggered using the UI\n# or API.\non:\n  workflow_dispatch:\n    # Inputs the workflow accepts.\n    inputs:\n      name:\n        # Friendly description to be shown in the UI instead of 'name'\n        description: 'Name'\n        # Default value if no value is explicitly provided\n        default: 'World'\n        # Input has to be provided for the workflow to run\n        required: true\n        # The data type of the input\n        type: string\n\n# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:\n  # This workflow contains a single job called \"greet\"\n  greet:\n    # The type of runner that the job will run on\n    runs-on: ubuntu-latest\n\n    # Steps represent a sequence of tasks that will be executed as part of the job\n    steps:\n    # Runs a single command using the runners shell\n    - name: Send greeting\n      run: echo \"Hello ${{ inputs.name }}\"\n"
+
+"A template string for new workflows.
+
+When creating a workflow from scratch, this string is
+used as the initial template."
+  :group 'consult-gh
+  :type 'string)
+
 ;;; Other Variables
 
 (defvar consult-gh-category 'consult-gh
@@ -1409,14 +1428,14 @@ This is used in `consult-gh-dashboard'.")
 (defvar consult-gh--files-history nil
   "History variable for files used in `consult-gh-find-file'.")
 
-(defvar consult-gh--commit-message-history nil
-  "History variable for commit messages.")
-
 (defvar consult-gh--gitignore-templates-history nil
   "History variable for gitignore templates.")
 
 (defvar consult-gh--license-key-history nil
   "History variable for license keys.")
+
+(defvar consult-gh--commit-comment-start-save nil
+  "Variable to save `comment-start' before changing it.")
 
 (defvar consult-gh--current-user-orgs nil
   "List of repos of current user.")
@@ -1514,7 +1533,8 @@ This is used to change grouping dynamically.")
   "Keymap alist for `consult-gh-release-view-mode'.")
 
 (defvar consult-gh--file-view-mode-keybinding-alist '(("C-c C-<return>" . consult-gh-topics-open-in-browser)
-                                                      ("C-c C-e" . consult-gh-edit-file))
+                                                      ("C-c C-e" . consult-gh-edit-file)
+                                                      ("C-c C-'" . consult-gh-push-file))
 
   "Keymap alist for `consult-gh-file-view-mode'.")
 
@@ -1528,8 +1548,23 @@ This is used to change grouping dynamically.")
 
   "Keymap alist for `consult-gh-topics-edit-mode'.")
 
+(defvar consult-gh--commit-message-mode-keybinding-alist '(("M-p" . consult-gh-commit-prev-message)
+                                                            ("M-n" . consult-gh-commit-next-message)
+                                                            ("C-c M-s" . consult-gh-commit-save-message)
+                                                            ("C-c C-d" . consult-gh-commit-view-diff))
+
+  "Keymap alist for `consult-gh-commit-message-mode'.")
+
 (defvar consult-gh--last-command nil
   "Last command for `consult-gh--embark-restart'.")
+
+
+(defvar consult-gh-commit-message-instructions "\n\n# Please enter the commit message for your changes. Lines starting\n# with '#' will be ignored, and an empty message aborts the commit\n# ."
+  "Instructions shown in the commit message buffer.
+
+When creating a commit, these instructions are shown.
+Every line should start with git comment character or
+`consult-gh-commit-messgae-ignore-char'.")
 
 ;;; Faces
 
@@ -2942,20 +2977,6 @@ When KILL is non-nil, it kills the current buffer as well."
       (when kill (kill-buffer (current-buffer)))
       (delete-window window))))
 
-(defun consult-gh-kill-preview-buffers ()
-  "Kill all open preview buffers stored in `consult-gh--preview-buffers-list'.
-
-It asks for confirmation if the buffer is modified
-and removes the buffers that are killed from the list."
-  (interactive)
-  (when consult-gh--preview-buffers-list
-    (mapcar (lambda (buff) (if (buffer-live-p buff)
-                               (kill-buffer buff))
-              (unless (buffer-live-p buff)
-                (setq consult-gh--preview-buffers-list
-                      (delete buff consult-gh--preview-buffers-list))))
-            consult-gh--preview-buffers-list)))
-
 (defun consult-gh--completion-get-issue-list (string)
   "Filter function to parse STRING, json output of “gh issue list”.
 
@@ -4158,17 +4179,17 @@ Sets `consult-gh--current-user-orgs' for the current user."
 ;; add hook to set user orgs after switching accounts
 (add-hook 'consult-gh-auth-post-switch-hook #'consult-gh--update-current-user-orgs)
 
-(defun consult-gh--files-get-branches (repo)
+(defun consult-gh--repo-get-branches-json (repo)
   "List branches of REPO, in json format.
 
 uses `consult-gh--api-get-json' to get branches from GitHub API."
   (consult-gh--api-get-json (concat "repos/" repo "/branches")))
 
-(defun consult-gh--files-branches-hashtable-to-list (table repo)
+(defun consult-gh--repo-get-branches-hashtable-to-list (table repo)
   "Convert TABLE with branches of REPO to a list of propertized text.
 
 TABLE can for example be obtained by converting the json object from
-`consult-gh--files-get-branches' to a hash table
+`consult-gh--repo-get-branches-json' to a hash table
 by using `consult-gh--json-to-hashtable'."
   (mapcar (lambda (item) (cons (gethash :name item)
                                `(:repo ,repo
@@ -4176,17 +4197,23 @@ by using `consult-gh--json-to-hashtable'."
                                        :url ,(gethash :url item))))
           table))
 
-(defun consult-gh--files-branches-list-items (repo)
+(defun consult-gh--repo-get-branches-list (repo)
   "Return REPO's information in propertized text format.
 
-Uses `consult-gh--files-get-branches',
-`consult-gh--files-branches-hashtable-to-list',
+Uses `consult-gh--repo-get-branches-json',
+`consult-gh--repo-get-branches-hashtable-to-list',
 and `consult-gh--json-to-hashtable'."
-  (let ((response (consult-gh--files-get-branches repo)))
+  (let ((response (consult-gh--repo-get-branches-json repo)))
     (if (eq (car response) 0)
-        (consult-gh--files-branches-hashtable-to-list
+        (consult-gh--repo-get-branches-hashtable-to-list
          (consult-gh--json-to-hashtable (cadr response)) repo)
       (message (cadr response)))))
+
+(defun consult-gh--repo-get-default-branch (repo)
+  "Return REPO's default branch."
+(consult-gh--json-to-hashtable
+ (consult-gh--api-get-command-string (format "/repos/%s" repo))
+ :default_branch))
 
 (defun consult-gh--read-branch (repo &optional prompt)
   "Query the user to select a branch of REPO.
@@ -4196,19 +4223,19 @@ for example “armindarvish/consult-gh”.
 If PROMPT is non-nil, use it as the query prompt"
   (pcase consult-gh-default-branch-to-load
     ('confirm
-     (if (y-or-n-p "Load Default HEAD branch?")
+     (if (y-or-n-p "Choose Default HEAD branch?")
          (cons repo "HEAD")
        (cons repo (completing-read
-                    (or prompt (concat "Select Branch for "
-                           (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
-                           ": "))
-                   (consult-gh--files-branches-list-items repo)))))
+                   (or prompt (concat "Select Branch for "
+                                      (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
+                                      ": "))
+                   (consult-gh--repo-get-branches-list repo)))))
     ('ask
      (cons repo (completing-read
                  (or prompt (concat "Select Branch for "
-                         (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
-                         ": "))
-                 (consult-gh--files-branches-list-items repo))))
+                                    (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
+                                    ": "))
+                 (consult-gh--repo-get-branches-list repo))))
     ('nil
      (cons repo "HEAD"))
     (_
@@ -4216,7 +4243,7 @@ If PROMPT is non-nil, use it as the query prompt"
 
 (defun consult-gh--branch-create-suggest-name (repo user)
 "Suggest a name for new branch created in REPO by USER."
-(let* ((branches (consult-gh--files-branches-list-items repo))
+(let* ((branches (consult-gh--repo-get-branches-list repo))
        (name (format "%s-patch-" user))
        (existing (all-completions name branches))
        (last-branch (if existing (car (sort existing
@@ -4247,7 +4274,7 @@ If PROMPT is non-nil, use it as the query prompt"
                                          :prompt "Name of the new branch: "
                                          :sort nil
                                          )))
-          (ref (or ref (consult--read (consult-gh--files-branches-list-items repo)
+          (ref (or ref (consult--read (consult-gh--repo-get-branches-list repo)
                                 :prompt "Select Reference Branch: "
                                 :sort nil)))
           (ref-commit (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo ref)) :commit))
@@ -4263,6 +4290,75 @@ If PROMPT is non-nil, use it as the query prompt"
                                                    (message "branch %s %s" (propertize branch-name 'face 'consult-gh-branch) (propertize "created!" 'face 'consult-gh--success)))
                                       :cmd-args args)
             branch-name)))
+
+(defun consult-gh--create-commit (&optional file new-content commit-message)
+  "Create commit to make/update FILE with NEW-CONTENT.
+
+It opens a buffer to enter the commit message for editing FILE.
+If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial
+message.
+
+FILE is a string with properties that identifies a file.  For an
+example, see the buffer-local variable `consult-gh--topic' in the
+buffer generated by `consult-gh--files-view'.  It defaults to
+`consult-gh--topic' in the current buffer."
+  (interactive "P")
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((file (or file
+                    (and (stringp consult-gh--topic)
+                         (equal (get-text-property 0 :type consult-gh--topic) "file")
+                         consult-gh--topic)))
+          (repo (get-text-property 0 :repo file))
+          (path (get-text-property 0 :path file))
+          (branch  (get-text-property 0 :branch file))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (committer-info (consult-gh--get-user-info user))
+          (author-info (consult-gh--get-user-info user))
+          (buffer (format "*consult-gh-file-edit-commit-message: %s/%s/%s" repo branch path))
+          (base64-content (when (stringp new-content) (base64-encode-string (substring-no-properties (encode-coding-string new-content 'utf-8)))))
+          (newtopic (format "%s/%s/%s" branch repo path))
+          (type "commit"))
+
+     (add-text-properties 0 1 (text-properties-at 0 file) newtopic)
+     (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-branch branch :content base64-content) newtopic)
+
+     ;; insert commit message
+     (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
+     (with-current-buffer buffer
+       (consult-gh-commit-message-mode +1)
+       (insert consult-gh-commit-message-instructions)
+       (goto-char (point-min))
+       (when (stringp commit-message)
+         (insert commit-message)
+         (consult-gh-commit-save-message)))
+     (funcall consult-gh-pop-to-buffer-func buffer))))
+
+(defun consult-gh--commit-get-buffer-message ()
+  "Get the commit message in the buffer.
+
+This is adapted from magit:
+URL `https://github.com/magit/magit/blob/731642756f504c8a56d3775960b7af0a93c618bb/lisp/git-commit.el#L818'"
+  (let ((flush (concat "^" comment-start))
+        (str (buffer-substring-no-properties (point-min) (point-max))))
+    (with-temp-buffer
+      (insert str)
+      (goto-char (point-min))
+      (when (re-search-forward (concat flush " -+ >8 -+$") nil t)
+        (delete-region (line-beginning-position) (point-max)))
+      (goto-char (point-min))
+      (flush-lines flush)
+      (goto-char (point-max))
+      (unless (eq (char-before) ?\n)
+        (insert ?\n))
+      (setq str (buffer-string)))
+    (and (not (string-match "\\`[ \t\n\r]*\\'" str))
+         (progn
+           (when (string-match "\\`\n\\{2,\\}" str)
+             (setq str (replace-match "\n" t t str)))
+           (when (string-match "\n\\{2,\\}\\'" str)
+             (setq str (replace-match "\n" t t str)))
+           str))))
 
 (defun consult-gh--commit-change-committer (&optional commit)
   "Change committer for COMMIT.
@@ -4329,7 +4425,7 @@ buffer generated by `consult-gh--commit-create'."
          (repo  (get-text-property 0 :repo commit))
          (branch (or (get-text-property 0 :commit-branch commit)
                      (get-text-property 0 :branch commit))))
-    (setq branch (consult--read (consult-gh--files-branches-list-items repo)
+    (setq branch (consult--read (consult-gh--repo-get-branches-list repo)
                                 :prompt "Select New Branch: "
                                 :default branch
                                 :sort nil))
@@ -4363,7 +4459,7 @@ Description of Arguments:
          (new-branch (consult--read (list initial)
                                          :prompt "Name of the new branch: "
                                          :sort nil))
-         (ref (or branch (consult--read (consult-gh--files-branches-list-items repo)
+         (ref (or branch (consult--read (consult-gh--repo-get-branches-list repo)
                                         :prompt "Select Reference Branch: "
                                         :sort nil)))
          (ref-commit (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo ref)) :commit))
@@ -4431,7 +4527,7 @@ Description of Arguments:
              (new-branch (consult--read (list initial)
                                          :prompt "Name of the new branch: "
                                          :sort nil))
-             (ref (or branch (consult--read (consult-gh--files-branches-list-items new-repo)
+             (ref (or branch (consult--read (consult-gh--repo-get-branches-list new-repo)
                                         :prompt "Select Reference Branch: "
                                         :sort nil)))
              (ref-commit (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" new-repo ref)) :commit))
@@ -4487,11 +4583,14 @@ Description of Arguments:
                                         (format "Update %s" file-name))
                                    (consult--read nil
                                                   :prompt "Commit Message: "
-                                                  :sort nil
-                                                  :history 'consult-gh--commit-message-history)))
+                                                  :sort nil)))
                (protected (when branch (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo branch)) :protected))))
 
-    (add-to-history 'consult-gh--commit-message-history commit-message)
+    (when (and commit-message
+               (stringp commit-message)
+               (not (string-empty-p commit-message)))
+         (consult-gh-commit-save-message commit-message))
+
     (cond
      ((not canwrite)
       (let* ((info (consult-gh--command-to-string "repo" "view" repo "--json" "isFork,isPrivate"))
@@ -4519,7 +4618,12 @@ Description of Arguments:
           (when (and author-name author-email)
             (setq args (append args (list "-f" (format "author[name]=%s" author-name)
                                           "-f" (format "author[email]=%s" author-email)))))
-          (and (y-or-n-p "This will commit the changes to GitHub.  Are you sure you want to continue?")
+          (when (y-or-n-p "This will commit the changes to GitHub.  Are you sure you want to continue?")
+               (if-let ((diff-buffer (and consult-gh--topic (get-text-property 0 :diff-buffer consult-gh--topic))))
+                   (save-window-excursion
+                     (when (buffer-live-p diff-buffer)
+                       (with-current-buffer diff-buffer
+                         (funcall consult-gh-quit-window-func t)))))
                (apply #'consult-gh--command-to-string args))))))))
 
 (defun consult-gh--commit-presubmit (&optional commit)
@@ -4528,7 +4632,7 @@ Description of Arguments:
 COMMIT is a string with properties that identify a commit.
 For an example see the buffer-local variable `consult-gh--topic' in the
 buffer generated by `consult-gh--commit-create'."
-  (if consult-gh-topics-edit-mode
+  (if consult-gh-commit-message-mode
       (let* ((commit (or commit
                        (and (stringp consult-gh--topic)
                             (equal (get-text-property 0 :type consult-gh--topic) "commit")
@@ -4570,7 +4674,7 @@ buffer generated by `consult-gh--commit-create'."
                     (branch (or (get-text-property 0 :commit-branch consult-gh--topic)
                                 (get-text-property 0 :branch consult-gh--topic)))
                     (path (get-text-property 0 :path commit))
-                    (commit-message (consult-gh--whole-buffer-string)))
+                    (commit-message (consult-gh--commit-get-buffer-message)))
                (and (consult-gh--commit-submit repo path content commit-message branch committer-info author-info)
                     (message "Commit Submitted!")
                     (with-current-buffer buffer
@@ -4914,44 +5018,6 @@ set `consult-gh-file-action' to `consult-gh--files-save-file-action'."
               (with-current-buffer buffer
                 (write-file targetpath t))))))))
 
-(defun consult-gh--files-edit-create-commit (&optional file new-content commit-message)
-  "Create commit for updating FILE with NEW-CONTENT.
-
-It opens a buffer to enter the commit message for editing FILE.
-If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial
-message.
-
-FILE is a string with properties that identifies a file.  For an
-example, see the buffer-local variable `consult-gh--topic' in the
-buffer generated by `consult-gh--files-view'.  It defaults to
-`consult-gh--topic' in the current buffer."
-  (interactive "P")
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let* ((file (or file
-                    (and (stringp consult-gh--topic)
-                         (equal (get-text-property 0 :type consult-gh--topic) "file")
-                         consult-gh--topic)))
-          (repo (get-text-property 0 :repo file))
-          (path (get-text-property 0 :path file))
-          (branch  (get-text-property 0 :branch file))
-          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-          (committer-info (consult-gh--get-user-info user))
-          (author-info (consult-gh--get-user-info user))
-          (buffer (format "*consult-gh-file-edit-commit-message: %s/%s/%s" repo branch path))
-          (base64-content (when (stringp new-content) (base64-encode-string (substring-no-properties (encode-coding-string new-content 'utf-8)))))
-          (newtopic (format "%s/%s/%s" branch repo path))
-          (type "commit"))
-
-     (add-text-properties 0 1 (text-properties-at 0 file) newtopic)
-     (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-branch branch :content base64-content) newtopic)
-
-     ;; insert commit message
-     (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
-     (with-current-buffer buffer
-       (when (stringp commit-message) (insert commit-message)))
-     (funcall consult-gh-pop-to-buffer-func buffer))))
-
 (defun consult-gh--files-edit-presubmit (&optional file)
   "Prepare edits on FILE to submit.
 
@@ -4972,7 +5038,7 @@ buffer generated by `consult-gh--files-view'."
           (pcase next
             (':submit
              (let* ((content (consult-gh--whole-buffer-string)))
-               (consult-gh--files-edit-create-commit file content)))))
+               (consult-gh--create-commit file content)))))
     (message "Not a Github file buffer!")))
 
 (defun consult-gh--files-edit-commit-changes (&optional file)
@@ -4994,10 +5060,16 @@ buffer generated by `consult-gh--files-view'."
     (add-text-properties 0 1 (list :changed-locally t) consult-gh--topic)
       (consult-gh--files-edit-commit-changes)))
 
-(defun consult-gh--files-create-buffer (repo path &optional branch tempdir)
+(defun consult-gh--files-create-buffer (repo path &optional branch content tempdir)
   "Create file buffer for new file at PATH in BRANCH of REPO.
 
-optional argument TEMPDIR is the directory where the temporary file is saved."
+Description of Arguments:
+
+  REPO    a string; name of the repository
+  PATH    a string; path of file to create in repo
+  BRANCH  a string; branch of repo to create file in
+  CONTENT a string; initial content of the file
+  TEMPDIR a string; temp directory to save the local file."
   (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
          (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir)))
          (topic (format "%s/%s" repo path)))
@@ -5011,6 +5083,10 @@ optional argument TEMPDIR is the directory where the temporary file is saved."
         (read-only-mode -1)
         (setq-local consult-gh--topic topic)
         (add-text-properties 0 1 (list :view-buffer (current-buffer)) consult-gh--topic)
+        (when (and content (stringp content))
+          (erase-buffer)
+          (insert content)
+          (set-buffer-modified-p nil))
         (current-buffer)))))
 
 (defun consult-gh--repo-format (string input highlight)
@@ -6030,7 +6106,7 @@ TOPIC defaults to `consult-gh--topic'."
   (if consult-gh-topics-edit-mode
       (let* ((repo (or repo consult-gh--topic))
              (repo-name (get-text-property 0 :repo repo))
-             (new (or new (consult--read (consult-gh--files-branches-list-items repo-name)
+             (new (or new (consult--read (consult-gh--repo-get-branches-list repo-name)
                                      :initial nil
                                      :require-match t
                                      :prompt "New Default Branch Name: ")))
@@ -11942,7 +12018,7 @@ Description of Arguments:
          (tagname (and (stringp tagname)
                        (not (string-empty-p tagname))
                        tagname))
-         (branches (consult-gh--files-branches-list-items repo))
+         (branches (consult-gh--repo-get-branches-list repo))
          (target (or target (consult--read branches
                                            :prompt "Select Target Branch: "
                                            :sort nil)))
@@ -13757,6 +13833,35 @@ Helps with autocompleting usernames, issue numbers, etc."
          (consult-gh-topics-edit-capf-mode-on))
         (t
          (consult-gh-topics-edit-capf-mode-off))))
+
+(defvar-keymap consult-gh-commit-message-mode-map
+  :doc "Keymap for `consult-gh-commit-message-mode'.")
+
+(defun consult-gh-commit-message-mode-on ()
+  "Enable `consult-gh-topics-edit-mode'."
+  (let* ((char (shell-command-to-string "git config --get core.commentchar"))
+        (char (and (stringp char)
+                   (not (string-empty-p char))
+                   char)))
+    (setq-local consult-gh--commit-comment-start-save comment-start)
+  (setq-local comment-start (or char consult-gh-commit-messgae-ignore-char))))
+
+(defun consult-gh-commit-message-mode-off ()
+  "Disable `consult-gh-topics-edit-mode'."
+  (setq-local comment-start consult-gh--commit-comment-start-save))
+
+;;;###autoload
+(define-minor-mode consult-gh-commit-message-mode
+  "Minor-mode for editing commit messages in consult-gh."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-commit-message"
+  :keymap consult-gh-commit-message-mode-map
+  (cond (consult-gh-commit-message-mode
+         (consult-gh-commit-message-mode-on))
+        (t
+         (consult-gh-commit-message-mode-off))))
 
 ;;; Frontend interactive commands
 
@@ -16122,8 +16227,8 @@ local variable `consult-gh--topic' in  a buffer created by
          (consult-gh-commit-file)))))))
 
 ;;;###autoload
-(defun consult-gh-commit-file ()
-"Commit changes on FILE to GitHub."
+(defun consult-gh-push-file ()
+"Make a commit to push changes on FILE to GitHub."
 (interactive nil consult-gh-file-view-mode)
 (consult-gh-with-host
  (consult-gh--auth-account-host)
@@ -16132,8 +16237,10 @@ local variable `consult-gh--topic' in  a buffer created by
    (user-error "Not in a consult-gh file buffer!"))))
 
 ;;;###autoload
-(defun consult-gh-create-file (&optional repo path branch)
-  "Create a file at PATH in BRANCH of REPO."
+(defun consult-gh-create-file (&optional repo path branch content)
+  "Create a file at PATH in BRANCH of REPO.
+
+If CONTENT is non-nil insert it in the buffer."
   (interactive)
   (consult-gh-with-host
    (consult-gh--auth-account-host)
@@ -16144,11 +16251,18 @@ local variable `consult-gh--topic' in  a buffer created by
                                              (get-text-property 0 :repo consult-gh--topic))
                                         t))))
           (branch (or branch
-                      (consult-gh--read-branch repo)))
+                      (consult-gh--read-branch repo)
+                      "HEAD"))
           (branch (cond
                    ((stringp branch) branch)
                    ((listp branch) (cdr branch))))
-          (files-list (consult-gh--files-list-items repo branch))
+          (branch (cond
+                   ((or (equal branch "HEAD") (equal branch ""))
+                    (consult-gh--repo-get-default-branch repo))
+                   ((and (stringp branch)
+                       (not (string-empty-p branch))
+                       branch))))
+          (files-list (append `(("." :repo ,repo :branch ,branch :url nil :path "." :size nil)) (consult-gh--files-list-items repo branch)))
           (path (or path
                     (consult--read files-list
                                    :prompt "Enter a Path for File: "
@@ -16194,7 +16308,7 @@ local variable `consult-gh--topic' in  a buffer created by
                    (new-path (concat (file-name-as-directory path) file-name)))
               (consult-gh-create-file repo new-path branch)))))
       (t
-       (consult-gh--files-create-buffer repo path branch))))))
+       (consult-gh--files-create-buffer repo path branch content))))))
 
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
@@ -16640,7 +16754,7 @@ For more details refer to the manual with “gh release create --help”."
                                                        :prompt (concat "Title (optional) " (if tagname (format "[%s]" tagname)) ": ")
                                                        :default tagname))))
               (title (and title (stringp title) (not (string-empty-p title)) (propertize title :consult-gh-draft-title t 'rear-nonsticky t)))
-              (branches (consult-gh--files-branches-list-items repo))
+              (branches (consult-gh--repo-get-branches-list repo))
               (target (or target (consult--read branches
                                      :prompt "Select Target Branch"
                                      :sort nil)))
@@ -17221,31 +17335,47 @@ tagname that contains the version of WORKFLOW to run."
   (interactive "P")
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-     (let* ((repo (or repo
-                      (and (stringp consult-gh--topic)
+   (let* ((repo (or repo
+                    (and (stringp consult-gh--topic)
                          (get-text-property 0 :repo consult-gh--topic))
-                      (get-text-property 0 :repo (consult-gh-search-repos nil t))))
-            (canwrite (consult-gh--user-canwrite repo))
-            (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-            (_ (unless canwrite
-                   (user-error "The curent user, %s, %s to create a workflow in repo, %s"
-                          (propertize user 'face 'consult-gh-error)
-                          (propertize "does not have permission" 'face 'consult-gh-error)
-                          (propertize repo 'face 'consult-gh-repo))))
-            (branch (or branch
-                        (and (y-or-n-p "Do you want to select a branch of repo other than the default branch?")
-                             (consult-gh--read-branch repo))
-                        (consult-gh--json-to-hashtable
-                         (consult-gh--api-get-command-string (format "/repos/%s" repo))
-                           :default_branch)))
-            (path (consult--read nil
-                                 :prompt "Enter a File Name: .github/workflows/"
-                                 :sort nil))
+                    (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (unless canwrite
+               (user-error "The curent user, %s, %s to create a workflow in repo, %s"
+                           (propertize user 'face 'consult-gh-error)
+                           (propertize "does not have permission" 'face 'consult-gh-error)
+                           (propertize repo 'face 'consult-gh-repo))))
+          (starter-workflows (consult-gh--files-list-items "actions/starter-workflows"))
+          (candidates (and (listp starter-workflows)
+                           (append (list (list "Set Up a Workflow Yourself" :repo repo :path 'read))
+                                   (remove nil
+                                           (mapcar
+                                            (lambda (item) (if (and (string-match ".*.yml" (car item))
+                                                                    (not (string-match "\.github" (car item))))
+                                                               item))
+                                            starter-workflows)))))
+          (workflow (consult--read candidates
+                                   :prompt "Select A Workflow: "
+                                   :lookup #'consult--lookup-cdr
+                                   :sort nil))
+          (workflow-path (and (plistp workflow) (plist-get workflow :path)))
+          (content (cond
+                    ((equal workflow-path 'read) consult-gh-workflow-template)
+                    ((stringp workflow-path) (consult-gh--files-get-content-by-path (plist-get workflow :repo) workflow-path))))
+          (path (concat ".github/workflows/"
+                        (cond
+                         ((equal workflow-path 'read) (read-string "Enter a Name for the YAML file: .github/workflows/"))
+                         ((stringp workflow-path) (read-string "Enter a Name for the YAML file: .github/workflows/" (file-name-nondirectory workflow-path))))))
 
-            (path (and (stringp path) (concat ".github/workflows/" path))))
-       (if path
-         (consult-gh-create-file repo path branch)
-         (user-error "Did not get a name for the file!")))))
+          (path (cond
+                 ((and (stringp path)
+                      (not (equal (file-name-extension path) "yml")))
+                  (concat (file-name-sans-extension path) ".yml"))
+                 ((stringp path) path))))
+     (if path
+         (consult-gh-create-file repo path branch content)
+       (user-error "Did not get a name for the file!")))))
 
 (defun consult-gh--run-list-transform (input)
 "Add annotation to run candidates in `consult-gh-run-list'.
@@ -17453,6 +17583,7 @@ If JOB-ID is non-nil, rerun the specific job with JOB-ID."
     (when cand
          (funcall #'consult-gh--run-rerun-action cand))))
 
+;;;###autoload
 (defun consult-gh-branch-create (&optional repo ref branch-name)
 "Create a new branch in REPO.
 
@@ -17702,6 +17833,114 @@ browser."
          (funcall (or consult-gh-browse-url-func #'browse-url) url)
        (message "No topic to browse in this buffer!")))))
 
+;;;###autoload
+(defun consult-gh-commit-save-message (&optional commit-message)
+  "Save COMMIT-MESSAGE to `log-edit-comment-ring'.
+
+COMMIT-MESSAGE defaults to
+`consult-gh--commit-get-buffer-message'.
+
+Adapted from magit:
+URL `https://github.com/magit/magit/blob/731642756f504c8a56d3775960b7af0a93c618bb/lisp/git-commit.el#L796'"
+  (interactive nil consult-gh-commit-message-mode)
+  (let ((message (or commit-message (consult-gh--commit-get-buffer-message))))
+    (if message
+        (progn
+          (when-let ((index (ring-member log-edit-comment-ring message)))
+            (ring-remove log-edit-comment-ring index))
+          (ring-insert log-edit-comment-ring message)
+             (message "Message saved"))
+           (message "Only whitespace and/or comments; message not saved"))))
+
+;;;###autoload
+(defun consult-gh-commit-prev-message (arg)
+  "Cycle backward through message history, after saving current message.
+With a numeric prefix ARG, go back ARG messages.
+
+Adapted from magit:
+URL `https://github.com/magit/magit/blob/731642756f504c8a56d3775960b7af0a93c618bb/lisp/git-commit.el#L740'"
+  (interactive "*p" consult-gh-commit-message-mode)
+  (let ((len (ring-length log-edit-comment-ring)))
+    (if (<= len 0)
+        (message "%s comment ring!" (propertize "Empty" 'face 'consult-gh-warning))
+      (let* ((message (consult-gh--commit-get-buffer-message)))
+        (when (and (stringp message)
+                   (not (ring-member log-edit-comment-ring message)))
+          (ring-insert log-edit-comment-ring message)
+          (cl-incf arg)
+          (setq len (ring-length log-edit-comment-ring))))
+      ;; Delete the message but not the instructions at the end.
+      (save-restriction
+        (goto-char (point-min))
+        (narrow-to-region
+         (point)
+         (if (re-search-forward (concat "^" comment-start) nil t)
+             (max 1 (- (point) 2))
+           (point-max)))
+        (delete-region (point-min) (point)))
+      (setq log-edit-comment-ring-index (log-edit-new-comment-index arg len))
+      (message "Comment %d" (1+ log-edit-comment-ring-index))
+      (insert (ring-ref log-edit-comment-ring log-edit-comment-ring-index)))))
+
+;;;###autoload
+(defun consult-gh-commit-next-message (arg)
+  "Cycle forward through message history, after saving current message.
+With a numeric prefix ARG, go forward ARG messages.
+
+Adapted from magit:
+URL `
+https://github.com/magit/magit/blob/731642756f504c8a56d3775960b7af0a93c618bb/lisp/git-commit.el#L768'"
+  (interactive "*p" consult-gh-commit-message-mode)
+  (consult-gh--commit-prev-message (- arg)))
+
+;;;###autoload
+(defun consult-gh-commit-view-diff (&optional commit)
+  "View diff for COMMIT.
+
+COMMIT is a string with properties that identify a commit.
+For an example see the buffer-local variable `consult-gh--topic' in the
+buffer generated by `consult-gh--commit-create'."
+  (interactive nil consult-gh-commit-message-mode)
+  (if consult-gh-commit-message-mode
+    (let* ((commit (or commit consult-gh--topic))
+           (repo (get-text-property 0 :repo commit))
+           (path (get-text-property 0 :path commit))
+           (branch (get-text-property 0 :branch commit))
+           (file-buffer (get-text-property 0 :view-buffer commit))
+           (content (or (and (get-text-property 0 :content commit)
+                             (base64-decode-string (get-text-property 0 :content commit)))
+                        (and (bufferp file-buffer)
+                             (with-current-buffer file-buffer
+                               (buffer-substring-no-properties (point-min) (point-max))))))
+           (remote-content (consult-gh--files-get-content-by-path repo path branch))
+           (new-buffer (get-buffer-create (generate-new-buffer " consult-gh-diff")))
+           (old-buffer (get-buffer-create (generate-new-buffer " consult-gh-diff"))))
+
+      (with-current-buffer new-buffer
+        (erase-buffer)
+        (if (stringp content)
+            (insert content))
+        (set-buffer-modified-p nil))
+      (with-current-buffer old-buffer
+        (erase-buffer)
+        (if (stringp remote-content)
+            (insert remote-content))
+        (set-buffer-modified-p nil))
+
+     (let* ((window (diff-buffers old-buffer new-buffer))
+           (diff-buff (and window
+                             (window-live-p window)
+                             (window-buffer window))))
+       (if (buffer-live-p new-buffer)
+           (kill-buffer new-buffer))
+       (if (buffer-live-p old-buffer)
+           (kill-buffer old-buffer))
+     (add-text-properties 0 1 (list :diff-buffer diff-buff) commit)
+     diff-buff))
+
+(message "Not in a consult-gh commit message buffer!")))
+
+;;;###autoload
 (defun consult-gh-ctrl-c-ctrl-c ()
   "Submit topic or invoke `org-ctrl-c-ctrl-c' in `org-mode'."
   (interactive)
@@ -17769,9 +18008,11 @@ browser."
   ;; consult-gh-misc-view-mode-map
   (consult-gh--enable-keybindings-alist consult-gh-misc-view-mode-map  consult-gh--misc-view-mode-keybinding-alist)
 
-  ;; con
   ;; consult-gh-topics-edit-mode-map
-  (consult-gh--enable-keybindings-alist consult-gh-topics-edit-mode-map consult-gh--topics-edit-mode-keybinding-alist))
+  (consult-gh--enable-keybindings-alist consult-gh-topics-edit-mode-map consult-gh--topics-edit-mode-keybinding-alist)
+
+  ;; consult-gh-commit-message-mode-map
+  (consult-gh--enable-keybindings-alist consult-gh-commit-message-mode-map consult-gh--commit-message-mode-keybinding-alist))
 
 ;;;###autoload
 (defun consult-gh-disable-default-keybindings ()
@@ -17802,7 +18043,25 @@ browser."
   (consult-gh--disable-keybindings-alist consult-gh-misc-view-mode-map  consult-gh--misc-view-mode-keybinding-alist)
 
   ;; consult-gh-topics-edit-mode-map
-  (consult-gh--disable-keybindings-alist consult-gh-topics-edit-mode-map consult-gh--topics-edit-mode-keybinding-alist))
+  (consult-gh--disable-keybindings-alist consult-gh-topics-edit-mode-map consult-gh--topics-edit-mode-keybinding-alist)
+
+  ;; consult-gh-commit-message-mode-map
+  (consult-gh--disable-keybindings-alist consult-gh-commit-message-mode-map consult-gh--commit-message-mode-keybinding-alist))
+
+;;;###autoload
+(defun consult-gh-kill-preview-buffers ()
+  "Kill all open preview buffers stored in `consult-gh--preview-buffers-list'.
+
+It asks for confirmation if the buffer is modified
+and removes the buffers that are killed from the list."
+  (interactive)
+  (when consult-gh--preview-buffers-list
+    (mapcar (lambda (buff) (if (buffer-live-p buff)
+                               (kill-buffer buff))
+              (unless (buffer-live-p buff)
+                (setq consult-gh--preview-buffers-list
+                      (delete buff consult-gh--preview-buffers-list))))
+            consult-gh--preview-buffers-list)))
 
 ;;;###autoload
 (defun consult-gh-refresh-view ()
