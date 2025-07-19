@@ -111,6 +111,18 @@ not handle that themselves."
     (let* ((repo (get-text-property 0 :repo cand)))
       (setq consult-gh--known-repos-list (delete repo consult-gh--known-repos-list)))))
 
+(defun consult-gh-embark-add-repo-to-workflow-template-list (cand)
+  "Add CAND repo to `consult-gh-workflow-template-repo-sources'."
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand)))
+      (add-to-list 'consult-gh-workflow-template-repo-sources repo))))
+
+(defun consult-gh-embark-remove-repo-from-workflow-template-list (cand)
+  "Remove CAND repo from `consult-gh-workflow-template-repo-sources'."
+  (when (stringp cand)
+    (let* ((repo (get-text-property 0 :repo cand)))
+      (setq consult-gh-workflow-template-repo-sources (delete repo consult-gh-workflow-template-repo-sources)))))
+
 (defun consult-gh-embark-add-org-to-known-orgs (cand)
   "Add CAND org to `consult-gh--known-orgs-list'."
   (when (stringp cand)
@@ -1024,7 +1036,11 @@ uses `compose-mail' for composing an email."
   :doc "Keymap for bookmarking repos menu"
   :parent nil
   "r" '("add to known repos" . consult-gh-embark-add-repo-to-known-repos)
-  "k" '("remove from known repos" . consult-gh-embark-remove-repo-from-known-repos))
+  "k" '("remove from known repos" . consult-gh-embark-remove-repo-from-known-repos)
+  "w" '("add to workflow template repos"
+        consult-gh-embark-add-repo-to-workflow-template-list)
+  "W" '("remove from workflow template repos"
+        consult-gh-embark-remove-repo-from-workflow-template-list))
 
 (fset 'consult-gh-embark-bookmark-repos-menu-map consult-gh-embark-bookmark-repos-menu-map)
 
