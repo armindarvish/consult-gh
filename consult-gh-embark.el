@@ -456,7 +456,7 @@ CAND can be a repo, issue, PR, file path, ..."
   (when (stringp cand)
     (let ((url (get-text-property 0 :url cand)))
       (when (and url (stringp url))
-        (kill-new (consult-gh--files-get-content url))))))
+        (kill-new (consult-gh--files-get-content-by-api-url url))))))
 
 (defun consult-gh-embark-copy-user-as-kill (cand)
   "Copy the user in CAND to `kill-ring'."
@@ -537,7 +537,7 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
   (when (stringp cand)
     (let ((url (get-text-property 0 :url cand)))
       (when (and url (stringp url))
-        (embark-insert (consult-gh--files-get-content url))))))
+        (embark-insert (consult-gh--files-get-content-by-api-url url))))))
 
 (defun consult-gh-embark-insert-user (cand)
   "Insert the user in CAND at point."
