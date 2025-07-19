@@ -1037,10 +1037,8 @@ uses `compose-mail' for composing an email."
   :parent nil
   "r" '("add to known repos" . consult-gh-embark-add-repo-to-known-repos)
   "k" '("remove from known repos" . consult-gh-embark-remove-repo-from-known-repos)
-  "w" '("add to workflow template repos"
-        consult-gh-embark-add-repo-to-workflow-template-list)
-  "W" '("remove from workflow template repos"
-        consult-gh-embark-remove-repo-from-workflow-template-list))
+  "w" '("add to workflow template repos" . consult-gh-embark-add-repo-to-workflow-template-list)
+  "W" '("remove from workflow template repos" . consult-gh-embark-remove-repo-from-workflow-template-list))
 
 (fset 'consult-gh-embark-bookmark-repos-menu-map consult-gh-embark-bookmark-repos-menu-map)
 
