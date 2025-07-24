@@ -1402,6 +1402,9 @@ repos can then be fetched and used as a when creating a new workflow."
 (defvar consult-gh-files-category 'consult-gh-files
   "Category symbol for files in `consult-gh' package.")
 
+(defvar consult-gh-branches-category 'consult-gh-branches
+  "Category symbol for branches in `consult-gh' package.")
+
 (defvar consult-gh--preview-buffers-list (list)
   "List of currently open preview buffers.")
 
@@ -1482,6 +1485,11 @@ This is a list of \='(USERNAME HOST IF-ACTIVE)")
 (defvar-local consult-gh--topic nil
   "Topic in consult-gh preview buffers.")
 
+(defvar-local consult-gh-upload-topic nil
+  "Topic for uploading files.
+
+This is used in Dired buffers for uploading files.")
+
 (defvar consult-gh--override-group-by nil
   "Override grouping based on user input.
 
@@ -1557,6 +1565,11 @@ This is used to change grouping dynamically.")
                                                         ("C-c C-k" . consult-gh-topics-cancel))
 
   "Keymap alist for `consult-gh-topics-edit-mode'.")
+
+(defvar consult-gh--upload-files-mode-keybinding-alist '(("C-c C-c" . consult-gh-upload-files)
+                                                         ("C-c C-k" . consult-gh-topics-cancel))
+
+  "Keymap alist for `consult-gh-upload-files-mode'.")
 
 (defvar consult-gh--commit-message-mode-keybinding-alist '(("M-p" . consult-gh-commit-prev-message)
                                                             ("M-n" . consult-gh-commit-next-message)
@@ -2139,10 +2152,10 @@ If any string in LIST contains comma, wrap it in quotes."
 Both arguments must be strings."
   (let* ((inhibit-message t))
     (url-retrieve url
-                  `(lambda (_)
+                  (lambda (_)
                      (let* ((handle (mm-dissect-buffer t)))
                        (let ((mm-attachment-file-modes (default-file-modes)))
-                         (mm-save-part-to-file handle ,newname))
+                         (mm-save-part-to-file handle newname))
                        (mm-destroy-parts handle)
                        (kill-buffer (current-buffer))))))
     nil)
@@ -2196,22 +2209,22 @@ Description of Arguments:
                                 when-done
                            (lambda (_ str) str)))
                (proc-sentinel
-                `(lambda (proc event)
+                (lambda (proc event)
                    (cond
                     ((string-prefix-p "finished" event)
-                       (with-current-buffer ,proc-buf
+                       (with-current-buffer proc-buf
                          (widen)
-                         (funcall ,when-done event (buffer-string))
+                         (funcall when-done event (buffer-string))
                            (erase-buffer)))
                      ((string-prefix-p "killed" event)
                       (message "%s was %s" (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event)))
                      (t (message "%s failed: %s " (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event))))
-                   (when (> (buffer-size ,proc-buf) 0)
+                   (when (> (buffer-size proc-buf) 0)
                      (with-current-buffer (get-buffer-create consult-gh--async-log-buffer)
                        (goto-char (point-max))
                        (insert (format ">>>>> stderr (%s) >>>>>\n" (process-name proc)))
                        (let ((beg (point)))
-                         (insert-buffer-substring ,proc-buf)
+                         (insert-buffer-substring proc-buf)
                          (save-excursion
                            (goto-char beg)
                            (message #("%s" 0 2 (face error))
@@ -2261,12 +2274,13 @@ ARGS are passed to `consult-gh-call-process'"
         (message (cadr out))
         nil))))
 
-(defun consult-gh--api-get-json (arg)
+(defun consult-gh--api-get-json (url &rest args)
   "Make a GitHub API call to get response in JSON format.
 
-Passes the ARG \(e.g. a GitHub API URL\) to
-“gh api -H Accept:application/vnd.github+json” command."
-  (consult-gh--call-process "api" "-H" "Accept: application/vnd.github+json" "--paginate" arg))
+Passes the URL \(e.g. a GitHub API URL\), as well as ARGS to
+“gh api” command."
+  (let ((args (append `("api" "-H" "Accept: application/vnd.github+json" "--paginate" ,url) (if (listp args) args (list args)))))
+  (apply #'consult-gh--call-process args)))
 
 (defun consult-gh--api-get-command-string (url &rest args)
   "Return the output of an api call with “get” method to URL with ARGS.
@@ -2369,15 +2383,6 @@ Formats the output as “[HOST/]OWNER/REPO” if any, otherwise returns nil."
             (string-trim (cadr response))
           nil)
       nil)))
-
-(defun consult-gh--get-repo-from-topic (&optional topic)
-  "Return the full name of the GitHub repository in topic.
-
-TOPIC should be a string with property field :repo, and defaults to
-`consult-gh--topic'."
-  (when-let* ((topic (or topic consult-gh--topic)))
-    (if (stringp topic)
-        (get-text-property 0 :repo topic))))
 
 ;;; Backend functions for internal consult-gh use
 
@@ -2855,7 +2860,7 @@ major mode and format the contents."
     (unless (file-exists-p profile-path)
       (consult-gh--make-process (format "consult-gh-user-tooltip-%s" user)
                                 :cmd-args (list "api" (format "users/%s" user) "-H" "Accept:application/vnd.github.diff")
-                                :when-done `(lambda (_ str)
+                                :when-done (lambda (_ str)
                                            (let* ((inhibit-message t)
                                                   (table (consult-gh--json-to-hashtable str '(:avatar_url :name :email :location :bio)))
                                                   (image-url (and (hash-table-p table)
@@ -2868,14 +2873,14 @@ major mode and format the contents."
                                                             (gethash :location table)))
                                                   (bio (and (hash-table-p table)
                                                             (gethash :bio table)))
-                                                  (profile-text (concat (propertize ,user 'face 'consult-gh-user)
+                                                  (profile-text (concat (propertize user 'face 'consult-gh-user)
                                                                (if name (concat "\n" name))
                                                                (if email (concat "\n" (propertize email 'face 'consult-gh-date)))
                                                                (if loc (concat "\n" (propertize loc 'face 'consult-gh-repo)))
                                                                (if bio (concat "\n" (propertize bio 'face 'consult-gh-description))))))
-                                             (unless (file-exists-p ,image-path)
-                                               (consult-gh-url-copy-file image-url ,image-path))
-                                             (with-temp-file ,profile-path
+                                             (unless (file-exists-p image-path)
+                                               (consult-gh-url-copy-file image-url image-path))
+                                             (with-temp-file profile-path
                                                (prin1 profile-text
                                                       (current-buffer)))
                                              nil))))
@@ -2911,7 +2916,7 @@ major mode and format the contents."
   (consult-gh--get-package repo))))
         (consult-gh--make-process (format "consult-gh-repo-tooltip-%s" repo)
                                   :cmd-args (list "api" "-H" "Accept:application/vnd.github.diff" "graphql" "-f" query)
-                                  :when-done `(lambda (_ str)
+                                  :when-done (lambda (_ str)
                                                 (let* ((inhibit-message t)
                                                        (table (consult-gh--json-to-hashtable str :data))
                                                        (table (and (hash-table-p table) (gethash :repository table)))
@@ -2947,9 +2952,9 @@ major mode and format the contents."
                                                                       consult-gh-star-icon
                                                                       "\n"
                                                                       (propertize (concat "last updated: " updated) 'face 'consult-gh-date))))
-                                                  (unless (file-exists-p ,image-path)
-                                                  (consult-gh-url-copy-file image-url ,image-path))
-                                                (with-temp-file ,profile-path
+                                                  (unless (file-exists-p image-path)
+                                                  (consult-gh-url-copy-file image-url image-path))
+                                                (with-temp-file profile-path
                                                   (prin1 profile-text
                                                          (current-buffer)))
                                                 nil)))))
@@ -2969,6 +2974,15 @@ DESCRIPTION and COLOR are description and color of label from GitHub API."
   (concat (propertize label 'face `(t :background ,(concat "#" color) :box (:color ,(concat "#" color) :line-width (-1 . -2))))
           (if (stringp description)
                   (concat "\n"  (propertize description 'face 'consult-gh-description)))))
+
+(defun consult-gh--get-repo-from-topic (&optional topic)
+  "Return the full name of the GitHub repository in topic.
+
+TOPIC should be a string with property field :repo, and defaults to
+`consult-gh--topic'."
+  (when-let* ((topic (or topic consult-gh--topic)))
+    (if (stringp topic)
+        (get-text-property 0 :repo topic))))
 
 ;;; Backend functions for `consult-gh'.
 
@@ -3003,8 +3017,8 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
          (issueEnabled (consult-gh--repo-has-issues-enabled-p repo)))
     (if (eq issueEnabled 't)
         (consult-gh--make-process "consult-gh-issue-list"
-                                  :when-done `(lambda (_ out)
-                                     (add-text-properties 0 1 (list :issues (consult-gh--completion-get-issue-list out)) ,topic))
+                                  :when-done (lambda (_ out)
+                                     (add-text-properties 0 1 (list :issues (consult-gh--completion-get-issue-list out)) topic))
                                   :cmd-args (list "issue" "list" "--repo" repo "--state" "all" "--limit" consult-gh-completion-max-items "--search" "sort:updated" "--json" "number,title")))))
 
 (defun consult-gh--completion-set-prs (&optional topic repo)
@@ -3014,8 +3028,8 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic))
          (repo (or repo (get-text-property 0 :repo topic))))
     (consult-gh--make-process "consult-gh-pr-list"
-                              :when-done `(lambda (_ out)
-                                 (add-text-properties 0 1 (list :prs (consult-gh--completion-get-issue-list out)) ,topic))
+                              :when-done (lambda (_ out)
+                                 (add-text-properties 0 1 (list :prs (consult-gh--completion-get-issue-list out)) topic))
                               :cmd-args (list "pr" "list" "--repo" repo "--state" "all" "--search" "sort:updated" "--limit" consult-gh-completion-max-items "--json" "number,title"))))
 
 (defun consult-gh--completion-get-mentionable-users-list (string)
@@ -3035,9 +3049,9 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic))
          (repo (or repo (get-text-property 0 :repo topic))))
     (consult-gh--make-process "consult-gh-mentionable-users"
-                              :when-done `(lambda (_ out)
+                              :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list :mentionable-users (consult-gh--completion-get-mentionable-users-list out))
-                                                      ,topic))
+                                                      topic))
                               :cmd-args (list "repo" "view" repo "--json" "mentionableUsers"))))
 
 (defun consult-gh--completion-get-assignable-users-list (string)
@@ -3057,10 +3071,10 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic))
          (repo (or repo (get-text-property 0 :repo topic))))
     (consult-gh--make-process "consult-gh-valid-assignees"
-                              :when-done `(lambda (_ out)
+                              :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list
                                                            :assignable-users (consult-gh--completion-get-assignable-users-list out))
-                                                      ,topic))
+                                                      topic))
                               :cmd-args (list "repo" "view" repo "--json" "assignableUsers"))))
 
 (defun consult-gh--completion-get-labels-list (string)
@@ -3084,10 +3098,10 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic))
          (repo (or repo (get-text-property 0 :repo topic))))
     (consult-gh--make-process "consult-gh-valid-labels"
-                              :when-done `(lambda (_ out)
+                              :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list
                                                            :valid-labels (consult-gh--completion-get-labels-list out))
-                                                      ,topic))
+                                                      topic))
                               :cmd-args (list "repo" "view" repo "--json" "labels"))))
 
 (defun consult-gh--completion-get-milestones-list (string)
@@ -3112,10 +3126,10 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic))
          (repo (or repo (get-text-property 0 :repo topic))))
     (consult-gh--make-process "consult-gh-valid-milestones"
-                              :when-done `(lambda (_ out)
+                              :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list
                                                            :valid-milestones (consult-gh--completion-get-milestones-list out))
-                                                      ,topic))
+                                                      topic))
                               :cmd-args (list "repo" "view" repo "--json" "milestones"))))
 
 (defun consult-gh--completion-get-projects-list (string)
@@ -3137,10 +3151,10 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
     (when (or (member "read:project" token-scopes)
               (member "project" token-scopes))
         (consult-gh--make-process "consult-gh-valid-projects"
-                                  :when-done `(lambda (_ out)
+                                  :when-done (lambda (_ out)
                                      (add-text-properties 0 1 (list
                                                                :valid-projects (ignore-errors (consult-gh--completion-get-projects-list out)))
-                                                          ,topic))
+                                                          topic))
                                   :cmd-args (list "repo" "view" repo "--json" "hasProjectsEnabled,projectsV2")))))
 
 (defun consult-gh--completion-get-branches-list (string)
@@ -3162,10 +3176,10 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic))
          (repo (or repo (get-text-property 0 :repo topic))))
     (consult-gh--make-process "consult-gh-valid-branches"
-                              :when-done `(lambda (_ out)
+                              :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list
                                                            :valid-branches (consult-gh--completion-get-branches-list out))
-                                                      ,topic))
+                                                      topic))
                               :cmd-args (list "api" (format "/repos/%s/branches" repo)))))
 
 (defun consult-gh--completion-get-pr-refs-list (string repo refonly)
@@ -3195,17 +3209,17 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
          (headrepo (or headrepo (get-text-property 0 :headrepo topic))))
     (when (stringp baserepo)
     (consult-gh--make-process "consult-gh-valid-basebranches"
-                              :when-done `(lambda (_ out)
+                              :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list
-                                                           :valid-baserefs (consult-gh--completion-get-pr-refs-list out (substring-no-properties ,baserepo) ,refonly))
-                                                      ,topic))
+                                                           :valid-baserefs (consult-gh--completion-get-pr-refs-list out (substring-no-properties baserepo) refonly))
+                                                      topic))
                               :cmd-args (list "api" (format "/repos/%s/branches" baserepo))))
     (when (stringp headrepo)
     (consult-gh--make-process "consult-gh-valid-headbranches"
-                              :when-done `(lambda (_ out)
+                              :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list
-                                                           :valid-headrefs (consult-gh--completion-get-pr-refs-list out (substring-no-properties ,headrepo) ,refonly))
-                                                      ,topic))
+                                                           :valid-headrefs (consult-gh--completion-get-pr-refs-list out (substring-no-properties headrepo) refonly))
+                                                      topic))
                               :cmd-args (list "api" (format "/repos/%s/branches" headrepo))))))
 
 (defun consult-gh--completion-get-release-tags-list (string)
@@ -3231,10 +3245,10 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
          (repo (or repo (get-text-property 0 :repo topic))))
     (when (stringp repo)
     (consult-gh--make-process "consult-gh-valid-release-tags"
-                              :when-done `(lambda (_ out)
+                              :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list
                                                            :valid-release-tags (consult-gh--completion-get-release-tags-list out))
-                                                      ,topic))
+                                                      topic))
                               :cmd-args (list "api" (format "/repos/%s/tags" repo))))))
 
 (defun consult-gh--completion-get-repo-topics-list (string)
@@ -3250,10 +3264,10 @@ This is a filter function suitable for passing to
 When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic)))
     (consult-gh--make-process "consult-gh-valid-assignees"
-                              :when-done `(lambda (_ out)
+                              :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list
                                                            :popular-topics (consult-gh--completion-get-repo-topics-list out))
-                                                      ,topic))
+                                                      topic))
 
                               :cmd-args (list "api" "repos/github/explore/contents/topics"))))
 
@@ -3303,20 +3317,20 @@ Completes “@.*” for mentionng users in comments, posts,..."
          (begin (match-beginning 0))
          (end (point))
          (candidates (completion-table-dynamic
-                      `(lambda (_)
+                      (lambda (_)
                         (cl-remove-duplicates
                          (delq nil (append
-                                    (get-text-property 0 :mentionable-users ,topic)
-                                    (get-text-property 0 :commenters ,topic)))))))
+                                    (get-text-property 0 :mentionable-users topic)
+                                    (get-text-property 0 :commenters topic)))))))
          (affix-fun (lambda (list)
                       (mapcar (lambda (item)
                                 (list item consult-gh-user-icon ""))
                               list)))
-         (exit-fun `(lambda (str _status)
+         (exit-fun (lambda (str _status)
                       (when-let (cand (car (member str (cl-remove-duplicates
                          (delq nil (append
-                                    (get-text-property 0 :mentionable-users ,topic)
-                                    (get-text-property 0 :commenters ,topic)))))))
+                                    (get-text-property 0 :mentionable-users topic)
+                                    (get-text-property 0 :commenters topic)))))))
                       (and (stringp cand)
                            (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand)))
@@ -3335,7 +3349,7 @@ Completes “#.*” for referencing issues"
          (begin (match-beginning 0))
          (end (point))
          (candidates (completion-table-dynamic
-                      `(lambda (_)
+                      (lambda (_)
                          (cl-remove-duplicates
                           (delq nil
                                 (mapcar (lambda (item)
@@ -3343,29 +3357,29 @@ Completes “#.*” for referencing issues"
                                             (concat (car item)
                                                     "\t"
                                                     (propertize (cdr item) 'face 'completions-annotations))))
-                                        (append (get-text-property 0 :issues ,topic)
-         (get-text-property 0 :prs ,topic))))))))
-         (affix-fun `(lambda (list)
+                                        (append (get-text-property 0 :issues topic)
+         (get-text-property 0 :prs topic))))))))
+         (affix-fun (lambda (list)
                       (mapcar (lambda (item)
                                 (list item
                                       (cond ((assoc (car (split-string item "\t" t))
-                                                   (get-text-property 0 :issues ,topic))
+                                                   (get-text-property 0 :issues topic))
                                              consult-gh-issue-icon)
                                             ((assoc (car (split-string item "\t" t))
-                                                    (get-text-property 0 :prs ,topic))
+                                                    (get-text-property 0 :prs topic))
                                              consult-gh-pr-icon)
                                             (t ""))
                                       ""))
                               list)))
-         (exit-fun `(lambda (str _status)
+         (exit-fun (lambda (str _status)
               (delete-char (- (length str)))
               (when (looking-back "#" (- (point) 1)) (delete-char -1))
               (let* ((b (point))
                      (number (car (split-string str "\t" t)))
                      (icon (cond
-                            ((assoc number (get-text-property 0 :issues ,topic))
+                            ((assoc number (get-text-property 0 :issues topic))
                                consult-gh-issue-icon)
-                            ((assoc number (get-text-property 0 :prs ,topic))
+                            ((assoc number (get-text-property 0 :prs topic))
                              consult-gh-pr-icon))))
 
 
@@ -3387,26 +3401,26 @@ Completes “#.*” for referencing issues"
          (begin (1+ (match-beginning 0)))
          (end (point))
          (candidates (completion-table-dynamic
-                      `(lambda (_)
+                      (lambda (_)
                          (cl-remove-duplicates
-                          (delq nil (mapcar #'cdr (append (get-text-property 0 :issues ,topic)
-                                                          (get-text-property 0 :prs ,topic))))))))
-         (affix-fun `(lambda (list)
+                          (delq nil (mapcar #'cdr (append (get-text-property 0 :issues topic)
+                                                          (get-text-property 0 :prs topic))))))))
+         (affix-fun (lambda (list)
                       (mapcar (lambda (item)
                                 (list item
-                                      (cond ((rassoc item (get-text-property 0 :issues ,topic))
-                                             (concat  consult-gh-issue-icon " " (propertize (or (car-safe (rassoc item (get-text-property 0 :issues ,topic))) "") 'face 'completions-annotations) " "))
-                                            ((rassoc item (get-text-property 0 :prs ,topic))
-                                             (concat consult-gh-pr-icon " " (propertize (or (car-safe (rassoc item (get-text-property 0 :prs ,topic))) "") 'face 'completions-annotations) " "))
+                                      (cond ((rassoc item (get-text-property 0 :issues topic))
+                                             (concat  consult-gh-issue-icon " " (propertize (or (car-safe (rassoc item (get-text-property 0 :issues topic))) "") 'face 'completions-annotations) " "))
+                                            ((rassoc item (get-text-property 0 :prs topic))
+                                             (concat consult-gh-pr-icon " " (propertize (or (car-safe (rassoc item (get-text-property 0 :prs topic))) "") 'face 'completions-annotations) " "))
                                             (t ""))
                                       ""))
                               list)))
-         (exit-fun `(lambda (str _status)
+         (exit-fun (lambda (str _status)
               (delete-char (- (length str)))
               (when (looking-back "#" (- (point) 1)) (delete-char -1))
               (let* ((b (point))
-                    (issue (rassoc str (get-text-property 0 :issues ,topic)))
-                    (pr (rassoc str (get-text-property 0 :prs ,topic)))
+                    (issue (rassoc str (get-text-property 0 :issues topic)))
+                    (pr (rassoc str (get-text-property 0 :prs topic)))
                     (icon (cond
                            (issue consult-gh-issue-icon)
                            (pr consult-gh-pr-icon)))
@@ -3433,8 +3447,8 @@ Completes “#.*” for referencing issues"
 Completes “base:.*” for referencing branches"
   (let* ((topic consult-gh--topic)
          (baserefs (completion-table-dynamic
-                      `(lambda (_)
-                         (get-text-property 0 :valid-baserefs ,topic))))
+                      (lambda (_)
+                         (get-text-property 0 :valid-baserefs topic))))
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
@@ -3461,8 +3475,8 @@ Completes “base:.*” for referencing branches"
 Completes “head:.*” for referencing branches"
   (let* ((topic consult-gh--topic)
          (headrefs (completion-table-dynamic
-                      `(lambda (_)
-                         (get-text-property 0 :valid-headrefs ,topic))))
+                      (lambda (_)
+                         (get-text-property 0 :valid-headrefs topic))))
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
@@ -3489,8 +3503,8 @@ Completes “head:.*” for referencing branches"
 Completes “default_branch:.*” for referencing branches"
   (let* ((topic consult-gh--topic)
          (headrefs (completion-table-dynamic
-                      `(lambda (_)
-                         (get-text-property 0 :valid-branches ,topic))))
+                      (lambda (_)
+                         (get-text-property 0 :valid-branches topic))))
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
@@ -3517,8 +3531,8 @@ Completes “default_branch:.*” for referencing branches"
 Completes “assignees:.*” for adding assignees."
   (let* ((topic consult-gh--topic)
          (candidates (completion-table-dynamic
-                      `(lambda (_)
-                         (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users ,topic))))))
+                      (lambda (_)
+                         (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users topic))))))
         (begin (save-excursion
                   (cond
                    ((looking-back ", " (- (point) 2))
@@ -3542,8 +3556,8 @@ Completes “assignees:.*” for adding assignees."
                       (mapcar (lambda (item)
                                 (list item consult-gh-user-icon ""))
                               list)))
-         (exit-fun `(lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :assignable-users ,topic))))))
+         (exit-fun (lambda (str _status)
+                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :assignable-users topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -3564,8 +3578,8 @@ Completes “assignees:.*” for adding assignees."
 Completes “labels:.*” for adding labels."
   (let* ((topic consult-gh--topic)
          (candidates (completion-table-dynamic
-                      `(lambda (_)
-                         (cl-remove-duplicates (delq nil (get-text-property 0 :valid-labels ,topic))))))
+                      (lambda (_)
+                         (cl-remove-duplicates (delq nil (get-text-property 0 :valid-labels topic))))))
          (begin (save-excursion
                   (cond
                    ((looking-back ", " (- (point) 2))
@@ -3593,8 +3607,8 @@ Completes “labels:.*” for adding labels."
                       (mapcar (lambda (item)
                                 (list item consult-gh-label-icon ""))
                               list)))
-         (exit-fun `(lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :valid-labels ,topic))))))
+         (exit-fun (lambda (str _status)
+                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :valid-labels topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -3615,8 +3629,8 @@ Completes “labels:.*” for adding labels."
 Completes “milestone:.*” for adding a milestone."
   (let* ((topic consult-gh--topic)
          (candidates (completion-table-dynamic
-                      `(lambda (_)
-                         (cl-remove-duplicates (delq nil (get-text-property 0 :valid-milestones ,topic))))))
+                      (lambda (_)
+                         (cl-remove-duplicates (delq nil (get-text-property 0 :valid-milestones topic))))))
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
@@ -3630,8 +3644,8 @@ Completes “milestone:.*” for adding a milestone."
                       (mapcar (lambda (item)
                                 (list item consult-gh-milestone-icon ""))
                               list)))
-         (exit-fun `(lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :valid-milestones ,topic))))))
+         (exit-fun (lambda (str _status)
+                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :valid-milestones topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -3648,8 +3662,8 @@ Completes “milestone:.*” for adding a milestone."
 Completes “projects:.*” for adding projects."
   (let* ((topic consult-gh--topic)
          (candidates (completion-table-dynamic
-                      `(lambda (_)
-                         (cl-remove-duplicates (delq nil (get-text-property 0 :valid-projects ,topic))))))
+                      (lambda (_)
+                         (cl-remove-duplicates (delq nil (get-text-property 0 :valid-projects topic))))))
          (begin (save-excursion
                   (cond
                    ((looking-back ", " (- (point) 2))
@@ -3701,8 +3715,8 @@ Completes “reviewers:.*” for adding reviewers."
   (let* ((topic consult-gh--topic)
          (author (get-text-property 0 :author topic))
          (candidates (completion-table-dynamic
-                      `(lambda (_)
-                         (cl-remove-duplicates (delq nil (remove ,author (get-text-property 0 :assignable-users ,topic)))))))
+                      (lambda (_)
+                         (cl-remove-duplicates (delq nil (remove author (get-text-property 0 :assignable-users topic)))))))
          (begin (if (looking-back " " (- (point) 1))
                           (point)
                         (save-excursion
@@ -3713,12 +3727,12 @@ Completes “reviewers:.*” for adding reviewers."
                           (forward-word)
                           (point))
                 (point)))
-         (affix-fun `(lambda (list)
+         (affix-fun (lambda (list)
                       (mapcar (lambda (item)
                                 (list item consult-gh-user-icon ""))
                               list)))
-         (exit-fun `(lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :assignable-users ,topic))))))
+         (exit-fun (lambda (str _status)
+                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :assignable-users topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -3739,8 +3753,8 @@ Completes “reviewers:.*” for adding reviewers."
 Completes “target:.*” for referencing tag names in a release"
   (let* ((topic consult-gh--topic)
          (tags (completion-table-dynamic
-                      `(lambda (_)
-                         (get-text-property 0 :valid-release-tags ,topic))))
+                      (lambda (_)
+                         (get-text-property 0 :valid-release-tags topic))))
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
@@ -3767,8 +3781,8 @@ Completes “target:.*” for referencing tag names in a release"
 Completes “target:.*” for referencing branches in a release"
   (let* ((topic consult-gh--topic)
          (targets (completion-table-dynamic
-                      `(lambda (_)
-                         (get-text-property 0 :valid-branches ,topic))))
+                      (lambda (_)
+                         (get-text-property 0 :valid-branches topic))))
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
@@ -3835,8 +3849,8 @@ Completes “prerelease:.*” for selecting draft in a release."
 Completes “topics:.*” for adding topics."
   (let* ((topic consult-gh--topic)
          (candidates (completion-table-dynamic
-                      `(lambda (_)
-                         (cl-remove-duplicates (delq nil (get-text-property 0 :popular-topics ,topic))))))
+                      (lambda (_)
+                         (cl-remove-duplicates (delq nil (get-text-property 0 :popular-topics topic))))))
         (begin (save-excursion
                   (cond
                    ((looking-back ", " (- (point) 2))
@@ -3860,8 +3874,8 @@ Completes “topics:.*” for adding topics."
                       (mapcar (lambda (item)
                                 (list item consult-gh-topic-icon ""))
                               list)))
-         (exit-fun `(lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :popular-topics ,topic))))))
+         (exit-fun (lambda (str _status)
+                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :popular-topics topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -4797,8 +4811,16 @@ Description of Arguments:
   (let* ((commit (or commit
                   (and (stringp consult-gh--topic)
                        (equal (get-text-property 0 :type consult-gh--topic) "commit")
-                         consult-gh--topic))))
-        (consult-gh--commit-presubmit commit)))
+                         consult-gh--topic)))
+
+         (target (get-text-property 0 :commit-target commit)))
+            (cond
+             ((equal target "create")
+              (consult-gh--create-commit-presubmit commit))
+             ((equal target "delete")
+              (consult-gh--delete-commit-presubmit commit))
+             ((equal target "upload")
+              (consult-gh--upload-commit-presubmit commit)))))
 
 (defun consult-gh--repo-get-branches-json (repo)
   "List branches of REPO, in json format.
@@ -4836,27 +4858,59 @@ and `consult-gh--json-to-hashtable'."
  (consult-gh--api-get-command-string (format "/repos/%s" repo))
  :default_branch))
 
-(defun consult-gh--read-branch (repo &optional prompt)
-  "Query the user to select a branch of REPO.
+(defun consult-gh--read-branch-internal (repo &optional initial prompt require-match)
+"Query the user to select a branch of REPO.
 
-REPO must be  a Github repository full name
+REPO must be a Github repository full name
 for example “armindarvish/consult-gh”.
+
+INITIAL is passed as :inital to `consult--read'.
+
+REQUIRE-MATCH is passed as :require-match to `consult--read'.
+
 If PROMPT is non-nil, use it as the query prompt"
+(let* ((candidates (mapcar (lambda (cand)
+                                     (when (listp cand)
+                                       (apply #'propertize (car-safe cand) (cdr-safe cand))))
+                           (consult-gh--repo-get-branches-list repo)))
+       (sel (consult--read candidates
+                           :prompt (or prompt (concat "Select Branch for "
+                                                      (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
+                                                      ": "))
+                           :category 'consult-gh-branches
+                           :require-match require-match
+                           :initial initial
+                           :add-history  (let* ((topicbranch
+                                                 (and consult-gh--topic
+                                                      (stringp consult-gh--topic)
+                                                      (get-text-property 0 :branch consult-gh--topic))))
+                                                 (append (list
+                                                          topicbranch
+                                                          (thing-at-point 'symbol)
+                                                          "HEAD")))
+                           :lookup (lambda (sel cands &rest _args)
+                                     (or (car-safe (member sel cands)) sel)))))
+  (if (get-text-property 0 :branch sel)
+      sel
+  (and (y-or-n-p "That branch does not exit.  Do you want to make a new branch?")
+                (consult-gh-branch-create repo nil (substring-no-properties sel) t)
+                 sel))))
+
+(defun consult-gh--read-branch (repo &optional initial prompt require-match)
+  "Get a branch of REPO.
+
+Wrapper around `consult-gh--read-branch-internal'.  Depending on the
+value of `consult-gh-default-branch-to-load' either selects the “HEAD”
+or queries the user to select a brnach using
+`consult-gh--read-branch-internal'.  REPO, INITIAL, REQUIRE-MATCH, and
+PROMPT are passed to `consult-gh--read-branch-internal'."
   (pcase consult-gh-default-branch-to-load
     ('confirm
      (if (y-or-n-p "Choose Default HEAD branch?")
          (cons repo "HEAD")
-       (cons repo (completing-read
-                   (or prompt (concat "Select Branch for "
-                                      (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
-                                      ": "))
-                   (consult-gh--repo-get-branches-list repo)))))
+      (consult-gh--read-branch-internal repo initial prompt require-match)))
     ('ask
-     (cons repo (completing-read
-                 (or prompt (concat "Select Branch for "
-                                    (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
-                                    ": "))
-                 (consult-gh--repo-get-branches-list repo))))
+     (consult-gh--read-branch-internal repo initial prompt require-match))
     ('nil
      (cons repo "HEAD"))
     (_
@@ -4880,8 +4934,10 @@ If PROMPT is non-nil, use it as the query prompt"
   (when (numberp last-num)
     (format "%s%s" name (+ last-num 1)))))
 
-(defun consult-gh--branch-create (repo ref branch-name)
-  "Create a new branch in REPO from REF called BRANCH-NAME."
+(defun consult-gh--branch-create (repo ref branch-name &optional sync)
+  "Create a new branch in REPO from REF called BRANCH-NAME.
+
+If optional argument SYNC is non-nil, run the prcess synchronously."
   (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
          (canwrite (consult-gh--user-canwrite repo))
          (_  (unless canwrite
@@ -4893,10 +4949,9 @@ If PROMPT is non-nil, use it as the query prompt"
          (branch-name (or branch-name
                           (consult--read (list initial)
                                          :prompt "Name of the new branch: "
-                                         :sort nil
-                                         )))
+                                         :sort nil)))
           (ref (or ref (consult--read (consult-gh--repo-get-branches-list repo)
-                                :prompt "Select Reference Branch: "
+                                :prompt "Select reference branch for starting point: "
                                 :sort nil)))
           (ref-commit (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo ref)) :commit))
           (sha (when (hash-table-p ref-commit)
@@ -4906,54 +4961,42 @@ If PROMPT is non-nil, use it as the query prompt"
             (setq args (append args (list (format "/repos/%s/git/refs" repo)
                                           "-f" (format "ref=refs/heads/%s" branch-name)
                                           "-f" (format "sha=%s" sha))))
-            (consult-gh--make-process "consult-gh-create-branch"
+            (if sync
+                (and (apply #'consult-gh--command-to-string  args)
+                     (message "branch %s %s" (propertize branch-name 'face 'consult-gh-branch) (propertize "created!" 'face 'consult-gh--success))
+                     branch-name)
+              (and (consult-gh--make-process "consult-gh-create-branch"
                                       :when-done (lambda (_event _str)
                                                    (message "branch %s %s" (propertize branch-name 'face 'consult-gh-branch) (propertize "created!" 'face 'consult-gh--success)))
                                       :cmd-args args)
-            branch-name)))
+                   branch-name)))))
 
-(defun consult-gh--create-commit (&optional file new-content commit-message)
-  "Create commit to make/update FILE with NEW-CONTENT.
+(defun consult-gh--branch-delete (repo branch &optional sync)
+  "Delete BRANCH in REPO.
 
-It opens a buffer to enter the commit message for editing FILE.
-If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial
-message.
-
-FILE is a string with properties that identifies a file.  For an
-example, see the buffer-local variable `consult-gh--topic' in the
-buffer generated by `consult-gh--files-view'.  It defaults to
-`consult-gh--topic' in the current buffer."
-  (interactive "P")
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let* ((file (or file
-                    (and (stringp consult-gh--topic)
-                         (equal (get-text-property 0 :type consult-gh--topic) "file")
-                         consult-gh--topic)))
-          (repo (get-text-property 0 :repo file))
-          (path (get-text-property 0 :path file))
-          (branch  (get-text-property 0 :branch file))
-          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-          (committer-info (consult-gh--get-user-info user))
-          (author-info (consult-gh--get-user-info user))
-          (buffer (format "*consult-gh-file-edit-commit-message: %s/%s/%s" repo branch path))
-          (base64-content (when (stringp new-content) (base64-encode-string (substring-no-properties (encode-coding-string new-content 'utf-8)))))
-          (newtopic (format "%s/%s/%s" branch repo path))
-          (type "commit"))
-
-     (add-text-properties 0 1 (text-properties-at 0 file) newtopic)
-     (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-branch branch :content base64-content) newtopic)
-
-     ;; insert commit message
-     (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
-     (with-current-buffer buffer
-       (consult-gh-commit-message-mode +1)
-       (insert consult-gh-commit-message-instructions)
-       (goto-char (point-min))
-       (when (stringp commit-message)
-         (insert commit-message)
-         (consult-gh-commit-save-message)))
-     (funcall consult-gh-pop-to-buffer-func buffer))))
+If optional argument SYNC is non-nil, run the prcess synchronously."
+  (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (canwrite (consult-gh--user-canwrite repo))
+         (_  (unless canwrite
+               (user-error "Current user, %s, does not have permissions to create a branch in %s" user repo)))
+         (branch (or branch
+                     (get-text-property 0 :branch (consult-gh--read-branch-internal repo nil "Select the branch to delete: " t))))
+         (args (list "api" "-X" "DELETE")))
+    (when (and repo branch)
+      (setq args (append args (list (format "/repos/%s/git/refs/heads/%s" repo branch))))
+      (if sync
+          (and (y-or-n-p (format "This will delete branch %s.  Are you sure you want to continue? "
+ (propertize branch 'face 'consult-gh-warning)))
+                (apply #'consult-gh--command-to-string  args)
+               (message "branch %s %s" (propertize branch 'face 'consult-gh-branch) (propertize "deleted!" 'face 'consult-gh-error))
+                     branch)
+        (and (y-or-n-p (format "This will delete branch %s.  Are you sure you want to continue? "
+ (propertize branch 'face 'consult-gh-warning)))
+             (consult-gh--make-process "consult-gh-delete-branch"
+                                       :when-done (lambda (_event _str)
+                                                    (message "branch %s %s" (propertize branch 'face 'consult-gh-branch) (propertize "deleted!" 'face 'consult-gh-error)))
+                                       :cmd-args args)
+             branch)))))
 
 (defun consult-gh--commit-get-buffer-message ()
   "Get the commit message in the buffer.
@@ -5052,7 +5095,49 @@ buffer generated by `consult-gh--commit-create'."
                                 :sort nil))
     (add-text-properties 0 1 (list :commit-branch branch) commit)))
 
-(defun consult-gh--commit-by-pullrequest (&optional repo path content commit-message branch committer-info author-info)
+(defun consult-gh--create-commit (&optional file new-content commit-message)
+  "Create commit to make/update FILE with NEW-CONTENT.
+
+It opens a buffer to enter the commit message for editing FILE.
+If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial
+message.
+
+FILE is a string with properties that identifies a file.  For an
+example, see the buffer-local variable `consult-gh--topic' in the
+buffer generated by `consult-gh--files-view'.  It defaults to
+`consult-gh--topic' in the current buffer."
+   (let* ((file (or file
+                    (and (stringp consult-gh--topic)
+                         (equal (get-text-property 0 :type consult-gh--topic) "file")
+                         consult-gh--topic)))
+          (repo (get-text-property 0 :repo file))
+          (path (get-text-property 0 :path file))
+          (branch  (get-text-property 0 :branch file))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (committer-info (consult-gh--get-user-info user))
+          (author-info (consult-gh--get-user-info user))
+          (buffer (format "*consult-gh-file-edit-commit-message: %s/%s/%s" repo branch path))
+          (base64-content (when (stringp new-content) (base64-encode-string (substring-no-properties (encode-coding-string new-content 'utf-8)))))
+          (newtopic (format "%s/%s/%s" branch repo path))
+          (type "commit"))
+
+     (add-text-properties 0 1 (text-properties-at 0 file) newtopic)
+     (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-branch branch :content base64-content :commit-target "create") newtopic)
+
+     ;; insert commit message
+     (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
+     (with-current-buffer buffer
+       (consult-gh-commit-message-mode +1)
+       (insert consult-gh-commit-message-instructions)
+       (when (stringp path)
+         (insert (format "\n\n# - create %s" path)))
+       (goto-char (point-min))
+       (when (stringp commit-message)
+         (insert commit-message)
+         (consult-gh-commit-save-message)))
+     (funcall consult-gh-pop-to-buffer-func buffer)))
+
+(defun consult-gh--create-commit-by-pullrequest (&optional repo path content commit-message branch committer-info author-info)
 "Submit commit by creating a pull request.
 
 This is used when BRANCH is protected and does not allow direct
@@ -5094,14 +5179,14 @@ Description of Arguments:
                                     "-f" (format "sha=%s" sha))))
 
       (consult-gh--make-process (format "consult-gh-create-branch-%s" repo)
-                                :when-done `(lambda (_event _str)
+                                :when-done (lambda (_event _str)
                                               (and
-                                               (consult-gh--commit-submit ,repo ,path ,content ,commit-message ,new-branch ,committer-info ,author-info)
+                                               (consult-gh--create-commit-submit repo path content commit-message new-branch committer-info author-info)
                                                (message "Creating a Pull Request...")
-                                               (consult-gh-pr-create ,repo (if ,file-name (format "Update %s" ,file-name) nil) nil ,branch ,repo ,new-branch)))
+                                               (consult-gh-pr-create repo (if file-name (format "Update %s" file-name) nil) nil branch repo new-branch)))
                                       :cmd-args args))))
 
-(defun consult-gh--commit-by-fork (&optional repo path content commit-message branch committer-info author-info)
+(defun consult-gh--create-commit-by-fork (&optional repo path content commit-message branch committer-info author-info)
   "Submit commit by forking REPO and creating a pull request.
 
 This is used when user does not have write access in REPO.  The REPO is
@@ -5130,14 +5215,14 @@ Description of Arguments:
     (cond
      ((not existing)
       (consult-gh--make-process (format "consult-gh-fork-%s" repo)
-                              :when-done `(lambda (_event _str)
+                              :when-done (lambda (_event _str)
                                             (and
                                              (message "repo %s was forked to %s"
-                                                      (propertize ,repo 'face 'font-lock-keyword-face)
-                                                      (propertize ,new-repo 'face 'font-lock-warning-face))
-                                             (consult-gh--commit-submit ,new-repo ,path ,content ,commit-message ,branch ,committer-info ,author-info)
+                                                      (propertize repo 'face 'font-lock-keyword-face)
+                                                      (propertize new-repo 'face 'font-lock-warning-face))
+                                             (consult-gh--create-commit-submit new-repo path content commit-message branch committer-info author-info)
                                              (message "Creating a Pull Request...")
-                                             (consult-gh-pr-create ,repo (if ,file-name (format "Update %s" ,file-name) nil) nil ,branch ,new-repo ,branch)))
+                                             (consult-gh-pr-create repo (if file-name (format "Update %s" file-name) nil) nil branch new-repo branch)))
                               :cmd-args (list "repo" "fork" (format "%s" repo) "--fork-name" name)))
      (t
       (message "Forked repo already exists. Making a new branch...")
@@ -5161,14 +5246,14 @@ Description of Arguments:
                                     "-f" (format "sha=%s" sha))))
 
            (consult-gh--make-process (format "consult-gh-create-branch-%s" new-repo)
-                                :when-done `(lambda (_event _str)
+                                :when-done (lambda (_event _str)
                                               (and
-                                               (consult-gh--commit-submit ,new-repo ,path ,content ,commit-message ,new-branch ,committer-info ,author-info)
+                                               (consult-gh--create-commit-submit new-repo path content commit-message new-branch committer-info author-info)
                                                (message "Creating a Pull Request...")
-                                               (consult-gh-pr-create ,repo (if ,file-name (format "Update %s" ,file-name) nil) nil ,branch ,new-repo ,new-branch)))
+                                               (consult-gh-pr-create repo (if file-name (format "Update %s" file-name) nil) nil branch new-repo new-branch)))
                                       :cmd-args args)))))))
 
-(defun consult-gh--commit-submit (repo path content commit-message &optional branch committer-info author-info sha)
+(defun consult-gh--create-commit-submit (repo path content commit-message &optional branch committer-info author-info sha)
   "Submit a commit.
 
 Description of Arguments:
@@ -5219,10 +5304,10 @@ Description of Arguments:
              (isPrivate (equal (consult-gh--json-to-hashtable info :isPrivate) 't)))
         (when (and (not isForked) (not isPrivate))
           (and (y-or-n-p (format "User %s does not have write acccess in %s.  Do you want to fork the repo and make a puul request?" user repo))
-               (consult-gh--commit-by-fork repo path content commit-message branch committer-info author-info)))))
+               (consult-gh--create-commit-by-fork repo path content commit-message branch committer-info author-info)))))
      ((equal protected t)
       (and (y-or-n-p "The branch you are trying to edit is protected.  Do you want to submit a pull request? ")
-           (consult-gh--commit-by-pullrequest repo path content commit-message branch committer-info author-info)))
+           (consult-gh--create-commit-by-pullrequest repo path content commit-message branch committer-info author-info)))
      (t
       (let* ((args (list "api"
                          "-H" "Accept: application/vnd.github+json"
@@ -5247,7 +5332,7 @@ Description of Arguments:
                          (funcall consult-gh-quit-window-func t)))))
                (apply #'consult-gh--command-to-string args))))))))
 
-(defun consult-gh--commit-presubmit (&optional commit)
+(defun consult-gh--create-commit-presubmit (&optional commit)
   "Prepare COMMIT to submit.
 
 COMMIT is a string with properties that identify a commit.
@@ -5296,28 +5381,502 @@ buffer generated by `consult-gh--commit-create'."
                                 (get-text-property 0 :branch consult-gh--topic)))
                     (path (get-text-property 0 :path commit))
                     (commit-message (consult-gh--commit-get-buffer-message)))
-               (and (consult-gh--commit-submit repo path content commit-message branch committer-info author-info)
+               (and (consult-gh--create-commit-submit repo path content commit-message branch committer-info author-info)
                     (message "Commit Submitted!")
                     (with-current-buffer buffer
                     (funcall consult-gh-quit-window-func t)))))
             (':committer (consult-gh--commit-change-committer)
-                         (consult-gh--commit-presubmit))
+                         (consult-gh--create-commit-presubmit))
             (':author (consult-gh--commit-change-author)
-                      (consult-gh--commit-presubmit))
+                      (consult-gh--create-commit-presubmit))
             (':branch (consult-gh--commit-change-branch)
-                      (consult-gh--commit-presubmit))))
+                      (consult-gh--create-commit-presubmit))))
+    (message "Not a Github commit buffer!")))
+
+(defun consult-gh--delete-commit (repo path branch &optional commit-message)
+  "Create a commit to delete file at PATH in REPO and BRANCH.
+
+It opens a buffer to enter the commit message for deleting FILE.
+If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial
+message."
+   (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (committer-info (consult-gh--get-user-info user))
+          (author-info (consult-gh--get-user-info user))
+          (buffer (format "*consult-gh-file-delete-commit-message: %s/%s/%s" repo branch path))
+          (newtopic (format "%s/%s/%s" branch repo path))
+          (type "commit"))
+
+     (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-branch branch :content nil :commit-target "delete" :repo repo :path path :branch branch) newtopic)
+
+     ;; insert commit message
+     (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
+     (with-current-buffer buffer
+       (consult-gh-commit-message-mode +1)
+       (insert consult-gh-commit-message-instructions)
+       (when (stringp path)
+         (insert (format "\n\n# - delete %s" path)))
+       (goto-char (point-min))
+       (when (stringp commit-message)
+         (insert commit-message)
+         (consult-gh-commit-save-message)))
+     (funcall consult-gh-pop-to-buffer-func buffer)))
+
+(defun consult-gh--delete-commit-by-pullrequest (&optional repo path commit-message branch committer-info author-info)
+"Submit delete commit by creating a pull request.
+
+This is used when BRANCH is protected and does not allow direct
+commits.  A new branch is created and a pull request is made to merge
+the new branch to BRANCH.
+
+Description of Arguments:
+  REPO           a string; full name of repository
+  PATH           a string; path of file to change
+  COMMIT-MESSAGE a string; commit message
+  BRANCH         a string; name of the protected branch ref for commit
+  COMMITTER-INFO a plist; commiter info plist
+                 \(:name NAME :email EMAIL\)
+  AUTHOR-INFO    a plist; author info plist
+                 \(:name NAME :email EMAIL\)
+  SHA            a string; current sha of the file at PATH in BRANCH"
+
+  (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (initial (or (consult-gh--branch-create-suggest-name repo user)
+                      (format "%s-patch-%s"
+                              user
+                              (format-time-string "%Y-%m-%d-%H%M%S%Z" (current-time)))))
+         (new-branch (consult--read (list initial)
+                                         :prompt "Name of the new branch: "
+                                         :sort nil))
+         (ref (or branch (consult--read (consult-gh--repo-get-branches-list repo)
+                                        :prompt "Select Reference Branch: "
+                                        :sort nil)))
+         (ref-commit (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo ref)) :commit))
+         (sha (when (hash-table-p ref-commit)
+                 (gethash :sha ref-commit)))
+         (file-name (when (stringp path) (file-name-nondirectory path)))
+         (args (list "api" "-X" "POST")))
+    (when (and repo new-branch sha)
+      (setq args (append args (list (format "/repos/%s/git/refs" repo)
+                                    "-f" (format "ref=refs/heads/%s" new-branch)
+                                    "-f" (format "sha=%s" sha))))
+
+      (consult-gh--make-process (format "consult-gh-create-branch-%s" repo)
+                                :when-done (lambda (_event _str)
+                                              (and
+                                               (consult-gh--delete-commit-submit repo path commit-message new-branch committer-info author-info)
+                                               (message "Creating a Pull Request...")
+                                               (consult-gh-pr-create repo (if file-name (format "Delete %s" file-name) nil) nil branch repo new-branch)))
+                                      :cmd-args args))))
+
+(defun consult-gh--delete-commit-submit (repo path commit-message &optional branch committer-info author-info)
+  "Submit a delete file commit.
+
+Description of Arguments:
+  REPO           a string; full name of repository
+  PATH           a string; path of file to delete
+  COMMIT-MESSAGE a string; commit message
+  BRANCH         a string; name of branch ref for commit
+  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
+  (pcase-let* ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+               (canwrite (consult-gh--user-canwrite repo))
+               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+               (_  (unless canwrite
+                     (user-error "Current user, %s, does not have permissions to create a branch in %s" user repo)))
+               (committer-name (when (hash-table-p committer-info) (gethash :name committer-info)))
+               (committer-email (when (hash-table-p committer-info) (gethash :email committer-info)))
+               (author-name (when (hash-table-p author-info) (gethash :name author-info)))
+               (author-email (when (hash-table-p author-info) (gethash :email author-info)))
+               (url (format "/repos/%s/contents/%s" repo path))
+               (url-ref (if branch (concat url (format "?ref=%s" branch)) url))
+               (api-response (consult-gh--api-get-json url-ref))
+               (file-name (when (stringp path)
+                            (file-name-nondirectory path)))
+               (commit-message (or (and (stringp commit-message)
+                                        (not (string-empty-p (string-trim commit-message)))
+                                        commit-message)
+                                   (and file-name
+                                        (format "Delete %s" file-name))
+                                   (consult--read nil
+                                                  :prompt "Commit Message: "
+                                                  :sort nil)))
+               (protected (when branch (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo branch)) :protected))))
+
+    (when (and commit-message
+               (stringp commit-message)
+               (not (string-empty-p commit-message)))
+      (consult-gh-commit-save-message commit-message))
+
+    (cond
+     ((equal protected t)
+      (and (y-or-n-p "The branch you are trying to edit is protected.  Do you want to submit a pull request? ")
+           (consult-gh--delete-commit-by-pullrequest repo path commit-message branch committer-info author-info)))
+     (t
+      (when (eq (car api-response) 0)
+        (let* ((resp (consult-gh--json-to-hashtable (cadr api-response) (list :path :sha)))
+               (shas (cond
+                      ((hash-table-p resp)
+                       (list resp))
+                      ((listp resp)
+                       resp))))
+          (when (and canwrite repo shas commit-message
+                     (y-or-n-p (format "This will delete %s on GitHub.  Are you sure you want to continue?" (propertize path 'face 'consult-gh-warning))))
+            (cl-loop for item in shas
+                     collect
+                     (let* ((item-path (gethash :path item))
+                            (item-sha (gethash :sha item))
+                            (args (list "api"
+                                        "-H" "Accept: application/vnd.github+json"
+                                        "--method" "DELETE"
+                                        (format "/repos/%s/contents/%s" repo item-path)
+                                        "-f" (format "message=%s" commit-message)
+                                        "-f" (format "sha=%s" item-sha))))
+                       (when branch (setq args (append args (list "-f" (format "branch=%s" branch)))))
+                       (when (and committer-name committer-email)
+                         (setq args (append args (list "-f" (format "committer[name]=%s" committer-name)
+                                                       "-f" (format "committer[email]=%s" committer-email)))))
+                       (when (and author-name author-email)
+                         (setq args (append args (list "-f" (format "author[name]=%s" author-name)
+                                                       "-f" (format "author[email]=%s" author-email)))))
+
+                         (apply #'consult-gh--command-to-string args))))))))))
+
+(defun consult-gh--delete-commit-presubmit (&optional commit)
+  "Prepare delete COMMIT to submit.
+
+COMMIT is a string with properties that identify a commit.
+For an example see the buffer-local variable `consult-gh--topic' in the
+buffer generated by `consult-gh--delete-commit'."
+  (if consult-gh-commit-message-mode
+      (let* ((commit (or commit
+                       (and (stringp consult-gh--topic)
+                            (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                            consult-gh--topic)))
+             (repo (get-text-property 0 :repo commit))
+             (branch (or (get-text-property 0 :commit-branch commit)
+                     (get-text-property 0 :branch commit)))
+             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+             (user-info (consult-gh--get-user-info user))
+             (committer-info (or (get-text-property 0 :committer-info commit) user-info))
+             (committer (or (and (hash-table-p committer-info)
+                                 (or (gethash :name committer-info)
+                                     (gethash :email committer-info))
+                                 (concat (gethash :name committer-info) " - " (gethash :email committer-info)))
+                            user))
+             (author-info  (or (get-text-property 0 :author-info commit)
+                               user-info))
+             (author (or (and (hash-table-p author-info)
+                              (or (gethash :name author-info)
+                                (gethash :email author-info))
+                          (concat (gethash :name author-info) " - " (gethash :email author-info)))
+                           user))
+             (nextsteps (append (list (cons "Submit" :submit))
+                                (list (cons (format "Change Branch (current: %s)" branch) :branch))
+                                (list (cons (format "Change Committer (current: %s)" committer) :committer))
+                                (list (cons (format "Change Author (current: %s)" author) :author))
+                                (list (cons "Cancel" :cancel))))
+             (next (consult--read nextsteps
+                                  :prompt "Choose what do you want to do? "
+                                  :lookup #'consult--lookup-cdr
+                                  :sort nil))
+
+             (buffer (current-buffer)))
+          (pcase next
+            (':cancel)
+            (':submit
+             (let* ((branch (or (get-text-property 0 :commit-branch consult-gh--topic)
+                                (get-text-property 0 :branch consult-gh--topic)))
+                    (path (get-text-property 0 :path commit))
+                    (commit-message (consult-gh--commit-get-buffer-message)))
+               (and (consult-gh--delete-commit-submit repo path commit-message branch committer-info author-info)
+                    (message "Commit Submitted!")
+                    (with-current-buffer buffer
+                    (funcall consult-gh-quit-window-func t)))))
+            (':committer (consult-gh--commit-change-committer)
+                         (consult-gh--delete-commit-presubmit))
+            (':author (consult-gh--commit-change-author)
+                      (consult-gh--delete-commit-presubmit))
+            (':branch (consult-gh--commit-change-branch)
+                      (consult-gh--delete-commit-presubmit))))
+    (message "Not a Github commit buffer!")))
+
+(defun consult-gh--upload-commit (files repo path branch &optional commit-message)
+  "Create a commit to upload files at PATH in REPO and BRANCH.
+
+It opens a buffer to enter the commit message for uploading FILES.
+FILES must be a list of local file paths.
+
+If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial
+message."
+
+   (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (committer-info (consult-gh--get-user-info user))
+          (author-info (consult-gh--get-user-info user))
+          (buffer (format "*consult-gh-files-upload-commit-message: %s/%s/%s" repo branch path))
+          (newtopic (format "%s/%s/%s" branch repo path))
+          (type "commit"))
+
+     (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-branch branch :content nil :commit-target "upload" :repo repo :path path :branch branch :files files) newtopic)
+
+     ;; insert commit message
+     (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
+     (with-current-buffer buffer
+       (consult-gh-commit-message-mode +1)
+       (insert consult-gh-commit-message-instructions)
+       (when (listp files)
+         (insert "\n\n")
+         (insert "# Files to upload:")
+         (mapc (lambda (f)
+                   (insert (format "\n# - upload %s" f)))
+                 files))
+       (goto-char (point-min))
+       (when (stringp commit-message)
+         (insert commit-message)
+         (consult-gh-commit-save-message)))
+     (funcall consult-gh-pop-to-buffer-func buffer)))
+
+(defun consult-gh--upload-commit-add-files (&optional commit)
+  "Add files to the files to upload in COMMIT."
+  (if consult-gh-topics-edit-mode
+      (let* ((files (get-text-property 0 :files commit)))
+        (add-text-properties 0 1 (list :files  (remove nil (cl-remove-duplicates (append (list (consult-gh--files-upload-read-files nil "Add Files: " default-directory)) files) :test #'equal)))
+                               commit))))
+
+(defun consult-gh--upload-commit-remove-files (&optional commit)
+  "Remove files from the files to upload in COMMIT."
+  (if consult-gh-topics-edit-mode
+      (let* ((files (get-text-property 0 :files commit)))
+          (add-text-properties 0 1 (list :files (remove (consult-gh--files-upload-read-files files "Remove Files: " nil) files))
+                               commit))))
+
+(defun consult-gh--upload-commit-by-pullrequest (files repo path &optional commit-message branch committer-info author-info)
+"Submit upload commit by creating a pull request.
+
+This is used when BRANCH is protected and does not allow direct
+commits.  A new branch is created and a pull request is made to merge
+the new branch to BRANCH.
+
+Description of Arguments:
+  FILES          a list os strings; list of local file paths
+  REPO           a string; full name of repository
+  PATH           a string; path of file to change
+  COMMIT-MESSAGE a string; commit message
+  BRANCH         a string; name of the protected branch ref for commit
+  COMMITTER-INFO a plist; commiter info plist
+                 \(:name NAME :email EMAIL\)
+  AUTHOR-INFO    a plist; author info plist
+                 \(:name NAME :email EMAIL\)
+  SHA            a string; current sha of the file at PATH in BRANCH"
+
+  (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (initial (or (consult-gh--branch-create-suggest-name repo user)
+                      (format "%s-patch-%s"
+                              user
+                              (format-time-string "%Y-%m-%d-%H%M%S%Z" (current-time)))))
+         (new-branch (consult--read (list initial)
+                                         :prompt "Name of the new branch: "
+                                         :sort nil))
+         (ref (or branch (consult--read (consult-gh--repo-get-branches-list repo)
+                                        :prompt "Select Reference Branch: "
+                                        :sort nil)))
+         (ref-commit (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo ref)) :commit))
+         (sha (when (hash-table-p ref-commit)
+                 (gethash :sha ref-commit)))
+         (args (list "api" "-X" "POST")))
+    (print files)
+    (when (and repo new-branch sha)
+      (setq args (append args (list (format "/repos/%s/git/refs" repo)
+                                    "-f" (format "ref=refs/heads/%s" new-branch)
+                                    "-f" (format "sha=%s" sha))))
+
+      (consult-gh--make-process (format "consult-gh-create-branch-%s" repo)
+                                :when-done (lambda (_event _str)
+                                               (and
+                                                (consult-gh--upload-commit-submit files repo path commit-message new-branch committer-info author-info)
+                                                (message "Creating a Pull Request...")
+                                               (consult-gh-pr-create repo (format "Upload files to %s" path) nil branch repo new-branch)))
+                                :cmd-args args))))
+
+(defun consult-gh--upload-commit-single-file (file parent-path repo &optional commit-message branch committer-info author-info)
+  "Submit a commit to upload a single file.
+
+Description of Arguments:
+  FILE           a list os strings; list of local file paths
+  REPO           a string; full name of repository
+  PARENT-PATH    a string; path of the parent directory in repo for file
+  COMMIT-MESSAGE a string; commit message
+  BRANCH         a string; name of branch ref for commit
+  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
+
+  (let* ((file-name (file-name-nondirectory file))
+         (content (ignore-errors (with-temp-buffer
+                                   (insert-file-contents file)
+                                   (base64-encode-string (substring-no-properties (encode-coding-string (buffer-substring-no-properties (point-min) (point-max)) 'utf-8))))))
+         (content (or content ""))
+         (file-path (format "%s%s" (if (stringp parent-path) (file-name-as-directory parent-path) "") file-name))
+         (committer-name (when (hash-table-p committer-info) (gethash :name committer-info)))
+         (committer-email (when (hash-table-p committer-info) (gethash :email committer-info)))
+         (author-name (when (hash-table-p author-info) (gethash :name author-info)))
+         (author-email (when (hash-table-p author-info) (gethash :email author-info)))
+         (url (format "/repos/%s/contents/%s" repo file-path))
+         (url-ref (if branch (concat url (format "?ref=%s" branch)) url))
+         (api-response (consult-gh--api-get-json url-ref))
+         (file-sha (if (eq (car api-response) 0)
+                       (consult-gh--json-to-hashtable (cadr api-response) :sha)))
+         (args (list "api"
+                     "-H" "Accept: application/vnd.github+json"
+                     "--method" "PUT"
+                     url
+                     "-f" (format "message=%s" commit-message)
+                     "-f" (format "content=%s" content))))
+    (when branch (setq args (append args (list "-f" (format "branch=%s" branch)))))
+    (when (and committer-name committer-email)
+      (setq args (append args (list "-f" (format "committer[name]=%s" committer-name)
+                                    "-f" (format "committer[email]=%s" committer-email)))))
+    (when (and author-name author-email)
+      (setq args (append args (list "-f" (format "author[name]=%s" author-name)
+                                    "-f" (format "author[email]=%s" author-email)))))
+
+    (if file-sha
+        (if (y-or-n-p (format "File %s exists.  Do you want to replace it with the new file? " file-path))
+            (progn (setq args (append args (list "-f" (format "sha=%s" file-sha))))
+                   (apply #'consult-gh--command-to-string args)
+                   (message "File %s uploaded!" (propertize file-name 'face 'cponsult-gh-success)))
+          (message "File %s Skipped!" (propertize file-name 'face 'consult-gh-error)))
+    (progn
+      (and
+       (apply #'consult-gh--command-to-string args)
+       (message "File %s uploaded!" (propertize file-name 'face 'consult-gh-success)))))))
+
+(defun consult-gh--upload-commit-submit (files repo &optional path commit-message branch committer-info author-info)
+  "Submit a commit to upload files.
+
+Description of Arguments:
+  FILES          a list os strings; list of local file paths
+  REPO           a string; full name of repository
+  PATH           a string; path of file to delete
+  COMMIT-MESSAGE a string; commit message
+  BRANCH         a string; name of branch ref for commit
+  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
+
+  (pcase-let* ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+               (canwrite (consult-gh--user-canwrite repo))
+               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+               (_  (unless canwrite
+                     (user-error "Current user, %s, does not have permissions to create a branch in %s" user repo)))
+               (commit-message (or (and (stringp commit-message)
+                                        (not (string-empty-p (string-trim commit-message)))
+                                        commit-message)
+                                   (and (listp files)
+                                        (format "Upload Files\n\n%s\n" (mapconcat (lambda (item) (format " - %s" (file-name-nondirectory item))) files "\n")))
+                                   (consult--read nil
+                                                  :prompt "Commit Message: "
+                                                  :sort nil)))
+               (protected (when branch (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo branch)) :protected))))
+
+    (when (and commit-message
+               (stringp commit-message)
+               (not (string-empty-p commit-message)))
+      (consult-gh-commit-save-message commit-message))
+
+    (cond
+     ((equal protected t)
+      (and (y-or-n-p "The branch you are trying to edit is protected.  Do you want to submit a pull request? ")
+           (consult-gh--upload-commit-by-pullrequest files repo path commit-message branch committer-info author-info)))
+     (t
+      (when (and canwrite repo (listp files) commit-message
+                 (y-or-n-p "This will upload files on GitHub.  Are you sure you want to continue?"))
+
+        (print files)
+        (cl-loop for file in files
+                 collect
+                 (if (file-directory-p file)
+                     (mapcar (lambda (f)
+                               (let* ((relative-path (string-remove-prefix (file-name-directory (file-truename file)) (file-truename f)))
+                                       (parent-path (concat (if path (file-name-as-directory path))
+                                                            (file-name-as-directory (file-name-directory relative-path)))))
+                                   (consult-gh--upload-commit-single-file f parent-path repo commit-message branch committer-info author-info)))
+                     (directory-files-recursively file ".*"))
+                   (let* ((parent-path (if path (file-name-as-directory path))))
+                     (consult-gh--upload-commit-single-file file parent-path repo commit-message branch committer-info author-info)))))))))
+
+(defun consult-gh--upload-commit-presubmit (&optional commit)
+  "Prepare upload COMMIT to submit.
+
+COMMIT is a string with properties that identify a commit.
+For an example see the buffer-local variable `consult-gh--topic' in the
+buffer generated by `consult-gh--upload-commit'."
+  (if consult-gh-commit-message-mode
+      (let* ((commit (or commit
+                       (and (stringp consult-gh--topic)
+                            (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                            consult-gh--topic)))
+             (repo (get-text-property 0 :repo commit))
+             (branch (or (get-text-property 0 :commit-branch commit)
+                     (get-text-property 0 :branch commit)))
+             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+             (user-info (consult-gh--get-user-info user))
+             (committer-info (or (get-text-property 0 :committer-info commit) user-info))
+             (committer (or (and (hash-table-p committer-info)
+                                 (or (gethash :name committer-info)
+                                     (gethash :email committer-info))
+                                 (concat (gethash :name committer-info) " - " (gethash :email committer-info)))
+                            user))
+             (author-info  (or (get-text-property 0 :author-info commit)
+                               user-info))
+             (author (or (and (hash-table-p author-info)
+                              (or (gethash :name author-info)
+                                (gethash :email author-info))
+                          (concat (gethash :name author-info) " - " (gethash :email author-info)))
+                           user))
+             (nextsteps (append (list (cons "Submit" :submit))
+                                (list (cons "Add Files" :add))
+                                (list (cons "Remove Files" :remove))
+                                (list (cons (format "Change Branch (current: %s)" branch) :branch))
+                                (list (cons (format "Change Committer (current: %s)" committer) :committer))
+                                (list (cons (format "Change Author (current: %s)" author) :author))
+                                (list (cons "Cancel" :cancel))))
+             (next (consult--read nextsteps
+                                  :prompt "Choose what do you want to do? "
+                                  :lookup #'consult--lookup-cdr
+                                  :sort nil))
+
+             (buffer (current-buffer)))
+          (pcase next
+            (':cancel)
+            (':submit
+             (let* ((branch (or (get-text-property 0 :commit-branch consult-gh--topic)
+                                (get-text-property 0 :branch consult-gh--topic)))
+                    (path (get-text-property 0 :path commit))
+                    (files (get-text-property 0 :files commit))
+                    (commit-message (consult-gh--commit-get-buffer-message)))
+               (and (consult-gh--upload-commit-submit files repo path commit-message branch committer-info author-info)
+                    (message "Commit Submitted!")
+                    (with-current-buffer buffer
+                    (funcall consult-gh-quit-window-func t)))))
+            (':add (consult-gh--upload-commit-add-files commit))
+            (':remove (consult-gh--upload-commit-remove-files commit))
+            (':committer (consult-gh--commit-change-committer)
+                         (consult-gh--upload-commit-presubmit))
+            (':author (consult-gh--commit-change-author)
+                      (consult-gh--upload-commit-presubmit))
+            (':branch (consult-gh--commit-change-branch)
+                      (consult-gh--upload-commit-presubmit))))
     (message "Not a Github commit buffer!")))
 
 ;; Files
 
-(defun consult-gh--files-get-trees (repo &optional path  branch non-recursive)
+(defun consult-gh--files-get-trees (repo &optional path  branch non-recursive cache)
   "Get a recursive git “tree” of REPO.
 
 When PATH is non-nil, only retrieve items relative to PATH.
 When BRANCH is non-nil, retrive the tree in the BRANCH otherwise
 use the “HEAD” branch.
 When NON-RECURSIVE is non-nil, only retriev items in top folder
-
+CACHE is string for cache duration and is passed to “gh api --cache”.
+For example it can “3600s”, “60m”, or “1h”.
 Uses `consult-gh--api-get-json'."
   (if (and path
            (stringp path)
@@ -5339,59 +5898,77 @@ Uses `consult-gh--api-get-json'."
                                                       (if (equal (gethash :path item)
                                                                  parent)
                                                           (gethash :sha item))))
-                                                  tree)))))))
+                                                  tree))))))
+             (extra-args (if cache (list "--cache" cache))))
         (when (and repo sha)
-          (consult-gh--api-get-json
+          (apply #'consult-gh--api-get-json
            (concat "repos/" repo
-                   (format "/git/trees/%s:?recursive=1" sha)))))
-    (let ((branch (or branch "HEAD")))
-      (consult-gh--api-get-json
+                   (format "/git/trees/%s:?recursive=1" sha))
+           extra-args)))
+    (let ((branch (or branch "HEAD"))
+          (extra-args (if cache (list "--cache" cache))))
+      (apply #'consult-gh--api-get-json
        (concat "repos/" repo
                "/git/trees/" branch
-               (unless non-recursive ":?recursive=1"))))))
+               (unless non-recursive ":?recursive=1"))
+       extra-args))))
 
-(defun consult-gh--files-table-to-list (table repo &optional branch)
-  "Convert a TABLE containing git tree information of REPO and BRANCH.
+(defun consult-gh--files-table-to-list (table repo &optional branch path)
+  "Convert a TABLE containing git tree information of REPO PATH, and BRANCH.
 
 Returns a list of propertized texts
 formatted properly to be sent to `consult-gh-find-file'."
-  (let ((branch (or branch "HEAD")))
+  (let* ((branch (or branch "HEAD"))
+         (parent  (if (stringp path)
+                      (file-name-directory path)
+                          "./"))
+         (parent (string-remove-suffix "/" parent)))
     (mapcar (lambda (item) (cons (gethash :path item)
                                  `(:repo ,repo
                                          :branch ,branch
                                          :url ,(gethash :url item)
-                                         :path ,(gethash :path item)
+                                         :mode ,(gethash :mode item)
+                                         :path ,(if (and (stringp path)
+                                                         (stringp parent))
+                                                    (concat
+ (file-name-as-directory parent)
+                                                            (gethash :path item))
+                                                  (gethash :path item))
                                          :size ,(gethash :size item)
-                                         :object-type ,(gethash :type item) )))
+                                         :object-type ,(gethash :type item))))
             table)))
 
-(defun consult-gh--files-list-items (repo &optional path branch non-recursive)
+(defun consult-gh--files-list-items (repo &optional path branch non-recursive cache)
   "Fetch a list of files and directories in REPO.
 
 When PATH is non-nil, only retrieve items relative to PATH.
 When BRANCH is non-nil, retrive the tree in the BRANCH otherwise
 use the “HEAD” branch.
-When NON-RECURSIVE is non-nil, only retriev items in top folder
+When NON-RECURSIVE is non-nil, only retrieve items in top folder.
+CACHE is a string for cache duration and is passed to
+`consult-gh--files-get-trees'.
 Returns text with properties containing information about the file
-generated by `consult-gh--files-table-to-list'.  This list can be passed to
-`consult-gh-find-file'.
+generated by `consult-gh--files-table-to-list'.  This list can be
+passed to `consult-gh-find-file'.
 
 See `consult-gh--files-nodirectory-items' for getting a list of file
 but not directories."
   (let* ((branch (or branch "HEAD"))
-         (response (consult-gh--files-get-trees repo path branch non-recursive)))
+         (response (consult-gh--files-get-trees repo path branch non-recursive cache)))
     (if (eq (car response) 0)
         (delete-dups (consult-gh--files-table-to-list
-                      (consult-gh--json-to-hashtable (cadr response) :tree) repo branch))
+                      (consult-gh--json-to-hashtable (cadr response) :tree) repo branch path))
       (message (cadr response)))))
 
-(defun consult-gh--files-nodirectory-items (repo &optional path branch non-recursive)
+(defun consult-gh--files-nodirectory-items (repo &optional path branch non-recursive cache)
   "Fetch a list of non-directory files in REPO.
 
 When PATH is non-nil, only retrieve items relative to PATH.
 When BRANCH is non-nil, retrive the tree in the BRANCH otherwise
 use the “HEAD” branch.
 When NON-RECURSIVE is non-nil, only retriev items in top folder
+CACHE is a string for cache duration and is passed to
+`consult-gh--files-list-items'.
 The format is propertized text that include information about the file
 generated by `consult-gh--files-table-to-list'.
 This list can be passed to `consult-gh-find-file'.
@@ -5399,18 +5976,19 @@ This list can be passed to `consult-gh-find-file'.
 This list does not have directories.  See `consult-gh--files-list-items'
 for getting a list of file and directories."
   (let* ((branch (or branch "HEAD"))
-         (items (consult-gh--files-list-items repo path branch non-recursive)))
-    (cl-remove-if-not (lambda (item) (plist-get (cdr item) :size))
+         (items (consult-gh--files-list-items repo path branch non-recursive cache)))
+    (cl-remove-if-not (lambda (item) (equal (plist-get (cdr item) :object-type) "blob"))
                       items)))
 
-(defun consult-gh--files-directory-items (repo &optional path branch non-recursive)
+(defun consult-gh--files-directory-items (repo &optional path branch non-recursive cache)
   "Fetch a list of directorie in REPO.
 
 When PATH is non-nil, only retrieve items relative to PATH.
 When BRANCH is non-nil, retrive the tree in the BRANCH otherwise
 use the “HEAD” branch.
 When NON-RECURSIVE is non-nil, only retriev items in top folder
-
+CACHE is a string for cache duration and is passed to
+`consult-gh--files-list-items'.
 The format is propertized text that include information about the file
 generated by `consult-gh--files-table-to-list'.
 This list is used for selecting a path in `consult-gh-create-file'.
@@ -5418,8 +5996,8 @@ This list is used for selecting a path in `consult-gh-create-file'.
 This list has only directories.  See `consult-gh--files-list-items'
 for getting a list of file and directories."
   (let* ((branch (or branch "HEAD"))
-         (items (consult-gh--files-list-items repo path branch non-recursive)))
-    (cl-remove-if-not (lambda (item) (not (plist-get (cdr item) :size)))
+         (items (consult-gh--files-list-items repo path branch non-recursive cache)))
+    (cl-remove-if-not (lambda (item) (equal (plist-get (cdr item) :object-type) "tree"))
                       items)))
 
 (defun consult-gh--files-get-content-by-api-url (url)
@@ -5450,32 +6028,47 @@ f optional argument BRANCH is non-nil, fetch the file at PATH in BRANCH."
 \(e.g. in`consult-gh-find-file'\).
 
 CONS is a list of files for example returned by
-`consult-gh--files-nodirectory-items'."
-  (when-let* ((class "file")
-              (type "file")
-              (path (car cons))
-              (path (string-join (mapcar #'identity (string-split path "/")) (propertize "/" 'face 'consult-gh-default)))
-              (info (cdr cons))
-              (repo (plist-get info :repo))
-              (user (consult-gh--get-username repo))
-              (package (consult-gh--get-package repo))
-              (size (plist-get info :size))
-              (object-type (plist-get info :object-type))
-              (branch (plist-get info :branch))
-              (url (plist-get info :url))
-              (str path))
-    (add-text-properties 0 1 (list :repo repo
-                                   :user user
-                                   :package package
-                                   :path (substring-no-properties path)
-                                   :url url
-                                   :size size
-                                   :branch branch
-                                   :class class
-                                   :type type
-                                   :object-type object-type)
-                         str)
-    str))
+`consult-gh--files-nodirectory-items'.
+INPUT is the dynamic input in minibuffer.
+If HIGHLIGHT is non-nil, highlights the input in candidates."
+  (let* ((class "file")
+         (type "file")
+         (name (car cons))
+         (info (cdr cons))
+         (path (plist-get info :path))
+         (repo (plist-get info :repo))
+         (user (consult-gh--get-username repo))
+         (package (consult-gh--get-package repo))
+         (size (plist-get info :size))
+         (object-type (plist-get info :object-type))
+         (branch (plist-get info :branch))
+         (url (plist-get info :url))
+         (mode (pcase (plist-get info :mode)
+                 ("100644" "file")
+                 ("100755" "exec file")
+                 ("040000" "directory")
+                 ("160000" "commit")
+                 ("120000" "symlink")))
+         (str  (cond
+                     ((equal object-type "tree")
+                      (file-name-as-directory name))
+                     ((equal object-type "blob")
+                      name))))
+  (add-text-properties 0 1 (list :repo repo
+                                     :user user
+                                     :package package
+                                     :path (and (stringp path)
+                                                (substring-no-properties path))
+                                     :url url
+                                     :mode mode
+                                     :size size
+                                     :branch branch
+                                     :class class
+                                     :type type
+                                     :object-type object-type
+                                     :new nil)
+                           str)
+      str))
 
 (defun consult-gh--file-state ()
   "State function for file candidates in `consult-gh-find-file'.
@@ -5520,22 +6113,30 @@ and is used to preview files or do other actions on the file."
 
 For more info on annotation refer to the manual, particularly
 `consult--read' and `consult--read-annotate' documentation."
-  (lambda (cands cand)
-    (if-let* ((obj (assoc cand cands))
-              (size (format "%s Bytes" (get-text-property 0 :size obj)))
-              (repo (format "%s" (get-text-property 0 :repo obj)))
-              (user (car (string-split repo "\/")))
-              (package (cadr (string-split repo "\/")))
-              (branch (format "%s" (get-text-property 0 :branch obj)))
-              (url (format "%s" (get-text-property 0 :url obj)))
-              (str (format "\s%s\s\s%s -- "
-                           (propertize size 'face 'consult-gh-visibility)
-                           (concat (propertize user 'face 'consult-gh-user ) "/" (propertize package 'face 'consult-gh-package) "@" (propertize branch 'face 'consult-gh-branch))))
-              (cand (substring-no-properties cand)))
+  (lambda (cand)
+    (let* ((size (format "%s Bytes" (or (get-text-property 0 :size cand) 0)))
+           (repo (format "%s" (get-text-property 0 :repo cand)))
+           (user (car (string-split repo "\/")))
+           (package (cadr (string-split repo "\/")))
+           (branch (format "%s" (get-text-property 0 :branch cand)))
+           (mode (format "%s" (get-text-property 0 :mode cand)))
+           (str (format "%s\s%s"
+                        (propertize size 'face 'consult-gh-visibility)
+                        (propertize mode 'face 'consult-gh-url)))
+           (cand (substring-no-properties cand)))
+      (if (and cand str)
         (concat
-         (consult-gh--justify-left str cand  (* 1.5 (frame-width)))
-         (propertize url 'face 'consult-gh-url))
-      nil)))
+         (propertize " " 'display '(space :align-to center))
+         str
+         (concat "\t -- " (propertize user 'face 'consult-gh-user ) "/" (propertize package 'face 'consult-gh-package) "@" (propertize branch 'face 'consult-gh-branch)))
+      nil))))
+
+(defun consult-gh--file-lookup (selected candidates &rest _)
+  "Lookup SELECTED in CANDIDATES list, return original element."
+  (let* ((sel (member selected candidates)))
+    (if sel
+        (car sel)
+      selected)))
 
 (defun consult-gh--file-group (cand transform)
   "Group function for file candidate, CAND.
@@ -5600,7 +6201,8 @@ Output is the buffer visiting the file."
     (unless (file-exists-p temp-file)
       (make-directory (file-name-directory temp-file) t)
       (with-temp-file temp-file
-        (insert (consult-gh--files-get-content-by-api-url url))
+        (insert (if url (consult-gh--files-get-content-by-api-url url)
+                      (consult-gh--files-get-content-by-path repo path branch)))
         (set-buffer-file-coding-system 'raw-text)
         (write-file temp-file))
       (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file)))
@@ -5610,7 +6212,8 @@ Output is the buffer visiting the file."
         (when revert
           (let ((inhibit-read-only t))
             (erase-buffer)
-            (insert (consult-gh--files-get-content-by-api-url url))
+            (insert (if url (consult-gh--files-get-content-by-api-url url)
+                      (consult-gh--files-get-content-by-path repo path branch)))
             (set-buffer-file-coding-system 'raw-text)
             (write-file temp-file)))
         (if jump-to-str
@@ -5732,13 +6335,6 @@ buffer generated by `consult-gh--files-view'."
     (add-text-properties 0 1 (list :changed-locally t) consult-gh--topic)
       (consult-gh--files-edit-commit-changes)))
 
-(defun consult-gh--files-create-lookup (selected candidates &rest _)
-  "Lookup function for creating new files.
-
-This is passed as LOOKUP to a `consult--read' in `consult-gh-create-file'
-and is used to preview existing files"
-  (or (assoc selected candidates) selected))
-
 (defun consult-gh--files-create-state ()
   "State function for previewing existing file.
 
@@ -5812,7 +6408,72 @@ Description of Arguments:
           (erase-buffer)
           (insert content)
           (set-buffer-modified-p nil))
+        (goto-char (point-min))
         (current-buffer)))))
+
+(defun consult-gh--files-delete (repo path &optional branch commit-message)
+  "Delete the file at PATH in BRANCH of REPO."
+  (let* ((branch (or branch "HEAD")))
+    (consult-gh--delete-commit repo path branch commit-message)))
+
+(defun consult-gh--files-upload-read-files (&optional files prompt initial)
+  "Read file name from FILES.
+
+When FILES is nil, read file from file-system.
+INITIAL and PROMPT are passed to `consult--read'."
+  (consult--read (or files
+                     (completion-table-in-turn #'completion--embedded-envvar-table
+                                           #'completion--file-name-table))
+                 :prompt (or prompt "Select File: ")
+                 :require-match t
+                 :category 'file
+                 :initial initial
+                 :lookup (lambda (sel _cands &rest _args)
+                           (file-truename sel))
+                 :state (lambda (action cand)
+                          (let ((preview (consult--buffer-preview)))
+                            (pcase action
+                              ('preview
+                               (if cand
+                                   (when (not (file-directory-p cand))
+                                     (let* ((filename (file-truename cand))
+                                            (filesize (float
+                                                       (file-attribute-size
+                                                        (file-attributes filename))))
+                                            (confirm (if (and filename
+                                                              (>= filesize large-file-warning-threshold))
+                                                         (yes-or-no-p (format "File is %s Bytes.  Do you really want to preview it?" filesize))
+                                                       t)))
+                                       (if confirm
+                                           (funcall preview action
+                                                    (find-file-noselect (file-truename cand))))))))
+                              ('return
+                               cand))))
+                          :preview-key consult-preview-key))
+
+(defun consult-gh--files-upload-marked-dired-files ()
+"Get files to upload to GitHUb from Dired."
+  (if (derived-mode-p 'dired-mode)
+      (nreverse (dired-map-over-marks (dired-get-filename) nil))))
+
+(defun consult-gh--files-upload-dired (topic &optional files)
+"Open Dired to select FILES to upload.
+
+TOPIC is a string with propertis that describe repo, branch and path
+for uploading files."
+(let* ((repo (get-text-property 0 :repo topic))
+       (path (get-text-property 0 :path topic)))
+    (with-current-buffer (dired-noselect (or files (car-safe (dired-read-dir-and-switches ""))))
+      (setq-local header-line-format (concat "Mark files upload to "
+                                                     (consult-gh--get-package repo)
+                                                     (concat "/" path)
+                                            ".  "
+                                            (substitute-command-keys "When done, use `\\[consult-gh-upload-files]' to submit or `\\[consult-gh-topics-cancel]' to cancel.")))
+
+      (add-text-properties 0 1 (list :dired-buffer (current-buffer)) topic)
+      (setq-local consult-gh-upload-topic topic)
+      (consult-gh-upload-files-mode +1)
+      (funcall consult-gh-pop-to-buffer-func (current-buffer)))))
 
 (defun consult-gh--repo-format (string input highlight)
   "Format minibuffer candidates for repos in `consult-gh-search-repos'.
@@ -6154,11 +6815,11 @@ using `consult-gh--command-to-string'.
 ARGS are ignored."
   (let ((buffer (current-buffer)))
     (consult-gh--make-process (format "consult-gh-clone-%s" repo)
-                            :when-done `(lambda (_event _out)
-                                          (with-current-buffer ,buffer
+                            :when-done (lambda (_event _out)
+                                          (with-current-buffer buffer
                                             (progn
-                                            (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name ,name ,targetdir))
-                                            (message "repo %s was cloned to %s" (propertize ,repo 'face 'font-lock-keyword-face) (propertize (expand-file-name ,name ,targetdir) 'face 'font-lock-type-face)))))
+                                            (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name name targetdir))
+                                            (message "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face)))))
                             :cmd-args (list "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))))
     (let ((inhibit-message t))
        (propertize (expand-file-name name targetdir) :origin repo)))
@@ -6203,9 +6864,9 @@ using `consult-gh--command-to-string'."
          (name (or name package))
          (forkrepo (concat (consult-gh--get-current-username) "/" name)))
     (consult-gh--make-process (format "consult-gh-fork-%s" repo)
-                              :when-done `(lambda (_proc _str)
-                                            (run-hook-with-args 'consult-gh-repo-post-fork-hook ,forkrepo)
-                                            (message "repo %s was forked to %s" (propertize ,repo 'face 'font-lock-keyword-face) (propertize ,forkrepo 'face 'font-lock-warning-face)))
+                              :when-done (lambda (_proc _str)
+                                            (run-hook-with-args 'consult-gh-repo-post-fork-hook forkrepo)
+                                            (message "repo %s was forked to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize forkrepo 'face 'font-lock-warning-face)))
                               :cmd-args (list "repo" "fork" (format "%s" repo) "--fork-name" name))
     (let ((inhibit-message t))
       forkrepo)))
@@ -10830,9 +11491,9 @@ overriding requirements with admin permissions."
 (defun consult-gh-pr--merge-merge (pr &optional auto admin)
   "Merge PR.
 
-PR is a propertized string describing a pull request.  For example,PR can be
-   the text stored in the buffer-local variable `consult-gh--topic' in a
-   buffer created by `consult-gh--pr-view'.
+PR is a propertized string describing a pull request.
+For example, PR can be the text stored in the buffer-local variable
+`consult-gh--topic' in a buffer created by `consult-gh--pr-view'.
 
 If AUTO is non-nil enables auto-merge.
 
@@ -10876,17 +11537,17 @@ If ADMIN is non-nil overrides requirements with admin premissions."
 (defun consult-gh-pr--merge-enable-automerge (pr)
   "Enable auto-merge for PR.
 
-PR is a propertized string describing a pull request.  For example,PR can be
-the text stored in the buffer-local variable `consult-gh--topic' in a
-buffer created by `consult-gh--pr-view'."
+PR is a propertized string describing a pull request.
+For example, PR can be the text stored in the buffer-local variable
+`consult-gh--topic' in a buffer created by `consult-gh--pr-view'."
   (consult-gh-pr--merge-merge pr t))
 
 (defun consult-gh-pr--merge-disable-automerge (pr)
   "Disable auto-merge for PR.
 
-PR is a propertized string describing a pull request.  For example,PR can be
-the text stored in the buffer-local variable `consult-gh--topic' in a
-buffer created by `consult-gh--pr-view'."
+PR is a propertized string describing a pull request.
+For example, PR can be the text stored in the buffer-local variable
+`consult-gh--topic' in a buffer created by `consult-gh--pr-view'."
   (consult-gh-pr--merge-submit pr :disable-auto t))
 
 (defun consult-gh-topics--pr-merge-presubmit (pr)
@@ -13152,7 +13813,7 @@ REF defaults to REPO's main branch.
 
 This is an internal function that takes REPO, the full name of a
 repository \(e.g. “armindarvish/consult-gh”\) and ID-OR-NAME,
-a workflow id of that repository,runs the workflow.
+a workflow id of that repository, runs the workflow.
 
 Description of Arguments:
 
@@ -13384,8 +14045,8 @@ and is used to preview YAML files."
 
 (defun consult-gh--workflow-get-stater-workflows (input)
   "Search starter-workflows for INPUT."
-  (let* ((starter-workflows (consult-gh--files-list-items "actions/starter-workflows"))
-         (candidates (and (listp starter-workflows)
+  (let* ((files (consult-gh--files-list-items "actions/starter-workflows" nil nil nil "2m"))
+         (workflows (and (listp files)
                           (remove nil
                                   (mapcar
                                    (lambda (item) (if (and
@@ -13393,23 +14054,23 @@ and is used to preview YAML files."
                                                        (not (string-match "\.github" (car item)))
                                                        (string-match (format ".*%s.*" input) (car item)))
                                                                item))
-                                   starter-workflows)))))
-    candidates))
+                                   files)))))
+    workflows))
 
 (defun consult-gh--workflow-get-repo-workflows (repo input)
   "Search REPO workflows for INPUT."
-  (let* ((workflows (consult-gh--files-list-items repo))
+  (let* ((files (consult-gh--files-list-items repo nil nil nil "30s"))
          (input (or input ""))
-         (candidates (and (listp workflows)
-                          (remove nil
-                                  (mapcar
-                                   (lambda (item) (if (and  (listp item)
-                                                       (stringp (car-safe item))
-                                                       (string-match "\.github/workflows/.*.yml" (car-safe item))
-                                                       (string-match (format ".*%s.*" input) (car-safe item)))
-                                                               item))
-                                   workflows)))))
-    candidates))
+         (workflows (and (listp files)
+                         (remove nil
+                                 (mapcar
+                                  (lambda (item) (if (and  (listp item)
+                                                           (stringp (car-safe item))
+                                                           (string-match "\.github/workflows/.*.yml" (car-safe item))
+                                                           (string-match (format ".*%s.*" input) (car-safe item)))
+                                                     item))
+                                  files)))))
+    workflows))
 
 (defun consult-gh--workflow-get-templates (&optional repo)
   "Get workflow templates for REPO."
@@ -14000,14 +14661,14 @@ set `consult-gh-run-action' to `consult-gh--run-rerun-action'."
                                   (concat "comment on ")
                                 (concat type " for "))
              (buttonize (concat (consult-gh--get-package repo) (and isComment type (concat ": " (upcase type))) (and number (concat "#" number)))
-                        `(lambda (&rest _)
-                           (if ,new
-                               (funcall consult-gh-repo-action ,cand)
-                             (pcase ,type
+                        (lambda (&rest _)
+                           (if new
+                               (funcall consult-gh-repo-action cand)
+                             (pcase type
                                ("issue"
-                                (funcall consult-gh-issue-action ,cand))
+                                (funcall consult-gh-issue-action cand))
                                ("pr"
-                                (funcall consult-gh-pr-action ,cand)))))))
+                                (funcall consult-gh-pr-action cand)))))))
      ".  "
      (substitute-command-keys "When done, use `\\[consult-gh-ctrl-c-ctrl-c]' to submit or `\\[consult-gh-topics-cancel]' to cancel."))))
 
@@ -14092,6 +14753,28 @@ Helps with autocompleting usernames, issue numbers, etc."
          (consult-gh-commit-message-mode-on))
         (t
          (consult-gh-commit-message-mode-off))))
+
+(defvar-keymap consult-gh-upload-files-mode-map
+ :doc "Keymap for `consult-gh-upload-files-mode'.")
+
+(defun consult-gh-upload-files-mode-on ()
+  "Enable `consult-gh-topics-edit-mode'.")
+
+(defun consult-gh-upload-files-mode-off ()
+  "Disable `consult-gh-topics-edit-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-upload-files-mode
+  "Minor-mode for uploading files in consult-gh."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-upload-files-mode"
+  :keymap consult-gh-upload-files-mode-map
+  (cond (consult-gh-upload-files-mode
+         (consult-gh-upload-files-mode-on))
+        (t
+         (consult-gh-upload-files-mode-off))))
 
 ;;; Frontend interactive commands
 
@@ -15312,8 +15995,8 @@ For more details refer to the manual with “gh issue lock --help”."
                         (and (stringp reason) (not (string-empty-p reason))
                              (list "--reason" reason))))
      (consult-gh--make-process (format "consult-gh-issue-lock-%s-%s" repo number)
-                               :when-done `(lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
-                                                             (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "locked" 'face 'consult-gh-error))))
+                               :when-done (lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
+                                                             (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" number) 'face 'consult-gh-issue)) (propertize repo 'face 'consult-gh-user) (propertize "locked" 'face 'consult-gh-error))))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -15333,8 +16016,8 @@ For more details refer to the manual with “gh issue unlock --help”."
                (error "Can only lock an issue.  Did not get one!")))
           (args (list "issue" "unlock" number "--repo" repo)))
      (consult-gh--make-process (format "consult-gh-issue-unlock-%s-%s" repo number)
-                               :when-done `(lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
-                                            (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "unlocked" 'face 'consult-gh-success))))
+                               :when-done (lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
+                                            (message "%s in %s was %s!" (format "Issue %s" (propertize (concat "#" number) 'face 'consult-gh-issue)) (propertize repo 'face 'consult-gh-user) (propertize "unlocked" 'face 'consult-gh-success))))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -15461,7 +16144,8 @@ For more details refer to the manual with “gh issue develop --help”."
                                          repo)))
           (base (or base
                     (if (eq (cadr branch) :new)
-                        (cdr (consult-gh--read-branch branch-repo (format "Select a base branch in %s to create a new one off of" branch-repo))))))
+                        (get-text-property 0 :branch
+                                           (consult-gh--read-branch-internal branch-repo nil (format "Select a reference branch in %s as starting point: " branch-repo) t)))))
           (args (if (eq (cadr branch) :new)
                     (list "issue" "develop" number "--repo" repo))))
      (cond
@@ -15477,7 +16161,8 @@ For more details refer to the manual with “gh issue develop --help”."
                                  :when-done (lambda (_ str) (message str))
                                  :cmd-args args))
       ((stringp (cadr branch))
-       (consult-gh-find-file repo (car branch)))))))
+       (with-current-buffer (consult-gh-find-file repo (car branch))
+         (consult-gh-edit-file)))))))
 
 (defun consult-gh--pr-list-transform (input)
   "Add annotation to issue candidates in `consult-gh-pr-list'.
@@ -16168,8 +16853,8 @@ For more details refer to the manual with “gh pr lock --help”."
                         (and (stringp reason) (not (string-empty-p reason))
                              (list "--reason" reason))))
      (consult-gh--make-process (format "consult-gh-pr-lock-%s-%s" repo number)
-                               :when-done `(lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
-                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "locked" 'face 'consult-gh-error))))
+                               :when-done (lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
+                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" number) 'face 'consult-gh-issue)) (propertize repo 'face 'consult-gh-user) (propertize "locked" 'face 'consult-gh-error))))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -16189,8 +16874,8 @@ For more details refer to the manual with “gh pr unlock --help”."
                (error "Can only lock a pull request.  Did not get one!")))
           (args (list "pr" "unlock" number "--repo" repo)))
      (consult-gh--make-process (format "consult-gh-pr-unlock-%s-%s" repo number)
-                               :when-done `(lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
-                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" ,number) 'face 'consult-gh-issue)) (propertize ,repo 'face 'consult-gh-user) (propertize "unlocked" 'face 'consult-gh-success))))
+                               :when-done (lambda (_ str) (if (and str (not (string-empty-p str))) (message str)
+                                            (message "%s in %s was %s!" (format "Pull request %s" (propertize (concat "#" number) 'face 'consult-gh-issue)) (propertize repo 'face 'consult-gh-user) (propertize "unlocked" 'face 'consult-gh-success))))
                                :cmd-args args))))
 
 ;;;###autoload
@@ -16362,57 +17047,151 @@ URL `https://github.com/minad/consult'."
       (funcall consult-gh-code-action sel))))
 
 ;;;###autoload
-(defun consult-gh-find-file (&optional repo branch initial noaction prompt)
+(defun consult-gh-find-file (&optional repo branch path initial noaction prompt require-match allow-dirs extension)
   "Interactively find files of a REPO in BRANCH.
 
-Queries the user for name of a REPO, expected format is “OWNER/REPO”
-\(e.g. armindarvish/consult-gh\), then fetches all the branches on
-that repo and asks the user to select one BRANCH.  Then presents the
-file contents of the REPO and BRANCH for selection.
+Query the user for name of a REPO, expected format is “OWNER/REPO”
+\(e.g., armindarvish/consult-gh\), and a BRANCH in REPO.  Then presents
+the file contents of the REPO and BRANCH for selection.
 
 Upon selection of a candidate either
  - if NOACTION is non-nil candidate is returned
  - if NOACTION is nil     candidate is passed to `consult-gh-file-action'
 
-INITIAL is an optional arg for the initial input in the minibuffer
-\(passed as INITITAL to `consult-read'\)."
+Description of Arguments:
+  REPO          a string; repository's full name
+                \(e.g., armindarvish/consult-gh\)
+  BRANCH        a string; the repo branch to search
+  PATH          a string; when non-nil search is done relative to PATH
+  INITIAL       a string; used as initial input in searching files
+                \(gets passed to `consult-read'\).
+  NOACTION      a boolean; if non-nil, only retrun the file object
+                and do not call `consult-gh-file-action'.
+  PROMPT        a string; prompt to use when selecting a file.
+                If PATH is non-nil, it gets appended to the end
+                of prompt as well.
+  REQUIRE-MATCH a boolean; whether to require match
+                \(gets passed to `consult-read'\).
+  ALLOW-DIRS    a boolean; whether to allow selecting directory paths
+  EXTENSION     a string; the format of files to show
+                \(e.g., “.ext” only shows files that end in “.ext”\)"
   (interactive)
   (setq consult-gh--open-files-list nil
         consult-gh--current-tempdir (consult-gh--tempdir))
-  (let* ((prompt (or prompt "Select File: "))
-         (repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
-         (branch (or branch (format "%s" (cdr (consult-gh--read-branch repo)))))
-         (candidates (mapcar #'consult-gh--file-format (consult-gh--files-nodirectory-items repo nil branch)))
+  (let* ((repo (or repo
+                   (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
+         (branch (or branch (substring-no-properties (consult-gh--read-branch repo nil nil nil))))
+         (new-prompt (if (stringp prompt)
+                         (concat prompt (if path (format " %s/ " path)))
+                       (concat (format "Find File in %s" repo)
+                               (if branch (format " [%s]" branch))
+                               ":"
+                               (if path (format " %s/" path))
+                               " ")))
+         (all-files (if (and (stringp path)
+                             (file-name-directory path))
+                        (append `(("../" :repo ,repo :branch ,branch :url nil :path ,(file-name-directory (string-remove-suffix "/" path)) :size nil :object-type "tree" :new nil))
+                                (consult-gh--files-list-items repo path branch nil "30s"))
+                      (consult-gh--files-list-items repo path branch nil "30s")))
+
+         (candidates (lambda (input)
+                       (let* ((input (or input ""))
+                              (items
+                               (remove nil (mapcar (lambda (item)
+                                                     (when (consp item)
+                                                       (if (string-match-p (regexp-quote input) (or (plist-get (cdr item) :path) (car item)))
+                                                           (consult-gh--file-format item))))
+                                                   all-files))))
+                         items)))
          (sel (consult-gh-with-host
                (consult-gh--auth-account-host)
-               (consult--read candidates
-                              :prompt prompt
-                              :lookup #'consult--lookup-member
+               (consult--read (consult--dynamic-collection candidates :min-input 0 :highlight t)
+                              :prompt new-prompt
+                              :lookup #'consult-gh--file-lookup
+                              :annotate (consult-gh--file-annotate)
                               :state (funcall #'consult-gh--file-state)
-                              :require-match t
-                              :annotate (lambda (cand) (funcall (consult-gh--file-annotate) candidates cand))
-                              :history t
+                              :require-match require-match
                               :sort nil
-                              :add-history (let* ((localfile (buffer-file-name)))
+                              :history '(:input consult-gh--files-history)
+                              :add-history (let* ((localfile (buffer-file-name))
+                                                  (topicfile (when (stringp consult-gh--topic)
+                                                               (get-text-property 0 :path consult-gh--topic))))
                                              (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
-                             (append (list
-                                      (thing-at-point 'symbol)
-                                      (when  localfile
-                                         (file-name-nondirectory localfile))))))
-                              :history 'consult-gh--files-history
+                                                     (append (list
+                                                              (thing-at-point 'symbol)
+                                                              (when  localfile
+                                                                (file-name-nondirectory localfile))
+                                                              topicfile))))
                               :category 'consult-gh-files
                               :preview-key consult-gh-preview-key
-                              :initial initial))))
+                              :initial initial
+                              :predicate (if (stringp extension)
+                                             (lambda (cand)
+                                               (let ((path (get-text-property 0 :path cand)))
+                                                 (if (stringp path)
+                                                     (string-suffix-p extension path)))))))))
 
-    ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
-      (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
-      (add-to-history 'consult-gh--known-orgs-list username))
+    (when sel
 
-    (if noaction
-        sel
-      (funcall consult-gh-file-action sel))))
+      (if (and (stringp sel)
+               (not (string-empty-p sel))
+               (assoc (substring-no-properties sel) all-files))
+          (add-text-properties 0 1 (list :existing t) sel)
+        (add-text-properties 0 1 (list :existing nil) sel))
+
+      (cond
+       ((and (stringp sel)
+             (not (string-empty-p sel))
+             (not (equal (file-name-as-directory sel) sel))
+             (equal (get-text-property 0 :object-type sel) nil))
+        (setq sel (string-remove-prefix (consult-gh--get-split-style-character) sel))
+        (add-text-properties 0 1 (list :repo repo
+                                       :user (consult-gh--get-username repo)
+                                       :package (consult-gh--get-package repo)
+                                       :path (if (stringp path)
+                                                 (concat (file-name-directory path) (substring-no-properties sel))
+                                               (substring-no-properties sel))
+                                       :url nil
+                                       :mode nil
+                                       :size nil
+                                       :branch branch
+                                       :new t
+                                       :class "file"
+                                       :type "file"
+                                       :object-type "blob"
+                                       :existing nil)
+                             sel)
+
+        ;;add org and repo to known lists
+        (when-let ((reponame (get-text-property 0 :repo sel)))
+          (add-to-history 'consult-gh--known-repos-list reponame))
+        (when-let ((username (get-text-property 0 :user sel)))
+          (add-to-history 'consult-gh--known-orgs-list username))
+        (if noaction
+            sel
+          (funcall consult-gh-file-action sel)))
+       ((and (stringp sel)
+             (not (string-empty-p sel))
+             (equal (get-text-property 0 :new sel) nil)
+             (equal (get-text-property 0 :object-type sel) "tree")
+             (or (not allow-dirs)
+                 (string-prefix-p "../" (substring-no-properties sel))))
+        (consult-gh-find-file repo branch (if (get-text-property 0 :path sel)
+                                              (file-name-as-directory (get-text-property 0 :path sel)))
+                              nil noaction prompt require-match allow-dirs extension))
+       ((and (stringp sel)
+             (not (string-empty-p sel))
+             (equal (get-text-property 0 :new sel) nil)
+             (or allow-dirs
+                 (equal (get-text-property 0 :object-type sel) "blob")))
+        ;;add org and repo to known lists
+        (when-let ((reponame (get-text-property 0 :repo sel)))
+          (add-to-history 'consult-gh--known-repos-list reponame))
+        (when-let ((username (get-text-property 0 :user sel)))
+          (add-to-history 'consult-gh--known-orgs-list username))
+        (if noaction
+            sel
+          (funcall consult-gh-file-action sel)))))))
 
 ;;;###autoload
 (defun consult-gh-edit-file (&optional file)
@@ -16467,111 +17246,175 @@ local variable `consult-gh--topic' in  a buffer created by
    (user-error "Not in a consult-gh file buffer!"))))
 
 ;;;###autoload
-(defun consult-gh-create-file (&optional repo path branch content)
-  "Create a file at PATH in BRANCH of REPO.
+(defun consult-gh-create-file (&optional file content)
+  "Create FILE.
 
-If CONTENT is non-nil insert it in the buffer."
+Create a new buffer to edit file.  When the buffer is saved, the user
+is asked if they want to push the file to GitHub.
+
+FILE is a string with properties that describe repo, branch
+and path of file.  For example see the buffer-local-variable
+`consult-gh--topic' in a buffer created by `consult-gh-file-view'.
+
+If CONTENT is non-nil insert it in the file buffer."
   (interactive)
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-   (let* ((repo (or repo
-                    (get-text-property 0 :repo
-                                       (consult-gh-search-repos
-                                        (and (stringp consult-gh--topic)
-                                             (get-text-property 0 :repo consult-gh--topic))
-                                        t))))
-          (branch (or branch
-                      (consult-gh--read-branch repo)
+   (let* ((file (or file
+                    (and (stringp consult-gh--topic)
+                         (equal (get-text-property 0 :type consult-gh--topic) "file")
+                         consult-gh--topic)
+                    (consult-gh-find-file nil nil nil nil t "File Name: " nil nil)))
+          (repo (get-text-property 0 :repo file))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (branch (or (get-text-property 0 :branch file)
+                      (substring-no-properties (consult-gh--read-branch-internal repo nil nil nil))
                       "HEAD"))
-          (branch (cond
-                   ((stringp branch) branch)
-                   ((listp branch) (cdr branch))))
           (branch (cond
                    ((or (equal branch "HEAD") (equal branch ""))
                     (consult-gh--repo-get-default-branch repo))
                    ((and (stringp branch)
                          (not (string-empty-p branch))
                          branch))))
-          (files-list (append `(("." :repo ,repo :branch ,branch :url nil :path "." :size nil)) (consult-gh--files-list-items repo nil branch)))
-          (file (unless path
-                  (consult--read files-list
-                                 :prompt "Enter a Path for File: "
-                                 :state (consult-gh--files-create-state)
-                                 :preview-key consult-gh-preview-key
-                                 :require-match nil
-                                 :lookup #'consult-gh--files-create-lookup
-                                 :sort nil)))
-          (path (or path
-                    (and (listp file) (plist-get (cdr file) :path))))
+          (path (and (stringp file)
+                     (not (string-empty-p file))
+                     (get-text-property 0 :path file)))
           (path (and (stringp path)
                      (not (string-empty-p path))
                      path))
-          (canwrite (consult-gh--user-canwrite repo))
-          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-          (_ (if (not canwrite)
-                 (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error)))))
+          (existing (get-text-property 0 :existing file)))
+
      (cond
-      ((and (member path (mapcar (lambda (item) (plist-get (cdr item) :path)) files-list))
-            (equal (plist-get (cdr (assoc path files-list)) :object-type) "blob"))
+      ((and (stringp file)
+            existing
+            (equal (get-text-property 0 :object-type file) "tree"))
+       (let* ((new-file  (consult-gh-find-file repo branch (file-name-as-directory path) nil t "File Name: " nil nil)))
+       (consult-gh-create-file new-file)))
+      ((and (stringp file)
+            existing
+            (equal (get-text-property 0 :object-type file) "blob"))
        (pcase (consult--read (list (cons "Choose a different path" :reselect)
-                                   (cons "Choose a different file name in the same (sub)directory" :rename)
                                    (cons "Edit the existing file" :edit))
                              :prompt "That file already exists.  What do you want to do?"
                              :lookup #'consult--lookup-cdr
                              :require-match t
                              :sort nil)
          (':reselect
-          (consult-gh-create-file repo nil branch content))
+          (let* ((new-file (consult-gh-find-file repo branch (file-name-as-directory (file-name-directory path)) nil t "File Name: " nil nil)))
+            (consult-gh-create-file new-file)))
          (':edit
-          (let* ((info (consult-gh--api-get-command-string (concat (format "/repos/%s/contents/%s" repo path) (when branch (format "?ref=%s" branch)))))
-                 (url (consult-gh--json-to-hashtable info :url))
-                 (topic (format "%s/%s" repo path)))
-            (add-text-properties 0 1 (list :repo repo :type "file" :path path :branch branch :title nil :url url :changed-locally nil :object-type "blob") topic)
-            (consult-gh-edit-file topic)))
-         (':rename
-          (let* ((path-files-list (consult-gh--files-list-items repo path branch))
-                 (new-file (consult--read path-files-list
-                                          :prompt "Enter a New Name for File: "
-                                          :state (consult-gh--files-create-state)
-                                          :preview-key consult-gh-preview-key
-                                          :require-match nil
-                                          :lookup #'consult-gh--files-create-lookup
-                                          :sort nil))
-                 (new-path (cond
-                            ((and (listp new-file) (plist-get (cdr new-file) :path)))
-                            ((and (stringp new-file) (not (string-empty-p new-file)) new-file))))
-                 (new-path (and (stringp new-path)
-                                (not (string-empty-p new-path))
-                                (concat (file-name-directory path) new-path))))
-            (consult-gh-create-file repo new-path branch content)))))
-      ((and (member path (mapcar (lambda (item) (plist-get (cdr item) :path)) files-list))
-            (equal (plist-get (cdr (assoc path files-list)) :object-type) "tree"))
-       (pcase (consult--read (list (cons "Choose a different path" :reselect)
-                                   (cons "Make a new file in that directory" :make))
-                             :prompt "You selected a directory.  What do you want to do?"
+            (consult-gh-edit-file file))))
+      (t
+       (and repo path
+            (consult-gh--files-create-buffer repo path branch content)))))))
+
+;;;###autoload
+(defun consult-gh-delete-file (&optional file)
+  "Delete the FILE.
+
+FILE is a string with properties that describes repo, branch
+and the path of file.  For example see the buffer-local-variable
+`consult-gh--topic' in a buffer created by `consult-gh-file-view'."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((file (or file
+                    (and (stringp consult-gh--topic)
+                         (equal (get-text-property 0 :type consult-gh--topic) "file")
+                         consult-gh--topic)
+                    (consult-gh-find-file nil nil nil nil t "File Name: " t t)))
+          (repo (get-text-property 0 :repo file))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (branch (or (get-text-property 0 :branch file)
+                      (get-text-property 0 :branch (consult-gh--read-branch-internal repo nil nil t))
+                      "HEAD"))
+          (branch (cond
+                   ((or (equal branch "HEAD") (equal branch ""))
+                    (consult-gh--repo-get-default-branch repo))
+                   ((and (stringp branch)
+                         (not (string-empty-p branch))
+                         branch))))
+          (path (and (stringp file)
+                     (not (string-empty-p file))
+                     (get-text-property 0 :path file)))
+          (path (and (stringp path)
+                     (not (string-empty-p path))
+                     path)))
+     (cond
+      ((and (stringp file)
+            (equal (get-text-property 0 :object-type file) "tree"))
+        (pcase (consult--read (list (cons "Choose a different path" :reselect)
+                                    (cons "Delete the entire directory" :delete))
+                             :prompt "You slected a directory.  What do you want to do?"
                              :lookup #'consult--lookup-cdr
                              :require-match t
                              :sort nil)
-         (':reselect
-          (consult-gh-create-file repo nil branch content))
-         (':make
-          (let* ((path-files-list (consult-gh--files-list-items repo (file-name-as-directory path) branch))
-                 (new-file (consult--read path-files-list
-                                          :prompt "Enter a New Name for File: "
-                                          :state (consult-gh--files-create-state)
-                                          :preview-key consult-gh-preview-key
-                                          :require-match nil
-                                          :lookup #'consult-gh--files-create-lookup
-                                          :sort nil))
-                 (new-path (cond
-                            ((and (listp new-file) (plist-get (cdr new-file) :path)))
-                            ((and (stringp new-file) (not (string-empty-p new-file)) new-file))))
-                 (new-path (and (stringp new-path)
-                                (not (string-empty-p new-path))
-                                (concat (file-name-as-directory path) new-path))))
-            (consult-gh-create-file repo new-path branch content)))))
+          (':reselect
+           (let* ((new-file (consult-gh-find-file repo branch (file-name-as-directory path) nil t "File Name: " t t)))
+
+            (consult-gh-delete-file new-file)))
+          (':delete
+           (and repo path branch
+                (consult-gh--files-delete repo path branch)))))
       (t
-       (consult-gh--files-create-buffer repo path branch content))))))
+       (and repo path branch
+            (consult-gh--files-delete repo path branch)))))))
+
+;;;###autoload
+(defun consult-gh-upload-files (&optional files topic)
+  "Upload FILES to github.
+
+TOPIC is a string with properties that describes repo, branch
+and the path for uploading files.  For example see the
+buffer-local-variable `consult-gh--topic' in a buffer created by
+`consult-gh-file-view'."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((topic (or topic consult-gh-upload-topic))
+          (repo (or (and (stringp topic) (get-text-property 0 :repo topic))
+                    (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos nil t)))))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (branch (or (and (stringp topic) (get-text-property 0 :branch topic))
+                      (substring-no-properties (consult-gh--read-branch-internal repo nil nil nil))
+                      "HEAD"))
+          (branch (cond
+                   ((or (equal branch "HEAD") (equal branch ""))
+                    (consult-gh--repo-get-default-branch repo))
+                   ((and (stringp branch)
+                         (not (string-empty-p branch))
+                         branch))))
+          (dir (or (and (stringp topic) (get-text-property 0 :dir topic))
+                   (consult--read (mapcar #'consult-gh--file-format (append (list (list "." :repo repo :branch branch :url nil :path nil :size nil :object-type "tree" :new nil))
+                                           (consult-gh--files-directory-items repo nil branch nil)))
+                                   :prompt "Select Directory: "
+                                   :lookup #'consult-gh--file-lookup)))
+          (path (or (and (stringp topic) (get-text-property 0 :path topic))
+                    (and (stringp dir)
+                         (not (string-empty-p dir))
+                         (if (get-text-property 0 :object-type dir)
+                             (get-text-property 0 :path dir)
+                           (string-remove-suffix "/" dir))))))
+       (cond
+        ((derived-mode-p 'dired-mode)
+         (let* ((files (consult-gh--files-upload-marked-dired-files))
+                (newtopic (or (and (stringp topic) topic) (format "%s/%s/%s" repo branch path))))
+           (add-text-properties 0 1 (list :repo repo :branch branch :path path :dir dir :files files :dired-buffer (current-buffer)) newtopic)
+         (setq-local consult-gh-upload-topic newtopic)
+         (consult-gh--upload-commit files repo path branch)))
+        (t
+         (let* ((newtopic (or (and (stringp topic) topic) (format "%s/%s/%s" repo branch path))))
+           (add-text-properties 0 1 (list :repo repo :branch branch :path path :dir dir :files files) newtopic)
+           (consult-gh--files-upload-dired newtopic files)))))))
 
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
@@ -17161,12 +18004,12 @@ For more details refer to the manual with “gh release edit --help”."
           (args (list "release" "edit" tagname "--repo" repo "--draft")))
      (when (and canwrite (equal type "release"))
        (consult-gh--make-process (format "consult-gh-release-draft-%s-%s" repo tagname)
-              :when-done `(lambda (_ str)
+              :when-done (lambda (_event _str)
                             (message "Release %s in %s was marked as %s"
-                                     (propertize ,tagname 'face 'consult-gh-pr)
-                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize tagname 'face 'consult-gh-pr)
+                                     (propertize repo 'face 'consult-gh-repo)
                                      (propertize "DRAFT" 'face 'consult-gh-success))
-                            (add-text-properties 0 1 (list :draft t) ,release))
+                            (add-text-properties 0 1 (list :draft t) release))
               :cmd-args args)
        release))))
 
@@ -17193,21 +18036,20 @@ For more details refer to the manual with “gh release edit --help”."
      (when (and canwrite (equal type "release"))
         (if prerelease
             (consult-gh--make-process (format "consult-gh-release-prerelease-%s-%s" repo tagname)
-              :when-done `(lambda (_ str)
+              :when-done (lambda (_event _str)
                             (message "Release %s in %s was %s"
-                                     (propertize ,tagname 'face 'consult-gh-pr)
-                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize tagname 'face 'consult-gh-pr)
+                                     (propertize repo 'face 'consult-gh-repo)
                                      (propertize "unmarked as PRE-RELEASE" 'face 'consult-gh-warning))
-                            (add-text-properties 0 1 (list :prerelease nil) ,release)
-                            str)
+                            (add-text-properties 0 1 (list :prerelease nil) release))
               :cmd-args (append args (list "--prerelease=false")))
           (consult-gh--make-process (format "consult-gh-release-prerelease-%s-%s" repo tagname)
-              :when-done `(lambda (_ str)
+              :when-done (lambda (_ _str)
                             (message "Release %s in %s was %s"
-                                     (propertize ,tagname 'face 'consult-gh-pr)
-                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize tagname 'face 'consult-gh-pr)
+                                     (propertize repo 'face 'consult-gh-repo)
                                      (propertize "unmarked as PRE-RELEASE" 'face 'consult-gh-success))
-                            (add-text-properties 0 1 (list :prerelease t) ,release))
+                            (add-text-properties 0 1 (list :prerelease t) release))
               :cmd-args (append args (list "--prerelease"))))
         release))))
 
@@ -17241,12 +18083,12 @@ For more details refer to the manual with “gh release edit --help”."
                (message "Latest release cannot be %s." (propertize "draft or prerelease" 'face 'consult-gh-error))
 
          (consult-gh--make-process (format "consult-gh-release-latest-%s-%s" repo tagname)
-                                   :when-done `(lambda (_ str)
+                                   :when-done (lambda (_event _str)
                                                  (message "Release %s in %s was %s"
-                                                          (propertize ,tagname 'face 'consult-gh-pr)
-                                                          (propertize ,repo 'face 'consult-gh-repo)
+                                                          (propertize tagname 'face 'consult-gh-pr)
+                                                          (propertize repo 'face 'consult-gh-repo)
                                                           (propertize "marked as LATEST" 'face 'consult-gh-success))
-                                                 (add-text-properties 0 1 (list :latest t) ,release))
+                                                 (add-text-properties 0 1 (list :latest t) release))
                                    :cmd-args args)
          release)))))
 
@@ -17267,12 +18109,12 @@ For more details refer to the manual with “gh release edit --help”."
           (args (list "release" "edit" tagname "--repo" repo "--draft=false" "--latest=false")))
      (when (and canwrite (equal type "release"))
        (consult-gh--make-process (format "consult-gh-release-publish-%s-%s" repo tagname)
-              :when-done `(lambda (_ str)
+              :when-done (lambda (_event _str)
                             (message "Release %s in repo %s was %s"
-                                     (propertize ,tagname 'face 'consult-gh-pr)
-                                     (propertize ,repo 'face 'consult-gh-repo)
+                                     (propertize tagname 'face 'consult-gh-pr)
+                                     (propertize repo 'face 'consult-gh-repo)
                                      (propertize "PUBLISHED" 'face 'consult-gh-success))
-                            (add-text-properties 0 1 (list :draft nil) ,release))
+                            (add-text-properties 0 1 (list :draft nil) release))
               :cmd-args args)
        release))))
 
@@ -17614,28 +18456,23 @@ tagname that contains the version of WORKFLOW to run."
                               (plistp (car-safe workflow))
                               (plist-get (car-safe workflow) :path)))
           (workflow-repo  (and (listp workflow)
-                              (plistp (car-safe workflow))
-                              (plist-get (car-safe workflow) :repo)))
+                               (plistp (car-safe workflow))
+                               (plist-get (car-safe workflow) :repo)))
           (content (cond
                     ((equal workflow-path 'read) consult-gh-workflow-template)
                     ((stringp workflow-path) (consult-gh--files-get-content-by-path (plist-get (car-safe workflow) :repo) workflow-path))))
           (content  (if (and (stringp workflow-path)
-                        (not (member workflow-repo (list "actions/starter-workflows" repo)))
-                        (stringp content))
+                             (not (member workflow-repo (list "actions/starter-workflows" repo)))
+                             (stringp content))
                         (concat (format "# Source: %s/%s\n" workflow-repo workflow-path) content)
                       content))
-          (path (concat ".github/workflows/"
-                        (cond
-                         ((equal workflow-path 'read) (read-string "Enter a Name for the YAML file: .github/workflows/"))
-                         ((stringp workflow-path) (read-string "Enter a Name for the YAML file: .github/workflows/" (file-name-nondirectory workflow-path))))))
-
-          (path (cond
-                 ((and (stringp path)
-                      (not (equal (file-name-extension path) "yml")))
-                  (concat (file-name-sans-extension path) ".yml"))
-                 ((stringp path) path))))
-     (if path
-         (consult-gh-create-file repo path branch content)
+          (file (cond
+                 ((equal workflow-path 'read)
+                  (consult-gh-find-file repo branch ".github/workflows/" nil t "YAML File Name: " nil nil ".yml"))
+                 ((stringp workflow-path)
+                  (consult-gh-find-file repo branch ".github/workflows/" (file-name-nondirectory workflow-path) t "YAML File Name: " nil  nil ".yml")))))
+     (if file
+         (consult-gh-create-file file content)
        (user-error "Did not get a name for the file!")))))
 
 (defun consult-gh--run-list-transform (input)
@@ -17845,11 +18682,12 @@ If JOB-ID is non-nil, rerun the specific job with JOB-ID."
          (funcall #'consult-gh--run-rerun-action cand))))
 
 ;;;###autoload
-(defun consult-gh-branch-create (&optional repo ref branch-name)
+(defun consult-gh-branch-create (&optional repo ref branch-name sync)
 "Create a new branch in REPO.
 
 REF is the reference for creating a new branch.
 BRANCH-NAME is the name of the new branch.
+If SYNC is non-nil, process is run synchronously.
 
 This is wrapper around `consult-gh--branch-create'."
 
@@ -17857,7 +18695,22 @@ This is wrapper around `consult-gh--branch-create'."
 (let* ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-   (consult-gh--branch-create repo ref branch-name))))
+   (consult-gh--branch-create repo ref branch-name sync))))
+
+;;;###autoload
+(defun consult-gh-branch-delete (&optional repo branch sync)
+"Delete a BRANCH in REPO.
+
+BRANCH is the name of branch to delete.
+If SYNC is non-nil, process is run synchronously.
+
+This is wrapper around `consult-gh--branch-delete'."
+
+(interactive)
+(let* ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (consult-gh--branch-delete repo branch sync))))
 
 ;;;###autoload
 (defun consult-gh-topics-comment-create (&optional topic)
@@ -18042,7 +18895,7 @@ then the user is asked to chose the TOPIC interactively."
           ((and new (equal type "merge commit"))
            (consult-gh-topics--pr-merge-presubmit topic))
           ((and new (equal type "commit"))
-           (consult-gh--commit-presubmit topic))))
+           (consult-gh-topics--commit-submit topic))))
      (message "Not in a consult-gh topic editing buffer!"))))
 
 ;;;###autoload
@@ -18273,7 +19126,10 @@ buffer generated by `consult-gh--commit-create'."
   (consult-gh--enable-keybindings-alist consult-gh-topics-edit-mode-map consult-gh--topics-edit-mode-keybinding-alist)
 
   ;; consult-gh-commit-message-mode-map
-  (consult-gh--enable-keybindings-alist consult-gh-commit-message-mode-map consult-gh--commit-message-mode-keybinding-alist))
+  (consult-gh--enable-keybindings-alist consult-gh-commit-message-mode-map consult-gh--commit-message-mode-keybinding-alist)
+
+  ;; consult-gh-upload-files-mode-map
+  (consult-gh--enable-keybindings-alist consult-gh-upload-files-mode-map consult-gh--upload-files-mode-keybinding-alist))
 
 ;;;###autoload
 (defun consult-gh-disable-default-keybindings ()
@@ -18307,7 +19163,10 @@ buffer generated by `consult-gh--commit-create'."
   (consult-gh--disable-keybindings-alist consult-gh-topics-edit-mode-map consult-gh--topics-edit-mode-keybinding-alist)
 
   ;; consult-gh-commit-message-mode-map
-  (consult-gh--disable-keybindings-alist consult-gh-commit-message-mode-map consult-gh--commit-message-mode-keybinding-alist))
+  (consult-gh--disable-keybindings-alist consult-gh-commit-message-mode-map consult-gh--commit-message-mode-keybinding-alist)
+
+  ;; consult-gh-upload-files-mode-map
+  (consult-gh--disable-keybindings-alist consult-gh-upload-files-mode-map consult-gh--upload-files-mode-keybinding-alist))
 
 ;;;###autoload
 (defun consult-gh-kill-preview-buffers ()
