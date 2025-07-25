@@ -1067,16 +1067,13 @@ otherwise a file path is requested."
   :group 'consult-gh
   :type 'boolean)
 
-(defcustom consult-gh-default-branch-to-load 'ask
+(defcustom consult-gh-default-branch-to-load nil
   "Which branch of repository to load by default in `consult-gh-find-file'?
 
 Possible values are:
 
-  - \='confirm:  Ask for confirmation if “HEAD” branch should be loaded.
-               If not, then the user can choose a different branch.
-  - \='ask:      Asks the user to select a branch.
-  - \='nil:      load the “HEAD” branch, no questions asked.
-  - A symbol:  loads the branch named in this variable.
+  - nil: loasd the “HEAD” branch
+  - A string:  loads the branch named in this string.
 
 Note that when this is set to a specific branch,
 it is used for any repository that is fetched and if the branch does not exist,
@@ -1085,11 +1082,9 @@ as a general case but in temporary settings where one is sure the branch exists
 on the repositories being fetched."
 
   :group 'consult-gh
-  :type '(choice (const :tag "Ask for a branch name" ask)
-                 (const :tag "Ask user to confirm loading HEAD, and if \"No\", ask for a branch name" confirm)
-                 (const :tag "Loads the HEAD Branch, without confirmation"
+  :type '(choice (const :tag "Loads the HEAD Branch, without confirmation"
                         nil)
-                 (symbol :tag "Loads Specific Branch")))
+                 (string :tag "Loads Specific Branch")))
 
 (defcustom consult-gh-repo-action #'consult-gh--repo-view-action
   "What function to call when a repo is selected?
@@ -4842,7 +4837,8 @@ by using `consult-gh--json-to-hashtable'."
   (mapcar (lambda (item) (cons (gethash :name item)
                                `(:repo ,repo
                                        :branch ,(gethash :name item)
-                                       :url ,(gethash :url item))))
+                                       :url ,(gethash :url item)
+                                       :type "branch")))
           table))
 
 (defun consult-gh--repo-get-branches-list (repo)
@@ -4863,7 +4859,7 @@ and `consult-gh--json-to-hashtable'."
  (consult-gh--api-get-command-string (format "/repos/%s" repo))
  :default_branch))
 
-(defun consult-gh--read-branch-internal (repo &optional initial prompt require-match)
+(defun consult-gh--read-branch (repo &optional initial prompt require-match)
 "Query the user to select a branch of REPO.
 
 REPO must be a Github repository full name
@@ -4891,8 +4887,7 @@ If PROMPT is non-nil, use it as the query prompt"
                                                       (get-text-property 0 :branch consult-gh--topic))))
                                                  (append (list
                                                           topicbranch
-                                                          (thing-at-point 'symbol)
-                                                          "HEAD")))
+                                                          (thing-at-point 'symbol))))
                            :lookup (lambda (sel cands &rest _args)
                                      (or (car-safe (member sel cands)) sel)))))
   (if (get-text-property 0 :branch sel)
@@ -4900,26 +4895,6 @@ If PROMPT is non-nil, use it as the query prompt"
   (and (y-or-n-p "That branch does not exit.  Do you want to make a new branch?")
                 (consult-gh-branch-create repo nil (substring-no-properties sel) t)
                  sel))))
-
-(defun consult-gh--read-branch (repo &optional initial prompt require-match)
-  "Get a branch of REPO.
-
-Wrapper around `consult-gh--read-branch-internal'.  Depending on the
-value of `consult-gh-default-branch-to-load' either selects the “HEAD”
-or queries the user to select a brnach using
-`consult-gh--read-branch-internal'.  REPO, INITIAL, REQUIRE-MATCH, and
-PROMPT are passed to `consult-gh--read-branch-internal'."
-  (pcase consult-gh-default-branch-to-load
-    ('confirm
-     (if (y-or-n-p "Choose Default HEAD branch?")
-         (cons repo "HEAD")
-      (consult-gh--read-branch-internal repo initial prompt require-match)))
-    ('ask
-     (consult-gh--read-branch-internal repo initial prompt require-match))
-    ('nil
-     (cons repo "HEAD"))
-    (_
-     (cons repo (format "%s" consult-gh-default-branch-to-load)))))
 
 (defun consult-gh--branch-create-suggest-name (repo user)
 "Suggest a name for new branch created in REPO by USER."
@@ -4985,7 +4960,7 @@ If optional argument SYNC is non-nil, run the prcess synchronously."
          (_  (unless canwrite
                (user-error "Current user, %s, does not have permissions to create a branch in %s" user repo)))
          (branch (or branch
-                     (get-text-property 0 :branch (consult-gh--read-branch-internal repo nil "Select the branch to delete: " t))))
+                     (get-text-property 0 :branch (consult-gh--read-branch repo nil "Select the branch to delete: " t))))
          (args (list "api" "-X" "DELETE")))
     (when (and repo branch)
       (setq args (append args (list (format "/repos/%s/git/refs/heads/%s" repo branch))))
@@ -5999,8 +5974,7 @@ When NON-RECURSIVE is non-nil, only retrieve items in top folder.
 CACHE is a string for cache duration and is passed to
 `consult-gh--files-get-trees'.
 Returns text with properties containing information about the file
-generated by `consult-gh--files-table-to-list'.  This list can be
-passed to `consult-gh-find-file'.
+generated by `consult-gh--files-table-to-list'.
 
 See `consult-gh--files-nodirectory-items' for getting a list of file
 but not directories."
@@ -6022,7 +5996,6 @@ CACHE is a string for cache duration and is passed to
 `consult-gh--files-list-items'.
 The format is propertized text that include information about the file
 generated by `consult-gh--files-table-to-list'.
-This list can be passed to `consult-gh-find-file'.
 
 This list does not have directories.  See `consult-gh--files-list-items'
 for getting a list of file and directories."
@@ -6076,7 +6049,7 @@ f optional argument BRANCH is non-nil, fetch the file at PATH in BRANCH."
 
 (defun consult-gh--file-format (cons)
   "Format minibuffer candidates for files.
-\(e.g. in`consult-gh-find-file'\).
+\(e.g. in `consult-gh--files-read-file'\).
 
 CONS is a list of files for example returned by
 `consult-gh--files-nodirectory-items'.
@@ -6122,7 +6095,7 @@ If HIGHLIGHT is non-nil, highlights the input in candidates."
       str))
 
 (defun consult-gh--file-state ()
-  "State function for file candidates in `consult-gh-find-file'.
+  "State function for file candidates in `consult-gh--files-read-file'.
 
 This is passed as STATE to `consult--read' on file candidates
 and is used to preview files or do other actions on the file."
@@ -6160,7 +6133,7 @@ and is used to preview files or do other actions on the file."
                         buffer))))))))
 
 (defun consult-gh--file-annotate ()
-  "Annotate each file candidate for `consult-gh-find-file'.
+  "Annotate each file candidate for `consult-gh--files-read-file'.
 
 For more info on annotation refer to the manual, particularly
 `consult--read' and `consult--read-annotate' documentation."
@@ -14174,6 +14147,113 @@ and is used to preview YAML files."
     :sort nil
     :preview-key consult-gh-preview-key))))
 
+(defun consult-gh--repo-get-tags (repo)
+  "List tags of REPO."
+  (let* ((table  (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (concat "repos/" repo "/tags")))))
+    (when (listp table)
+      (mapcar (lambda (item) (cons (gethash :name item)
+                                 `(:repo ,repo
+                                         :tagname ,(gethash :name item)
+                                         :tarball-api-url ,(gethash :tarball_url item)
+                                         :zipball-api-url ,(gethash :zipball_url item)
+                                         :sha ,(gethash :sha (gethash :commit item))
+                                         :type "tag")))
+            table))))
+
+(defun consult-gh--read-tag (repo &optional initial prompt require-match)
+"Query the user to select a tag of REPO.
+
+REPO must be a Github repository full name
+for example “armindarvish/consult-gh”.
+
+INITIAL is passed as :inital to `consult--read'.
+
+REQUIRE-MATCH is passed as :require-match to `consult--read'.
+
+If PROMPT is non-nil, use it as the query prompt"
+(let* ((candidates (mapcar (lambda (cand)
+                                     (when (listp cand)
+                                       (apply #'propertize (car-safe cand) (cdr-safe cand))))
+                           (consult-gh--repo-get-tags repo)))
+       (sel (consult--read candidates
+                           :prompt (or prompt "Select a Tag: ")
+                           :category 'consult-gh-tags
+                           :require-match require-match
+                           :initial initial
+                           :lookup (lambda (sel cands &rest _args)
+                                     (or (car-safe (member sel cands))
+                                       sel)))))
+  (if (get-text-property 0 :name sel)
+      sel
+  (and (y-or-n-p "That tag does not exit.  Do you want to make a new tag?")
+                 sel))))
+
+(defun consult-gh--read-ref (repo &optional initial prompt require-match ref-type)
+  "Get a branch or tag of REPO.
+
+Description of Arguments:
+  REPO          a string; repository's full name
+                \(e.g., armindarvish/consult-gh\)
+  INITIAL       a string; used as initial input in searching refs
+                \(gets passed to `consult--multi'\).
+  PROMPT        a string; prompt to use when selecting refs.
+                \(gets passed to `consult-multi'\).
+  REQUIRE-MATCH a boolean; whether to require match
+                \(gets passed to `consult-multi'\).
+  REF-TYPE      a symbol: either nil, \='branch or \='tag
+                when non-nil limit the selection to this type"
+  (let*  ((branches (mapcar (lambda (cand)
+                              (when (listp cand)
+                                (apply #'propertize (car-safe cand) (cdr-safe cand))))
+                            (consult-gh--repo-get-branches-list repo)))
+          (tags (mapcar (lambda (cand)
+                          (when (listp cand)
+                            (apply #'propertize (car-safe cand) (cdr-safe cand))))
+                        (consult-gh--repo-get-tags repo)))
+          (candidates (pcase ref-type
+                        ('nil (list
+                                (list :name "Branch"
+                                      :items branches
+                                      :sort t)
+                                (list :name "Tag"
+                                      :items tags
+                                      :sort nil)))
+                        ('branch (list
+                                  (list :name "Branch"
+                                        :items branches
+                                        :sort t)))
+                        ('tag (list
+                               (list :name "Tag"
+                                     :items tags
+                                     :sort nil)))))
+
+          (sel (consult--multi candidates
+                               :prompt (or prompt (concat "Select Reference for "
+                                                          (propertize (format "\"%s\"" repo) 'face 'consult-gh-default)
+                                                          ": "))
+                               :category 'consult-gh-branches
+                               :require-match require-match
+                               :initial initial
+                               :add-history  (let* ((topicbranch
+                                                     (and consult-gh--topic
+                                                          (stringp consult-gh--topic)
+                                                          (get-text-property 0 :branch consult-gh--topic))))
+                                               (append (list
+                                                        topicbranch
+                                                        (thing-at-point 'symbol)
+                                                        )))
+                               :sort nil)))
+    (when (listp sel)
+        (cond
+         ((equal (plist-get (cdr sel) :match) nil)
+          (and (y-or-n-p "That refrence does not exit.  Do you want to make a new branch?")
+                (consult-gh-branch-create repo nil (substring-no-properties (car sel)) t)
+                 (car sel)))
+         ((equal (plist-get (cdr sel) :name) "Branch")
+          (car sel))
+         ((equal (plist-get (cdr sel) :name) "Tag")
+          (car sel))))))
+
 (defun consult-gh--run-format (string input highlight)
   "Format minibuffer candidates for actions runs in `consult-gh-run-list'.
 
@@ -16218,7 +16298,7 @@ For more details refer to the manual with “gh issue develop --help”."
           (base (or base
                     (if (eq (cadr branch) :new)
                         (get-text-property 0 :branch
-                                           (consult-gh--read-branch-internal branch-repo nil (format "Select a reference branch in %s as starting point: " branch-repo) t)))))
+                                           (consult-gh--read-branch branch-repo nil (format "Select a reference branch in %s as starting point: " branch-repo) t)))))
           (args (if (eq (cadr branch) :new)
                     (list "issue" "develop" number "--repo" repo))))
      (cond
@@ -17119,53 +17199,45 @@ URL `https://github.com/minad/consult'."
         sel
       (funcall consult-gh-code-action sel))))
 
-;;;###autoload
-(defun consult-gh-find-file (&optional repo branch path initial noaction prompt require-match allow-dirs extension)
-  "Interactively find files of a REPO in BRANCH.
+(defun consult-gh--files-read-file (repo &optional branch-or-tag path initial prompt require-match allow-dirs extension ref-type)
+  "Read a file in REPO.
 
-Query the user for name of a REPO, expected format is “OWNER/REPO”
-\(e.g., armindarvish/consult-gh\), and a BRANCH in REPO.  Then presents
-the file contents of the REPO and BRANCH for selection.
-
-Upon selection of a candidate either
- - if NOACTION is non-nil candidate is returned
- - if NOACTION is nil     candidate is passed to `consult-gh-file-action'
+This is a non-interactive internal function.
+For the interactive version see `consult-gh-issue-list'.
 
 Description of Arguments:
   REPO          a string; repository's full name
                 \(e.g., armindarvish/consult-gh\)
-  BRANCH        a string; the repo branch to search
+  BRANCH-OR-TAG a string; The branch or tag in repo to search
   PATH          a string; when non-nil search is done relative to PATH
   INITIAL       a string; used as initial input in searching files
-                \(gets passed to `consult-read'\).
-  NOACTION      a boolean; if non-nil, only retrun the file object
-                and do not call `consult-gh-file-action'.
+                \(gets passed to `consult--read'\).
   PROMPT        a string; prompt to use when selecting a file.
                 If PATH is non-nil, it gets appended to the end
                 of prompt as well.
   REQUIRE-MATCH a boolean; whether to require match
-                \(gets passed to `consult-read'\).
+                \(gets passed to `consult--read'\).
   ALLOW-DIRS    a boolean; whether to allow selecting directory paths
   EXTENSION     a string; the format of files to show
-                \(e.g., “.ext” only shows files that end in “.ext”\)"
-  (interactive)
-  (setq consult-gh--open-files-list nil
-        consult-gh--current-tempdir (consult-gh--tempdir))
+                \(e.g., “.ext” only shows files that end in “.ext”\)
+  REF-TYPE      a symbol: either nil, \='branch or \='tag
+                when non-nil limit the selection to this type"
   (let* ((repo (or repo
                    (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
-         (branch (or branch (substring-no-properties (consult-gh--read-branch repo nil nil nil))))
+         (branch-or-tag (or branch-or-tag (substring-no-properties (consult-gh--read-ref repo nil nil nil ref-type))
+                            "HEAD"))
          (new-prompt (if (stringp prompt)
                          (concat prompt (if path (format " %s/ " path)))
                        (concat (format "Find File in %s" repo)
-                               (if branch (format " [%s]" branch))
+                               (if branch-or-tag (format " [%s]" branch-or-tag))
                                ":"
                                (if path (format " %s/" path))
                                " ")))
          (all-files (if (and (stringp path)
                              (file-name-directory path))
-                        (append `(("../" :repo ,repo :branch ,branch :url nil :path ,(file-name-directory (string-remove-suffix "/" path)) :size nil :object-type "tree" :new nil))
-                                (consult-gh--files-list-items repo path branch nil "30s"))
-                      (consult-gh--files-list-items repo path branch nil "30s")))
+                        (append `(("../" :repo ,repo :branch ,branch-or-tag :url nil :path ,(file-name-directory (string-remove-suffix "/" path)) :size nil :object-type "tree" :new nil))
+                                (consult-gh--files-list-items repo path branch-or-tag nil "30s"))
+                      (consult-gh--files-list-items repo path branch-or-tag nil "30s")))
 
          (candidates (lambda (input)
                        (let* ((input (or input ""))
@@ -17205,7 +17277,6 @@ Description of Arguments:
                                                      (string-suffix-p extension path)))))))))
 
     (when sel
-
       (if (and (stringp sel)
                (not (string-empty-p sel))
                (assoc (substring-no-properties sel) all-files))
@@ -17222,12 +17293,13 @@ Description of Arguments:
                                        :user (consult-gh--get-username repo)
                                        :package (consult-gh--get-package repo)
                                        :path (if (stringp path)
-                                                 (concat (file-name-directory path) (substring-no-properties sel))
+                                                 (concat (file-name-directory path)
+                                                         (substring-no-properties sel))
                                                (substring-no-properties sel))
                                        :url nil
                                        :mode nil
                                        :size nil
-                                       :branch branch
+                                       :branch branch-or-tag
                                        :new t
                                        :class "file"
                                        :type "file"
@@ -17240,18 +17312,16 @@ Description of Arguments:
           (add-to-history 'consult-gh--known-repos-list reponame))
         (when-let ((username (get-text-property 0 :user sel)))
           (add-to-history 'consult-gh--known-orgs-list username))
-        (if noaction
-            sel
-          (funcall consult-gh-file-action sel)))
+        sel)
        ((and (stringp sel)
              (not (string-empty-p sel))
              (equal (get-text-property 0 :new sel) nil)
              (equal (get-text-property 0 :object-type sel) "tree")
              (or (not allow-dirs)
                  (string-prefix-p "../" (substring-no-properties sel))))
-        (consult-gh-find-file repo branch (if (get-text-property 0 :path sel)
+        (consult-gh--files-read-file repo branch-or-tag (if (get-text-property 0 :path sel)
                                               (file-name-as-directory (get-text-property 0 :path sel)))
-                              nil noaction prompt require-match allow-dirs extension))
+                              nil prompt require-match allow-dirs extension ref-type))
        ((and (stringp sel)
              (not (string-empty-p sel))
              (equal (get-text-property 0 :new sel) nil)
@@ -17262,9 +17332,44 @@ Description of Arguments:
           (add-to-history 'consult-gh--known-repos-list reponame))
         (when-let ((username (get-text-property 0 :user sel)))
           (add-to-history 'consult-gh--known-orgs-list username))
+        sel)))))
+
+;;;###autoload
+(defun consult-gh-find-file (&optional repo branch-or-tag path noaction initial)
+  "Interactively find files of a REPO in BRANCH.
+
+Query the user for name of a REPO, expected format is “OWNER/REPO”
+\(e.g., armindarvish/consult-gh\), and a BRANCH in REPO.  Then presents
+the file contents of the REPO and BRANCH for selection.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil candidate is returned
+ - if NOACTION is nil     candidate is passed to `consult-gh-file-action'
+
+Description of Arguments:
+  REPO          a string; repository's full name
+                \(e.g., armindarvish/consult-gh\)
+  BRANCH-OR-TAG a string; the repo branch to search
+  PATH          a string; when non-nil search is done relative to PATH
+  INITIAL       a string; used as initial input in searching files
+                \(gets passed to `consult--read'\).
+  NOACTION      a boolean; if non-nil, only retrun the file object
+                and do not call `consult-gh-file-action'."
+  (interactive)
+  (setq consult-gh--open-files-list nil
+        consult-gh--current-tempdir (consult-gh--tempdir))
+  (let* ((repo (or repo
+                   (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
+         (sel (consult-gh--files-read-file repo branch-or-tag path initial)))
+    (when sel
+        ;;add org and repo to known lists
+        (when-let ((reponame (get-text-property 0 :repo sel)))
+          (add-to-history 'consult-gh--known-repos-list reponame))
+        (when-let ((username (get-text-property 0 :user sel)))
+          (add-to-history 'consult-gh--known-orgs-list username))
         (if noaction
             sel
-          (funcall consult-gh-file-action sel)))))))
+          (funcall consult-gh-file-action sel)))))
 
 ;;;###autoload
 (defun consult-gh-edit-file (&optional file)
@@ -17280,23 +17385,24 @@ local variable `consult-gh--topic' in  a buffer created by
        (let* ((repo (or (and file (get-text-property 0 :repo file))
                         (and consult-gh--topic (get-text-property 0 :repo consult-gh--topic))
                         (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+              (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
               (canwrite (consult-gh--user-canwrite repo))
+              (_ (unless canwrite
+                   (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
               (file (or file
                           (and consult-gh--topic
                            (equal (get-text-property 0 :type consult-gh--topic) "file")
                            consult-gh--topic)
-                          (consult-gh-find-file repo nil nil nil t nil t)))
-              (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account)))))
-         (if (not canwrite)
-             (message "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
+                          (consult-gh--files-read-file repo nil nil nil nil t nil nil 'branch))))
+         (when file
            (with-current-buffer (funcall #'consult-gh--files-view-action file)
            (consult-gh-edit-file))))
      (let* ((file (or file consult-gh--topic))
             (repo (get-text-property 0 :repo file))
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-            (_ (if (not canwrite)
-                   (message "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error)))))
+            (_ (unless canwrite
+                   (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error)))))
        (when buffer-read-only
            (read-only-mode -1))
        (cond
@@ -17337,15 +17443,15 @@ If CONTENT is non-nil insert it in the file buffer."
                     (and (stringp consult-gh--topic)
                          (equal (get-text-property 0 :type consult-gh--topic) "file")
                          consult-gh--topic)
-                    (consult-gh-find-file nil nil nil nil t "File Name: " nil nil)))
+                    (consult-gh--files-read-file nil nil nil nil "File Name: " nil nil nil 'branch)))
           (repo (get-text-property 0 :repo file))
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-          (_ (if (not canwrite)
+          (_ (unless canwrite
                  (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (branch (or (get-text-property 0 :branch file)
-                      (substring-no-properties (consult-gh--read-branch-internal repo nil nil nil))
-                      "HEAD"))
+                      (substring-no-properties (consult-gh--read-branch repo nil nil nil))
+                      (or consult-gh-default-branch-to-load "HEAD")))
           (branch (cond
                    ((or (equal branch "HEAD") (equal branch ""))
                     (consult-gh--repo-get-default-branch repo))
@@ -17364,7 +17470,7 @@ If CONTENT is non-nil insert it in the file buffer."
       ((and (stringp file)
             existing
             (equal (get-text-property 0 :object-type file) "tree"))
-       (let* ((new-file  (consult-gh-find-file repo branch (file-name-as-directory path) nil t "File Name: " nil nil)))
+       (let* ((new-file (consult-gh--files-read-file repo branch (file-name-as-directory path) nil "File Name: " nil nil nil 'branch)))
        (consult-gh-create-file new-file)))
       ((and (stringp file)
             existing
@@ -17376,7 +17482,7 @@ If CONTENT is non-nil insert it in the file buffer."
                              :require-match t
                              :sort nil)
          (':reselect
-          (let* ((new-file (consult-gh-find-file repo branch (file-name-as-directory (file-name-directory path)) nil t "File Name: " nil nil)))
+          (let* ((new-file (consult-gh--files-read-file repo branch (file-name-as-directory (file-name-directory path)) nil "File Name: " nil nil nil 'branch)))
             (consult-gh-create-file new-file)))
          (':edit
             (consult-gh-edit-file file))))
@@ -17398,15 +17504,15 @@ and the path of file.  For example see the buffer-local-variable
                     (and (stringp consult-gh--topic)
                          (equal (get-text-property 0 :type consult-gh--topic) "file")
                          consult-gh--topic)
-                    (consult-gh-find-file nil nil nil nil t "File Name: " t t)))
+                    (consult-gh--files-read-file nil nil nil nil "File Name: " t t nil 'branch)))
           (repo (get-text-property 0 :repo file))
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (if (not canwrite)
                  (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (branch (or (get-text-property 0 :branch file)
-                      (get-text-property 0 :branch (consult-gh--read-branch-internal repo nil nil t))
-                      "HEAD"))
+                      (get-text-property 0 :branch (consult-gh--read-branch repo nil nil t))
+                      (or consult-gh-default-branch-to-load "HEAD")))
           (branch (cond
                    ((or (equal branch "HEAD") (equal branch ""))
                     (consult-gh--repo-get-default-branch repo))
@@ -17429,8 +17535,7 @@ and the path of file.  For example see the buffer-local-variable
                              :require-match t
                              :sort nil)
           (':reselect
-           (let* ((new-file (consult-gh-find-file repo branch (file-name-as-directory path) nil t "File Name: " t t)))
-
+           (let* ((new-file (consult-gh--files-read-file repo branch (file-name-as-directory path) nil "File Name: " t t nil 'branch)))
             (consult-gh-delete-file new-file)))
           (':delete
            (and repo path branch
@@ -17458,8 +17563,8 @@ buffer-local-variable `consult-gh--topic' in a buffer created by
           (_ (if (not canwrite)
                  (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (branch (or (and (stringp topic) (get-text-property 0 :branch topic))
-                      (substring-no-properties (consult-gh--read-branch-internal repo nil nil nil))
-                      "HEAD"))
+                      (substring-no-properties (consult-gh--read-branch repo nil nil nil))
+                      (or consult-gh-default-branch-to-load "HEAD")))
           (branch (cond
                    ((or (equal branch "HEAD") (equal branch ""))
                     (consult-gh--repo-get-default-branch repo))
@@ -18544,9 +18649,9 @@ tagname that contains the version of WORKFLOW to run."
                       content))
           (file (cond
                  ((equal workflow-path 'read)
-                  (consult-gh-find-file repo branch ".github/workflows/" nil t "YAML File Name: " nil nil ".yml"))
+                  (consult-gh--files-read-file repo branch ".github/workflows/" nil "YAML File Name: " nil nil ".yml" 'branch))
                  ((stringp workflow-path)
-                  (consult-gh-find-file repo branch ".github/workflows/" (file-name-nondirectory workflow-path) t "YAML File Name: " nil  nil ".yml")))))
+                  (consult-gh--files-read-file repo branch ".github/workflows/" (file-name-nondirectory workflow-path) "YAML File Name: " nil nil ".yml" 'branch)))))
      (if file
          (consult-gh-create-file file content)
        (user-error "Did not get a name for the file!")))))
