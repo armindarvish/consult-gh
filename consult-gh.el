@@ -6077,6 +6077,8 @@ If HIGHLIGHT is non-nil, highlights the input in candidates."
                      ((equal object-type "tree")
                       (file-name-as-directory name))
                      ((equal object-type "blob")
+                      name)
+                     (t
                       name))))
   (add-text-properties 0 1 (list :repo repo
                                      :user user
@@ -17488,7 +17490,9 @@ If CONTENT is non-nil insert it in the file buffer."
             (consult-gh-edit-file file))))
       (t
        (and repo path
-            (consult-gh--files-create-buffer repo path branch content)))))))
+            (let* ((tempdir (expand-file-name (concat repo "/" (or branch "HEAD") "/")
+                                    (or consult-gh--current-tempdir (consult-gh--tempdir)))))
+              (consult-gh--files-create-buffer repo path branch content tempdir))))))))
 
 ;;;###autoload
 (defun consult-gh-delete-file (&optional file)
