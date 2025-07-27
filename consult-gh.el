@@ -1708,12 +1708,6 @@ By default, inherits from `link'.")
 
 ;;; Utility functions
 
-(defun consult-gh--nonutf-cleanup (string)
-  "Remove non UTF-8 characters if any in the STRING."
-  (string-join
-   (delq nil (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode))
-                     string))))
-
 (defun consult-gh--set-string-width (string width &optional prepend char)
   "Set the STRING width to a fixed value, WIDTH.
 
@@ -5441,7 +5435,7 @@ message."
          (insert (propertize "\n\n" :consult-gh-commit-instructions t))
          (insert (propertize "# Files to delete:" :consult-gh-commit-instructions t))
          (mapc (lambda (f)
-                   (insert (propertize (format "\n# - delete %s" (car f)) :consult-gh-commit-instructions t)))
+                   (insert (propertize (format "\n# - delete %s" f) :consult-gh-commit-instructions t)))
                  paths)))
        (goto-char (point-min))
        (when (stringp commit-message)
@@ -5460,11 +5454,7 @@ message."
              (new-path (and (stringp new-path)
                         (not (string-empty-p new-path))
                         new-path))
-             (new-type (and (stringp new-file)
-                        (not (string-empty-p new-file))
-                        (get-text-property 0 :object-type new-file)))
-             (new-paths (remove nil (cl-remove-duplicates (append (list (and (stringp new-path)
-                                                                             (cons new-path new-type)))
+             (new-paths (remove nil (cl-remove-duplicates (append (list (and (stringp new-path) new-path))
                                                                   paths)
                                                           :test #'equal))))
         (add-text-properties 0 1 (list :paths new-paths) commit)
@@ -5473,33 +5463,31 @@ message."
                     (goto-char (car-safe (car-safe regions)))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
-       (when (listp paths)
+       (when (listp new-paths)
          (insert (propertize "\n\n" :consult-gh-commit-instructions t))
          (insert (propertize "# Files to delete:" :consult-gh-commit-instructions t))
          (mapc (lambda (f)
-                   (insert (propertize (format "\n# - delete %s" (car f)) :consult-gh-commit-instructions t)))
+                   (insert (propertize (format "\n# - delete %s" f) :consult-gh-commit-instructions t)))
                  new-paths))))))
 
 (defun consult-gh--delete-commit-remove-files (&optional commit)
   "Remove files from the files to upload in COMMIT."
   (if consult-gh-topics-edit-mode
       (let* ((paths (get-text-property 0 :paths commit))
-             (file (consult--read (mapcar #'car paths)
-                                        :prompt "Remove Files: "))
-             (new-paths (remove (assoc file paths)
-                          paths)))
-          (add-text-properties 0 1 (list :paths new-paths)
-                               commit)
+             (file (consult--read paths
+                                  :prompt "Remove Files: "))
+             (new-paths (remove file paths)))
+          (add-text-properties 0 1 (list :paths new-paths) commit)
        (save-excursion
          (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                     (goto-char (car-safe (car-safe regions)))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
-       (when (listp paths)
+       (when (listp new-paths)
          (insert (propertize "\n\n" :consult-gh-commit-instructions t))
          (insert (propertize "# Files to delete:" :consult-gh-commit-instructions t))
          (mapc (lambda (f)
-                   (insert (propertize (format "\n# - delete %s" (car f)) :consult-gh-commit-instructions t)))
+                   (insert (propertize (format "\n# - delete %s" f) :consult-gh-commit-instructions t)))
                  new-paths))))))
 
 (defun consult-gh--delete-commit-by-pullrequest (&optional repo paths commit-message branch committer-info author-info)
@@ -5555,9 +5543,7 @@ Description of Arguments:
 
 Description of Arguments:
   REPO           a string; full name of repository
-  PATH           a cons; in the form (path . object-type)
-                 object-type is eithr “blob” for file or “tree” for
-                 directory.
+  PATH           a string; path of file to delete
   COMMIT-MESSAGE a string; commit message
   BRANCH         a string; name of branch ref for commit
   COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
@@ -5566,26 +5552,10 @@ Description of Arguments:
                (committer-email (when (hash-table-p committer-info) (gethash :email committer-info)))
                (author-name (when (hash-table-p author-info) (gethash :name author-info)))
                (author-email (when (hash-table-p author-info) (gethash :email author-info)))
-               (url (format "/repos/%s/contents/%s" repo (car-safe path)))
+               (url (format "/repos/%s/contents/%s" repo path))
                (url-ref (if branch (concat url (format "?ref=%s" branch)) url))
-               (api-response (consult-gh--api-get-json url-ref))
-               (file-name (when (stringp (car-safe path))
-                            (file-name-nondirectory (car-safe path))))
-               (file-type (cond
-                           ((equal (cdr-safe path) "tree") "directory")
-                           ((equal (cdr-safe path) "blob") "file")))
-               (commit-message (or (and (stringp commit-message)
-                                        (not (string-empty-p (string-trim commit-message)))
-                                        (concat commit-message
-                                                (format "\n delete %s \n"
-                                                        (car-safe path))))
-                                   (and file-name file-type
-                                        (format "Delete the %s %s" file-type file-name))
-                                   (consult--read nil
-                                                  :prompt "Commit Message: "
-                                                  :sort nil))))
-    (print path)
-    (print api-response)
+               (api-response (consult-gh--api-get-json url-ref)))
+
       (when (eq (car api-response) 0)
         (let* ((resp (consult-gh--json-to-hashtable (cadr api-response) (list :path :sha)))
                (shas (cond
@@ -5594,11 +5564,21 @@ Description of Arguments:
                       ((listp resp)
                        resp))))
 
-          (when (and repo shas commit-message)
+          (when (and repo shas)
             (cl-loop for item in shas
                      collect
                      (let* ((item-path (gethash :path item))
                             (item-sha (gethash :sha item))
+                            (commit-message (or (and (stringp commit-message)
+                                                     (not (string-empty-p (string-trim commit-message)))
+                                                     (concat commit-message
+                                                             (format "\n delete %s\n"
+                                                                     item-path)))
+                                                (and (stringp item-path)
+                                                     (format "Delete %s\n" item-path))
+                                                (consult--read nil
+                                                               :prompt "Commit Message: "
+                                                               :sort nil)))
                             (args (list "api"
                                         "-H" "Accept: application/vnd.github+json"
                                         "--method" "DELETE"
@@ -5612,34 +5592,31 @@ Description of Arguments:
                        (when (and author-name author-email)
                          (setq args (append args (list "-f" (format "author[name]=%s" author-name)
                                                        "-f" (format "author[email]=%s" author-email)))))
-
-                         (apply #'consult-gh--command-to-string args))))))))
+                       (apply #'consult-gh--command-to-string args))))))))
 
 (defun consult-gh--delete-commit-submit (repo paths commit-message &optional branch committer-info author-info)
   "Submit a delete files commit.
 
 Description of Arguments:
   REPO           a string; full name of repository
-  PATHS          a list of cons; each cons must be (path . object-type)
-                 object-type is eithr “blob” for file or “tree” for
-                 directory.
+  PATHS          a list of strings; list of path for files to delete
   COMMIT-MESSAGE a string; commit message
   BRANCH         a string; name of branch ref for commit
   COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
 
-  (pcase-let* ((canwrite (consult-gh--user-canwrite repo))
-               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-               (_  (unless canwrite
-                     (user-error "Current user, %s, does not have permissions to create a branch in %s" user repo)))
-               (commit-message (or (and (stringp commit-message)
-                                        (not (string-empty-p (string-trim commit-message)))
-                                        commit-message)
-                                   "Delete files"
-                                   (consult--read nil
-                                                  :prompt "Commit Message: "
-                                                  :sort nil)))
-               (protected (when branch (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo branch)) :protected))))
+  (let* ((canwrite (consult-gh--user-canwrite repo))
+         (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (_  (unless canwrite
+               (user-error "Current user, %s, does not have permissions to create a branch in %s" user repo)))
+         (commit-message (or (and (stringp commit-message)
+                                  (not (string-empty-p (string-trim commit-message)))
+                                  commit-message)
+                             "Delete files\n\n"
+                             (consult--read nil
+                                            :prompt "Commit Message: "
+                                            :sort nil)))
+         (protected (when branch (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo branch)) :protected))))
 
     (when (and commit-message
                (stringp commit-message)
@@ -5656,22 +5633,24 @@ Description of Arguments:
           (cl-loop for path in paths
                    collect
                    (progn
+                     (print path)
                      (unless (equal confirm "all")
-                       (setq confirm (read-answer (format "This will delete %s on GitHub.  Are you sure you want to continue?" (cond
-                                                                                                                                ((equal (cdr-safe path) "tree")
-                                                                                                                                 (propertize (file-name-as-directory (car path)) 'face 'consult-gh-warning))
-                                                                                                                                ((equal (cdr-safe path) "blob")
-                                                                                                                                 (propertize (car path) 'face 'consult-gh-warning))))
-                                                  '(("yes"  ?y "perform the action")
-                                                    ("no"   ?n "skip to the next")
-                                                    ("all"  ?! "accept all remaining without more questions")
+                       (setq confirm (read-answer (format "Delete %s on GitHub? "
+                                                          (propertize path 'face 'consult-gh-warning))
+                                                  '(("yes"  ?y "Delete this file")
+                                                    ("no"   ?n "skip this file")
+                                                    ("all"  ?! "Delete all remaining files without more questions")
                                                     ("help" ?h "show help")
                                                     ("quit" ?q "exit")))))
-                     (print confirm)
-                     (when (or (equal confirm "yes")
-                               (equal confirm "all"))
-                       (print path)
-                       (consult-gh--delete-commit-single-file repo path commit-message branch committer-info author-info))))))))))
+                     (cond
+                      ((or (equal confirm "yes")
+                           (equal confirm "all"))
+                       (and
+                        (consult-gh--delete-commit-single-file repo path commit-message branch committer-info author-info)
+                        (message "%s deleted!" (propertize path 'face 'consult-gh-success))))
+                      ((equal confirm "no")
+                       (message "Skipped %s" (propertize path 'face 'consult-gh-error)))
+                      (t (message "Canceled!")))))))))))
 
 (defun consult-gh--delete-commit-presubmit (&optional commit)
   "Prepare delete COMMIT to submit.
@@ -5964,7 +5943,8 @@ Description of Arguments:
                                                   ("all"  ?! "accept all remaining without more questions")
                                                   ("help" ?h "show help")
                                                   ("quit" ?q "exit")))))
-                   (when (or (equal confirm "yes")
+                   (cond
+                    ((or (equal confirm "yes")
                              (equal confirm "all"))
 
                      (if (file-directory-p file)
@@ -5975,7 +5955,10 @@ Description of Arguments:
                                      (consult-gh--upload-commit-single-file f parent-path repo commit-message branch committer-info author-info)))
                                  (directory-files-recursively file ".*"))
                        (let* ((parent-path (if path (file-name-as-directory path))))
-                         (consult-gh--upload-commit-single-file file parent-path repo commit-message branch committer-info author-info))))))))))))
+                         (consult-gh--upload-commit-single-file file parent-path repo commit-message branch committer-info author-info))))
+                    ((equal confirm "no")
+                     (message "Skipped %s" (propertize file 'face 'consult-gh-error)))
+                    (t (message "Canceled!")))))))))))
 
 (defun consult-gh--upload-commit-presubmit (&optional commit)
   "Prepare upload COMMIT to submit.
@@ -17681,10 +17664,10 @@ path of each file to delete.  For example see the buffer-local-variable
             (consult-gh-delete-file new-file)))
           (':delete
            (and repo path branch
-                (consult-gh--files-delete repo (list (cons path "tree")) branch "tree")))))
+                (consult-gh--files-delete repo (list path) branch "tree")))))
       (t
        (and repo path branch
-            (consult-gh--files-delete repo (list (cons path "blob")) branch "blob")))))))
+            (consult-gh--files-delete repo (list path) branch "blob")))))))
 
 ;;;###autoload
 (defun consult-gh-upload-files (&optional files topic)

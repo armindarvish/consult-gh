@@ -381,7 +381,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
 (defun consult-gh-embark-view-files-of-repo (cand)
   "Browse files of CAND at point."
   (when (stringp cand)
-    (let ((repo (or (get-text-property 0 :repo cand) (consult-gh--nonutf-cleanup cand))))
+    (let ((repo (or (get-text-property 0 :repo cand) (substring-no-properties cand))))
       (consult-gh-find-file repo))))
 
 (defun consult-gh-embark-view-pr-diff (cand)
