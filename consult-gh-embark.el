@@ -185,12 +185,12 @@ The candidate can be a repo, issue, PR, file path, or a branch."
             (class (or (get-text-property 0 :class cand) nil))
             (number (or (get-text-property 0 :number cand) nil))
             (path (or (get-text-property 0 :path cand) nil))
-            (branch (or (get-text-property 0 :branch cand) nil)))
+            (ref (or (get-text-property 0 :ref cand) nil)))
        (pcase class
          ("issue"
           (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number))))
          ((or "file" "code")
-          (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" (or branch "HEAD") path))))
+          (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" (or ref "HEAD") path))))
          ("pr"
           (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
          (_
@@ -233,14 +233,14 @@ The candidate can be a repo, issue, PR, file path, or a branch."
            (class (or (get-text-property 0 :class cand) nil))
            (number (or (get-text-property 0 :number cand) nil))
            (path (or (get-text-property 0 :path cand) nil))
-           (branch (or (get-text-property 0 :branch cand) nil)))
+           (ref (or (get-text-property 0 :ref cand) nil)))
       (consult-gh-with-host
        (consult-gh--auth-account-host)
        (pcase class
          ("issue"
           (consult-gh--call-process "issue" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
          ("file"
-          (funcall #'browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/" (or branch "HEAD")) path)))
+          (funcall #'browse-url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) (format "/blob/%s/" (or ref "HEAD")) path)))
          ("pr"
           (consult-gh--call-process "pr" "view" "--web" "--repo" (substring-no-properties repo) (substring-no-properties number)))
          (_
@@ -414,14 +414,14 @@ CAND can be a repo, issue, PR, file path, ..."
            (url (consult-gh-embark-get-url cand))
            (title (consult-gh-embark-get-title cand))
            (path (or (get-text-property 0 :path cand) nil))
-           (branch (or (get-text-property 0 :branch cand) nil))
+           (ref (or (get-text-property 0 :ref cand) nil))
            (str nil))
 
       (pcase class
         ((or "issue" "pr")
          (when (not current-prefix-arg) (setq title (concat repo "/" title))))
         ((or "file" "code")
-         (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
+         (when (not current-prefix-arg) (setq title (concat repo "/" ref "/" path)))))
 
       (when url
         (setq str
@@ -518,13 +518,13 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
            (url (consult-gh-embark-get-url cand))
            (title (consult-gh-embark-get-title cand))
            (path (or (get-text-property 0 :path cand) nil))
-           (branch (or (get-text-property 0 :branch cand) nil)))
+           (ref (or (get-text-property 0 :ref cand) nil)))
 
       (pcase class
         ((or "issue" "pr")
          (when (not current-prefix-arg) (setq title (concat repo "/" title))))
         ((or "file" "code")
-         (when (not current-prefix-arg) (setq title (concat repo "/" branch "/" path)))))
+         (when (not current-prefix-arg) (setq title (concat repo "/" ref "/" path)))))
 
       (when url
         (cond
@@ -1003,6 +1003,11 @@ CAND can be a PR or an issue."
  (when (stringp cand)
 (consult-gh-workflow-disable cand)))
 
+(defun consult-gh-embark-workflow-edit-yaml (cand)
+  "Edit the YAML file of the workflow in CAND."
+ (when (stringp cand)
+(consult-gh-workflow-edit-yaml cand)))
+
 (defun consult-gh-embark-run-view-workflow (cand)
   "View the workflow for run in CAND."
   (when (stringp cand)
@@ -1022,7 +1027,7 @@ CAND can be a PR or an issue."
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (let* ((repo (get-text-property 0 :repo cand))
-           (branch (get-text-property 0 :branch cand)))
+            (branch (get-text-property 0 :branch cand)))
      (funcall #'consult-gh-branch-delete repo branch)))))
 
 ;;;; Other Actions
@@ -1397,7 +1402,8 @@ uses `compose-mail' for composing an email."
   "e" '("gh enable workflow" . consult-gh-embark-workflow-enable)
   "d" '("gh disable workflow" . consult-gh-embark-workflow-disable)
   "g" '("gh list action runs" . consult-gh-embark-workflow-runs-list)
-  "v" '("gh view workflow menu" . consult-gh-embark-workflows-view-menu-map))
+  "v" '("gh view workflow menu" . consult-gh-embark-workflows-view-menu-map)
+  "y" '("gh edit yaml file" .  consult-gh-embark-workflow-edit-yaml))
 
 ;;;;;; PR View Menu Keymap
 (defvar-keymap consult-gh-embark-runs-view-menu-map
