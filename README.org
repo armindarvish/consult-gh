@@ -128,6 +128,9 @@ As of Emacs 27, json is available as built-in *if Emacs is compiled with json.* 
 
 *** [[https://github.com/jrblevin/markdown-mode][markdown-mode]]
 Since =gh= returns information in markdown, [[https://github.com/jrblevin/markdown-mode][markdown-mode]] is needed for seeing contents of issues, pull requests, etc. IN earlier versions markdown-mode was recommended but not required, but as of consult-gh version 2.0, =markdown-mode= is a requirement to ensure the viewing of issues and pull requests etc. work as expected.
+*** [[https://github.com/zkry/yaml.el][yaml.el]]
+Github actions are written in YAML format, so yaml.el is needed for parsing Github action files. Particularly, it is needed for reading input varibales in the YAML content of GitHub actions when manually running workflows.
+
 
 ** Installation
 
