@@ -12,8 +12,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.7
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (markdown-mode "2.6") (ox-gfm "1.0"))
+;; Version: 3.0
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (markdown-mode "2.6") (ox-gfm "1.0") (yaml "1.2.0"))
 ;; Keywords: convenience, matching, tools, vc
 ;; Homepage: https://github.com/armindarvish/consult-gh
 
@@ -23414,8 +23414,8 @@ This section includes additional useful embark actions as well as possible keyma
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.7
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "2.7") (embark-consult "1.1"))
+;; Version: 3.0
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "3.0") (embark-consult "1.1"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -25258,8 +25258,8 @@ uses `compose-mail' for composing an email."
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.7
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "2.7"))
+;; Version: 3.0
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "3.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -25689,8 +25689,8 @@ default behavior of `ghub--host' to allow using
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.7
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (pr-review "0.1") (consult-gh "2.7"))
+;; Version: 3.0
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (pr-review "0.1") (consult-gh "3.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, completion
 
@@ -25921,7 +25921,7 @@ default behavior of `ghub--host' to allow using
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.7
+;; Version: 3.0
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
