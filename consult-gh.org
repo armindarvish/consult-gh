@@ -99,6 +99,14 @@ Can be either a string, or a list of strings or expressions."
   :group 'consult-gh
   :type '(choice string (repeat (choice string sexp))))
 
+(defcustom consult-gh-search-repos-args '("search" "repos" "--include-forks" "true")
+  "Additional arguments for `consult-gh-search-repos'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
 (defcustom consult-gh-issue-list-args '("issue" "list" "--repo")
   "Additional arguments for `consult-gh-issue-list'.
 
@@ -109,14 +117,6 @@ Can be either a string, or a list of strings or expressions."
 
 (defcustom consult-gh-search-issues-args '("search" "issues")
   "Additional arguments for `consult-gh-search-issues'.
-
-The dynamically computed arguments are appended.
-Can be either a string, or a list of strings or expressions."
-  :group 'consult-gh
-  :type '(choice string (repeat (choice string sexp))))
-
-(defcustom consult-gh-search-repos-args '("search" "repos" "--include-forks" "true")
-  "Additional arguments for `consult-gh-search-repos'.
 
 The dynamically computed arguments are appended.
 Can be either a string, or a list of strings or expressions."
@@ -146,6 +146,15 @@ The dynamically computed arguments are appended.
 Can be either a string, or a list of strings or expressions."
   :group 'consult-gh
   :type '(choice string (repeat (choice string sexp))))
+
+(defcustom consult-gh-search-commits-args '("search" "commits")
+  "Additional arguments for `consult-gh-search-commits'.
+
+The dynamically computed arguments are appended.
+Can be either a string, or a list of strings or expressions."
+  :group 'consult-gh
+  :type '(choice string (repeat (choice string sexp))))
+
 
 (defcustom consult-gh-release-list-args '("release" "list" "--repo")
   "Additional arguments for `consult-gh-release-list'.
@@ -344,6 +353,14 @@ The default is set to `consult-gh-maxnum'."
   :group 'consult-gh
   :type 'integer)
 
+(defcustom consult-gh-commit-maxnum consult-gh-maxnum
+  "Maximum number of commits to show for search operations.
+
+This is the value passed to “--limit” in the command line.
+The default is set to `consult-gh-maxnum'."
+  :group 'consult-gh
+  :type 'integer)
+
 (defcustom consult-gh-release-maxnum consult-gh-maxnum
   "Maximum number of releases to show for list operations.
 
@@ -507,6 +524,26 @@ Common options include:
                  (const :tag "Show all relevant repos (forks and parent)" all)
                  (const :tag "Do not show similar repos" nil)))
 
+(defcustom consult-gh-commits-show-comments-in-view t
+  "Whether to include comments in `consult-gh--commit-view'?
+
+Not including comments make viewing long commits faster.
+
+Common options include:
+ - \='t       Ask user how many comments to show
+              when there are too many
+ - an integer Show this many comments
+ - \='all     Show all comments
+ - \='nil     Do not show any comments
+
+Note that when some comments are hidden `consult-gh-commit-view-comments'
+can be used to load all comments."
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Ask user what to do when there are many comments" t)
+                 (const :tag "Do not load comments" nil)
+                 (symbol :tag "Load all comments" 'all)
+                 (integer :tag "An integer for number of recent comments to load")))
+
 (defcustom consult-gh-large-file-warning-threshold large-file-warning-threshold
   "Threshold for size of file to require confirmation for preview/open/save.
 
@@ -536,6 +573,22 @@ so it can quickly be accessed by `next-history-element' \(bound to
   :group 'consult-gh
   :type 'boolean)
 
+(defcustom consult-gh-preview-major-mode 'gfm-mode
+  "Major mode for viewing topics.
+
+Choices are:
+  - \='nil            Use `fundamental-mode' or major-mode associated
+                      with file type
+  - \='gfm-mode       Use `gfm-mode'
+  - \='markdown-mode  Use `markdown-mode'
+  - \='org-mode       Use `org-mode'"
+  :group 'consult-gh
+  :type '(choice (const :tag "Guess major mode from file" nil)
+                 (const :tag "GitHub Flavored Markdown" gfm-mode)
+                 (const :tag "Markdown Mode" markdown-mode)
+                 (const :tag "Org Mode" org-mode)))
+
+
 (defcustom consult-gh-repo-preview-major-mode nil
   "Major mode to preview repository READMEs.
 
@@ -553,9 +606,10 @@ file extension."
                  (const :tag "Markdown Mode" markdown-mode)
                  (const :tag "Org Mode" org-mode)))
 
-(defcustom consult-gh-issue-preview-major-mode 'gfm-mode
+(defcustom consult-gh-issue-preview-major-mode consult-gh-preview-major-mode
   "Major mode to preview issues and pull requests.
 
+By default inherits from `consult-gh-preview-major-mode'.
 Choices are:
   - \='nil            Use `fundamental-mode'
   - \='gfm-mode       Use `gfm-mode'
@@ -567,9 +621,11 @@ Choices are:
                  (const :tag "Use org mode" org-mode)
                  (const :tag "Use fundamental mode" nil)))
 
-(defcustom consult-gh-release-preview-major-mode 'gfm-mode
+(defcustom consult-gh-release-preview-major-mode consult-gh-preview-major-mode
   "Major mode to preview releases.
 
+By default inherits from `consult-gh-preview-major-mode'.
+
 Choices are:
   - \='nil            Use `fundamental-mode'
   - \='gfm-mode       Use `gfm-mode'
@@ -581,9 +637,11 @@ Choices are:
                  (const :tag "Use org mode" org-mode)
                  (const :tag "Use fundamental mode" nil)))
 
-(defcustom consult-gh-workflow-preview-major-mode 'gfm-mode
+(defcustom consult-gh-workflow-preview-major-mode consult-gh-preview-major-mode
   "Major mode to preview workflows.
 
+By default inherits from `consult-gh-preview-major-mode'.
+
 Choices are:
   - \='nil            Use `fundamental-mode'
   - \='gfm-mode       Use `gfm-mode'
@@ -595,9 +653,11 @@ Choices are:
                  (const :tag "Use org mode" org-mode)
                  (const :tag "Use fundamental mode" nil)))
 
-(defcustom consult-gh-run-preview-major-mode 'gfm-mode
+(defcustom consult-gh-run-preview-major-mode consult-gh-preview-major-mode
   "Major mode to preview runs.
 
+By default inherits from `consult-gh-preview-major-mode'.
+
 Choices are:
   - \='nil            Use `fundamental-mode'
   - \='gfm-mode       Use `gfm-mode'
@@ -609,8 +669,26 @@ Choices are:
                  (const :tag "Use org mode" org-mode)
                  (const :tag "Use fundamental mode" nil)))
 
-(defcustom consult-gh-topic-major-mode 'gfm-mode
+(defcustom consult-gh-commit-preview-major-mode consult-gh-preview-major-mode
+  "Major mode to preview commits.
+
+By default inherits from `consult-gh-preview-major-mode'.
+
+Choices are:
+  - \='nil            Use `fundamental-mode'
+  - \='gfm-mode       Use `gfm-mode'
+  - \='markdown-mode  Use `markdown-mode'
+  - \='org-mode       Use `org-mode'"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use GitHub flavor markdown mode" gfm-mode)
+                 (const :tag "Use markdown mode" markdown-mode)
+                 (const :tag "Use org mode" org-mode)
+                 (const :tag "Use fundamental mode" nil)))
+
+(defcustom consult-gh-topic-major-mode consult-gh-preview-major-mode
   "Major mode for editing comments on issues or pull requests.
+
+By default inherits from `consult-gh-preview-major-mode'.
 
 Choices are:
   - \='nil            Use `text-mode'
@@ -904,6 +982,20 @@ By default it is set to t, but can be any of:
                  (const :tag "Repository's owner" :user)
                  (const :tag "Repository's package name" :package)
                  (const :tag "File path relative to repo's root" :path)))
+
+
+(defcustom consult-gh-group-commit-by consult-gh-group-by
+  "What field to use to group results in commit search?
+
+This is used in `consult-gh-search-commits'.
+By default it is set to t, but can be any of:
+
+  t        Use headers for marginalia info
+  nil      Do not group
+  symbol   Group by another property of the candidate"
+  :group 'consult-gh
+  :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
+                 (const :tag "Do Not Group" nil)))
 
 (defcustom consult-gh-group-dashboard-by consult-gh-group-by
   "What field to use to group results in code search?
@@ -1199,12 +1291,30 @@ Common options include:
                  (const :tag "Open code (target file) in an Emacs buffer" consult-gh--code-view-action)
                  (function :tag "Custom Function")))
 
+(defcustom consult-gh-commit-action #'consult-gh--commits-view-action
+  "What function to call when a commit is selected?
+
+Common options include:
+
+ - `consult-gh--commits-browse-url-action' Opens the commit url
+ in default browser
+
+ - `consult-gh--commits-view-action' Opens the commit in Emacs
+
+ - A custom function                     A function that takes
+                                         only 1 input argument,
+                                         the file candidate."
+  :group 'consult-gh
+  :type '(choice (const :tag "Browse the Commit URL" consult-gh--commits-browse-url-action)
+                 (const :tag "Open the Commit in an Emacs Buffer" consult-gh--commits-view-action)
+                 (function :tag "Custom Function")))
+
 (defcustom consult-gh-file-action #'consult-gh--files-view-action
   "What function to call when a file is selected?
 
 Common options include:
 
- - `consult-gh--files-browse-url-action' Opens the file url  in default browser
+ - `consult-gh--files-browse-url-action' Opens the file url in default browser
 
  - `consult-gh--files-view-action'       Opens the file in Emacs
 
@@ -1404,6 +1514,9 @@ repos can then be fetched and used as a when creating a new workflow."
 (defvar consult-gh-codes-category 'consult-gh-codes
   "Category symbol for codes in `consult-gh' package.")
 
+(defvar consult-gh-commits-category 'consult-gh-commits
+  "Category symbol for commits in `consult-gh' package.")
+
 (defvar consult-gh-notifications-category 'consult-gh-notifications
   "Category symbol for notifications in `consult-gh' package.")
 
@@ -1460,6 +1573,9 @@ This is used in `consult-gh-dashboard'.")
 
 (defvar consult-gh--search-code-history nil
   "History variable for codes used in `consult-gh-search-code'.")
+
+(defvar consult-gh--search-commits-history nil
+  "History variable for commits used in `consult-gh-search-commits'.")
 
 (defvar consult-gh--files-history nil
   "History variable for files used in `consult-gh-find-file'.")
@@ -1605,6 +1721,12 @@ This is used to change grouping dynamically.")
 
   "Keymap alist for `consult-gh-commit-message-mode'.")
 
+(defvar consult-gh--commit-view-mode-keybinding-alist '(("C-c C-c" . consult-gh-ctrl-c-ctrl-c)
+                                                        ("C-c C-<return>" . consult-gh-topics-open-in-browser)
+                                                        ("C-c C-e" . consult-gh-commit-browse-files))
+
+  "Keymap alist for `consult-gh-commit-view-mode'.")
+
 (defvar consult-gh--last-command nil
   "Last command for `consult-gh--embark-restart'.")
 
@@ -1736,6 +1858,12 @@ By default, inherits from `font-lock-vairable-use-face'.")
   "URL face in minibuffer annotations.
 
 By default, inherits from `link'.")
+
+(defface consult-gh-sha
+  `((t :inherit 'font-lock-doc-face))
+  "URL face in minibuffer annotations.
+
+By default, inherits from `font-lock-doc-face'.")
 
 #+end_src
 
@@ -3070,7 +3198,8 @@ major mode and format the contents."
                    ("pr" consult-gh-issue-preview-major-mode)
                    ("release" consult-gh-release-preview-major-mode)
                    ("workflow" consult-gh-workflow-preview-major-mode)
-                   ("run" consult-gh-run-preview-major-mode))))
+                   ("run" consult-gh-run-preview-major-mode)
+                   ("commit" consult-gh-commit-preview-major-mode))))
   (save-excursion
     (pcase mode
       ('gfm-mode
@@ -5006,7 +5135,7 @@ Description of Arguments:
                     ("issue" "issue")
                     ("pr" "pull request")
                     ("release" "release")
-                    ("commit" "commit")
+                    ("commit message" "commit")
                     (_ type)))
          (buff (consult-gh-topics--get-buffer-create buffer subject topic)))
     (with-current-buffer buff
@@ -5353,7 +5482,7 @@ Description of Arguments:
   "Sbmit COMMIT."
   (let* ((commit (or commit
                   (and (stringp consult-gh--topic)
-                       (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                       (equal (get-text-property 0 :type consult-gh--topic) "commit message")
                          consult-gh--topic)))
 
          (target (get-text-property 0 :commit-target commit)))
@@ -5686,7 +5815,6 @@ Description of Arguments:
                                :history history
                                :default default
                                :sort t)))
-    (print sel)
     (when (listp sel)
         (cond
          ((equal (plist-get (cdr sel) :match) nil)
@@ -5700,6 +5828,7 @@ Description of Arguments:
           (car sel))))))
 #+end_src
 **** commits
+***** make commits
 ****** get commit message
 #+begin_src emacs-lisp
 (defun consult-gh--commit-get-buffer-message ()
@@ -5740,7 +5869,7 @@ example, see the buffer-local variable `consult-gh--topic' in the
 buffer generated by `consult-gh--commit-create'."
   (let* ((commit (or commit
                    (and (stringp consult-gh--topic)
-                        (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                        (equal (get-text-property 0 :type consult-gh--topic) "commit message")
                         consult-gh--topic)))
          (committer-info (or (get-text-property 0 :committer-info commit)
                              (consult-gh--get-user-info (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))))
@@ -5771,7 +5900,7 @@ example, see the buffer-local variable `consult-gh--topic' in the
 buffer generated by `consult-gh--commit-create'."
   (let* ((commit (or commit
                    (and (stringp consult-gh--topic)
-                        (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                        (equal (get-text-property 0 :type consult-gh--topic) "commit message")
                         consult-gh--topic)))
          (author-info (or (get-text-property 0 :author-info commit)
                           (consult-gh--get-user-info (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))))
@@ -5803,7 +5932,7 @@ example, see the buffer-local variable `consult-gh--topic' in the
 buffer generated by `consult-gh--commit-create'."
   (let* ((commit (or commit
                    (and (stringp consult-gh--topic)
-                        (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                        (equal (get-text-property 0 :type consult-gh--topic) "commit message")
                         consult-gh--topic)))
          (repo  (get-text-property 0 :repo commit))
          (ref (or (get-text-property 0 :commit-ref commit)
@@ -5842,13 +5971,13 @@ buffer generated by `consult-gh--files-view'.  It defaults to
           (buffer (format "*consult-gh-file-edit-commit-message: %s/%s/%s" repo ref path))
           (base64-content (when (stringp new-content) (base64-encode-string (substring-no-properties (encode-coding-string new-content 'utf-8)))))
           (newtopic (format "%s/%s/%s" ref repo path))
-          (type "commit"))
+          (type "commit message"))
 
      (add-text-properties 0 1 (text-properties-at 0 file) newtopic)
      (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-ref ref :content base64-content :commit-target "create") newtopic)
 
      ;; insert commit message
-     (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
+     (consult-gh-topics--get-buffer-create buffer "commit message" newtopic)
      (with-current-buffer buffer
        (consult-gh-commit-message-mode +1)
        (save-excursion
@@ -6097,7 +6226,7 @@ buffer generated by `consult-gh--commit-create'."
   (if consult-gh-commit-message-mode
       (let* ((commit (or commit
                        (and (stringp consult-gh--topic)
-                            (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                            (equal (get-text-property 0 :type consult-gh--topic) "commit message")
                             consult-gh--topic)))
              (repo (get-text-property 0 :repo commit))
              (ref (or (get-text-property 0 :commit-ref commit)
@@ -6165,12 +6294,12 @@ message."
           (author-info (consult-gh--get-user-info user))
           (buffer (format "*consult-gh-file-delete-commit-message: %s/%s" repo ref))
           (newtopic (format "%s/%s" repo ref))
-          (type "commit"))
+          (type "commit message"))
 
      (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-ref ref :content nil :commit-target "delete" :repo repo :paths paths :ref ref) newtopic)
 
      ;; insert commit message
-     (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
+     (consult-gh-topics--get-buffer-create buffer "commit message" newtopic)
      (with-current-buffer buffer
        (consult-gh-commit-message-mode +1)
        (save-excursion
@@ -6438,7 +6567,7 @@ buffer generated by `consult-gh--delete-commit'."
   (if consult-gh-commit-message-mode
       (let* ((commit (or commit
                        (and (stringp consult-gh--topic)
-                            (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                            (equal (get-text-property 0 :type consult-gh--topic) "commit message")
                             consult-gh--topic)))
              (repo (get-text-property 0 :repo commit))
              (ref (or (get-text-property 0 :commit-ref commit)
@@ -6514,12 +6643,12 @@ message."
           (author-info (consult-gh--get-user-info user))
           (buffer (format "*consult-gh-files-upload-commit-message: %s/%s/%s" repo ref path))
           (newtopic (format "%s/%s/%s" ref repo path))
-          (type "commit"))
+          (type "commit message"))
 
      (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-ref ref :content nil :commit-target "upload" :repo repo :path path :ref ref :files files) newtopic)
 
      ;; insert commit message
-     (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
+     (consult-gh-topics--get-buffer-create buffer "commit message" newtopic)
      (with-current-buffer buffer
        (consult-gh-commit-message-mode +1)
        (save-excursion
@@ -6783,7 +6912,7 @@ buffer generated by `consult-gh--upload-commit'."
   (if consult-gh-commit-message-mode
       (let* ((commit (or commit
                        (and (stringp consult-gh--topic)
-                            (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                            (equal (get-text-property 0 :type consult-gh--topic) "commit message")
                             consult-gh--topic)))
              (repo (get-text-property 0 :repo commit))
              (ref (or (get-text-property 0 :commit-ref commit)
@@ -6849,7 +6978,978 @@ buffer generated by `consult-gh--upload-commit'."
     (message "Not a Github commit buffer!")))
 
 #+end_src
+***** search commits
+****** format
+******* search commits
+#+begin_src emacs-lisp
+(defun consult-gh--search-commits-format (string input highlight)
+  "Format candidates for commits.
 
+Description of Arguments:
+
+  STRING the output of a “gh” call
+         \(e.g. “gh search commits ...”\).
+  INPUT  the query from the user
+         \(a.k.a. command line argument passed to the gh call\).
+  HIGHLIGHT if non-nil, input is highlighted
+           with `consult-gh-highlight-match' in the minibuffer."
+  (let* ((class "commit")
+         (type "commit")
+         (parts (string-split string "\t"))
+         (repo (car parts))
+         (user (consult-gh--get-username repo))
+         (package (consult-gh--get-package repo))
+         (sha (cadr parts))
+         (sha-str (and (stringp sha)
+                       (substring sha 0 6)))
+         (message (cadr (cdr parts)))
+         (author (cadr (cddr parts)))
+         (date (cadr (cdddr parts)))
+         (date (if (and (stringp date) (length> date 9)) (substring date 0 10) date))
+         (query input)
+         (match-str (if (stringp input) (consult--split-escaped (car (consult--command-split query))) nil))
+         (str (format "%s\s\s%s\s\s%s\s\s%s\s\s%s"
+                      (consult-gh--set-string-width message 70)
+                      (propertize sha-str 'face 'consult-gh-sha)
+                      (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date)
+                      (propertize (consult-gh--set-string-width author 15) 'face 'consult-gh-pr)
+                      (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user )) (and package "/") (and package (propertize package 'face 'consult-gh-package))) 40))))
+    (if (and consult-gh-highlight-matches highlight)
+        (cond
+         ((listp match-str)
+          (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
+         ((stringp match-str)
+          (setq str (consult-gh--highlight-match match-str str t)))))
+    (add-text-properties 0 1 (list :repo repo
+                     :user user
+                     :package package
+                     :sha sha
+                     :author author
+                     :commit-message message
+                     :date date
+                     :query query
+                     :class class
+                     :type type)
+                         str)
+    str))
+#+end_src
+
+****** group
+#+begin_src emacs-lisp
+(defun consult-gh--commit-group (cand transform)
+  "Group function for commit.
+
+This is passed as GROUP to `consult--read' in
+`consult-gh-search-commits' and is used to group commits.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (let* ((name (consult-gh--group-function cand transform consult-gh-group-commit-by)))
+    (cond
+     ((stringp name) name)
+     ((equal name t)
+      (concat
+       (consult-gh--set-string-width "Message " 68 nil ?-)
+       (consult-gh--set-string-width " Sha " 8 nil ?-)
+       (consult-gh--set-string-width " Date " 12 nil ?-)
+       (consult-gh--set-string-width " Author "17 nil ?-)
+       (consult-gh--set-string-width " Repo " 40 nil ?-))))))
+#+end_src
+
+****** state/preview
+#+begin_src emacs-lisp
+(defun consult-gh--commit-state ()
+  "State function for commit candidates.
+
+This is passed as STATE to `consult--read' in `consult-gh-search-commits'
+and is used to preview or do other actions on the issue."
+  (lambda (action cand)
+    (let* ((preview (consult--buffer-preview)))
+      (pcase action
+        ('preview
+         (if (and consult-gh-show-preview cand)
+             (when-let ((repo (get-text-property 0 :repo cand))
+                        (sha (get-text-property 0 :sha cand))
+                        (buffer (get-buffer-create consult-gh-preview-buffer-name)))
+               (add-to-list 'consult-gh--preview-buffers-list buffer)
+               (consult-gh--commit-view (format "%s" repo) (format "%s" sha) buffer t)
+               (with-current-buffer buffer
+                 (outline-hide-sublevels 2))
+               (funcall preview action
+                        buffer))))
+        ('return
+         cand)))))
+#+end_src
+
+****** actions
+******* browse commit URL
+#+begin_src emacs-lisp
+(defun  consult-gh--commit-browse-url-action (cand)
+  "Browse the url for a commit candidate, CAND.
+
+This is an internal action function that gets a commit candidate, CAND,
+from `consult-gh-search-commits' and opens the url of the commit
+in an external browser.
+
+To use this as the default action for commits,
+set `consult-gh-commit-action' to `consult-gh--commit-browse-url-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (sha (substring-no-properties (get-text-property 0 :sha cand)))
+         (repo-url (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")))
+         (url (and repo-url (concat repo-url "/commit/" sha))))
+    (funcall (or consult-gh-browse-url-func #'browse-url) url)))
+#+end_src
+
+******* view commit
+
+******** read commit details
+#+begin_src emacs-lisp
+(defun consult-gh--commit-read-hashtable (repo sha &optional keys)
+"Geet details of commit SHA in REPO.
+
+Whe KEYS is a list of keywords, only retrieve fields in KEYS."
+(apply #'consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "repos/%s/commits/%s" repo sha)) keys))
+#+end_src
+
+******** get comments
+#+begin_src emacs-lisp
+(defun consult-gh--commit-get-comments (repo sha)
+  "Get comments of commit SHA in REPO.
+
+Retrieves a list of comments issue with id NUMBER in REPO.
+Optional argument maxnum limits the number of comments retrieved."
+   (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "repos/%s/commits/%s/comments" repo sha))))
+#+end_src
+
+******** get commenters
+#+begin_src emacs-lisp
+(defun consult-gh--commit-get-commenters (table &optional comments)
+  "Get a list of related users to a commit.
+
+Retrieves a list of all related commenter users for the comment
+stored in TABLE, a hash-table output
+from `consult-gh--commit-read-hashtable'.
+Optional argument COMMENTS is a list of comments
+from `consult-gh--commit-get-comments'.”"
+  (let* ((author (gethash :login (gethash :author table)))
+         (commenters (when (and comments (listp comments))
+                       (cl-loop for comment in comments
+                                collect
+                                (when (hash-table-p comment)
+                                  (gethash :login (gethash :user comment)))))))
+         (cl-remove-duplicates (delq nil (append (list author) commenters)) :test #'equal)))
+#+end_src
+******** get parents
+#+begin_src emacs-lisp
+(defun consult-gh--commit-get-parents (table)
+  "Get parents of the  commit in TABLE.
+
+TABLE is a hash-table output containing issue information
+from `consult-gh--commit-read-hashtable'.  Returns a formatted string containing
+the header section for `consult-gh--commit-view'."
+
+ (let* ((parents (gethash :parents table))
+        (parents-list (when (and parents
+                                 (listp parents))
+                        (cl-loop for parent in parents
+                                 collect
+                                 (when (hash-table-p parent)
+                                   (let* ((parent-sha (gethash :sha parent))
+                                          (url (gethash :html_url parent))
+                                          (parent-sha-str (and (stringp parent-sha)
+                                                               (substring parent-sha 0 6))))
+                                          (when (stringp parent-sha-str)
+                                            (propertize parent-sha-str :sha parent-sha :url url))))))))
+   (cl-remove-duplicates (delq nil parents-list) :test #'equal)))
+#+end_src
+
+******** filter comments
+********* ask user how to filter comments
+#+begin_src emacs-lisp
+(defun consult-gh--commit-read-filter-comments-query (comments &optional maxnum)
+  "Filter COMMENTS when there are more than MAXNUM.
+
+Queries the user for how to filter the comments."
+  (let* ((maxnum (or maxnum consult-gh-comments-maxnum)))
+    (when (and (listp comments) (> (length comments) maxnum))
+      (pcase (consult--read (list (cons "Yes, Load Everything" :nil)
+                                  (cons (format "No, Load up to %s latest comments." maxnum) :last-maxnum)
+                                  (cons "No, let me enter the number of commetns to load" :last-number)
+                                  (cons "No, only load the comments in the last week." :last-week)
+                                  (cons "No, only load the comments in the last month." :last-month)
+
+                                  (cons "No, only load the comments since a date I choose" :date)
+                                  (cons "No, only load the comments in a date range I choose" :daterange))
+                            :prompt (format "There are more than %s comments on that pull request. Do you want to load them all?" maxnum)
+                            :lookup #'consult--lookup-cdr
+                            :sort nil)
+        (':last-week
+         (setq comments (cl-remove-if-not (lambda (k)
+                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time) t) (make-decoded-time :day -7))) (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
+                                          comments)))
+        (':last-month
+         (setq comments (cl-remove-if-not (lambda (k)
+                                            (time-less-p (encode-time (decoded-time-add (decode-time (current-time) t) (make-decoded-time :day -30))) (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
+                                          comments)))
+        (':last-maxnum
+         (setq comments (cl-subseq comments (max 0 (- (length comments) maxnum)))))
+        (':last-number
+         (let ((number (read-number "Enter the number of comments to load: ")))
+           (when (numberp number)
+             (setq comments (cl-subseq comments 0 (min (length comments) (truncate number)))))))
+        (':date
+         (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments))))))
+               (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments)))))))
+               (d (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
+           (setq comments (cl-remove-if-not (lambda (k)
+                                              (time-less-p d (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
+                                            comments))))
+        (':daterange
+         (let* ((limit-begin (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car comments)) (gethash :created_at (car comments))))))
+               (limit-end (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time (or (gethash :updated_at (car (last comments))) (gethash :created_at (car (last comments)))))))
+               (begin-date (org-read-date nil t nil (format "Select Begin Date - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date))))
+               (end-date (org-read-date nil t nil (format "Select End Date range - between %s and %s" (propertize limit-begin 'face 'consult-gh-date) (propertize limit-end 'face 'consult-gh-date)))))
+           (setq comments (cl-remove-if-not (lambda (k)
+                                              (let ((date (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
+                                                (and (time-less-p begin-date date) (time-less-p date end-date))))
+                                            comments)))))
+    comments)))
+#+end_src
+********* filter comments
+#+begin_src emacs-lisp
+(defun consult-gh--commit-filter-comments (comments &optional maxnum)
+  "Filter COMMENTS when there are more than MAXNUM.
+
+Queries the user for how to filter the comments."
+  (when (and comments (listp comments))
+  (pcase consult-gh-commits-show-comments-in-view
+    ('all comments)
+    ((pred (lambda (var) (numberp var)))
+     (cl-subseq comments (max 0 (- (length comments) consult-gh-commits-show-comments-in-view)
+                          (- (length comments) (or maxnum consult-gh-comments-maxnum)))))
+    (_ (consult-gh--commit-read-filter-comments-query comments maxnum)))))
+
+#+end_src
+******** format comments
+
+#+begin_src emacs-lisp
+(defun consult-gh--commit-format-comments (comments &optional url)
+  "Format the COMMENTS for a commit.
+
+The optional argument URL, is the web url for the commit on GitHub."
+  (let* ((header-marker "#")
+         (out nil))
+    (when (listp comments)
+      (cl-loop for comment in comments
+               do
+               (when (hash-table-p comment)
+                 (let* ((author (gethash :user comment))
+                        (author (and author (gethash :login author)))
+                        (author (and (stringp author)
+                                     (propertize author 'help-echo (apply-partially #'consult-gh--get-user-tooltip author))))
+                        (comment-url (gethash :html_url comment))
+                        (id (gethash :id comment))
+                        (authorAssociation (gethash :author_association comment))
+                        (authorAssociation (unless (equal authorAssociation "NONE")
+                                             authorAssociation))
+                        (createdAt (or (gethash :updated_at comment)
+                                       (gethash :created_at comment)
+                                       (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))
+                        (createdAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)))
+
+                        (oid (gethash :commit_id comment))
+                        (path (gethash :path comment))
+                        (position (gethash :position comment))
+                        (line (gethash :line comment))
+                        (body (gethash :body comment)))
+
+                   (save-match-data
+                     (when (and body (string-match (concat "^" header-marker "+?\s.*$")  body))
+                       (setq body (with-temp-buffer
+                                    (insert body)
+                                    (goto-char (point-min))
+                                    (while (re-search-forward (concat "^" header-marker "+?\s.*$") nil t)
+                                      (replace-match (concat header-marker header-marker "\\&")))
+                                    (buffer-string)))))
+                   (setq out (concat out (propertize (concat header-marker header-marker " "
+                                                             (and author (concat author " "))
+                                                             (and authorAssociation (concat "(" authorAssociation ")"))
+                                                             (and createdAt (concat (consult-gh--time-ago createdAt) " " createdAt))
+                                                             "\n"
+
+(and oid (concat "\ncommit: " "[" (substring oid 0 6) "]" (format "(%s/commits/%s)" url oid)
+                 (and path (format " path: %s  " path))
+                 (and position (format  " position: %s " position))
+                 (and line (format " line: %s " line))
+                 "\n-----"))
+(and body (concat "\n" body "\n"))
+"\n----------\n")
+                                                     :consult-gh (list :author author :comment-url comment-url :comment-id id :position position :line line :path path :commit-url (when oid (format "%s/commits/%s" url oid))))))))))
+    out))
+
+#+end_src
+******** comments section
+#+begin_src emacs-lisp
+(defun consult-gh--commit-comments-section (comments-text comments comments-filtered &optional preview)
+  "Format the comments section with COMMENTS-TEXT.
+
+Add a placeholder for loading the rest, when PREVIEW is non-nil or if
+length of COMMENTS is larger than length of COMMENTS-FILTERED."
+  (if (or preview (not consult-gh-commits-show-comments-in-view))
+      (pcase consult-gh-commit-preview-major-mode
+        ((or 'gfm-mode 'markdown-mode)
+         (concat "\n"
+                 (propertize "## " :consult-gh-pr-comments t)
+                 (buttonize (propertize "Use **M-x consult-gh-commit-view-comments** to Load Comments..." :consult-gh-commit-comments t) (lambda (&rest _) (consult-gh-commit-view-comments)))
+                 "\n"))
+        ('org-mode
+         (concat "\n"
+                 (propertize "## " :consult-gh-commit-comments t)
+                 (buttonize (propertize "Load Comments..." :consult-gh-commit-comments t) (lambda (&rest _) (consult-gh-commit-view-comments)))
+                 "\n")))
+    (cond
+     ((and (listp comments) (listp comments-filtered) (> (length comments) (length comments-filtered)))
+      (pcase consult-gh-commit-preview-major-mode
+        ((or 'gfm-mode 'markdown-mode)
+         (concat "\n"
+                 (when (stringp comments-text) (propertize comments-text :consult-gh-commit-comments t))
+                 "\n"
+                 (propertize "## " :consult-gh-commit-comments t)
+                 (buttonize (propertize "Use **M-x consult-gh-commit-view-comments** to load the more..." :consult-gh-commit-comments t) (lambda (&rest _) (consult-gh-commit-view-comments)))
+                 "\n"))
+        ('org-mode
+         (concat "\n"
+                 (when (stringp comments-text) (propertize comments-text :consult-gh-commit-comments t))
+                 (propertize "\n" :consult-gh-commit-comments t)
+                 (propertize "## " :consult-gh-commit-comments t)
+                 (buttonize (propertize "Load More..." :consult-gh-commit-comments t) (lambda (&rest _) (consult-gh-commit-view-comments)))
+                 "\n"))))
+     (t
+      (concat "\n"
+              (if (stringp comments-text)
+                  (propertize comments-text :consult-gh-commit-comments t)
+                (propertize "No Comments!" :consult-gh-commit-comments t))
+              "\n")))))
+#+end_src
+******** format header
+#+begin_src emacs-lisp
+(defun consult-gh--commit-format-header (repo sha table &optional topic)
+  "Format a header for commit with SHA in REPO.
+
+TABLE is a hash-table output containing issue information
+from `consult-gh--commit-read-hashtable'.  Returns a formatted string containing
+the header section for `consult-gh--commit-view'.
+
+The optional argument TOPIC is a propertized text where the related info
+from the header will get appended to the properties.  For an example, see
+the buffer-local variable `consult-gh--topic' in the buffer created by
+`consult-gh--commit-view'."
+  (let* ((author (ignore-errors (gethash :login (gethash :author table))))
+         (commit (gethash :commit table))
+         (date (and (hash-table-p commit)
+                    (ignore-errors (gethash :date (gethash :committer commit)))))
+         (date (and date (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time date))))
+         (tree (and (hash-table-p commit)
+               (gethash :tree commit)))
+         (message (gethash :message commit))
+         (message (and (stringp message) (car (split-string message "\n"))))
+         (url (gethash :html_url table)))
+
+    (when (stringp topic)
+      (add-text-properties 0 1 (list :author author :date date :tree tree) topic))
+
+    (concat "commit: " (and (stringp sha) (substring sha 0 6)) "\n"
+            "message: " (and (stringp message) message) "\n"
+            "author: " author "\n"
+            "repository: " (propertize repo 'help-echo (apply-partially #'consult-gh--get-repo-tooltip repo)) "\n"
+            "sha: " sha "\n"
+            (and date (concat "date: " date "\n"))
+            (and url (concat "url: " url "\n"))
+            "\n--\n")))
+
+#+end_src
+
+******** format body
+#+begin_src emacs-lisp
+(defun consult-gh--commit-format-body (table &optional topic)
+  "Format a body section for a commit stored in TABLE.
+
+This function returns a formatted string containing the body section for
+`consult-gh--commit-view'.
+
+TABLE is a hash-table output from `consult-gh--commit-read-hashtable'
+containing commit details under the key :commit.
+
+The optional argument TOPIC is a propertized text where the related info
+from the commit will get appended to the properties.  For an example, see
+the buffer-local variable `consult-gh--topic' in the buffer created by
+`consult-gh--commit-view'."
+  (let* ((author (ignore-errors (gethash :login (gethash :author table))))
+         (commit (gethash :commit table))
+         (date (and (hash-table-p commit)
+                    (ignore-errors (gethash :date (gethash :committer commit)))))
+         (date (and date (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time date))))
+         (body (and (hash-table-p commit) (gethash :message commit)))
+         (header-marker "#"))
+
+    (when topic (add-text-properties 0 1 (list :body body) topic))
+
+     (save-match-data
+                     (when (and body (string-match (concat "^" header-marker "+?\s.*$")  body))
+                       (setq body (with-temp-buffer
+                                    (insert body)
+                                    (goto-char (point-min))
+                                    (while (re-search-forward (concat "^" header-marker "+?\s.*$") nil t)
+                                      (replace-match (concat header-marker "\\&")))
+                                    (buffer-string)))))
+
+    (concat author " " (consult-gh--time-ago date)
+            " " (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time date)) "\n"
+            "-----\n" body "\n" "\n")))
+
+#+end_src
+
+******** format parents
+#+begin_src emacs-lisp
+(defun consult-gh--commit-format-parents (parents sha &optional topic)
+  "Format parents section for commit view.
+
+PARENTS is a list of parent commits of commit
+SHA is SHA-1 of commit.
+
+This function returns a formatted string containing the parents section for
+`consult-gh--commit-view'.
+
+The optional argument TOPIC is a propertized text where the related info
+from the commit will get appended to the properties.  For an example, see
+the buffer-local variable `consult-gh--topic' in the buffer created by
+`consult-gh--commit-view'."
+  (let* ((count (and (listp parents) (length parents))))
+    (when topic (add-text-properties 0 1 (list :parents parents) topic))
+    (concat (and (numberp count) (number-to-string count))
+            " parents "
+            (mapconcat (lambda (p)
+                         (when (stringp p)
+                           (concat "[" (substring p 0 6) "]"
+                                   (format "(%s)" (get-text-property 0 :url p))
+                                   )))
+                       parents " + ")
+            (and (stringp sha) (concat " commit " (substring sha 0 6)))
+            "\n\n")))
+#+end_src
+
+******** format files changed header
+#+begin_src emacs-lisp
+(defun consult-gh--commit-format-files-changed (table)
+  "Format a changed files section for a commit.
+
+TABLE is a hash-table output containing commit information
+from `consult-gh--commit-read-hashtable'.  Returns a formatted string
+containing the files changed section for `consult-gh--commit-view'."
+  (let* ((stats (gethash :stats table))
+         (files (gethash :files table))
+        (total (and (listp files) (length files)))
+        (additions (and (hash-table-p stats) (gethash :additions stats)))
+        (deletions  (and (hash-table-p stats) (gethash :deletions stats))))
+    (and stats (concat "# Files Changed - "
+                       (and total (format "%s file(s)" total))
+                       (and additions (format ", %s additions(+)" additions))
+                       (and deletions (format ", %s deletions(-)" deletions)) "\n"))))
+#+end_src
+
+
+******** format diffs
+#+begin_src emacs-lisp
+(defun consult-gh--commit-format-diffs (repo sha table &optional header-level preview)
+  "Format diffs or commit SHA in REPO.
+
+This is used for preparing the text section of diffs in
+`consult-gh--commit-view'.
+
+Description of Arguments:
+  REPO          a string; full name of repository
+  SHA           a string; number id of the pull request
+  TABLE         a hash-table; output containing commit
+                information from `consult-gh--commit-read-hashtable'.
+  HEADER-LEVEL  a number; outline level for adding the diff section
+  PREVIEW       a boolean; whether this is for preview"
+  (let*  ((files (gethash :files table)))
+    (when (listp files)
+      (with-temp-buffer
+        (cl-loop for file in files
+                 do
+                 (when (hash-table-p file)
+                   (let* ((filename (gethash :filename file))
+                          (url (gethash :blob_url file))
+                          (diff (gethash :patch file)))
+
+                     (when (stringp filename)
+                       (insert (propertize (concat (make-string (+ header-level 1) ?#) " " filename) :consult-gh (list :repo repo :sha sha :path filename :commit-id sha :commit-url url :file t :code nil)))
+                       (if preview
+                           (insert "\n")
+                         (if (stringp diff)
+                           (let ((start (point)))
+                             (insert (concat (propertize  "\n```diff\n" :consult-gh (list :repo repo :sha sha :path filename :commit-id sha :commit-url url :file t :code nil)) (propertize diff :consult-gh (list :repo repo :sha sha :path filename :commit-id sha :commit-url url :file t :code t)) (propertize  "\n```\n" :consult-gh (list :repo repo :sah sha :path filename :commit-id sha :commit-url url :file t :code nil))))
+                             (save-excursion
+                               (while (re-search-backward "^\s?\\*+\s\\|^\s?#\\+" start t)
+                                 (replace-match (apply #'propertize (concat  "," (match-string 0)) (text-properties-at 0 (match-string 0))) nil t))))
+                           (insert "\n")))))))
+                 (consult-gh--whole-buffer-string)))))
+#+end_src
+******** commit-view
+********* view backend
+#+begin_src emacs-lisp
+(defun consult-gh--commit-view (repo sha &optional buffer preview)
+  "Open commit with SHA of REPO in an Emacs buffer, BUFFER.
+
+This is an internal function that takes REPO, the full name of a
+repository \(e.g. “armindarvish/consult-gh”\) and SHA,
+a SHA-1 hash of a commit in that repository, and shows
+the contents of the commit in an Emacs buffer.
+
+Description of Arguments:
+
+  REPO    a string; the full name of the repository
+  SHA     a string; SHA-1 hash of commit
+  BUFFER  a string; optional buffer name
+  PREVIEW a boolean; whether to load reduced preview
+  TITLE   a string; an optional title string
+
+To use this as the default action for commits,
+see `consult-gh--commit-view-action'."
+  (let* ((topic (format "%s/commit/%s" repo sha))
+         (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
+         (table (consult-gh--commit-read-hashtable repo sha))
+         (comments (when (and consult-gh-commits-show-comments-in-view (not preview))
+                     (consult-gh--commit-get-comments repo sha)))
+         (comments-filtered (when comments (consult-gh--commit-filter-comments comments)))
+         (commenters (and table (not preview) (consult-gh--commit-get-commenters table comments)))
+         (parents (and table (consult-gh--commit-get-parents table)))
+         (header-text (and table (consult-gh--commit-format-header repo sha table topic)))
+         (body-text (consult-gh--commit-format-body table topic))
+         (parents-text (and parents (consult-gh--commit-format-parents parents sha topic)))
+         (file-change-text (consult-gh--commit-format-files-changed table))
+         (diff-text (consult-gh--commit-format-diffs repo sha table 1 preview))
+         (comments-text (when (and comments-filtered (listp comments-filtered))
+                           (consult-gh--commit-format-comments comments-filtered (gethash :html_url table))))
+         (comments-section (consult-gh--commit-comments-section comments-text comments comments-filtered preview)))
+    (add-text-properties 0 1 (list :repo repo :type "commit" :commenters (mapcar (lambda (item) (concat "@" item)) commenters) :sha sha :view "commit") topic)
+
+    (unless preview
+      (consult-gh--completion-set-all-fields repo topic (consult-gh--user-canwrite repo)))
+
+    (with-current-buffer buffer
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (fundamental-mode)
+        (when header-text (insert header-text))
+        (save-excursion
+          (when (eq consult-gh-commit-preview-major-mode 'org-mode)
+           (consult-gh--github-header-to-org buffer)))
+        (when body-text (insert body-text))
+        (when parents-text (insert parents-text))
+        (when file-change-text (insert file-change-text))
+        (when diff-text (insert diff-text))
+        (when comments-section (insert "# Comments\n")
+              (insert comments-section))
+        (consult-gh--format-view-buffer "commit")
+        (outline-hide-sublevels 1)
+        (consult-gh-commit-view-mode +1)
+        (setq-local consult-gh--topic topic)
+        (current-buffer)))))
+
+#+end_src
+********* view action
+#+begin_src emacs-lisp
+(defun consult-gh--commits-view-action (cand)
+  "Open the preview of a commit candidate, CAND.
+
+This is a wrapper function around `consult-gh--commit-view'.
+It parses CAND to extract relevant values
+\(e.g. repository's name and commit sha\)
+and passes them to `consult-gh--commit-view'.
+
+To use this as the default action for commits,
+set `consult-gh-commit-action' to `consult-gh--commit-view-action'."
+  (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
+         (sha (substring-no-properties (get-text-property 0 :sha cand)))
+         (buffername (concat (string-trim consult-gh-preview-buffer-name "" "*") ":" repo "/commits/" sha "*"))
+         (existing (get-buffer buffername))
+         (confirm (if (and existing (not (= (buffer-size existing) 0)))
+                      (consult--read
+                       (list (cons "Switch to existing buffer." :resume)
+                             (cons "Reload the commit in the existing buffer." :replace)
+                             (cons "Make a new buffer and load the commit in it (without killing the old buffer)." :new))
+                       :prompt "You already have this commit open in another buffer.  Would you like to switch to that buffer or make a new one? "
+                       :lookup #'consult--lookup-cdr
+                       :sort nil
+                       :require-match t))))
+
+(if existing
+      (cond
+       ((eq confirm :resume) (funcall consult-gh-switch-to-buffer-func existing))
+       ((eq confirm :replace)
+        (message "Reloading commit in the existing buffer...")
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--commit-view repo sha existing))
+        (set-buffer-modified-p nil)
+        (buffer-name (current-buffer)))
+       ((eq confirm :new)
+        (message "Opening issue in a new buffer...")
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--commit-view repo sha (generate-new-buffer buffername nil)))
+        (set-buffer-modified-p nil)
+        (buffer-name (current-buffer))))
+      (progn
+        (funcall consult-gh-switch-to-buffer-func (consult-gh--commit-view repo sha))
+        (rename-buffer buffername t)
+        (set-buffer-modified-p nil)
+        (buffer-name (current-buffer))))))
+
+#+end_src
+******* browse files
+******** read file
+#+begin_src emacs-lisp
+(defun consult-gh--commit-find-file (commit &optional path initial require-match allow-dirs extension)
+  "Browse files in COMMIT.
+
+Description of Arguments:
+  COMMIT        a string with properties; commit details
+  PATH          a string; when non-nil search is done relative to PATH
+  INITIAL       a string; used as initial input in searching files
+                \(gets passed to `consult--read'\).
+  REQUIRE-MATCH a boolean; whether to require match
+                \(gets passed to `consult--read'\).
+  ALLOW-DIRS    a boolean; whether to allow selecting directory paths
+  EXTENSION     a string; the format of files to show
+                \(e.g., “.ext” only shows files that end in “.ext”\)"
+  (let* ((commit (or commit
+                     (and (stringp consult-gh--topic)
+                          (equal (get-text-property 0 :type commit) "commit")
+                          consult-gh--topic)
+                     (consult-gh-search-commits nil nil t)))
+         (repo (get-text-property 0 :repo commit))
+         (sha (get-text-property 0 :sha commit))
+         (table (consult-gh--commit-read-hashtable repo sha))
+         (api-url (ignore-errors (gethash :url (gethash :tree (gethash :commit table)))))
+         (tree (and (stringp api-url)
+                    (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (concat api-url "?recursive=1")) :tree)))
+         (files-list (and (listp tree)
+                          (mapcar (lambda (item)
+                                    (when (hash-table-p item)
+                                      (let* ((name (gethash :path item))
+                                             (url (gethash :url item))
+                                             (mode (gethash :mode item))
+                                             (size (gethash :size item))
+                                             (object-type (gethash :type item))
+                                             (out (cons name
+                                                        (list :repo repo
+                                                              :url url
+                                                              :mode mode
+                                                              :path name
+                                                              :ref sha
+                                                              :sha sha
+                                                              :size size
+                                                              :object-type object-type))))
+                                        (if (stringp path)
+                                            (if (and (stringp name)
+                                                     (string-prefix-p path name))
+                                            out)
+                                          out))))
+                                    tree)))
+                     (all-files (and (listp files-list)
+                                     (if (and path
+                                              (stringp path)
+                                              (file-name-directory path))
+                                         (append (list (list "../" :repo repo :ref sha :url nil :path (file-name-directory (string-remove-suffix "/" path)) :size nil :object-type "tree" :new nil))
+                                                 files-list)
+                                       files-list)))
+                     (ref-str (substring-no-properties sha 0 6))
+                     (prompt (concat (format "Find File in %s" repo)
+                                     (if ref-str (format " [%s]" ref-str))
+                                     ":"
+                                     (if path (format " %s" path))
+                                     " "))
+                     (candidates (remove nil (mapcar (lambda (item)
+                                                       (when (consp item)
+                                                         (consult-gh--file-format item)))
+                                                     all-files)))
+                     (sel (consult-gh-with-host
+                           (consult-gh--auth-account-host)
+                           (consult--read candidates
+                                          :prompt prompt
+                                          :lookup #'consult-gh--file-lookup
+                                          :annotate (consult-gh--file-annotate)
+                                          :state (funcall #'consult-gh--file-state)
+                                          :require-match require-match
+                                          :sort nil
+                                          :history 'consult-gh--files-history
+                                          :add-history (let* ((localfile (buffer-file-name)))
+                                                         (mapcar (lambda (item) (when (stringp item) (concat (consult-gh--get-split-style-character) item)))
+                                                                 (append (list
+                                                                          (thing-at-point 'symbol)
+                                                                          (when  localfile
+                                                                            (file-name-nondirectory localfile))
+                                                                          ))))
+                                          :category 'consult-gh-files
+                                          :preview-key consult-gh-preview-key
+                                          :initial initial
+                                          :predicate (if (stringp extension)
+                                                         (lambda (cand)
+                                                           (let ((path (get-text-property 0 :path cand)))
+                                                             (if (stringp path)
+                                                                 (string-suffix-p extension path)))))))))
+
+         (when sel
+           (if (and (stringp sel)
+                    (not (string-empty-p sel))
+                    (listp all-files)
+                    (assoc (substring-no-properties sel) all-files))
+               (add-text-properties 0 1 (list :existing t) sel)
+             (add-text-properties 0 1 (list :existing nil) sel))
+
+           (cond
+            ((and (stringp sel)
+                  (not (string-empty-p sel))
+                  (not (equal (file-name-as-directory sel) sel))
+                  (equal (get-text-property 0 :object-type sel) nil))
+             (setq sel (string-remove-prefix (consult-gh--get-split-style-character) sel))
+             (add-text-properties 0 1 (list :repo repo
+                                            :user (consult-gh--get-username repo)
+                                            :package (consult-gh--get-package repo)
+                                            :path (if (stringp path)
+                                                      (concat (file-name-directory path)
+                                                              (substring-no-properties sel))
+                                                    (substring-no-properties sel))
+                                            :url nil
+                                            :mode "file"
+                                            :size nil
+                                            :ref sha
+                                            :new t
+                                            :class "file"
+                                            :type "file"
+                                            :object-type "blob"
+                                            :existing nil)
+                                  sel)
+
+             ;;add org and repo to known lists
+             (when-let ((reponame (get-text-property 0 :repo sel)))
+               (add-to-history 'consult-gh--known-repos-list reponame))
+             (when-let ((username (get-text-property 0 :user sel)))
+               (add-to-history 'consult-gh--known-orgs-list username))
+             sel)
+            ((and (stringp sel)
+                  (not (string-empty-p sel))
+                  (equal (get-text-property 0 :new sel) nil)
+                  (equal (get-text-property 0 :object-type sel) "tree")
+                  (or (not allow-dirs)
+                      (string-prefix-p "../" (substring-no-properties sel))))
+             (consult-gh--commit-find-file commit (if (get-text-property 0 :path sel)
+                                                      (file-name-as-directory (get-text-property 0 :path sel)))
+                                           nil require-match allow-dirs extension))
+            ((and (stringp sel)
+                  (not (string-empty-p sel))
+                  (equal (get-text-property 0 :new sel) nil)
+                  (or (and allow-dirs (equal (get-text-property 0 :object-type sel) "tree"))
+                      (equal (get-text-property 0 :object-type sel) "blob")))
+             ;;add org and repo to known lists
+             (when-let ((reponame (get-text-property 0 :repo sel)))
+               (add-to-history 'consult-gh--known-repos-list reponame))
+             (when-let ((username (get-text-property 0 :user sel)))
+               (add-to-history 'consult-gh--known-orgs-list username))
+             sel)
+            (t
+             ;;add org and repo to known lists
+             (when-let ((reponame (get-text-property 0 :repo sel)))
+               (add-to-history 'consult-gh--known-repos-list reponame))
+             (when-let ((username (get-text-property 0 :user sel)))
+               (add-to-history 'consult-gh--known-orgs-list username))
+             sel)))))
+#+end_src
+******** browse-file action
+#+begin_src emacs-lisp
+(defun consult-gh--commit-browse-files-action (cand)
+  "Browse file tree of a commmit candidate, CAND.
+
+Query the user to select a file from the file tree of repo at commit.
+
+This is a wrapper function around `consult-gh-commit-browse-files'.
+To use this as the default action for commits,
+set `consult-gh-commit-action' to `consult-gh-commit-browse-files'."
+    (consult-gh-commit-browse-files cand))
+#+end_src
+***** list commits
+****** get commits
+#+begin_src emacs-lisp
+(defun consult-gh--commit-list-commits-and-links (repo ref api-link)
+  "Get list of commits for REPO and REF.
+
+REF is name of a branch or tag in REPO.
+If optional argument API-LINK is non-nil, use link instead of
+REPO and REF."
+  (let* ((commits (consult-gh--command-to-string "api" "-H" "Accept: application/vnd.github+json" "--include" (or api-link (format "repos/%s/commits?sha=%s&per_page=%s" repo ref (or consult-gh-commit-maxnum 30)))))
+         (commits-link
+          (when (stringp commits)
+            (with-temp-buffer
+              (insert commits)
+              (goto-char (point-min))
+              (save-match-data
+                (save-excursion
+                  (re-search-forward "\\(?:\\(?:\n\\|\n\\)\n\\)" nil t)
+                  (let* ((header (buffer-substring-no-properties (point-min) (point)))
+                         (body (buffer-substring-no-properties (point) (point-max)))
+                         (link-next (if (string-match ".*Link: .*<\\(?1:http.*\\)>.*?; rel=\"next\".*$" header)
+ (match-string 1 header)))
+                         (link-prev (if (string-match ".*Link: .*<\\(?1:http.*\\)>.*?; rel=\"prev\".*$" header)
+                                        (match-string 1 header)))
+                         (link-last (if (string-match ".*Link: .*<\\(?1:http.*\\)>.*?; rel=\"last\".*$" header)
+                                        (match-string 1 header)))
+                         (link-first (if (string-match ".*Link: .*<\\(?1:http.*\\)>.*?; rel=\"first\".*$" header)
+                                        (match-string 1 header)))
+                         (body (and (stringp body)
+                                    (consult-gh--json-to-hashtable body))))
+                    (list body link-next link-prev link-first link-last))))))))
+    commits-link))
+#+end_src
+****** parse commits
+#+begin_src emacs-lisp
+(defun consult-gh--commit-parse-commits-and-links (commits-and-links)
+  "Parse list of COMMITS-AND-LINKS.
+
+First elemnt of COMMITS-AND-LINKS is a list of hah-tables
+with details of each commit.
+Second elemnt of COMMITS-AND-LINKS is a link to the previous
+page on API.
+Third elemnt of COMMITS-AND-LINKS is a link to the next page
+on API.
+Fourth elemnt of COMMITS-AND-LINKS is a link to the first page
+on API.
+Fifth elemnt of COMMITS-AND-LINKS is a link to the last page
+on API."
+  (when (listp commits-and-links)
+    (let*  ((link-next (cadr commits-and-links))
+            (link-prev (caddr commits-and-links))
+            (link-first (cadr (cddr commits-and-links)))
+            (link-last (cadr (cdddr commits-and-links)))
+            (page-next (and (stringp link-next)
+                          (save-match-data (when (string-match ".*page=\\(?1:.*\\)" link-next)
+                                             (match-string 1 link-next)))))
+            (page-next (or (and (stringp page-next)
+                              (format "%s" (string-to-number page-next)))
+                         page-next))
+            (page-prev (and (stringp link-prev)
+                          (save-match-data (when (string-match ".*page=\\(?1:.*\\)" link-prev)
+                                             (match-string 1 link-prev)))))
+            (page-prev (or (and (stringp page-prev)
+                              (format "%s" (string-to-number page-prev)))
+                         page-prev))
+            (page-first (and (stringp link-first)
+                          (save-match-data (when (string-match ".*page=\\(?1:.*\\)" link-first)
+                                             (match-string 1 link-first)))))
+            (page-first (or (and (stringp page-first)
+                              (format "%s" (string-to-number page-first)))
+                         page-first))
+            (page-last (and (stringp link-last)
+                          (save-match-data (when (string-match ".*page=\\(?1:.*\\)" link-last)
+                                             (match-string 1 link-last)))))
+            (page-last (or (and (stringp page-last)
+                              (format "%s" (string-to-number page-last)))
+                         page-last))
+          (commit-prev (and link-prev
+                            (make-hash-table :test 'equal)))
+          (_ (when commit-prev
+               (puthash :title "Previous Page" commit-prev)
+               (puthash :link link-prev commit-prev)
+               (puthash :page page-prev commit-prev)
+               (puthash :first-page page-first commit-prev)
+               (puthash :last-page page-last commit-prev)))
+          (commit-next (and link-next (make-hash-table :test 'equal)))
+          (_ (when commit-next
+               (puthash :title "Next Page" commit-next)
+               (puthash :link link-next commit-next)
+               (puthash :page page-next commit-next)
+               (puthash :first-page page-first commit-next)
+               (puthash :last-page page-last commit-next)))
+          (commits (and (listp commits-and-links)
+                        (car commits-and-links)))
+          (commits-list (and (listp commits)
+                       (append commits
+                               (list commit-next)))))
+commits-list)))
+#+end_src
+****** sort
+#+begin_src emacs-lisp
+(defun consult-gh--commit-list-sort (commits)
+  "Sort COMMITS based on date."
+(if (< emacs-major-version 30)
+    (setq commits (sort commits (lambda (x y)
+                                  (let* ((x_date (date-to-time (gethash :date (gethash :author (gethash :commit x)))))
+                                         (y_date (date-to-time (gethash :date (gethash :author (gethash :commit y))))))
+                                    (if (time-less-p x_date y_date) nil t)))))
+  (setq commits (sort commits :key (lambda (k) (date-to-time (gethash :date (gethash :author (gethash :commit k))))))))
+commits)
+#+end_src
+****** format
+******* commit list
+#+begin_src emacs-lisp
+(defun consult-gh--commit-list-format (table repo ref)
+  "Format candidates for listing commits.
+TABLE is a hashtable containing commits info of REPO and REF.
+REF is name of a branch in REPO."
+  (when (hash-table-p table)
+    (let* ((class "commit")
+           (type "commit")
+           (user (consult-gh--get-username repo))
+           (package (consult-gh--get-package repo))
+           (sha (gethash :sha table))
+           (sha-str (and (stringp sha) (substring sha 0 6)))
+           (author (gethash :author table))
+           (author (and (hash-table-p author)
+                        (gethash :login author)))
+           (commit (gethash :commit table))
+           (message (and (hash-table-p commit) (gethash :message commit)))
+           (title (gethash :title table))
+           (link (gethash :link table))
+           (page (gethash :page table))
+           (lastpage (gethash :last-page table))
+           (message (or (and (stringp message)
+                             (car (split-string message "\n")))
+                        ""))
+           (date (and (hash-table-p commit)
+                      (gethash :date (gethash :author commit))))
+           (date (if (and (stringp date) (length> date 9)) (substring date 0 10) date))
+           (str
+            (if (and title (stringp title))
+                (concat
+                 (if title (propertize title 'face 'link))
+                 (if page (concat (format " (%s" page)
+                                  (if lastpage (format "/%s" lastpage))
+                                  ")")))
+              (concat (consult-gh--set-string-width message 70)
+                          "\s\s"
+                          (and sha-str (propertize sha-str 'face 'consult-gh-sha))
+                          "\s\s"
+                          (and date
+                               (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date))
+                          "\s\s"
+                          (and author
+                               (propertize (consult-gh--set-string-width author 15) 'face 'consult-gh-pr))
+                          "\s\s"
+                          (consult-gh--set-string-width (concat (and user (propertize user 'face 'consult-gh-user )) (and package "/") (and package (propertize package 'face 'consult-gh-package))) 40)))))
+      (add-text-properties 0 1 (list :repo repo
+                                     :user user
+                                     :package package
+                                     :sha sha
+                                     :author author
+                                     :commit-message message
+                                     :date date
+                                     :ref ref
+                                     :title title
+                                     :link link
+                                     :page page
+                                     :last-page lastpage
+                                     :class class
+                                     :type type)
+                           str)
+      str)))
+#+end_src
 **** files
 
 This section deals with fetching file trees and file contents of repositories by using GitHub API e.g. =gh api repos/armindarvish/consult-gh/git/trees/main:?recursive=1=
@@ -9597,7 +10697,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
 
 Queries the user for how to filter the comments."
 
-  (let ((maxnum (or maxnum consult-gh-comments-maxnum)))
+  (let* ((maxnum (or maxnum consult-gh-comments-maxnum)))
     (when (and (listp comments) (> (length comments) maxnum))
       (pcase (consult--read (list (cons "Yes, Load Everything" :nil)
                                   (cons (format "No, Load up to %s latest comments." maxnum) :last-maxnum)
@@ -9772,7 +10872,7 @@ Description of Arguments:
   PREVIEW a boolean; whether to load reduced preview
   TITLE   a string; an optional title string
 
-To use this as the default action for repos,
+To use this as the default action for issues,
 see `consult-gh--issue-view-action'."
   (let* ((topic (format "%s/#%s" repo number))
          (buffer (or buffer (get-buffer-create consult-gh-preview-buffer-name)))
@@ -11626,7 +12726,7 @@ Sinblings here means forks of the upstream repositories."
 (defun consult-gh-topics--pr-get-similar (repo)
   "Get all the similar repositories to REPO.
 
-Similar here means forks, paretns from `consult-gh-topics--pr-get-parent'
+Similar here means forks, parents from `consult-gh-topics--pr-get-parent'
 and siblings from `consult-gh-topics--pr-get-siblings'."
   (pcase consult-gh-pr-create-show-similar-repos
     ('parent (consult-gh-topics--pr-get-parent repo))
@@ -12982,7 +14082,7 @@ Description of Arguments:
 
     (add-text-properties 0 1 (text-properties-at 0 pr) newtopic)
     (add-text-properties 0 1 (list :type "merge commit" :isComment nil :new t :target type :auto auto :admin admin) newtopic)
-    (with-current-buffer  (consult-gh-topics--get-buffer-create buffer "commit" newtopic)
+    (with-current-buffer  (consult-gh-topics--get-buffer-create buffer "commit message" newtopic)
       (unless (not (= (buffer-size) 0))
         (pcase-let* ((inhibit-read-only t)
                      (`(,title-marker _header-marker) (consult-gh-topics--markers-for-metadata)))
@@ -16795,6 +17895,23 @@ Helps with autocompleting usernames, issue numbers, etc."
 
 #+end_src
 
+*** consult-gh-commit-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-commit-view-mode-map
+  :doc "Keymap for `consult-gh-commit-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-commit-view-mode
+  "Minor-mode for viewing GitHub commits."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-commit-view"
+  :keymap consult-gh-commit-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
 *** consult-gh-upload-files-mode
 #+begin_src emacs-lisp
 (defvar-keymap consult-gh-upload-files-mode-map
@@ -19395,7 +20512,7 @@ This section deals with fetching file trees and file contents of repositories by
   "Read a file in REPO.
 
 This is a non-interactive internal function.
-For the interactive version see `consult-gh-issue-list'.
+For the interactive version see `consult-gh-find-file'.
 
 Description of Arguments:
   REPO          a string; repository's full name
@@ -21541,7 +22658,7 @@ then the user is asked to chose the TOPIC interactively."
            (consult-gh-topics--edit-release-presubmit topic))
           ((and new (equal type "merge commit"))
            (consult-gh-topics--pr-merge-presubmit topic))
-          ((and new (equal type "commit"))
+          ((and new (equal type "commit message"))
            (consult-gh-topics--commit-submit topic))))
      (message "Not in a consult-gh topic editing buffer!"))))
 
@@ -21563,7 +22680,7 @@ TOPIC defaults to `consult-gh--topic'.
 
 This funciton uses `consult-gh-browse-url-func' for opening a url in the
 browser."
-  (interactive "P" consult-gh-pr-view-mode consult-gh-issue-view-mode consult-gh-workflow-view-mode consult-gh-misc-view-mode)
+  (interactive "P" consult-gh-pr-view-mode consult-gh-issue-view-mode consult-gh-workflow-view-mode consult-gh-commit-view-mode consult-gh-misc-view-mode)
   (consult-gh-with-host
    (consult-gh--auth-account-host)
    (let* ((topic (or topic consult-gh--topic))
@@ -21575,6 +22692,7 @@ browser."
           (number (and (stringp topic) (get-text-property 0 :number topic)))
           (tagname (and (stringp topic) (get-text-property 0 :tagname topic)))
           (ref (and (stringp topic) (get-text-property 0 :ref topic)))
+          (sha (and (stringp topic) (get-text-property 0 :sha topic)))
           (local-info (get-text-property (point) :consult-gh))
           (local-url (or (plist-get local-info :url)
                          (plist-get local-info :comment-url)
@@ -21594,7 +22712,9 @@ browser."
                                                    ("workflow"
                                                     (and path (stringp path) (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/actions/workflows/%s" (file-name-nondirectory path)))))
                                                    ("compare"
-                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/compare/%s" ref))))))))
+                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/compare/%s" ref)))
+                                                   ("commit"
+                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/commit/%s" sha))))))))
      (if (stringp url)
          (funcall (or consult-gh-browse-url-func #'browse-url) url)
        (message "No topic to browse in this buffer!")))))
@@ -21603,7 +22723,9 @@ browser."
 
 
 *** commits
-**** save commit message
+**** Make commits
+
+***** save commit message
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-commit-save-message (&optional commit-message)
@@ -21626,7 +22748,7 @@ URL `https://github.com/magit/magit/blob/731642756f504c8a56d3775960b7af0a93c618b
 
 #+end_src
 
-**** insert previous message from history
+***** insert previous message from history
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-commit-prev-message (arg)
@@ -21660,7 +22782,7 @@ URL `https://github.com/magit/magit/blob/731642756f504c8a56d3775960b7af0a93c618b
 
 #+end_src
 
-**** insert next message from history
+***** insert next message from history
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-commit-next-message (arg)
@@ -21675,7 +22797,7 @@ https://github.com/magit/magit/blob/731642756f504c8a56d3775960b7af0a93c618bb/lis
 
 #+end_src
 
-**** view commit diff
+***** view commit diff
 #+begin_src emacs-lisp
 ;;;###autoload
 (defun consult-gh-commit-view-diff (&optional commit)
@@ -21752,6 +22874,308 @@ buffer generated by `consult-gh--commit-create'."
 
 #+end_src
 
+
+**** Search or List commits
+***** consult-gh-commit-list
+****** non-interactive command
+#+begin_src emacs-lisp
+(defun consult-gh--commit-list (repo ref &optional link initial prompt)
+  "Get list of commits for REPO and REF.
+
+This fetches a list of commtis for REPO and REF from GitHub API.
+
+REF is name of a branch or tag in REPO.
+
+If optional argument LINK in non-nil, use it as API
+link to fetch commits.
+
+INITIAL is passed to `consult--read'.
+PROMPT is passed to `consult--read'.
+
+This is a non-interactive internal function.
+For the interactive version see `consult-gh-commit-list'."
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((commits-and-links (consult-gh--commit-list-commits-and-links repo ref link))
+          (commits-list (consult-gh--commit-parse-commits-and-links commits-and-links))
+          (commits-list (and (listp commits-list)
+                        (cl-loop for commit in commits-list
+                                 collect
+                                 (consult-gh--commit-list-format commit repo ref))))
+
+           (prompt (or prompt (format "Select A Commit in %s [%s]:  " repo ref)))
+           (sel
+            (consult--read commits-list
+                    :prompt prompt
+                    :lookup #'consult--lookup-member
+                    :state (consult-gh--commit-state)
+                    :initial initial
+                    :group #'consult-gh--commit-group
+                    :require-match t
+                    :history 'consult-gh--commit-list-history
+                    :category 'consult-gh-commits
+                    :preview-key consult-gh-preview-key
+                    :sort nil)))
+(cond
+ ((and (stringp sel)
+      (not (string-empty-p sel))
+      (get-text-property 0 :title sel)
+      (get-text-property 0 :link sel))
+  (consult-gh--commit-list repo ref (get-text-property 0 :link sel) initial prompt))
+ (t
+  sel)))))
+
+
+#+end_src
+
+
+
+****** interactive command
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-commit-list (&optional repo ref initial noaction prompt)
+  "Interactively list GitHub commits of REPO and REF.
+
+REF is name of a branch or tag in REPO.
+This is an interactive wrapper function around
+`consult-gh--commit-list'.
+
+It queries the user to select a commit from list of commits for
+REPO and REF.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-commit-action'
+
+INITIAL is an optional arg for the initial input in the minibuffer
+\(passed as INITITAL to `consult-gh---commit-list'\).
+
+If PROMPT is non-nil, use it as the query prompt."
+  (interactive)
+  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
+      (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-commit-list))
+  (let* ((repo (or repo
+                   (and (stringp consult-gh--topic)
+                        (get-text-property 0 :repo consult-gh--topic))
+                   (substring-no-properties (get-text-property 0 :repo (consult-gh-repo-list nil t)))))
+         (ref (or ref (consult-gh--read-ref repo nil nil t)))
+         (prompt (or prompt (format "Select a commit [%s]:  " (propertize ref 'face 'consult-gh-branch))))
+         (sel (consult-gh--commit-list repo ref nil initial prompt)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list reponame))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list username))
+    (if noaction
+        sel
+      (funcall consult-gh-commit-action sel))))
+
+#+end_src
+
+
+
+
+***** consult-gh-search-commits
+******* transform
+#+begin_src emacs-lisp
+(defun consult-gh--search-commits-transform (input)
+  "Add annotation to commit candidates in `consult-gh-search-commits'.
+
+Format each candidates with `consult-gh--search-comits-format' and INPUT."
+  (lambda (cands)
+    (cl-loop for cand in cands
+             collect
+             (consult-gh--search-commits-format cand input nil))))
+
+#+end_src
+
+******* builder
+#+begin_src emacs-lisp
+(defun consult-gh--search-commits-builder (repo input)
+  "Build gh command line for searching commits of REPO with INPUT."
+  (pcase-let* ((consult-gh-args (append consult-gh-args (list "--repo" (format "%s" repo)) consult-gh-search-commits-args))
+               (cmd (consult--build-args consult-gh-args))
+               (`(,arg . ,opts) (consult-gh--split-command input))
+               (flags (append cmd opts)))
+    (unless (or (member "-L" flags) (member "--limit" flags))
+      (setq opts (append opts (list "--limit" (format "%s" consult-gh-commit-maxnum)))))
+    (pcase-let* ((`(,re . ,hl) (funcall consult--regexp-compiler arg 'basic t)))
+      (if re
+        (cons (append cmd
+                      (list (string-join re " "))
+                      opts)
+              hl)
+        (cons (append cmd opts) nil)))))
+#+end_src
+
+
+******* internal async command
+#+begin_src emacs-lisp
+(defun consult-gh--async-search-commits (repo prompt builder &optional initial min-input)
+  "Search GitHub commits in REPO asynchronously.
+
+This is a non-interactive internal function.
+For the interactive version see `consult-gh-search-commits'.
+
+This runs the command line from `consult-gh--search-commits-builder' in
+an async process and returns the results \(list of search results
+for the input\) as a completion table in minibuffer.  The completion table
+gets dynamically updated as the user types in the minibuffer.
+Each candidate is formatted by `consult-gh--search-commits-transform'
+to add annotation and other info to the candidate.
+
+Description of Arguments:
+  REPO      full name of respository
+            \(e.g., armindarvish/consult-gh\)
+  PROMPT    the prompt in the minibuffer
+            \(passed as PROMPT to `consult--red'\)
+  BUILDER   an async builder function passed to
+            `consult--process-collection'.
+  INITIAL   an optional arg for the initial input in the minibuffer.
+            \(passed as INITITAL to `consult--read'\)
+  MIN-INPUT is the minimum input length and defaults to
+            `consult-async-min-input'"
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+      (consult--read
+       (consult--process-collection (apply-partially builder repo)
+         :transform (consult--async-transform-by-input #'consult-gh--search-commits-transform)
+         :min-input min-input)
+       :prompt prompt
+       :lookup #'consult--lookup-member
+       :state (consult-gh--commit-state)
+       :initial initial
+       :group #'consult-gh--commit-group
+       :require-match t
+       :history '(:input consult-gh--search-commits-history)
+       :category 'consult-gh-commits
+       :preview-key consult-gh-preview-key
+       :sort nil)))
+#+end_src
+
+******* interactive command
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-search-commits (&optional repo initial noaction prompt min-input)
+  "Interactively search GitHub commits of REPO.
+
+This is an interactive wrapper function around
+`consult-gh--async-search-commits'.
+
+It queries the user for a search term in the minibuffer, then fetches the
+list of possible GitHub commits for the entered query and presents them as a
+minibuffer completion table for selection.  The list of candidates in the
+completion table are dynamically updated as the user changes the entry.
+
+Upon selection of a candidate either
+ - if NOACTION is non-nil  candidate is returned
+ - if NOACTION is nil      candidate is passed to `consult-gh-commit-action'
+
+Additional command line arguments can be passed in the minibuffer input
+by typing `--` followed by command line arguments.
+For example the user can enter the following in the minibuffer:
+consult-gh -- -L 100
+and the async process will run “gh search commits bug fix --repo REPO -L 100”,
+which sets the limit for the maximum number of results to 100.
+
+INITIAL is an optional arg for the initial input in the minibuffer
+\(passed as INITITAL to `consult-gh--async-search-commits'\).
+
+If PROMPT is non-nil, use it as the query prompt.
+
+MIN-INPUT is passed to `consult-gh--async-search-commits'.
+
+For more details on consult--async functionalities, see `consult-grep'
+and the official manual of consult, here:
+URL `https://github.com/minad/consult'."
+  (interactive)
+  ;; (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
+  ;;     (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
+  (when (bound-and-true-p consult-gh-embark-mode)
+    (setq consult-gh--last-command #'consult-gh-search-commits))
+  (let* ((repo (or repo
+                   (and (stringp consult-gh--topic)
+                        (get-text-property 0 :repo consult-gh--topic))
+                   (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
+         (prompt (or prompt "Search Commits:  "))
+         (sel (consult-gh--async-search-commits repo prompt #'consult-gh--search-commits-builder initial min-input)))
+    ;;add org and repo to known lists
+    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+      (add-to-history 'consult-gh--known-repos-list reponame))
+    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+      (add-to-history 'consult-gh--known-orgs-list username))
+    (if noaction
+        sel
+      (funcall consult-gh-commit-action sel))))
+
+#+end_src
+
+
+
+***** consult-gh-commit-view-comments
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-commit-view-comments (&optional commit)
+  "Insert comments on COMMIT in the current buffer."
+  (interactive nil consult-gh-commit-view-mode)
+  (when consult-gh-commit-view-mode
+    (let* ((commit (or commit consult-gh--topic))
+           (inhibit-read-only t)
+           (repo (get-text-property 0 :repo commit))
+           (sha (get-text-property 0 :sha commit))
+           (comments (consult-gh--commit-get-comments repo sha))
+           (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/commit/%s" sha)))
+           (comments-text (when (and comments (listp comments))
+                            (consult-gh--commit-format-comments comments url)))
+           (comments-text (or comments-text ""))
+           (regions (consult-gh--get-region-with-prop :consult-gh-commit-comments))
+           (region (when (listp regions) (cons (caar regions) (cdar (last regions))))))
+      (when comments-text
+        (when region
+          (goto-char (car region))
+          (delete-region (car region) (cdr region))
+          (delete-region (line-beginning-position) (line-end-position))
+          (insert "\n"))
+        (save-excursion
+          (insert (with-temp-buffer
+                    (insert comments-text)
+                    (consult-gh--format-view-buffer "commit")
+                    (buffer-string)))
+          (outline-hide-sublevels 2))))))
+#+end_src
+
+
+***** consult-gh-commit-browse-files
+#+begin_src emacs-lisp
+;;;###autoload
+(defun consult-gh-commit-browse-files (&optional commit path noaction)
+  "Browse files in repository at COMMIT.
+
+When PATH is a string, search is done relative to PATH.
+When NOACTION is  non-nil, only retrun the file object
+and do not call `consult-gh-file-action'."
+  (interactive)
+  (setq consult-gh--open-files-list nil
+        consult-gh--current-tempdir (consult-gh--tempdir))
+  (let* ((commit (or commit
+                     (and (stringp consult-gh--topic)
+                          (equal (get-text-property 0 :type consult-gh--topic) "commit")
+                          consult-gh--topic)
+                     (consult-gh-search-commits nil nil t)))
+         (sel (consult-gh--commit-find-file commit path)))
+    (when sel
+      ;;add org and repo to known lists
+      (when-let ((reponame (get-text-property 0 :repo sel)))
+        (add-to-history 'consult-gh--known-repos-list reponame))
+      (when-let ((username (get-text-property 0 :user sel)))
+        (add-to-history 'consult-gh--known-orgs-list username))
+      (if noaction
+          sel
+        (funcall consult-gh-file-action sel)))))
+
+#+end_src
 
 *** key bindings
 **** consult-gh-ctrl-c-ctrl-c
@@ -21835,6 +23259,9 @@ buffer generated by `consult-gh--commit-create'."
   ;; consult-gh-commit-message-mode-map
   (consult-gh--enable-keybindings-alist consult-gh-commit-message-mode-map consult-gh--commit-message-mode-keybinding-alist)
 
+  ;; consult-gh-commit-view-mode-map
+  (consult-gh--enable-keybindings-alist consult-gh-commit-view-mode-map consult-gh--commit-view-mode-keybinding-alist)
+
   ;; consult-gh-upload-files-mode-map
   (consult-gh--enable-keybindings-alist consult-gh-upload-files-mode-map consult-gh--upload-files-mode-keybinding-alist))
 
@@ -21874,6 +23301,9 @@ buffer generated by `consult-gh--commit-create'."
 
   ;; consult-gh-commit-message-mode-map
   (consult-gh--disable-keybindings-alist consult-gh-commit-message-mode-map consult-gh--commit-message-mode-keybinding-alist)
+
+  ;; consult-gh-commit-view-mode-map
+  (consult-gh--disable-keybindings-alist consult-gh-commit-view-mode-map consult-gh--commit-view-mode-keybinding-alist)
 
   ;; consult-gh-upload-files-mode-map
   (consult-gh--disable-keybindings-alist consult-gh-upload-files-mode-map consult-gh--upload-files-mode-keybinding-alist))
@@ -21941,8 +23371,10 @@ and removes the buffers that are killed from the list."
        (let* ((path (get-text-property 0 :path topic))
               (url (get-text-property 0 :url topic))
               (ref (get-text-property 0 :ref topic)))
-         (funcall #'consult-gh--files-view repo path url nil (file-name-directory (buffer-file-name)) nil ref t))))))))
-
+         (funcall #'consult-gh--files-view repo path url nil (file-name-directory (buffer-file-name)) nil ref t))))
+      ((equal type "commit")
+         (let* ((sha (get-text-property 0 :sha topic)))
+           (funcall #'consult-gh--commit-view repo sha (current-buffer))))))))
 #+end_src
 **** consult-gh
 #+begin_src emacs-lisp
