@@ -1982,8 +1982,8 @@ Uses simple regexp replacements."
                  (cond
                   ((and (looking-at "\s")
                         (or  (= (point) 2)
-                             (looking-back "^\s+\\*" (max (- (point) 4) (point-min)))))
-                   (delete-char 1)
+                             (looking-back "^\s*\\*" (max (- (point) 4) (point-min)))))
+                   (delete-char -1)
                    (insert "-"))
                   ((or (= (point) 2)
                        (looking-back "\\(?:[[:space:]]\\)\\*"
