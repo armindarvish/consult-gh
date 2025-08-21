@@ -304,13 +304,13 @@ The candidate can be a repo, issue, PR, file path, or a branch."
       (consult-gh-pr-list repo))))
 
 (defun consult-gh-embark-view-workflows-of-repo (cand)
-  "Browse GitHub actions of CAND repo at point."
+  "Browse GitHub action workflows of CAND repo at point."
   (when (stringp cand)
     (let ((repo (or (get-text-property 0 :repo cand))))
       (consult-gh-workflow-list repo))))
 
 (defun consult-gh-embark-view-runs-of-repo (cand)
-  "Browse GitHub action runs of CAND repo at point."
+  "Browse GitHub action run instances of CAND repo at point."
   (when (stringp cand)
     (let ((repo (or (get-text-property 0 :repo cand))))
       (consult-gh-run-list repo))))
@@ -450,14 +450,14 @@ CAND can be a repo, issue, PR, file path, ..."
        (kill-new (consult-gh--json-to-hashtable (consult-gh--command-to-string "repo" "view" (string-trim repo) "--json" "sshUrl") :sshUrl))))))
 
 (defun consult-gh-embark-copy-straight-usepackage-link-as-kill (cand)
-  "Copy a drop-in “straight use-package” script of CAND to `kill-ring'."
+  "Copy a `use-package' script for “straight.el” of CAND to `kill-ring'."
   (when (stringp cand)
     (let* ((repo (get-text-property 0 :repo cand))
            (package (car (last (split-string repo "\/")))))
       (kill-new (concat "(use-package " package "\n\t:straight (" package " :type git :host github :repo \"" repo "\")\n)")))))
 
 (defun consult-gh-embark-copy-usepackage-link-as-kill (cand)
-  "Copy a drop-in “use-package” script of CAND to `kill-ring'."
+  "Copy a drop-in `use-package' script of CAND to `kill-ring'."
   (when (stringp cand)
     (let* ((repo (get-text-property 0 :repo cand))
            (package (car (last (split-string repo "\/")))))
@@ -982,7 +982,7 @@ CAND can be a PR or an issue."
     (consult-gh--workflow-view-action cand)))
 
 (defun consult-gh-embark-workflow-runs-list (cand)
-  "Browse runs of workflow in CAND."
+  "Browse run instances of workflow in CAND."
  (when (stringp cand)
     (let ((repo (get-text-property 0 :repo cand))
           (id (get-text-property 0 :id cand)))

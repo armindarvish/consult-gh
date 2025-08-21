@@ -461,7 +461,7 @@ can be used to load all commits."
   :type 'boolean)
 
 (defcustom consult-gh-prs-show-file-changes-in-view t
-  "Whether to include file changes in `consult-gh--pr-view'?
+  "Whether to include file change diff in `consult-gh--pr-view'?
 
 Not including file changes make viewing long PRs faster.  Note that
 when file changes are hidden `consult-gh-pr-view-file-changes'
@@ -1441,6 +1441,21 @@ body of the pull requests from commits info, when this varibale is non-nil."
   :type 'boolean)
 
 
+(defcustom consult-gh-files-use-dired-like-mode t
+  "Whether to open directories in `conuslt-gh-dired-mode'?
+
+When this is non-nil, directories are opened in `conuslt-gh-dired-mode'."
+  :group 'consult-gh
+  :type 'boolean)
+
+(defcustom consult-gh-files-reuse-dired-like-buffer t
+  "Whether to use the same buffer when opening directories?
+
+When this is non-nil, directories are opened in the same buffer,
+otherwise a new `conuslt-gh-dired-mode' buffer is created."
+  :group 'consult-gh
+  :type 'boolean)
+
 (defcustom consult-gh-commit-messgae-ignore-char "#"
   "The string used to ignore lines in commit messages.
 
@@ -1712,6 +1727,10 @@ This is used to change grouping dynamically.")
 When creating a commit, these instructions are shown.
 Every line should start with git comment character or
 `consult-gh-commit-messgae-ignore-char'.")
+
+
+(defvar-local consult-gh--dired-fold-cycle 'all
+  "What is shown in the current `consult-gh-dired-mode' buffer.")
 
 ;;; Faces
 
@@ -2217,6 +2236,38 @@ BEG and END positions."
                (let ((p1 (car region))
                      (p2 (min (cdr region) (point-max))))
                (delete-region p1 p2))))))
+
+(defun consult-gh--hide-region-with-prop (prop &optional buffer beg end symbol)
+  "Hide any text with property PROP from BUFFER.
+
+When optional arguments BEG and END are non-nil, limit the search between
+BEG and END positions.
+When SYMBOL is non-nil, set the property \='invisible to SYMBOL,
+otherwise set it to \='consult-gh"
+
+  (let ((regions (consult-gh--get-region-with-prop prop buffer beg end)))
+    (when (and regions (listp regions))
+      (cl-loop for region in regions
+               do
+               (let ((p1 (car region))
+                     (p2 (min (cdr region) (point-max))))
+               (put-text-property p1 p2 'invisible (or symbol 'consult-gh)))))))
+
+(defun consult-gh--unhide-region-with-prop (prop &optional buffer beg end)
+  "Unhide any text with property PROP from BUFFER.
+
+Removes the property \='invisible from regions with PROP.
+
+When optional arguments BEG and END are non-nil, limit the search between
+BEG and END positions."
+
+  (let ((regions (consult-gh--get-region-with-prop prop buffer beg end)))
+    (when (and regions (listp regions))
+      (cl-loop for region in regions
+               do
+               (let ((p1 (car region))
+                     (p2 (min (cdr region) (point-max))))
+               (remove-list-of-text-properties p1 p2 '(invisible)))))))
 
 (defun consult-gh--get-region-with-overlay (symbol &optional buffer beg end)
   "Get regions with SYMBOL overlay from BUFFER.
@@ -4950,7 +5001,9 @@ Description of Arguments:
              ((equal target "delete")
               (consult-gh--delete-commit-presubmit commit))
              ((equal target "upload")
-              (consult-gh--upload-commit-presubmit commit)))))
+              (consult-gh--upload-commit-presubmit commit))
+             ((equal target "rename")
+              (consult-gh--rename-commit-presubmit commit)))))
 
 (defun consult-gh--repo-get-branches-json (repo)
   "List branches of REPO, in json format.
@@ -5673,7 +5726,9 @@ Description of Arguments:
                              :require-match t
                              :sort nil)
          (':reselect
-          (let* ((new-file (consult-gh--files-read-file repo ref (file-name-as-directory (file-name-directory path)) nil "File Name: " nil nil nil 'branch)))
+          (let* ((new-file (consult-gh--files-read-file repo ref (or (and (stringp (file-name-directory path)) (file-name-as-directory (file-name-directory path)))
+                                                                     nil)
+                                                        nil "File Name: " nil nil nil 'branch)))
             (consult-gh--create-commit-add-file commit new-file)))
          (':edit
           (consult-gh-edit-file new-file (current-buffer)))))
@@ -6013,6 +6068,8 @@ Description of Arguments:
      (t
       (when (and canwrite repo paths commit-message)
         (let* ((confirm nil))
+          (if (stringp paths)
+              (setq paths (list paths)))
           (cl-loop for path in paths
                    collect
                    (progn
@@ -6029,10 +6086,10 @@ Description of Arguments:
                            (equal confirm "all"))
                        (and
                         (consult-gh--delete-commit-single-file repo path commit-message ref committer-info author-info)
-                        (message "%s deleted!" (propertize path 'face 'consult-gh-success))))
+                        (message "%s deleted!" (propertize path 'face 'consult-gh-warning))))
                       ((equal confirm "no")
                        (message "Skipped %s" (propertize path 'face 'consult-gh-error)))
-                      (t (message "Canceled!")))))))))))
+                      (t (message "%s" (propertize "Canceled!" 'face 'consult-gh-error))))))))))))
 
 (defun consult-gh--delete-commit-presubmit (&optional commit)
   "Prepare delete COMMIT to submit.
@@ -6425,6 +6482,535 @@ buffer generated by `consult-gh--upload-commit'."
                       (consult-gh--upload-commit-presubmit))
             (':ref (consult-gh--commit-change-ref)
                       (consult-gh--upload-commit-presubmit))))
+    (message "Not a Github commit buffer!")))
+
+(defun consult-gh--rename-commit (files repo ref &optional commit-message)
+  "Create a commit to rename FILES in REPO and REF.
+
+REPO is full name of a GitHub repository.  REF is the name of a branch
+or tag name.  FILES is a list of strings with properties that identify
+a file.  For an example, see the buffer-local variable
+`consult-gh--topic' in the buffer generated by
+`consult-gh--files-view'.  It defaults to
+`consult-gh--topic' in the current buffer.
+
+It opens a buffer to enter the commit message for renaming FILES.
+If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial
+message."
+  (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (committer-info (consult-gh--get-user-info user))
+         (author-info (consult-gh--get-user-info user))
+         (buffer (format "*consult-gh-file-rename-commit-message: %s/%s" repo ref))
+         (newtopic (format "%s/%s" repo ref))
+         (type "commit message"))
+
+    (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-ref ref :content nil :commit-target "rename" :repo repo :ref ref :files files) newtopic)
+
+    ;; insert commit message
+    (consult-gh-topics--get-buffer-create buffer "commit message" newtopic)
+    (with-current-buffer buffer
+      (consult-gh-commit-message-mode +1)
+      (save-excursion
+        (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+          (goto-char (or (car-safe (car-safe regions)) (point-min))))
+        (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
+        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
+        (when (listp files)
+          (insert (propertize "\n\n" :consult-gh-commit-instructions t))
+          (insert (propertize "# Files to Rename:" :consult-gh-commit-instructions t))
+          (mapc (lambda (f)
+                  (let* ((old-path (get-text-property 0 :old-path f))
+                         (new-path (get-text-property 0 :new-path f))
+                         (mode (get-text-property 0 :mode f))
+                         (viewbuffer (or (get-text-property 0 :view-buffer f)
+                                         (if (or (equal mode "file")
+                                                 (equal mode "symlink"))
+                                             (consult-gh--files-view repo old-path nil t nil nil ref))))
+                         (content (or (get-text-property 0 :content f)
+                                      (and (bufferp viewbuffer)
+                                           (buffer-live-p viewbuffer)
+                                           (with-current-buffer viewbuffer
+                                             (save-restriction
+                                               (widen)
+                                               (buffer-substring-no-properties (point-min) (point-max)))))))
+                         (base64-content (and (stringp content)
+                                              (base64-encode-string (substring-no-properties (encode-coding-string content 'utf-8))))))
+
+                    (add-text-properties 0 1 (list :base64-content base64-content :commit-buffer (get-buffer buffer)) f)
+                    (unless (equal old-path new-path)
+                      (insert (propertize (format "\n# - rename %s -> %s" old-path new-path) :consult-gh-commit-instructions t)))))
+                files))
+        (goto-char (point-min))
+        (when (stringp commit-message)
+          (insert commit-message)
+          (consult-gh-commit-save-message))
+        (funcall consult-gh-pop-to-buffer-func buffer)))))
+
+(defun consult-gh--rename-commit-by-pullrequest (files repo &optional commit-message ref committer-info author-info)
+  "Submit rename commit by creating a pull request.
+
+This is used when REF is protected and does not allow direct
+commits.  A new branch is created and a pull request is made to merge
+the new branch to REF.
+
+Description of Arguments:
+  FILES          a list of propertized strings; each string contains
+                 information \(e.g. path, content, ...) for 1 file.
+  REPO           a string; full name of repository
+  COMMIT-MESSAGE a string; commit message
+  REF            a string; name of branch ref for commit
+  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
+
+  (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (initial (or (consult-gh--branch-create-suggest-name repo user)
+                      (format "%s-patch-%s"
+                              user
+                              (format-time-string "%Y-%m-%d-%H%M%S%Z" (current-time)))))
+         (existing-branches (consult-gh--repo-get-branches-list repo))
+         (new-ref (consult--read (list initial)
+                                 :prompt "Name of the new branch: "
+                                 :sort nil))
+         (tries (if (stringp new-ref) 1))
+         (new-ref (if (and (stringp new-ref)
+                           (member new-ref existing-branches))
+                      (while (< tries 3)
+                        (cl-incf tries)
+                        (consult--read (list initial)
+                                       :prompt (format "A branch with that name already exists. Pick a different name (attempt %s/3): " tries)
+                                       :sort nil))
+                    new-ref))
+         (_ (if (not new-ref) (user-error "Did not get a valid branch name")))
+         (ref (or ref (consult-gh--read-branch repo nil "Select reference branch for starting point: " t nil)))
+         (sha (or (and (stringp ref) (get-text-property 0 :sha ref))
+                  (and (stringp ref)
+                       (ignore-errors (gethash :sha (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "repos/%s/branches/%s" repo ref)) :commit))))))
+         (args (list "api" "-X" "POST")))
+    (when (and repo new-ref sha)
+      (setq args (append args (list (format "/repos/%s/git/refs" repo)
+                                    "-f" (format "ref=refs/heads/%s" new-ref)
+                                    "-f" (format "sha=%s" sha))))
+
+      (consult-gh--make-process (format "consult-gh-create-branch-%s" repo)
+                                :when-done (lambda (_event _str)
+                                             (and
+                                              (consult-gh--rename-commit-submit files repo commit-message new-ref committer-info author-info)
+                                              (message "Creating a Pull Request...")
+                                              (consult-gh-pr-create repo "Update Files" nil ref repo new-ref)))
+                                :cmd-args args))))
+
+(defun consult-gh--rename-commit-by-fork (files repo &optional commit-message ref committer-info author-info)
+  "Submit rename commit by forking REPO and creating a pull request.
+
+This is used when user does not have write access in REPO.  The REPO is
+first forked, then the changes are commited in the fork and pull
+request is made to merge the new branch in the fork back to REF in
+REPO.
+
+Description of Arguments:
+  FILES          a list of propertized strings; each string contains
+                 information \(e.g. path, content, ...) for 1 file.
+  REPO           a string; full name of repository to fork
+  COMMIT-MESSAGE a string; commit message
+  REF            a string; name of branch ref for commit
+  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
+
+  (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (name (consult-gh--get-package repo))
+         (new-repo (concat user "/" name))
+         (existing (consult-gh--command-to-string "repo" "view" new-repo "--json" "\"url\"")))
+    (cond
+     ((not existing)
+      (consult-gh--make-process (format "consult-gh-fork-%s" repo)
+                              :when-done (lambda (_event _str)
+                                            (and
+                                             (message "repo %s was forked to %s"
+                                                      (propertize repo 'face 'font-lock-keyword-face)
+                                                      (propertize new-repo 'face 'font-lock-warning-face))
+                                             (consult-gh--rename-commit-submit files new-repo commit-message ref committer-info author-info)
+                                             (message "Creating a Pull Request...")
+                                             (consult-gh-pr-create repo "Create/Update Files" nil ref new-repo ref)))
+                              :cmd-args (list "repo" "fork" (format "%s" repo) "--fork-name" name)))
+     (t
+      (message "Forked repo already exists. Making a new branch...")
+      (let* ((initial (or (consult-gh--branch-create-suggest-name new-repo user)
+                      (format "%s-patch-%s"
+                              user
+                              (format-time-string "%Y-%m-%d-%H%M%S%Z" (current-time)))))
+             (existing-branches (consult-gh--repo-get-branches-list new-repo))
+             (new-ref (consult--read (list initial)
+                                         :prompt "Name of the new branch: "
+                                         :sort nil))
+             (tries (if (stringp new-ref) 1))
+             (new-ref (if (and (stringp new-ref)
+                               (member new-ref existing-branches))
+                          (while (< tries 3)
+                            (cl-incf tries)
+                            (consult--read (list initial)
+                                         :prompt (format "A branch with that name already exists. Pick a different name (attempt %s/3): " tries)
+                                         :sort nil))
+                        new-ref))
+             (_ (if (not new-ref) (user-error "Did not get a valid branch name")))
+             (ref (or ref (consult-gh--read-branch new-repo nil "Select reference branch for starting point: " t nil)
+                      "HEAD"))
+             (sha (or (and (stringp ref) (get-text-property 0 :sha ref))
+                      (and (stringp ref)
+                           (ignore-errors (gethash :sha (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "repos/%s/branches/%s" repo ref)) :commit))))))
+             (args (list "api" "-X" "POST")))
+         (when (and new-repo new-ref sha)
+           (setq args (append args (list (format "/repos/%s/git/refs" new-repo)
+                                    "-f" (format "ref=refs/heads/%s" new-ref)
+                                    "-f" (format "sha=%s" sha))))
+
+           (consult-gh--make-process (format "consult-gh-create-branch-%s" new-repo)
+                                :when-done (lambda (_event _str)
+                                              (and
+                                               (consult-gh--rename-commit-submit files new-repo commit-message new-ref committer-info author-info)
+                                               (message "Creating a Pull Request...")
+                                               (consult-gh-pr-create repo "Create/Updates" nil ref new-repo new-ref)))
+                                      :cmd-args args)))))))
+
+(defun consult-gh--rename-commit-single-file (file repo &optional commit-message ref committer-info author-info)
+  "Submit a commit to rename a single file.
+
+Description of Arguments:
+  FILE               a string with properties; the properties describe details
+                     abount path and content of the file.
+  REPO               a string; full name of repository
+  COMMIT-MESSAGE     a string; commit message
+  REF                a string; name of branch ref for commit
+  COMMITTER-INFO     a plist; commiter info plist, (:name NAME :email EMAIL)
+  AUTHOR-INFO        a plist; author info plist, (:name NAME :email EMAIL)"
+
+  (let* ((repo (or repo (get-text-property 0 :repo file)))
+         (old-path (get-text-property 0 :old-path file))
+         (new-path (get-text-property 0 :new-path file))
+         (mode (get-text-property 0 :mode file))
+         (ref (or ref (get-text-property 0 :ref file)))
+         (committer-name (when (hash-table-p committer-info) (gethash :name committer-info)))
+         (committer-email (when (hash-table-p committer-info) (gethash :email committer-info)))
+         (author-name (when (hash-table-p author-info) (gethash :name author-info)))
+         (author-email (when (hash-table-p author-info) (gethash :email author-info)))
+         (old-url (format "/repos/%s/contents/%s" repo old-path))
+         (old-url-ref (if ref (concat old-url (format "?ref=%s" ref)) old-url))
+         (old-api-response (consult-gh--api-get-json old-url-ref)))
+
+    (when (eq (car old-api-response) 0)
+        (let* ((resp (consult-gh--json-to-hashtable (cadr old-api-response) (list :path :sha)))
+               (shas (cond
+                      ((hash-table-p resp)
+                       (list resp))
+                      ((listp resp)
+                       resp))))
+          (when (and repo shas)
+            (cl-loop for item in shas
+                     collect
+                     (let* ((item-old-path (gethash :path item))
+                            (item-sha (gethash :sha item))
+                            (item-new-path (cond
+                                            ((equal mode "directory")
+                                             (and (stringp item-old-path)
+                                                  (stringp new-path)
+                                                  (stringp (file-name-nondirectory item-old-path))
+                                                  (concat (or (file-name-as-directory new-path) "") (string-remove-prefix "/" (string-remove-prefix old-path item-old-path)))))
+                                            (t
+                                             new-path)))
+                            (commit-message (or (and (stringp commit-message)
+                                                     (not (string-empty-p (string-trim commit-message)))
+                                                     (concat commit-message
+                                                             (format "\n rename %s to %s\n"
+                                                                     item-old-path item-new-path)))
+                                                (and (stringp item-old-path)
+                                                     (format "Rename %s to %s\n" item-old-path item-new-path))
+                                                (consult--read nil
+                                                               :prompt "Commit Message: "
+                                                               :sort nil)))
+                            (new-url (format "/repos/%s/contents/%s" repo item-new-path))
+                            (new-url-ref (if ref (concat new-url (format "?ref=%s" ref)) new-url))
+                            (new-api-response (consult-gh--api-get-json new-url-ref))
+                            (new-sha  (if (eq (car new-api-response) 0)
+                                          (consult-gh--json-to-hashtable (cadr new-api-response) :sha)))
+                            (viewbuffer (consult-gh--files-view repo item-old-path nil t nil nil ref))
+                            (content  (and (bufferp viewbuffer)
+                                           (buffer-live-p viewbuffer)
+                                       (with-current-buffer viewbuffer
+                                         (save-restriction
+                                           (widen)
+                                           (buffer-substring-no-properties (point-min) (point-max))))))
+                            (base64-content (and (stringp content)
+                                              (base64-encode-string (substring-no-properties (encode-coding-string content 'utf-8)))))
+
+                            (delete-args (list "api"
+                                        "-H" "Accept: application/vnd.github+json"
+                                        "--method" "DELETE"
+                                        (format "/repos/%s/contents/%s" repo item-old-path)
+                                        "-f" (format "message=%s" commit-message)
+                                        "-f" (format "sha=%s" item-sha)))
+                            (create-args (list "api"
+                                               "-H" "Accept: application/vnd.github+json"
+                                               "--method" "PUT"
+                                               new-url
+                                               "-f" (format "message=%s" commit-message)
+                                               "-f" (format "content=%s" base64-content))))
+                       (when ref (setq delete-args (append delete-args (list "-f" (format "branch=%s" ref)))
+                                       create-args (append create-args (list "-f" (format "branch=%s" ref)))))
+                       (when (and committer-name committer-email)
+                         (setq delete-args (append delete-args (list "-f" (format "committer[name]=%s" committer-name)
+                                                       "-f" (format "committer[email]=%s" committer-email)))
+                               create-args (append create-args (list "-f" (format "committer[name]=%s" committer-name)
+                                    "-f" (format "committer[email]=%s" committer-email)))))
+                       (when (and author-name author-email)
+                         (setq delete-args (append delete-args (list "-f" (format "author[name]=%s" author-name)
+                                                       "-f" (format "author[email]=%s" author-email)))
+                               create-args (append create-args (list "-f" (format "author[name]=%s" author-name)
+                                    "-f" (format "author[email]=%s" author-email)))))
+
+                       (when new-sha (setq create-args (append create-args (list "-f" (format "sha=%s" new-sha)))))
+
+
+                       (and
+                        (if (eq (car new-api-response) 0)
+                            (y-or-n-p (format "The file %s already exists.  Are you sure you want to override it?" item-new-path))
+                          t)
+                        (not (equal item-new-path item-old-path))
+                        (apply #'consult-gh--command-to-string create-args)
+                        (message "File %s renamed to %s!" (propertize item-old-path 'face 'consult-gh-date)  (propertize item-new-path 'face 'consult-gh-warning))
+
+                        (apply #'consult-gh--command-to-string delete-args)))))))))
+
+(defun consult-gh--rename-commit-submit (files repo commit-message &optional ref committer-info author-info)
+  "Submit a rename FILES commit in REPO.
+
+Description of Arguments:
+  FILES          a list of propertized strings; each string contains
+                 information \(e.g. path, content, ...) for 1 file.
+  REPO           a string; full name of repository
+  COMMIT-MESSAGE a string; commit message
+  REF            a string; name of branch ref for commit
+  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
+  (pcase-let* ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+               (canwrite (consult-gh--user-canwrite repo))
+               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+               (commit-message (or (and (stringp commit-message)
+                                        (not (string-empty-p (string-trim commit-message)))
+                                        commit-message)
+                                   (and (listp files)
+                                        (format "Rename Files\n\n%s\n" (mapconcat (lambda (item) (format " - rename %s to %s" (get-text-property 0 :old-path item) (get-text-property 0 :new-path item))) files "\n")))
+                                   (consult--read nil
+                                                  :prompt "Commit Message: "
+                                                  :sort nil)))
+               (protected (when ref (consult-gh--json-to-hashtable (consult-gh--api-get-command-string (format "/repos/%s/branches/%s" repo ref)) :protected))))
+
+    (when (and commit-message
+               (stringp commit-message)
+               (not (string-empty-p commit-message)))
+      (consult-gh-commit-save-message commit-message))
+
+    (cond
+     ((not canwrite)
+      (let* ((info (consult-gh--command-to-string "repo" "view" repo "--json" "isFork,isPrivate"))
+             (isForked (equal (consult-gh--json-to-hashtable info :isFork) 't))
+             (isPrivate (equal (consult-gh--json-to-hashtable info :isPrivate) 't)))
+        (when (and (not isForked) (not isPrivate))
+          (and (y-or-n-p (format "User %s does not have write acccess in %s.  Do you want to fork the repo and make a pull request?" user repo))
+               (consult-gh--rename-commit-by-fork files repo commit-message ref committer-info author-info)))))
+     ((equal protected t)
+      (and (y-or-n-p "The branch you are trying to edit is protected.  Do you want to submit a pull request? ")
+           (consult-gh--rename-commit-by-pullrequest files repo commit-message ref committer-info author-info)))
+     (t
+      (when (and canwrite repo (listp files) commit-message)
+        (let* ((confirm))
+          (cl-loop for file in files
+                   collect
+                   (let* ((old-path (get-text-property 0 :old-path file))
+                          (new-path (get-text-property 0 :new-path file))
+                          (ref (or ref (get-text-property 0 :ref file))))
+                     (unless (equal confirm "all")
+                       (setq confirm (read-answer (concat "This will rename "
+                                                          (format "%s to %s on GitHub.  Are you sure you want to continue? " (propertize old-path 'face 'consult-gh-warning)
+                             (propertize new-path 'face 'consult-gh-date)))
+                               '(("yes"  ?y "rename the file")
+                                 ("no"   ?n "skip to the next file")
+                                 ("all"  ?! "accept all remaining without more questions (will rename existing files!)")
+                                 ("help" ?h "show help")
+                                 ("quit" ?q "exit")))))
+                     (cond
+                      ((or (equal confirm "yes")
+                           (equal confirm "all"))
+
+                       (consult-gh--rename-commit-single-file file repo commit-message ref committer-info author-info))
+                      ((equal confirm "no")
+                       (message "Skipped %s" (propertize file 'face 'consult-gh-error)))
+                      (t (message "Canceled!")))))))))))
+
+(defun consult-gh--rename-commit-add-file (&optional commit file)
+  "Add FILE to the COMMIT for renaming files."
+  (if consult-gh-topics-edit-mode
+      (let* ((commit (or commit consult-gh--topic))
+             (repo (get-text-property 0 :repo commit))
+             (ref (or (get-text-property 0 :commit-ref commit)
+                      (get-text-property 0 :ref commit)))
+             (files (get-text-property 0 :files commit))
+             (old-file (or file
+                           (consult-gh--files-read-file repo ref (and (listp files)
+          (stringp (get-text-property 0 :old-path (car files)))
+          (file-name-directory (get-text-property 0 :old-path (car files))))
+                                                        nil "Select a File: " t nil nil 'branch)))
+             (old-path (and (stringp old-file)
+                            (not (string-empty-p old-file))
+                            (get-text-property 0 :path old-file)))
+             (old-path (and (stringp old-path)
+                            (not (string-empty-p old-path))
+                            old-path))
+             (new-file (consult-gh--files-read-file repo ref (and (stringp old-path)
+                                                                  (file-name-directory old-path))
+                                                                  (and (stringp old-path)
+                                                                       (file-name-nondirectory old-path))
+                                                                  "Enter new path: " nil nil nil 'branch))
+             (new-path (and (stringp new-file)
+                            (not (string-empty-p new-file))
+                            (get-text-property 0 :path new-file)))
+             (new-path (and (stringp new-path)
+                            (not (string-empty-p new-path))
+                            new-path))
+             (view-buffer (consult-gh--files-view repo old-path nil t nil nil ref))
+             (content (with-current-buffer view-buffer
+                        (widen)
+                        (buffer-substring-no-properties (point-min) (point-max))))
+             (_ (when (stringp new-path)
+                  (add-text-properties 0 1 (list :repo repo
+                                                 :old-path old-path
+                                                 :new-path new-path
+                                                 :url nil
+                                                 :mode "file"
+                                                 :size nil
+                                                 :ref ref
+                                                 :sha nil
+                                                 :class "file"
+                                                 :type "file"
+                                                 :object-type "blob"
+                                                 :content content
+                                                 :view-buffer view-buffer
+                                                 :new t)
+                                       new-path)))
+             (new-files (remove nil (cl-remove-duplicates (append (list (and (stringp new-path) new-path))
+                                                                  files)
+                                                          :test #'equal))))
+        (add-text-properties 0 1 (list :files new-files) commit)
+        (save-excursion
+          (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+                    (goto-char (car-safe (car-safe regions)))))
+         (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
+       (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
+       (when (listp new-files)
+         (insert (propertize "\n\n" :consult-gh-commit-instructions t))
+         (insert (propertize "# Files to Rename:" :consult-gh-commit-instructions t))
+         (mapc (lambda (f)
+                 (let* ((old-path (get-text-property 0 :old-path f))
+                        (new-path (get-text-property 0 :new-path f))
+                        (viewbuffer (or (get-text-property 0 :view-buffer f)
+                                         (consult-gh--files-view repo old-path nil t nil nil ref)))
+                        (content  (or (get-text-property 0 :content f)
+                                      (and (bufferp viewbuffer)
+                                       (buffer-live-p viewbuffer)
+                                       (with-current-buffer viewbuffer
+                                         (save-restriction
+                                           (widen)
+                                           (buffer-substring-no-properties (point-min) (point-max)))))))
+                        (base64-content (and (stringp content)
+                                              (base64-encode-string (substring-no-properties (encode-coding-string content 'utf-8))))))
+
+                   (add-text-properties 0 1 (list :base64-content base64-content :commit-buffer (current-buffer)) f)
+                    (insert (propertize (format "\n# - rename %s -> %s" (propertize old-path 'face 'warning) (propertize new-path 'face 'success)) :consult-gh-commit-instructions t))))
+                 new-files))))))
+
+(defun consult-gh--rename-commit-remove-file (&optional commit)
+  "Remove file from the files to rename in COMMIT."
+  (if consult-gh-topics-edit-mode
+      (let* ((commit (or commit consult-gh--topic))
+             (files (get-text-property 0 :files commit))
+             (new-files (remove (consult--read files
+                                               :prompt "Remove Files: "
+                                               :lookup #'consult--lookup-member)
+                                files)))
+        (add-text-properties 0 1 (list :files new-files)
+                             commit)
+        (save-excursion
+          (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+                     (goto-char (car-safe (car-safe regions)))))
+          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
+          (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
+          (when (listp new-files)
+            (insert (propertize "\n\n" :consult-gh-commit-instructions t))
+            (insert (propertize "# Files to Rename:" :consult-gh-commit-instructions t))
+            (mapc (lambda (f)
+                      (insert (propertize (format "\n# - rename %s -> %s" (propertize (get-text-property 0 :old-path f) 'face 'warning) (propertize (get-text-property 0 :new-path f) 'face 'success)) :consult-gh-commit-instructions t)))
+                  new-files))))))
+
+(defun consult-gh--rename-commit-presubmit (&optional commit)
+  "Prepare COMMIT to submit.
+
+COMMIT is a string with properties that identify a commit.
+For an example see the buffer-local variable `consult-gh--topic' in the
+buffer generated by `consult-gh--rename-create'."
+  (if consult-gh-commit-message-mode
+      (let* ((commit (or commit
+                       (and (stringp consult-gh--topic)
+                            (equal (get-text-property 0 :type consult-gh--topic) "commit message")
+                            consult-gh--topic)))
+             (repo (get-text-property 0 :repo commit))
+             (ref (or (get-text-property 0 :commit-ref commit)
+                     (get-text-property 0 :ref commit)))
+             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+             (user-info (consult-gh--get-user-info user))
+             (committer-info (or (get-text-property 0 :committer-info commit) user-info))
+             (committer (or (and (hash-table-p committer-info)
+                                 (or (gethash :name committer-info)
+                                     (gethash :email committer-info))
+                                 (concat (gethash :name committer-info) " - " (gethash :email committer-info)))
+                            user))
+             (author-info  (or (get-text-property 0 :author-info commit)
+                               user-info))
+             (author (or (and (hash-table-p author-info)
+                              (or (gethash :name author-info)
+                                (gethash :email author-info))
+                          (concat (gethash :name author-info) " - " (gethash :email author-info)))
+                           user))
+             (nextsteps (append (list (cons "Submit" :submit))
+                                (list (cons "Add Files" :add))
+                                (list (cons "Remove Files" :remove))
+                                (list (cons (format "Change Branch (current: %s)" ref) :ref))
+                                (list (cons (format "Change Committer (current: %s)" committer) :committer))
+                                (list (cons (format "Change Author (current: %s)" author) :author))
+                                (list (cons "Cancel" :cancel))))
+             (next (consult--read nextsteps
+                                  :prompt "Choose what do you want to do? "
+                                  :lookup #'consult--lookup-cdr
+                                  :sort nil))
+
+             (buffer (current-buffer)))
+
+          (pcase next
+            (':cancel)
+            (':submit
+             (let* ((files (get-text-property 0 :files consult-gh--topic))
+                    (ref (or (get-text-property 0 :commit-ref consult-gh--topic)
+                                (get-text-property 0 :ref consult-gh--topic)))
+                    (commit-message (consult-gh--commit-get-buffer-message)))
+               (and (consult-gh--rename-commit-submit files repo commit-message ref committer-info author-info)
+                    (message "Commit %s" (propertize "Submitted!" 'face 'consult-gh-success))
+                    (with-current-buffer buffer
+                    (funcall consult-gh-quit-window-func t)))))
+            (':add (consult-gh--rename-commit-add-file commit))
+            (':remove (consult-gh--rename-commit-remove-file commit))
+            (':committer (consult-gh--commit-change-committer)
+                         (consult-gh--create-commit-presubmit))
+            (':author (consult-gh--commit-change-author)
+                      (consult-gh--create-commit-presubmit))
+            (':ref (consult-gh--commit-change-ref)
+                      (consult-gh--create-commit-presubmit))))
     (message "Not a Github commit buffer!")))
 
 (defun consult-gh--search-commits-format (string input highlight)
@@ -7511,7 +8097,8 @@ If HIGHLIGHT is non-nil, highlights the input in candidates."
                  ("100755" "exec file")
                  ("040000" "directory")
                  ("160000" "commit")
-                 ("120000" "symlink")))
+                 ("120000" "symlink")
+                 (_  (plist-get info :mode))))
          (str  (cond
                      ((equal object-type "tree")
                       (file-name-as-directory name))
@@ -7638,7 +8225,7 @@ set `consult-gh-file-action' to `consult-gh--files-browse-url-action'."
          (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" ref "/" path)))
     (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
-(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str ref revert)
+(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str ref revert find-func)
   "Open file in an Emacs buffer.
 
 This is an internal function that gets the PATH to a file within a REPO and
@@ -7662,6 +8249,8 @@ Description of Arguments:
   TEMPDIR   the directory where the temporary file is saved
   REF       a string; branch name, tag name or commit sha
   REVERT    if non-nil, pull the file from remote
+  FIND-FUNC function to use instead of `find-file'
+            (this is useful for example for opening file in other window)
 
 Output is the buffer visiting the file."
   (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
@@ -7679,7 +8268,7 @@ Output is the buffer visiting the file."
 
     (if no-select
         (find-file-noselect temp-file)
-      (with-current-buffer (find-file temp-file)
+      (with-current-buffer (funcall (or find-func #'find-file) temp-file)
         (if (or revert
                 (and (stringp consult-gh--topic)
                      (get-text-property 0 :changed-locally consult-gh--topic)
@@ -7741,6 +8330,12 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
              (setq confirm nil))))
          (if (and file-p confirm)
              (consult-gh--files-view repo path url nil tempdir nil ref)))
+        ("directory"
+         (if consult-gh-files-use-dired-like-mode
+             (consult-gh-dired repo (or (and (stringp path)
+                                             (file-name-as-directory path))
+                                        path)
+                               ref)))
         ("commit"
          (let* ((info (consult-gh--api-get-command-string (concat (format "repos/%s/contents/%s" repo path) (if ref (format "?ref=%s" ref)))))
                 (type (consult-gh--json-to-hashtable info :type)))
@@ -7885,7 +8480,7 @@ buffer generated by `consult-gh--files-view'."
       (consult-gh--files-edit-presubmit file)))))
 
 (defun consult-gh--files-edit-save-buffer-hook (&rest _args)
-  "Hook to commit changes to GitHub after `save-buffer'."
+  "Hook for commiting to GitHub after `save-buffer'."
     (when consult-gh-file-view-mode
     (add-text-properties 0 1 (list :changed-locally t) consult-gh--topic)
       (consult-gh--files-edit-commit-changes)))
@@ -7973,6 +8568,14 @@ Description of Arguments:
 PATHS is a list of strings."
   (let* ((ref (or ref "HEAD")))
     (consult-gh--delete-commit repo paths ref commit-message)))
+
+(defun consult-gh--files-rename (repo files &optional ref commit-message)
+  "Rename the list of FILES in REF of REPO.
+
+FILES is a list of propertized strings with
+old-path and new-path in properties."
+  (let* ((ref (or ref "HEAD")))
+    (consult-gh--rename-commit files repo ref commit-message)))
 
 (defun consult-gh--files-read-upload-targets ()
 "Query user to pick the target path for uploading files."
@@ -11315,7 +11918,7 @@ If optional argument PREVIEW is non-nil, do not load diff of commits."
              "\n")))))
 
 (defun consult-gh--pr-view-get-file-changes (&optional pr)
-  "Load file changes diff text of PR on demand."
+  "Load file diff text of PR on demand."
   (let* ((pr (or pr consult-gh--topic))
          (repo (get-text-property 0 :repo pr))
          (number (get-text-property 0 :number pr))
@@ -11501,8 +12104,9 @@ This is an internal function that takes REPO, the full name of a
 repository \(e.g. “armindarvish/consult-gh”\) and NUMBER, a pr number
 of REPO, and shows the diffs of the pull request in an Emacs Buffer.
 
-It fetches the diff from GitHub API for comparing two branches:
-URL `https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits'
+It fetches the diff from GitHub API for comparing two branches.  For
+more information sww GitHub API documentation:
+URL `https://docs.github.com/en/rest/commits/commits'
 
 Description of Arguments:
 
@@ -12189,7 +12793,7 @@ Description of Arguments:
   (concat file-change-text "\n" (when (stringp diff-text) diff-text)))))))
 
 (defun consult-gh-topics--pr-create-view-file-changes (&optional pr refresh)
-  "View file changes for PR topic.
+  "View file change for PR topic.
 
 When REFRESH reload the diff in the current buffer."
   (let* ((pr (or pr consult-gh--topic))
@@ -13233,9 +13837,8 @@ BUFFER defaults to the current buffer."
 TOPIC defaults to `consult-gh--topic' and should be a string with
 properties that identify a comment.  The properties should contain
 :path, :line, :side, and other info that can be passed to GitHub API.
-For more informaiton see:
-URL
-`https://docs.github.com/en/rest/pulls/comments?apiVersion=2022-11-28#create-a-review-comment-for-a-pull-request'
+For more informaiton see GitHub API documentation:
+URL `https://docs.github.com/en/rest/pulls/comments'
 
 BODY is a string for comment text.  When BODY is nil, the value of
 \=:body key stored in TOPIC properties is stored, and if that is nil as
@@ -15018,7 +15621,7 @@ and returns the output as a hash-table."
     (json-read-from-string (consult-gh--command-to-string "api" (format "/repos/%s/actions/workflows/%s" repo workflow-id)))))
 
 (defun consult-gh--workflow-get-runs (repo workflow-id)
-  "Get list of runs for WORKFLOW-ID in REPO.
+  "Get list of run instances for WORKFLOW-ID in REPO.
 
 Runs an async shell command with the command:
 gh api “/repos/REPO/actions/workflows/ID/runs”,
@@ -15095,7 +15698,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             "\n--\n")))
 
 (defun consult-gh--workflow-format-status (status conclusion)
-  "Format STATUS and CONCLUSION for workflow runs, jobs, and etc."
+  "Format STATUS and CONCLUSION for workflow run instances, jobs, ..."
 (let* ((string (pcase status
                  ("completed" "✓")
                  ("canceled"  "x")
@@ -15108,7 +15711,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
        (propertize string 'face face)))
 
 (defun consult-gh--workflow-format-runs (repo workflow-id &optional runs topic)
-  "Format runs for WORKFLOW-ID in REPO.
+  "Format run instances for WORKFLOW-ID in REPO.
 
 RUNS is a hash-table output containing workflow information
 from `consult-gh--workflow-get-runs'.  Returns a formatted string containing
@@ -15555,7 +16158,9 @@ and is used to preview YAML files."
     :preview-key consult-gh-preview-key))))
 
 (defun consult-gh--run-format (string input highlight)
-  "Format minibuffer candidates for actions runs in `consult-gh-run-list'.
+  "Format minibuffer candidates for actions run instances.
+
+This is used to format candidates in `consult-gh-run-list'.
 
 Description of Arguments:
 
@@ -15629,7 +16234,7 @@ and is used to preview or do other actions on the run."
                         (match-str (consult--build-args query))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
-               (consult-gh--run-view (format "%s" repo) (format "%s" id) buffer t)
+               (consult-gh--run-view (format "%s" repo) (format "%s" id) buffer)
                (with-current-buffer buffer
                  (if consult-gh-highlight-matches
                      (cond
@@ -15765,7 +16370,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             (format "Trigerred via %s about %s by %s and took %ss\n" event age actor elapsed)))))
 
 (defun consult-gh--run-format-job-steps (job)
-  "Format steps of JOB."
+  "Format step section of JOB."
   (when (hash-table-p job)
     (let* ((steps (gethash :steps job))
            (steps-list (when (listp steps)
@@ -15976,6 +16581,98 @@ set `consult-gh-run-action' to `consult-gh--run-rerun-action'."
                      (format "%s" job-id)
                    job-id)))
     (consult-gh--run-rerun repo id job-id)))
+
+(defun consult-gh-dired-line-marked-p ()
+  "Check whether lines is marked."
+  (string-match-p "\*\s" (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
+
+(defun consult-gh-dired--hidden-p (&optional pos)
+  "Whether the character at POS is hidden.
+
+POS defaults to the current point."
+  (eq (get-char-property (or pos (point)) 'invisible) 'consult-gh-dired))
+
+(defun consult-gh--dired-map-over-marks (fun)
+  "Apply FUN on each each marked line."
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (save-excursion
+        (goto-char (point-min))
+        (cl-loop while (consult-gh-dired-next-marked-file)
+                 collect
+                 (funcall fun)))))
+
+(defun consult-gh--dired-get-all-mark-position ()
+  "Get the position of all marked lines."
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (save-excursion
+        (goto-char (point-min))
+        (consult-gh--dired-map-over-marks #'point))))
+
+(defun consult-gh--dired-get-all-files-in-directory ()
+  "Get all files under the directory at the current line."
+  (save-excursion
+    (consult-gh--dired-goto-prev-directory-header)
+    (let* ((parent (get-text-property (point) :parent))
+           (files (cl-loop while (and (< (point) (point-max))
+                               (equal parent (get-text-property (point) :parent)))
+                    do (forward-line +1)
+                    collect  (if (stringp parent)
+                                 (string-remove-prefix parent (get-text-property (point) :path))
+                               (get-text-property (point) :path)))))
+           (cl-remove-duplicates (remove nil files) :test #'equal))))
+
+(defun consult-gh--dired-hide (start end)
+"Hide region from START to END."
+(save-excursion
+    (put-text-property (progn (goto-char start) (line-end-position))
+                       (progn (goto-char end) (line-end-position))
+                       'invisible 'consult-gh-dired)))
+
+(defun consult-gh--dired-unhide (start end)
+  "Unide region from START to END."
+  (save-excursion
+    (let ((inhibit-read-only t))
+      (remove-list-of-text-properties
+       (progn (goto-char start) (line-end-position))
+       (progn (goto-char end) (line-end-position))
+       '(invisible)))))
+
+(defun consult-gh--dired-fold-show-directories ()
+  "Show headers of directories only in `consult-gh-dired-mode'."
+  (save-excursion
+  (goto-char (point-min))
+  (consult-gh--dired-goto-next-directory-header)
+  (let ((inhibit-read-only t))
+    (while (and (< (point) (point-max))
+                (equal (forward-line +1) 0))
+      (unless (equal (get-text-property (line-beginning-position) :mode) "directory")
+        (put-text-property (max (- (line-beginning-position) 1) (point-min)) (line-end-position) 'invisible 'consult-g-dired))))))
+
+(defun consult-gh--dired-fold-show-root-only ()
+"Show only root dir header and directories in `consult-gh-dired-mode'."
+  (save-excursion
+    (consult-gh--dired-unhide (point-min) (point-max))
+    (goto-char (point-min))
+    (while (and (< (point) (point-max))
+                (consult-gh--dired-goto-next-directory-header))
+      (consult-gh-dired-hide-subdir))))
+
+(defun consult-gh--dired-fold-show-all ()
+  "Show all files and directories in `consult-gh-dired-mode'."
+  (save-excursion
+    (if (text-property-any (point-min) (point-max) 'invisible 'consult-gh-dired)
+	         (consult-gh--dired-unhide (point-min) (point-max)))))
+
+(defun consult-gh--dired-undo ()
+  "Undo for `consult-gh-dired-mode'."
+  (let ((inhibit-read-only t))
+    (undo)))
+
+(defun consult-gh--dired-next-line (arg)
+  "Move forward ARG lines."
+  (let ((line-move-visual)
+        (goal-column))
+    (line-move arg t)))
 
 ;;; Minor modes
 
@@ -16241,6 +16938,100 @@ Helps with autocompleting usernames, issue numbers, etc."
          (consult-gh-upload-files-mode-on))
         (t
          (consult-gh-upload-files-mode-off))))
+
+(defvar-keymap consult-gh-dired-mode-map
+  :doc "Keymap for `consult-gh-dired-mode'."
+  "p" #'consult-gh-dired-previous-line
+  "n" #'consult-gh-dired-next-line
+  "S-SPC" #'consult-gh-dired-previous-line
+  "SPC" #'consult-gh-dired-next-line
+  "<remap> <previous-line>" #'consult-gh-dired-previous-line
+  "<remap> <next-line>" #'consult-gh-dired-next-line
+  "+" #'consult-gh-dired-create-file
+  "m" #'consult-gh-dired-mark
+  "* m" #'consult-gh-dired-mark
+  "u" #'consult-gh-dired-unmark
+  "* u" #'consult-gh-dired-unmark
+  "* ?" #'consult-gh-dired-unmark-all-marks
+  "* !" #'consult-gh-dired-unmark-all-marks
+  "U" #'consult-gh-dired-unmark-all-marks
+  "D" #'consult-gh-dired-delete-file
+  "C" #'consult-gh-dired-copy-file
+  "R" #'consult-gh-dired-rename-file
+  "g" #'consult-gh-dired-revert
+  "^" #'consult-gh-dired-up-directory
+  "<" #'consult-gh--dired-goto-prev-directory-header
+  ">" #'consult-gh--dired-goto-next-directory-header
+  "M-{" #'consult-gh-dired-prev-marked-file
+  "M-}" #'consult-gh-dired-next-marked-file
+  "* C-p" #'consult-gh-dired-prev-marked-file
+  "* C-n" #'consult-gh-dired-next-marked-file
+  "$" #'consult-gh-dired-hide-subdir
+  "M-$" #'consult-gh-dired-hide-all
+  "<backtab>" #'consult-gh-dired-fold-cycle
+  "(" #'consult-gh-dired-hide-details
+  "RET" #'consult-gh-dired-find-file
+  "e" #'consult-gh-dired-find-file
+  "f" #'consult-gh-dired-find-file
+  "<mouse-1>" #'consult-gh-dired-mouse-find-file
+  "C-m" #'consult-gh-dired-find-file
+  "o" #'consult-gh-dired-find-file-other-window
+  "<mouse-2>" #'consult-gh-dired-mouse-find-file-other-window
+  "v" #'consult-gh-dired-file-view
+  "<remap> <undo>" #'consult-gh-dired-undo
+  "<remap> <advertised-undo>" #'consult-gh-dired-undo)
+
+(defvar consult-gh--dired-setup-for-evil-done nil
+"Whether the evil key binding setup has been done.")
+
+(defun consult-gh--dired-mode-map-setup-for-evil ()
+  "Setup map in `consult-gh-dired-mode-map' for evil mode (if loaded)."
+  (when (and (fboundp 'evil-define-key*)
+             (not consult-gh--dired-setup-for-evil-done))
+
+    (and (evil-define-key* '(normal) consult-gh-dired-mode-map
+      (kbd "k") #'consult-gh-dired-previous-line
+      (kbd "j") #'consult-gh-dired-next-line
+      (kbd "S-SPC") #'consult-gh-dired-previous-line
+      (kbd "SPC") #'consult-gh-dired-next-line
+      [remap previous-line] #'consult-gh-dired-previous-line
+      [remap next-line] #'consult-gh-dired-next-line
+      (kbd "+") #'consult-gh-dired-create-file
+      (kbd "m") #'consult-gh-dired-mark
+      (kbd "u") #'consult-gh-dired-unmark
+      (kbd "U") #'consult-gh-dired-unmark-all-marks
+      (kbd "D") #'consult-gh-dired-delete-file
+      (kbd "C") #'consult-gh-dired-copy-file
+      (kbd "R") #'consult-gh-dired-rename-file
+      (kbd "RET") #'consult-gh-dired-find-file
+      (kbd "g f") #'consult-gh-dired-find-file
+      (kbd "C-m") #'consult-gh-dired-find-file
+      (kbd "^") #'consult-gh-dired-up-directory
+      (kbd "<") #'consult-gh--dired-goto-prev-directory-header
+      (kbd ">") #'consult-gh--dired-goto-next-directory-header
+      (kbd "g k") #'consult-gh--dired-goto-prev-directory-header
+      (kbd "g j") #'consult-gh--dired-goto-next-directory-header
+      (kbd "[[") #'consult-gh--dired-goto-prev-directory-header
+      (kbd "]]") #'consult-gh--dired-goto-next-directory-header
+      (kbd "M-{") #'consult-gh-dired-prev-marked-file
+      (kbd "M-}") #'consult-gh-dired-next-marked-file
+      (kbd "$") #'consult-gh-dired-hide-subdir
+      (kbd "M-$") #'consult-gh-dired-hide-all
+      (kbd "TAB") #'consult-gh-dired-hide-subdir
+      (kbd "<backtab>") #'consult-gh-dired-fold-cycle
+      (kbd "(") #'consult-gh-dired-hide-details
+      (kbd "S-<return>") #'consult-gh-dired-find-file-other-window
+      (kbd "g 0") #'consult-gh-dired-find-file-other-window
+      (kbd "o") #'consult-gh-dired-find-file-other-window
+      (kbd "g o") #'consult-gh-dired-file-view
+      (kbd "g r") #'consult-gh-dired-revert)
+         (setq consult-gh--dired-setup-for-evil-done t))))
+
+(define-derived-mode consult-gh-dired-mode fundamental-mode "consult-gh-dired"
+  "Major mode for viewing directories."
+  (consult-gh--dired-mode-map-setup-for-evil)
+  (use-local-map consult-gh-dired-mode-map)
+  (setq-local major-mode 'consult-gh-dired-mode))
 
 ;;; Frontend interactive commands
 
@@ -17922,7 +18713,7 @@ URL `https://github.com/minad/consult'."
         (insert commits-text)))))))
 
 (defun consult-gh-pr-view-file-changes (&optional pr)
-  "Insert file changes diff text of PR in current buffer."
+  "Insert file change diff text of PR in current buffer."
   (interactive "P")
   (cond
    (consult-gh-topics-edit-mode
@@ -17941,7 +18732,7 @@ URL `https://github.com/minad/consult'."
         (insert diff-text)))))))
 
 (defun consult-gh-pr-view-comments (&optional pr)
-  "Insert file changes diff text of PR in current buffer."
+  "Insert file change diff text of PR in current buffer."
   (interactive "P" consult-gh-pr-view-mode)
   (when consult-gh-pr-view-mode
   (let* ((pr (or pr consult-gh--topic))
@@ -18542,18 +19333,24 @@ Description of Arguments:
                        (substring-no-properties ref 0 6)
                      (substring-no-properties ref)))
          (new-prompt (if (stringp prompt)
-                         (concat prompt (if path (format " %s" path)))
+                         (concat prompt (if path (format " %s " path)))
                        (concat (format "Find File in %s" repo)
                                (if ref-str (format " [%s]" ref-str))
                                ":"
                                (if path (format " %s" path))
                                " ")))
-         (all-files (if (and path
-                             (stringp path)
-                             (file-name-directory path))
-                        (append (list (list "../" :repo repo :ref ref :url nil :path (file-name-directory (string-remove-suffix "/" path)) :size nil :object-type "tree" :new nil))
-                                (consult-gh--files-list-items repo path ref nil "30s"))
-                      (consult-gh--files-list-items repo path ref nil "30s")))
+         (files-list (consult-gh--files-list-items repo path ref nil "30s"))
+         (all-files (cond
+                     ((and path
+                           (stringp path)
+                           (file-name-directory path))
+                        (append (list (list "../" :repo repo :ref ref :url nil :path (file-name-directory (string-remove-suffix "/" path)) :size nil :object-type "tree" :new nil :mode "040000"))
+                                files-list))
+                     ((and (not path)
+                           consult-gh-files-use-dired-like-mode)
+                      (append (list (list "./" :repo repo :ref ref :url nil :path nil :size nil :object-type "tree" :new nil :mode "040000"))
+                                files-list))
+                     (t files-list)))
          (candidates (remove nil (mapcar (lambda (item)
                                                      (when (consp item)
                                                        (consult-gh--file-format item)))
@@ -18678,7 +19475,9 @@ Description of Arguments:
         consult-gh--current-tempdir (consult-gh--tempdir))
   (let* ((repo (or repo
                    (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
-         (sel (consult-gh--files-read-file repo ref path initial)))
+         (sel (if consult-gh-files-use-dired-like-mode
+                  (consult-gh--files-read-file repo ref path initial nil nil t)
+                  (consult-gh--files-read-file repo ref path initial))))
     (when sel
         ;;add org and repo to known lists
         (when-let ((reponame (get-text-property 0 :repo sel)))
@@ -18738,7 +19537,7 @@ When COMMIT-BUFFER is non-nil, use it for commiting the edits."
 
 ;;;###autoload
 (defun consult-gh-push-file ()
-"Make a commit to push changes on FILE to GitHub."
+"Make a commit to push FILE change to GitHub."
 (interactive nil consult-gh-file-view-mode)
 (consult-gh-with-host
  (consult-gh--auth-account-host)
@@ -18925,6 +19724,90 @@ buffer-local-variable `consult-gh--topic' in a buffer created by
          (let* ((newtopic (or topic (and (stringp topic) topic) (format "%s/%s/%s" repo ref path))))
            (add-text-properties 0 1 (list :title nil :repo repo :ref ref :path path :dir dir :files files) newtopic)
            (consult-gh--files-upload-dired newtopic files)))))))
+
+;;;###autoload
+(defun consult-gh-rename-file (&optional file)
+  "Rename FILE.
+
+FILE is a string with properties that describes repo, ref, and the
+path of the file to delete.  For example see the buffer-local-variable
+`consult-gh--topic' in a buffer created by
+`consult-gh-file-view'."
+  (interactive)
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((file (or file
+                    (and (stringp consult-gh--topic)
+                         (equal (get-text-property 0 :type consult-gh--topic) "file")
+                         consult-gh--topic)
+                    (consult-gh--files-read-file nil nil nil nil "File Name: " t t nil 'branch)))
+          (repo (get-text-property 0 :repo file))
+          (canwrite (consult-gh--user-canwrite repo))
+          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+          (_ (if (not canwrite)
+                 (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+          (ref (or (get-text-property 0 :ref file)
+                   (get-text-property 0 :branch (consult-gh--read-branch repo nil nil t nil))
+                   (or consult-gh-default-branch-to-load "HEAD")))
+          (ref (cond
+                ((or (equal ref "HEAD") (equal ref ""))
+                 (consult-gh--repo-get-default-branch repo))
+                ((and (stringp ref)
+                      (not (string-empty-p ref))
+                      (substring-no-properties ref)))))
+          (size (get-text-property 0 :size file))
+          (mode (get-text-property 0 :mode file))
+          (old-path (and (stringp file)
+                         (not (string-empty-p file))
+                         (get-text-property 0 :path file)))
+          (old-path (and (stringp old-path)
+                         (not (string-empty-p old-path))
+                         old-path))
+          (old-file-name (and (stringp old-path)
+                              (file-name-nondirectory old-path)))
+          (parent (cond
+                   ((equal mode "directory")
+                    (and (stringp old-path)
+                         (file-name-directory old-path)))
+                   (t
+                    (and (stringp old-path)
+                         (file-name-directory old-path)))))
+          (new-file (consult-gh--files-read-file repo ref (if (stringp parent)
+                                                              parent
+                                                            nil)
+                                                 old-file-name "Enter New File Path: " nil nil nil nil))
+          (new-path (and (stringp new-file)
+                         (not (string-empty-p new-file))
+                         (get-text-property 0 :path new-file)))
+          (new-path (and (stringp new-path)
+                         (not (string-empty-p new-path))
+                         new-path))
+          (view-buffer (if (or (equal mode "file")
+                               (equal mode "symlink"))
+                         (consult-gh--files-view repo old-path nil t nil nil ref)))
+          (content (and (bufferp view-buffer)
+                        (buffer-live-p view-buffer)
+                        (with-current-buffer view-buffer
+                              (widen)
+                              (buffer-substring-no-properties (point-min) (point-max))))))
+     (when (stringp new-path)
+       (add-text-properties 0 1 (list :repo repo
+                                     :old-path (substring-no-properties old-path)
+                                     :new-path (substring-no-properties new-path)
+                                     :mode mode
+                                     :size size
+                                     :ref ref
+                                     :class "file"
+                                     :type "file"
+                                     :object-type "blob"
+                                     :view-buffer view-buffer
+                                     :content content
+                                     :new t)
+                            new-path))
+         (and repo old-path new-path
+              (if (not (equal new-path old-path))
+                  (consult-gh--files-rename repo (list new-path) ref)
+                (message "%s" (propertize "The new file path is the same as old one. Nothing to change!" 'face 'warning)))))))
 
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
@@ -20034,7 +20917,7 @@ INPUT."
              (consult-gh--run-format cand input nil))))
 
 (defun consult-gh--run-list-builder (workflow input)
-  "Build gh command line for listing runs of the INPUT repository.
+  "Build gh command line for listing workflow run in INPUT repository.
 
 WORKFLOW is an optional workflow id to further filter runs by a given
 workflow.
@@ -20062,7 +20945,7 @@ e.g. “armindarvish/consult-gh”."
         (cons (append cmd opts) nil)))))
 
 (defun consult-gh--async-run-list (prompt builder &optional initial min-input)
-  "List action runs of GitHub repos asynchronously.
+  "List action run instances of GitHub repos asynchronously.
 
 This is a non-interactive internal function.
 For the interactive version see `consult-gh-workflow-list'.
@@ -20114,7 +20997,7 @@ Description of Arguments:
 
 ;;;###autoload
 (defun consult-gh-run-list (&optional initial noaction prompt min-input workflow)
-  "Interactively list action runs of a GitHub repository.
+  "Interactively list action run instances of a GitHub repository.
 
 This is an interactive wrapper function around `consult-gh--async-run-list'.
 With prefix ARG, first search for a repo using `consult-gh-search-repos',
@@ -21079,6 +21962,913 @@ Calls the function in `consult-gh-default-interactive-command'
 and passes ARGS to it."
   (interactive)
   (apply (or consult-gh-default-interactive-command #'consult-gh-search-repos) args))
+
+(defun consult-gh-dired (&optional repo path ref buffer no-select)
+  "Open consult-gh REPO contents in REF at PATH in a dired-like BUFFER.
+
+Description of Arguments:
+
+  REPO      a string; full name of a repository.
+  PATH      a string; path of file in repo to copy.
+  REF       a string; the name of a branch or tag in REPO.
+  BUFFER    a buffer; the bufffer to open contents in.
+  NO-SELECT a boolean; when non-nil do not switch to buffer."
+  (interactive)
+  (let* ((repo (or repo  (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
+         (ref (or ref (substring-no-properties (consult-gh--read-ref repo))
+                  (or consult-gh-default-branch-to-load "HEAD")))
+         (tempdir (expand-file-name (concat repo "/" ref "/")
+                                    (or consult-gh--current-tempdir (consult-gh--tempdir))))
+         (topic (format "%s/%s" repo path))
+         (buffer (or (and (bufferp buffer)
+                          buffer)
+                     (and buffer
+                          (stringp buffer)
+                          (get-buffer-create buffer))
+                     (get-buffer-create (format "consult-gh-dired-%s[%s]):%s" repo ref (or path "root")))))
+         (path (if (equal path "./") nil path))
+         (files-list (consult-gh--files-list-items repo path ref nil))
+         (files-list (if (and path (stringp path))
+                         (append (list (list ".." :repo repo :ref ref :url nil :path (and (stringp path) (file-name-directory path)) :size nil :object-type "tree" :new nil :mode "040000" :type "directory"))
+                                 files-list)
+                       (append (list (list "." :repo repo :ref ref :url nil :path nil :size nil :object-type "tree" :new nil :mode "040000" :type "directory"))
+                               files-list)))
+         (files-list (and (listp files-list)
+                          (mapcar (lambda (item) (when (and (consp item)
+                                                            (plistp (cdr item)))
+                                                   (let* ((item-path (plist-get (cdr item) :path))
+                                                          (item-type (plist-get (cdr item) :object-type))
+                                                          (item-size (plist-get (cdr item) :size))
+                                                          (item-mode (plist-get (cdr item) :mode))
+                                                          (item-mode (pcase item-mode
+                                                                       ("100644" "file")
+                                                                       ("100755" "exec file")
+                                                                       ("040000" "directory")
+                                                                       ("160000" "commit")
+                                                                       ("120000" "symlink"))))
+                                                     (cond
+                                                      ((equal item-mode "directory")
+                                                       (propertize (concat
+                                                                    (if (and (stringp item-path)
+                                                                             (equal (file-name-as-directory item-path) "./"))
+                                                                        nil
+                                                                      "./")
+                                                                    (and (stringp item-path)
+                                                                         (file-name-as-directory item-path))
+                                                                    ":")
+                                                                   :type "file"
+                                                                   :mode item-mode
+                                                                   :path item-path
+                                                                   :size item-size
+                                                                   :parent (and (stringp item-path)
+(file-name-directory (file-name-as-directory item-path)))
+                                                                   'face 'dired-directory
+                                                                   'help-echo "mouse-2: visit this directory in other window"
+                                                                   'mouse-face 'highlight
+))
+                                                      ((equal item-mode "file")
+                                                       (cond
+                                                        ((and (stringp item-path)
+                                                              (file-name-directory item-path))
+                                                         (propertize (file-name-nondirectory item-path)
+                                                                     :type "file"
+                                                                     :path item-path
+                                                                     :mode item-mode
+                                                                     :parent (file-name-directory item-path)
+                                                                     :size item-size
+                                                                     'face 'default
+                                                                     'help-echo "mouse-2: visit this file in other window"
+                                                                     'mouse-face 'highlight))
+                                                        ((stringp item-path)
+                                                         (propertize (concat "./" (file-name-nondirectory item-path))
+                                                                     :type "file"
+                                                                     :object-type item-type
+                                                                     :path item-path
+                                                                     :mode item-mode
+                                                                     :size item-size
+                                                                     :parent (file-name-directory item-path)
+                                                                     'face 'default
+                                                                     'help-echo "mouse-2: visit this file in other window"
+                                                                     'mouse-face 'highlight))))
+                                                      ((equal item-mode "commit")
+                                                       (cond
+                                                        ((and (stringp item-path)
+                                                              (file-name-directory item-path))
+                                                         (propertize (file-name-nondirectory item-path)
+                                                                     :type "file"
+                                                                     :object-type item-type
+                                                                     :path item-path
+                                                                     :size item-size
+                                                                     :mode item-mode
+                                                                     :parent (file-name-directory item-path)
+                                                                     'face 'dired-special
+                                                                     'mouse-face 'highlight))
+                                                        ((stringp item-path)
+                                                         (propertize (concat "./" (file-name-nondirectory item-path))
+                                                                     :type "file"
+                                                                     :object-type item-type
+                                                                     :path item-path
+                                                                     :mode item-mode
+                                                                     :size item-size
+                                                                     :parent (file-name-directory item-path)
+                                                                     'face 'dired-special
+                                                                     'mouse-face 'highlight))))
+                                                      ((equal item-mode "symlink")
+                                                       (cond
+                                                        ((and (stringp item-path)
+                                                              (file-name-directory item-path))
+                                                         (propertize (file-name-nondirectory item-path)
+                                                                     :type "file"
+                                                                     :object-type item-type
+                                                                     :path item-path
+                                                                     :mode item-mode
+                                                                     :size item-size
+                                                                     :parent (file-name-directory item-path)
+                                                                     'face 'dired-symlink
+                                                                     'mouse-face 'highlight))
+                                                        ((stringp item-path)
+                                                         (propertize (concat "./" (file-name-nondirectory item-path))
+                                                                     :type "file"
+                                                                     :object-type item-type
+                                                                     :path item-path
+                                                                     :mode item-mode
+                                                                     :size item-size
+                                                                     :parent (file-name-directory item-path)
+                                                                     'face 'dired-symlink
+                                                                     'mouse-face 'highlight))))
+                                                      (t
+                                                       (cond
+                                                        ((and (stringp item-path)
+                                                              (file-name-directory item-path))
+                                                         (propertize (file-name-nondirectory item-path)
+                                                                     :type "file"
+                                                                     :object-type item-type
+                                                                     :path item-path
+                                                                     :mode item-mode
+                                                                     :size item-size
+                                                                     :parent (file-name-directory item-path)
+                                                                     'face 'default
+                                                                     'help-echo "mouse-2: visit this file in other window"
+                                                                     'mouse-face 'highlight))
+                                                        ((stringp item-path)
+                                                         (propertize (concat "./" (file-name-nondirectory item-path))
+                                                                     :type "file"
+                                                                     :object-type item-type
+                                                                     :path item-path
+                                                                     :mode item-mode
+                                                                     :size item-size
+                                                                     :parent (file-name-directory item-path)
+                                                                     'face 'default
+                                                                     'help-echo "mouse-2: visit this file in other window"
+                                                                     'mouse-face 'highlight))))))))
+                                  files-list)))
+         (files-list (mapcar (lambda (file) (concat (apply #'propertize (make-string (+ (cl-count ?/ (get-text-property 0 :parent file)) 2)  ?\s) (text-properties-at 0 file)) file "\t" (if (get-text-property 0 :size file)
+(apply #'propertize (file-size-human-readable (get-text-property 0 :size file)) 'face 'consult-gh-visibility 'consult-gh-dired-details t (text-properties-at 0 file))))) files-list))
+         (files (and (listp files-list)
+                     (mapconcat #'identity (sort files-list (lambda (x y)
+                                                              (let ((x-parent (or (get-text-property 0 :parent x) ""))
+                                                                    (y-parent (or (get-text-property 0 :parent y) "")))
+                                                                (string< x-parent y-parent))))
+
+                                "\n"))))
+    (unless (file-exists-p tempdir)
+      (make-directory tempdir t))
+    (when (stringp files)
+      (with-current-buffer buffer
+        (save-excursion
+          (read-only-mode -1)
+          (erase-buffer)
+          (insert (propertize (concat repo ":" (if (stringp path) (format " ./%s" path))) 'face 'dired-header)
+                  "\n\n")
+          (if (and (stringp path)
+                   (not (equal path "./")))
+              (insert (propertize (concat "  ./" (file-name-directory (string-remove-suffix "/" path)) ": ")
+                                  'face 'dired-directory
+                                  :type "directory"
+                                  :mode "directory"
+                                  :object-type "tree"
+                                  :path (or (and (stringp path)
+                                                 (file-name-directory (string-remove-suffix "/" path)))
+                                            "./")
+                                  'help-echo "mouse-2: visit this file in other window"
+                                  'mouse-face 'highlight)
+                      "\n"))
+          (insert files)
+          (goto-char (point-min))
+          (while (< (point) (point-max))
+            (let ((parent (get-text-property (point) :parent)))
+              (forward-line)
+              (let ((new-parent (get-text-property (point) :parent)))
+                (if (not (equal new-parent parent))
+                    (insert "\n")
+                  (setq parent new-parent)))))
+          (add-text-properties 0 1 (list :repo repo :path path :ref ref :tempdir tempdir) topic)
+          (consult-gh-dired-mode)
+          (setq-local consult-gh--topic topic)
+          (setq-local default-directory tempdir)
+          (read-only-mode +1))
+        (unless no-select (switch-to-buffer (current-buffer)))
+        (current-buffer)))))
+
+(defun consult-gh-dired-revert ()
+"Revert current `consult-gh-dired-mode' buffer."
+(interactive nil consult-gh-dired-mode)
+ (if (derived-mode-p 'consult-gh-dired-mode)
+  (when (derived-mode-p 'consult-gh-dired-mode)
+    (let* ((topic consult-gh--topic)
+           (repo (get-text-property 0 :repo topic))
+           (path  (get-text-property 0 :path topic))
+           (ref  (get-text-property 0 :ref topic))
+           (pos (point)))
+      (consult-gh-dired repo path ref (current-buffer))
+      (goto-char (min pos (point-max)))
+      (recenter-top-bottom)))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-find-file (&optional find-func path repo ref mode no-select )
+  "Open the file at path in `consult-gh-dired-mode'.
+
+PATH defaults to the file path named on the current line in
+`consult-gh-dired'.
+
+This is used to visit files when in `consult-gh-dired-mode'.
+
+Description of Arguments:
+  FIND-FUNC  a function; function to use instead of `find-file'.
+  PATH       a string; path of the file to copy.
+  REPO       a string; full name of a repository.
+  REF        a string; the name of a branch or tag in REPO.
+  MODE       a string; mode of object “file”, “directory”, “symlink”
+             or “commit”.
+  NO-SELECT  a boolean; when non-nil do not switch to buffer."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (let* ((topic consult-gh--topic)
+             (repo (or repo (get-text-property 0 :repo topic)))
+             (ref (or ref (get-text-property 0 :ref topic)))
+             (tempdir (or (get-text-property 0 :tempdir topic)
+                          (expand-file-name (concat repo "/" ref "/")
+                                        (or consult-gh--current-tempdir (consult-gh--tempdir)))))
+             (mode (or mode (get-text-property (point) :mode)))
+             (path (or path (get-text-property (point) :path)))
+             (api-url (and repo path
+                           (concat (format "repos/%s/contents/%s" repo path) (if ref (format "?ref=%s" ref)))))
+             (info (consult-gh--api-get-command-string api-url))
+             (git-url (consult-gh--json-to-hashtable info :git_url)))
+
+        (cond
+         ((and (or (equal mode "file")  (equal mode "symlink")) (stringp path))
+          (if no-select
+              (consult-gh--files-view repo path git-url t tempdir nil ref)
+            (consult-gh--files-view repo path git-url nil tempdir nil ref nil find-func)))
+         ((and (equal mode "commit") (stringp path))
+          (let* ((type (consult-gh--json-to-hashtable info :type)))
+            (if (equal type "submodule")
+                (let* ((git-url (consult-gh--json-to-hashtable info :submodule_git_url))
+                       (module-sha (consult-gh--json-to-hashtable info :sha))
+                       (module-sha (and (stringp module-sha) (propertize module-sha :type "sha")))
+                       (urlparsed (url-generic-parse-url git-url))
+                       (urlhost (and urlparsed (url-host urlparsed)))
+                       (urlpath (car-safe (and urlparsed (url-path-and-query urlparsed)))))
+                  (cond
+                   ((stringp urlhost)
+                    (cond
+                     ((string-match-p ".*github.*" urlhost)
+                      (consult-gh-dired (string-remove-suffix ".git" (string-remove-prefix "/" urlpath)) nil module-sha))
+                    (t
+                      (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to browse the link:  %s? " git-url))
+                      (funcall consult-gh-browse-url-func git-url))))
+                  ((and (stringp urlpath)
+                        (string-match-p "git@.*" urlpath))
+                   (cond
+                    ((string-match "git@.*github.com:\\(?1:.*\\)" urlpath)
+                    (consult-gh-dired (string-remove-prefix "/" (string-remove-suffix ".git" (match-string 1 urlpath))) nil module-sha))
+                    ((string-match "git@.*gitlab.com:\\(?1:.*\\)" urlpath)
+                     (let ((submodule-link (format "https://gitlab.com/%s" (match-string 1 urlpath))))
+                        (and (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to open the link:  %s in the browser? " (propertize submodule-link 'face 'consult-gh-wraning)))
+                    (funcall consult-gh-browse-url-func submodule-link))))
+                    (t
+                      (message "Do not know how to open the submodule: %s" git-url)))))))))
+         ((equal mode "directory")
+          (if no-select
+              nil
+            (consult-gh-dired repo (or (and (stringp path)
+                                            (file-name-as-directory path))
+                                       path)
+                              ref (and consult-gh-files-reuse-dired-like-buffer
+(current-buffer)))))
+         (t
+          (message "No file on this line"))))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-find-file-other-window (&optional _find-func path repo ref mode no-select)
+  "Open the file at path in other window.
+
+PATH defaults to the file path named on the current line in
+`consult-gh-dired'.
+
+For description of PATH, REPO, REF, MODE, and NO-SELECT
+see `consult-gh-dired-find-file'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (consult-gh-dired-find-file #'find-file-other-window path repo ref mode no-select)
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-mouse-find-file (event &optional find-func)
+  "Visit the file or directory name you click on.
+
+Description of Arguments:
+  EVENT      a click, drag, touch screen, or key press event.
+  FIND-FUNC  a function; function to use instead of
+             `consult-gh-dired-find-file'."
+  (interactive "e" consult-gh-dired-mode)
+  (let* ((find-func (or find-func #'consult-gh-dired-find-file))
+         (window (posn-window (event-end event)))
+         (pos (posn-point (event-end event))))
+    (if (not (windowp window))
+	(error "No file chosen"))
+    (with-current-buffer (window-buffer window)
+      (save-mark-and-excursion
+        (goto-char pos)
+        (funcall find-func)))))
+
+(defun consult-gh-dired-mouse-find-file-other-window (event &optional find-func)
+  "Visit the file or directory name you click on in other window.
+
+For description of EVENT and FIND-FUNC,
+see `consult-gh-dired-mouse-find-file'."
+  (interactive "e" consult-gh-dired-mode)
+  (consult-gh-dired-mouse-find-file event (or find-func #'consult-gh-dired-find-file-other-window)))
+
+(defun consult-gh-dired-file-view (&optional _find-func path repo ref mode _no-select)
+  "Open the file at path in other window.
+
+PATH defaults to the file path named on the current line in
+`consult-gh-dired'.
+
+For description of PATH, REPO, REF, and MODE
+see `consult-gh-dired-find-file'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (view-buffer (consult-gh-dired-find-file nil path repo ref mode t))
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-delete-file ()
+  "Delete marked files or the file at point."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (let* ((topic consult-gh--topic)
+             (repo (get-text-property 0 :repo topic))
+             (ref (get-text-property 0 :ref topic))
+             (paths (list)))
+
+        (setq paths (or (consult-gh--dired-map-over-marks (lambda () (get-text-property (point) :path)))
+                        (and (region-active-p)
+                             (save-mark-and-excursion
+                               (let* ((start (region-beginning))
+                                      (end (region-end)))
+                               (goto-char start)
+                               (while (< (point) end)
+                                 (setq paths (append paths (list (get-text-property (line-beginning-position) :path))))
+                                 (if (< (line-end-position) end)
+                                         (forward-line +1)
+                                       (goto-char end)))
+                               paths)))
+                        (list (get-text-property (point) :path))))
+        (when (listp paths)
+          (setq paths (remove nil (cl-remove-duplicates paths :test #'equal))))
+         (consult-gh--files-delete repo paths ref))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-create-file ()
+  "Create a new file in `consult-gh-dired-mode'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (let* ((topic consult-gh--topic)
+             (repo (get-text-property 0 :repo topic))
+             (ref (get-text-property 0 :ref topic))
+             (path (get-text-property (point) :path))
+             (dir (and (stringp path) (file-name-directory path)))
+             (dir (if dir (file-name-as-directory dir)))
+             (dir-name (or dir "./"))
+             (file-name (read-string (concat "File Name: "
+                                             (if (stringp path)
+                                                 dir-name))))
+             (new-path (concat dir file-name))
+             (file (format "%s/%s" repo path)))
+
+        (add-text-properties 0 1 (list :repo repo
+                                       :type "file"
+                                       :mode "file"
+                                       :path new-path
+                                       :ref ref
+                                       :title nil
+                                       :url nil
+                                       :changed-locally nil
+                                       :new t
+                                       :object-type "blob")
+                             file)
+        (consult-gh-create-file file))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-copy-file ()
+  "Copy file(s) in `consult-gh-dired-mode'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (when (equal (get-text-property (point) :type) "file")
+        (let* ((topic consult-gh--topic)
+               (repo (get-text-property 0 :repo topic))
+               (ref (get-text-property 0 :ref topic))
+               (files (list)))
+
+          (setq files (or (consult-gh--dired-map-over-marks (lambda () (text-properties-at (point))))
+                          (and (region-active-p)
+                               (save-mark-and-excursion
+                                 (let* ((start (region-beginning))
+                                       (end (region-end)))
+                                   (goto-char start)
+                                   (while (< (point) end)
+                                     (setq files (append files (list (text-properties-at (point)))))
+                                     (if (< (line-end-position) end)
+                                         (forward-line +1)
+                                       (goto-char end)))
+                                   files)))
+                          (list (text-properties-at (point)))))
+
+          (cond
+           ((length= files 1)
+            (let* ((file (car files))
+                   (path (plist-get file :path))
+                   (parent (plist-get file :parent))
+                   (old-file-name (and (stringp path)
+                                       (file-name-nondirectory path)))
+                   (new-path (consult-gh--files-read-file repo ref (if (stringp parent)
+                                                                       parent
+                                                                     nil)
+                                                          old-file-name "Enter New File Path: " nil nil nil nil))
+                   (tries 0)
+                   (new-path (if (and (stringp new-path)
+                                      (get-text-property 0 :existing new-path))
+                                 (while (< tries 3)
+                                   (cl-incf tries)
+                                   (consult-gh--files-read-file repo ref (if (stringp parent)
+                                                                             parent
+                                                                           nil)
+                                                                old-file-name "Enter New File Path: " nil nil nil nil))
+                               new-path))
+                   (new-path (and (stringp new-path)
+                                  (not (string-empty-p new-path))
+                                  (get-text-property 0 :path new-path)))
+                   (view-buffer (consult-gh-dired-find-file nil path repo ref "file" t))
+                   (content (with-current-buffer view-buffer
+                              (widen)
+                              (buffer-substring (point-min) (point-max)))))
+               (when (stringp new-path)
+                 (add-text-properties 0 1 (list :repo repo
+                                                :path new-path
+                                                :url nil
+                                                :mode "file"
+                                                :size nil
+                                                :ref ref
+                                                :sha nil
+                                                :class "file"
+                                                :type "file"
+                                                :object-type "blob"
+                                                :content content
+                                                :view-buffer view-buffer
+                                                :new t)
+                                      new-path))
+              (consult-gh--create-commit (list new-path) repo ref nil)))
+
+           ((length> files 1)
+            (let* ((new-dir (consult--read (mapcar #'consult-gh--file-format (append (list (list "." :repo repo :ref ref :url nil :path nil :size nil :object-type "tree" :type "directory" :mode "directory" :new nil))
+                                                                                     (consult-gh--files-directory-items repo nil ref nil)))
+                                           :prompt "Select Directory: "
+                                           :lookup #'consult-gh--file-lookup))
+                   (files-list (remove nil (cl-loop for file in files
+                                        collect
+                                        (let* ((path (plist-get file :path))
+                                               (old-file-name (and (stringp path)
+                                                                   (file-name-nondirectory path)))
+                                               (new-path (and (stringp path)
+                                                              (stringp new-dir)
+                                                              (concat  (file-name-as-directory new-dir) old-file-name)))
+                                               (view-buffer (consult-gh-dired-find-file nil path repo ref "file" t))
+                                               (content (with-current-buffer view-buffer
+                                                          (widen)
+                                                          (buffer-substring-no-properties (point-min) (point-max)))))
+                                          (when (stringp new-path)
+
+                                            (add-text-properties 0 1 (list :repo repo
+                                                                           :path new-path
+                                                                           :url nil
+                                                                           :mode "file"
+                                                                           :size nil
+                                                                           :ref ref
+                                                                           :sha nil
+                                                                           :class "file"
+                                                                           :type "file"
+                                                                           :object-type "blob"
+                                                                           :content content
+                                                                           :view-buffer view-buffer
+                                                                           :new t)
+                                                                 new-path)
+                                            new-path))))))
+              (consult-gh--create-commit files-list repo ref nil))))))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-rename-file ()
+  "Rename or Move file(s) in `consult-gh-dired-mode'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (let* ((topic consult-gh--topic)
+             (repo (get-text-property 0 :repo topic))
+             (ref (get-text-property 0 :ref topic))
+             (files (list)))
+
+        (setq files (or (consult-gh--dired-map-over-marks (lambda () (text-properties-at (point))))
+                        (and (region-active-p)
+                             (save-mark-and-excursion
+                               (let* ((start (region-beginning))
+                                      (end (region-end)))
+                                 (goto-char start)
+                                 (while (< (point) end)
+                                   (setq files (append files (list (text-properties-at (point)))))
+                                   (if (< (line-end-position) end)
+                                       (forward-line +1)
+                                     (goto-char end)))
+                                 files)))
+                        (list (text-properties-at (point)))))
+
+        (cond
+         ((and (length= files 1)
+               (plist-get (car files) :type))
+          (let* ((file (car files))
+                 (path (plist-get file :path))
+                 (mode (plist-get file :mode))
+                 (object-type (plist-get file :object-type))
+                 (parent (plist-get file :parent))
+                 (parent (if (equal mode "directory")
+                             (and (stringp parent)
+                                  (file-name-directory (string-remove-suffix "/" parent)))
+                           parent))
+                 (old-file-name (and (stringp path)
+                                     (file-name-nondirectory path)))
+                 (new-file (consult-gh--files-read-file repo ref (if (stringp parent)
+                                                                     parent
+                                                                   nil)
+                                                        old-file-name "Enter New File Path: " nil nil nil nil))
+                 (new-file (if (and (stringp new-file)
+                                    (get-text-property 0 :existing new-file))
+                               (pcase (consult--read (list
+                                                      (cons "Choose a different path/name" :reselect)
+                                                      (cons "Update the existing file" :update))
+                                       :prompt "A file with that name already exists.  What do you want to do?"
+                                       :lookup #'consult--lookup-cdr)
+                                 (':reselect (consult-gh--files-read-file repo ref (file-name-directory (get-text-property 0 :path new-file))
+                                                                          (file-name-nondirectory (get-text-property 0 :path new-file)) "Enter New File Path: " nil nil nil nil))
+                                 (':update new-file))
+                             new-file))
+                 (new-path (and (stringp new-file)
+                                (not (string-empty-p new-file))
+                                (get-text-property 0 :path new-file)))
+                 (view-buffer (if (or (equal mode "file")
+                                          (equal mode "symlink"))
+                                (consult-gh--files-view repo path nil t nil nil ref)))
+                 (content (and (bufferp view-buffer)
+                               (buffer-live-p view-buffer)
+                               (with-current-buffer view-buffer
+                                 (widen)
+                                 (buffer-substring-no-properties (point-min) (point-max))))))
+
+            (when (stringp new-path)
+              (add-text-properties 0 1 (list :repo repo
+                                             :old-path (substring-no-properties path)
+                                             :new-path (substring-no-properties new-path)
+                                             :url nil
+                                             :mode mode
+                                             :size nil
+                                             :ref ref
+                                             :sha nil
+                                             :class "file"
+                                             :type "file"
+                                             :object-type object-type
+                                             :content content
+                                             :view-buffer view-buffer
+                                             :new t)
+                                   new-path))
+            (if (not (equal new-path path))
+                (consult-gh--rename-commit (list new-path) repo ref)
+              (message "%s" (propertize "The new file path is the same as old one. Nothing to change!" 'face 'warning)))))
+
+         ((length> files 1)
+          (let* ((new-dir (consult--read (mapcar #'consult-gh--file-format (append (list (list "." :repo repo :ref ref :url nil :path nil :size nil :object-type "tree" :type "directory" :mode "directory" :new nil))
+                                                                                   (consult-gh--files-directory-items repo nil ref nil)))
+                                         :prompt "Move file(s) to: "
+                                         :lookup #'consult-gh--file-lookup))
+                 (files-list (remove nil (cl-loop for file in files
+                                                  collect
+                                                  (if (or (equal (plist-get file :mode) "file")
+                                                          (equal (plist-get file :mode) "symlink"))
+                                                  (let* ((path (plist-get file :path))
+                                                         (mode (plist-get file :mode))
+                                                         (object-type (plist-get file :object-type))
+                                                         (old-file-name (and (stringp path)
+                                                                             (file-name-nondirectory path)))
+                                                         (new-path (and (stringp path)
+                                                                        (stringp new-dir)
+                                                                        (concat  (file-name-as-directory new-dir) old-file-name)))
+                                                         (view-buffer (if (or (equal mode "file")
+                                                                              (equal mode "symlink"))
+                                                                        (consult-gh--files-view repo path nil t nil nil ref)))
+                                                         (content (and (bufferp view-buffer)
+                                                                       (buffer-live-p view-buffer)
+                                                                       (with-current-buffer view-buffer
+                                                                         (widen)
+                                                                         (buffer-substring-no-properties (point-min) (point-max))))))
+            (when (stringp new-path)
+              (add-text-properties 0 1 (list :repo repo
+                                             :old-path path
+                                             :new-path new-path
+                                             :url nil
+                                             :mode mode
+                                             :size nil
+                                             :ref ref
+                                             :sha nil
+                                             :class "file"
+                                             :type "file"
+                                             :object-type object-type
+                                             :content content
+                                             :view-buffer view-buffer
+                                             :new t)
+                                   new-path)
+              (if (not (equal new-path path))
+                  new-path
+                (message "Skipping %s beacuse %s" (propertize path 'face 'consult-gh-date) (propertize "The new file path is the same as old one for this file!" 'face 'warning))))))))))
+            (consult-gh--rename-commit files-list repo ref)))))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh--dired-goto-prev-directory-header ()
+  "Move mark to the previous directory header."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (progn
+        (goto-char (line-beginning-position))
+        (when (and (equal (get-text-property (line-beginning-position) :mode) "directory")
+                   (equal last-command #'consult-gh--dired-goto-prev-directory-header))
+          (forward-line -1))
+        (while (and (> (point) (point-min))
+                    (or (not (equal (get-text-property (line-beginning-position) :mode) "directory"))
+                        (equal (get-text-property (point) 'invisible) 'consult-gh-dired)))
+          (forward-line -1))
+        (if (save-excursion (equal (forward-line -1) 0))
+            (progn (goto-char (line-beginning-position))
+                   (point))
+          (progn
+            (message "%s" (propertize "Beginning of buffer!" 'face 'warning))
+            nil)))
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh--dired-goto-next-directory-header ()
+  "Move mark to the next directory header."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (progn
+        (when (equal (get-text-property (line-beginning-position) :mode) "directory")
+          (forward-line +1))
+        (while (and (< (point) (point-max))
+                    (or (not (equal (get-text-property (line-beginning-position) :mode) "directory"))
+                        (equal (get-text-property (point) 'invisible) 'consult-gh-dired)))
+          (forward-line +1))
+        (if (save-excursion (equal (forward-line +1) 0))
+            (progn (goto-char (line-beginning-position))
+                   (point))
+          (progn
+            (message "%s" (propertize "End of buffer!" 'face 'warning))
+            nil)))
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-mark ()
+  "Mark file in `consult-gh-dired-mode'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (let* ((inhibit-read-only t)
+             (mode (get-text-property (point) :mode)))
+        (cond
+         ((or (equal mode "file") (equal mode "symlink"))
+          (unless (consult-gh-dired-line-marked-p)
+            (save-excursion
+              (goto-char (line-beginning-position))
+              (delete-char 1)
+              (add-text-properties (line-beginning-position) (line-end-position) (list ' face 'dired-marked))
+              (insert (apply #'propertize "*" (append (list 'face 'dired-mark)
+                                                      (text-properties-at (line-beginning-position))))))
+            (forward-line +1)))
+         ((equal mode "directory")
+          (let ((parent (get-text-property (point) :parent)))
+            (save-excursion
+              (forward-line)
+              (while (equal (get-text-property (point) :parent) parent)
+                (unless (consult-gh-dired-line-marked-p)
+                  (when (or (equal (get-text-property (point) :mode) "file")
+                            (equal (get-text-property (point) :mode) "symlink"))
+                    (goto-char (line-beginning-position))
+                    (delete-char 1)
+                    (add-text-properties (line-beginning-position) (line-end-position) (list ' face 'dired-marked))
+                    (insert (apply #'propertize "*" (append (list 'face 'dired-mark)
+                                                            (text-properties-at (line-beginning-position))))))
+                  (forward-line))))
+            (consult-gh--dired-goto-next-directory-header)))
+         ((equal mode "commit")
+          (message "Cannot operate on submodules!"))))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-unmark ()
+  "Unmark file in `consult-gh-dired-mode'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (let* ((inhibit-read-only t)
+             (mode (get-text-property (point) :mode)))
+        (cond
+         ((equal mode "file")
+          (when (consult-gh-dired-line-marked-p)
+            (save-excursion
+              (goto-char (line-beginning-position))
+              (delete-char 1)
+              (insert (apply #'propertize " " (append (text-properties-at (line-beginning-position))
+                                                      (list 'face 'dired-mark))))
+              (add-text-properties (line-beginning-position) (line-end-position) (list 'face 'default)))
+            (forward-line +1)))
+         ((equal mode "symlink")
+          (when (consult-gh-dired-line-marked-p)
+            (save-excursion
+              (goto-char (line-beginning-position))
+              (delete-char 1)
+              (insert (apply #'propertize " " (append (text-properties-at (line-beginning-position))
+                                                      (list 'face 'dired-mark))))
+              (add-text-properties (line-beginning-position) (line-end-position) (list 'face 'dired-symlink)))
+            (forward-line +1)))
+         ((equal mode "commit")
+          (when (consult-gh-dired-line-marked-p)
+            (save-excursion
+              (goto-char (line-beginning-position))
+              (delete-char 1)
+              (insert (apply #'propertize " " (append (text-properties-at (line-beginning-position))
+                                                      (list 'face 'dired-mark))))
+              (add-text-properties (line-beginning-position) (line-end-position) (list 'face 'dired-special)))
+            (forward-line +1)))
+         ((equal mode "directory")
+          (let ((parent (get-text-property (point) :parent)))
+            (save-excursion
+              (forward-line)
+              (while (equal (get-text-property (point) :parent) parent)
+                (when (consult-gh-dired-line-marked-p)
+                  (goto-char (line-beginning-position))
+                  (delete-char 1)
+                  (insert (apply #'propertize " " (append (text-properties-at (line-beginning-position))
+                                                          (list 'face 'dired-mark))))
+                  (add-text-properties (line-beginning-position) (line-end-position) (list ' face 'default)))
+                (forward-line)))
+            (forward-line +1)))
+         ((equal mode "commit")
+          (message "Cannot operate on submodules!"))))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-unmark-all-marks ()
+  "Unmark all marked files in `consult-gh-dired-mode'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (consult-gh--dired-map-over-marks #'consult-gh-dired-unmark)
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-up-directory ()
+  "Open parent directory of the current directory."
+  (interactive nil consult-gh-dired-mode)
+ (if (derived-mode-p 'consult-gh-dired-mode)
+  (let* ((topic consult-gh--topic)
+         (repo (and (stringp topic) (get-text-property 0 :repo topic)))
+         (ref (and (stringp topic) (get-text-property 0 :ref topic)))
+         (path (and (stringp topic) (get-text-property 0 :path topic)))
+         (dir (and (stringp path)
+                  (file-name-directory (string-remove-suffix "/" path)))))
+(if path
+  (consult-gh-dired repo dir ref (and consult-gh-files-reuse-dired-like-buffer (current-buffer)))
+  (message "No parent doirectory!")))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-next-marked-file ()
+  "Find the position of next marked line."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (progn
+        (when (consult-gh-dired-line-marked-p)
+          (goto-char (line-end-position)))
+        (re-search-forward "^\*\s*?[^ \n]" nil t))
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-prev-marked-file ()
+  "Find the position of previous marked line."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (progn
+        (when (consult-gh-dired-line-marked-p)
+          (goto-char (line-beginning-position)))
+        (re-search-backward "^\*\s*?[^ \n]" nil t))
+     (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-hide-subdir ()
+  "Hide or unhide the current subdirectory."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (save-excursion
+        (unless (equal (get-text-property (point) :mode) "directory")
+          (consult-gh--dired-goto-prev-directory-header))
+        (let* ((inhibit-read-only t)
+               (parent (get-text-property (line-beginning-position) :parent))
+               (hidden (save-excursion (goto-char (min (+ (line-end-position) 1) (point-max)))
+                                       (consult-gh-dired--hidden-p)))
+               (start (line-beginning-position))
+               (end))
+          (while (and (< (point) (point-max))
+                      (cond
+                       ((get-text-property (point) :type)
+                        (if (string-prefix-p (or parent "") (or (get-text-property (point) :parent) ""))
+                            (progn
+                              (setq end (line-end-position))
+                              (if (equal (forward-line +1) 0) t nil))))
+                       (t
+                        (if (equal (forward-line +1) 0) t nil)))))
+          (if hidden
+              (consult-gh--dired-unhide start end)
+            (consult-gh--dired-hide start end))))
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-hide-all ()
+  "Hide all subdirectories, leaving only their header lines.
+If there is already something hidden, make everything visible again."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (save-excursion
+        (with-silent-modifications
+          (if (text-property-any (point-min) (point-max) 'invisible 'consult-gh-dired)
+	      (consult-gh--dired-unhide (point-min) (point-max))
+            ;; hide
+            (save-excursion
+              (goto-char (point-min))
+              (while (and (< (point) (point-max))
+                          (consult-gh--dired-goto-next-directory-header))
+                (consult-gh-dired-hide-subdir))))))
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-fold-cycle ()
+  "Cycle between showing everything, directories, or root dir."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+        (with-silent-modifications
+          (pcase consult-gh--dired-fold-cycle
+            ('all
+             (consult-gh--dired-fold-show-directories)
+             (setq-local consult-gh--dired-fold-cycle 'directory))
+            ('directory
+             (consult-gh--dired-fold-show-root-only)
+             (setq-local consult-gh--dired-fold-cycle 'root))
+            ('root
+             (consult-gh--dired-fold-show-all)
+             (setq-local consult-gh--dired-fold-cycle 'all))))
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-undo ()
+  "Undo for consult-gh-dired-mode'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (consult-gh--dired-undo)
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-next-line (&optional arg)
+  "Move cursor vertically down ARG lines in `consult-gh-dired-mode'."
+  (interactive "^p" consult-gh-dired-mode)
+   (if (derived-mode-p 'consult-gh-dired-mode)
+  (consult-gh--dired-next-line arg)
+  (message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-previous-line (&optional arg)
+  "Move cursor vertically up ARG lines in `consult-gh-dired-mode'."
+  (interactive "^p" consult-gh-dired-mode)
+   (if (derived-mode-p 'consult-gh-dired-mode)
+  (consult-gh--dired-next-line (- (or arg 1)))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-hide-details ()
+  "Hide details of files."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (save-excursion
+        (let* ((inhibit-read-only t))
+          (goto-char (point-min))
+          (if (text-property-any (point-min) (point-max) 'invisible 'consult-gh-dired-details)
+              (consult-gh--unhide-region-with-prop 'consult-gh-dired-details nil nil nil)
+            (consult-gh--hide-region-with-prop 'consult-gh-dired-details nil nil nil 'consult-gh-dired-details))))
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
 
 ;;; provide `consult-gh' module
 
