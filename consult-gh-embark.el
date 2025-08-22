@@ -194,6 +194,9 @@ The candidate can be a repo, issue, PR, file path, or a branch."
           (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" (or ref "HEAD") path))))
          ("pr"
           (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
+         ("commit"
+          (when-let ((sha (get-text-property 0 :sha cand)))
+       (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/commit/%s" sha)))))
          (_
           (string-trim (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))))
 
@@ -1031,6 +1034,15 @@ CAND can be a PR or an issue."
             (branch (get-text-property 0 :branch cand)))
      (funcall #'consult-gh-branch-delete repo branch)))))
 
+(defun consult-gh-embark-commit-browse-files (cand)
+  "Delete the branch in CAND."
+  (when (stringp cand)
+    (consult-gh-with-host
+     (consult-gh--auth-account-host)
+     (let* ((repo (get-text-property 0 :repo cand))
+            (sha (get-text-property 0 :sha cand)))
+     (consult-gh-commit-browse-files repo sha)))))
+
 ;;;; Other Actions
 
 (defun consult-gh-embark-email-user (cand)
@@ -1455,6 +1467,12 @@ uses `compose-mail' for composing an email."
   :parent consult-gh-embark-general-actions-map
   "D" '("gh delete branch" . consult-gh-embark-delete-branch))
 
+;;;;; Branches Main Menu Keymap
+(defvar-keymap consult-gh-embark-commits-actions-map
+  :doc "Keymap for consult-gh-embark-commits"
+  :parent consult-gh-embark-general-actions-map
+  "v f" '("gh view files @ commit" . consult-gh-embark-commit-browse-files))
+
 ;;; Replace key description in which-key
 
 (setq which-key-replacement-alist (append
@@ -1498,7 +1516,8 @@ uses `compose-mail' for composing an email."
                   (consult-gh-releases . consult-gh-embark-releases-actions-map)
                   (consult-gh-workflows . consult-gh-embark-workflows-actions-map)
                   (consult-gh-runs . consult-gh-embark-runs-actions-map)
-                  (consult-gh-branches . consult-gh-embark-branches-actions-map))))
+                  (consult-gh-branches . consult-gh-embark-branches-actions-map)
+                  (consult-gh-commits . consult-gh-embark-commits-actions-map))))
 
 
   ;; override default actions
@@ -1514,7 +1533,8 @@ uses `compose-mail' for composing an email."
                   (consult-gh-releases . consult-gh-embark-default-action)
                   (consult-gh-workflows . consult-gh-embark-default-action)
                   (consult-gh-runs . consult-gh-embark-default-action)
-                  (consult-gh-branches . consult-gh-embark-default-action))))
+                  (consult-gh-branches . consult-gh-embark-default-action)
+                  (consult-gh-commits . consult-gh-embark-default-action))))
 
 
   ;; set post actions-hook
@@ -1552,7 +1572,8 @@ uses `compose-mail' for composing an email."
                            (consult-gh-releases . consult-gh-embark-releases-actions-map)
                            (consult-gh-workflows . consult-gh-embark-workflows-actions-map)
                            (consult-gh-runs . consult-gh-embark-runs-actions-map)
-                           (consult-gh-branches . consult-gh-embark-branches-actions-map))))
+                           (consult-gh-branches . consult-gh-embark-branches-actions-map)
+                           (consult-gh-commits . consult-gh-embark-commits-actions-map))))
 
 ;; unset default actions
   (setq embark-default-action-overrides
@@ -1567,7 +1588,8 @@ uses `compose-mail' for composing an email."
                           (consult-gh-releases . consult-gh-embark-default-action)
                           (consult-gh-workflows . consult-gh-embark-default-action)
                           (consult-gh-runs . consult-gh-embark-default-action)
-                          (consult-gh-branches . consult-gh-embark-default-action))))
+                          (consult-gh-branches . consult-gh-embark-default-action)
+                          (consult-gh-commits . consult-gh-embark-default-action))))
 
   ;; unset post action hooks
   (setq embark-post-action-hooks
