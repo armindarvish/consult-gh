@@ -4151,6 +4151,26 @@ Completes “discussions:.*” for enabling discussions in a repo edit buffer."
       :exclusive 'yes
       :category 'string)))
 
+(defun consult-gh--topics-repo-visibility-capf ()
+  "Completion at point for changing visibility.
+
+Completes “visibility:.*” for changing visibility in a repo edit buffer."
+  (let* ((targets '("PRIVATE" "PUBLIC" "INTERNAL"))
+         (begin (or (match-beginning 1)
+                    (save-excursion
+                      (cond
+                       ((re-search-backward "^.\\{1,3\\}visibility: " (pos-bol) t)
+                        (point))
+                       ((looking-back " " (- (point) 1))
+                        (point))
+                       (t
+                        (backward-word)
+                        (point))))))
+         (end (pos-eol)))
+(list begin end targets
+      :exclusive 'yes
+      :category 'string)))
+
 (defun consult-gh--topics-repo-enable-wiki-capf ()
   "Completion at point for enabling repo wiki.
 
@@ -4294,6 +4314,8 @@ Completes for issue/pr numbers or user names."
          (consult-gh--topics-release-tags-capf))
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}default_branch: \\(?1:.*\\)" (pos-bol)))
         (consult-gh--topics-default-branch-capf))
+        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}visibility: \\(?1:.*\\)" (pos-bol)))
+         (consult-gh--topics-repo-visibility-capf))
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}topics: \\(?1:.*\\)" (pos-bol)))
         (consult-gh--topics-repo-topics-capf))
        ((and (get-text-property (pos-bol) 'read-only) (looking-back "^.\\{1,3\\}template: \\(?1:.*\\)" (pos-bol)))
@@ -4536,7 +4558,7 @@ This inserts the string created with
 (insert (consult-gh-topics--format-field-header-string string prefix suffix))
 (when (derived-mode-p 'markdown-mode) (delete-char -1) (insert " ")))
 
-(cl-defun consult-gh-topics--insert-repo-contents (buffer topic &rest args &key name owner defaultBranch body description homepageUrl repoTopics isTemplate issuesEnabled discussionsEnabled wikiEnabled projectsEnabled squashMergeAllowed rebaseMergeAllowed mergeCommitAllowed deleteOnMerge &allow-other-keys)
+(cl-defun consult-gh-topics--insert-repo-contents (buffer topic &rest args &key name owner defaultBranch body description visibility homepageUrl repoTopics isTemplate issuesEnabled discussionsEnabled wikiEnabled projectsEnabled squashMergeAllowed rebaseMergeAllowed mergeCommitAllowed deleteOnMerge &allow-other-keys)
   "Fill the BUFFER with TOPIC and ARGS.
 
 Description of Arguments:
@@ -4547,6 +4569,8 @@ Description of Arguments:
   DEFAULTBRANCH       a string; name of the default branch
   BODY                a string; body of repo
   DESCRIPTION         a string; description of repo
+  VISIBILITY          a string; visibility of repo
+                      “private”, “public” or“internal”
   HOMEPAGEURL         a string; homepage url of repo
   REPOTOPICS          a list; list of relevant topics of repo
   ISTEMPLATE          a boolean; whether repo is a template
@@ -4585,6 +4609,11 @@ Description of Arguments:
                 (consult-gh-topics--insert-field-header-string (concat header-marker "description: "))
                 (when (stringp description)
                 (insert description))
+                (insert "\n")
+
+                (consult-gh-topics--insert-field-header-string (concat header-marker "visibility: "))
+                (when (stringp visibility)
+                (insert visibility))
                 (insert "\n")
 
                 (consult-gh-topics--insert-field-header-string (concat header-marker "homepage: "))
@@ -9358,6 +9387,8 @@ backend functions, `consult-gh--repo-create-scratch',
                       (match-string 1 header)))
          (description (when (and header (string-match ".*\\(?:\n.*description:\\)\\(?1:[[:ascii:][:nonascii:]]*?\\)\n\\(.*?:\\|\n\\|-\\)?" header))
                       (match-string 1 header)))
+         (visibility (when (and header (string-match ".*\\(?:\n.*visibility:\\)\\(?1:[[:ascii:][:nonascii:]]*?\\)\n\\(.*?:\\|\n\\|-\\)?" header))
+                      (match-string 1 header)))
          (homepage-url (when (and header (string-match ".*\\(?:\n.*homepage:\\)\\(?1:[[:ascii:][:nonascii:]]*?\\)\n\\(.*?:\\|\n\\|-\\)?" header))
                       (match-string 1 header)))
          (topics (when (and header (string-match ".*\\(?:\n.*topics:\\)\\(?1:[[:ascii:][:nonascii:]]*?\\)\n\\(.*?:\\|\n\\|-\\)?" header))
@@ -9390,6 +9421,8 @@ backend functions, `consult-gh--repo-create-scratch',
              (string-trim default-branch))
         (and (stringp description)
              (string-trim description))
+        (and (stringp visibility)
+             (string-trim visibility))
         (and (stringp homepage-url)
              (string-trim homepage-url))
         (and (stringp topics)
@@ -9421,6 +9454,7 @@ TOPIC defaults to `consult-gh--topic'."
   (let* ((repo (or repo consult-gh--topic))
          (default-branch (get-text-property 0 :default-branch repo))
          (description (get-text-property 0 :description repo))
+         (visibility (get-text-property 0 :visibility repo))
          (homepage-url (get-text-property 0 :homepage-url repo))
          (repo-topics (get-text-property 0 :repo-repos repo))
          (template (get-text-property 0 :isTemplate repo))
@@ -9433,13 +9467,17 @@ TOPIC defaults to `consult-gh--topic'."
          (rebase-merge (get-text-property 0 :rebaseMergeAllowed repo))
          (delete-on-merge (get-text-property 0 :deleteOnMerge repo)))
 
-      (pcase-let* ((`(,text-default-branch ,text-description ,text-homepage-url ,text-repo-topics ,text-template ,text-issues ,text-projects ,text-discussions ,text-wiki ,text-merge-commit ,text-squash-merge ,text-rebase-merge ,text-delete-on-merge) (consult-gh-topics--repo-parse-metadata)))
+      (pcase-let* ((`(,text-default-branch ,text-description ,text-visibility ,text-homepage-url ,text-repo-topics ,text-template ,text-issues ,text-projects ,text-discussions ,text-wiki ,text-merge-commit ,text-squash-merge ,text-rebase-merge ,text-delete-on-merge) (consult-gh-topics--repo-parse-metadata)))
 
         (when (stringp text-default-branch)
           (setq default-branch (string-trim text-default-branch)))
 
         (when (stringp text-description)
           (setq description text-description))
+
+        (when (and (stringp text-visibility)
+                   (member (downcase text-visibility) '("private" "public" "internal")))
+          (setq visibility text-visibility))
 
         (when (stringp text-homepage-url)
           (setq homepage-url text-homepage-url))
@@ -9505,6 +9543,7 @@ TOPIC defaults to `consult-gh--topic'."
 
     (list (cons "default-branch" default-branch)
           (cons "description" description)
+          (cons "visibility" visibility)
           (cons "homepage-url" homepage-url)
           (cons "topics" repo-topics)
           (cons "template" template)
@@ -9525,6 +9564,7 @@ TOPIC defaults to `consult-gh--topic'."
              (canadmin (consult-gh--user-canadmin repo-name))
              (default-branch (get-text-property 0 :original-default-branch repo))
              (description (get-text-property 0 :original-description repo))
+             (visibility (get-text-property 0 :original-visibility repo))
              (homepage-url (get-text-property 0 :original-homepage-url repo))
              (repo-topics (get-text-property 0 :original-repo-topics repo))
              (template (get-text-property 0 :original-isTemplate repo))
@@ -9539,7 +9579,7 @@ TOPIC defaults to `consult-gh--topic'."
              (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
 
         (when canadmin
-          (add-text-properties 0 1 (list :default-branch default-branch :description description :homepage-url homepage-url :repo-topics repo-topics :isTemplate template :issuesEnabled issues :projectsEnabled projects :discussionsEnabled discussions :wikiEnabled wiki :mergeCommitAllowed merge-commit :squashMergeAllowed squash-merge :rebaseMergeAllowed rebase-merge :deleteOnMerge delete-on-merge) repo)
+          (add-text-properties 0 1 (list :default-branch default-branch :description description :visibility visibility :homepage-url homepage-url :repo-topics repo-topics :isTemplate template :issuesEnabled issues :projectsEnabled projects :discussionsEnabled discussions :wikiEnabled wiki :mergeCommitAllowed merge-commit :squashMergeAllowed squash-merge :rebaseMergeAllowed rebase-merge :deleteOnMerge delete-on-merge) repo)
 
           (save-excursion
             ;; restore default branch
@@ -9551,6 +9591,11 @@ TOPIC defaults to `consult-gh--topic'."
             (goto-char (point-min))
             (when (re-search-forward "^.*description: \\(?1:.*\\)?" nil t)
               (replace-match (get-text-property 0 :description repo) nil nil nil 1))
+
+            ;; restore visibility
+            (goto-char (point-min))
+            (when (re-search-forward "^.*visibility: \\(?1:.*\\)?" nil t)
+              (replace-match (get-text-property 0 :visibility repo) nil nil nil 1))
 
             ;; restore homepage
             (goto-char (point-min))
@@ -9663,6 +9708,22 @@ TOPIC defaults to `consult-gh--topic'."
       (save-excursion (goto-char (point-min))
                       (when (re-search-forward "^.*description: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
                         (replace-match (get-text-property 0 :description repo) nil nil nil 1)))))
+    (error "Not in a repo editing buffer!")))
+
+(defun consult-gh-repo--edit-visibility (&optional new old repo)
+  "Change visibility of REPO from OLD to NEW."
+  (if consult-gh-topics-edit-mode
+      (let* ((repo (or repo consult-gh--topic))
+             (new (or new (consult--read (list "PRIVATE" "PUBLIC" "INTERNAL")
+                                     :initial old
+                                     :prompt "Visibility: ")))
+             (header (car (consult-gh--get-region-with-overlay ':consult-gh-header))))
+    (add-text-properties 0 1 (list :visibility new) repo)
+
+    (when (stringp new)
+      (save-excursion (goto-char (point-min))
+                      (when (re-search-forward "^.*visibility: \\(?1:.*\\)?" (and header (consp header) (cdr header)) t)
+                        (replace-match (get-text-property 0 :visibility repo) nil nil nil 1)))))
     (error "Not in a repo editing buffer!")))
 
 (defun consult-gh-repo--edit-homepage-url (&optional new old repo)
@@ -9851,7 +9912,7 @@ OLD is a boolean, whether delete on merge is currently enabled."
                                        nil nil nil 1))))
     (error "Not in a repo editing buffer!")))
 
-(defun  consult-gh-topics--edit-repo-submit (repo &optional default-branch description homepage-url repo-topics template issues discussions wiki projects merge-commit squash-merge rebase-merge  delete-on-merge)
+(defun  consult-gh-topics--edit-repo-submit (repo &optional default-branch description visibility homepage-url repo-topics template issues discussions wiki projects merge-commit squash-merge rebase-merge  delete-on-merge)
   "Edit REPO with new metadata.
 
 Description of Arguments:
@@ -9859,6 +9920,8 @@ Description of Arguments:
                         details.  Defaults to `consult-gh--topic'.
   DEFAULT-BRANCH        a string; name of the default branch
   DESCRIPTION           a string; description of repo
+  VISIBILITY            a string; visibility of repo
+                        “private”, “public” or“internal”
   HOMEPAGE-URL          a string; homepage url of repo
   REPO-TOPICS           a list; list of relevant topics of repo
   TEMPLATE              a boolean; whether repo is a template
@@ -9877,6 +9940,7 @@ Description of Arguments:
                (canadmin (consult-gh--user-canadmin repo-name))
                (original-default-branch (get-text-property 0 :original-default-branch repo))
                (original-description (get-text-property 0 :original-description repo))
+               (original-visibility (get-text-property 0 :original-visibility repo))
                (original-homepage-url (get-text-property 0 :original-homepage-url repo))
                (original-repo-topics (get-text-property 0 :original-repo-topics repo))
                (original-template (get-text-property 0 :original-isTemplate repo))
@@ -9893,6 +9957,11 @@ Description of Arguments:
                (change-homepage (and (not (equal homepage-url original-homepage-url)) (stringp homepage-url) homepage-url))
                (`(,add-topics ,remove-topics)                          (consult-gh--separate-add-and-remove repo-topics original-repo-topics))
                (change-template (when (not (equal template original-template)) (if template "true" "false")))
+               (change-visibility  (when (and (stringp visibility)
+                                              (not (equal visibility original-visibility))
+                                              (member (downcase visibility) '("private" "public" "internal"))
+                                              (y-or-n-p (format "%s You are about to change the visibility of repo, %s to %s.  Do you accept the consequences? " (propertize "DANGER ZONE!" 'face 'error) (propertize repo 'face 'consult-gh-repo) (propertize (downcase visibility) 'face 'warning))))
+                                     (downcase visibility)))
                (enable-issues (when (not (equal issues original-issues))
                                 (if issues
                                     "true"
@@ -9929,7 +9998,7 @@ Description of Arguments:
 
     (if canadmin
         (cond
-         ((or change-default-branch change-description change-homepage add-topics remove-topics change-template enable-issues enable-projects enable-discussions enable-wiki enable-merge-commit enable-squash-merge enable-rebase-merge delete-branch-on-merge)
+         ((or change-default-branch change-description change-visibility change-homepage add-topics remove-topics change-template enable-issues enable-projects enable-discussions enable-wiki enable-merge-commit enable-squash-merge enable-rebase-merge delete-branch-on-merge)
 
           (when (and add-topics (listp add-topics)) (setq add-topics (consult-gh--list-to-string add-topics)))
           (when (and remove-topics (listp remove-topics)) (setq remove-topics (consult-gh--list-to-string remove-topics)))
@@ -9937,6 +10006,7 @@ Description of Arguments:
           (setq args (delq nil (append args
                                        (and change-default-branch (list "--default-branch" (concat (substring-no-properties change-default-branch))))
                                        (and change-description (list "--description" (concat (substring-no-properties change-description))))
+                                       (and change-visibility (list "--visibility" (substring-no-properties change-visibility) "--accept-visibility-change-consequences"))
                                        (and change-homepage (list "--homepage" (concat (substring-no-properties change-homepage))))
                                        (and add-topics (list "--add-topic" add-topics))
                                        (and remove-topics (list "--remove-topic" remove-topics))
@@ -9972,6 +10042,7 @@ buffer generated by `consult-gh--repo-view'."
                             (append (list (cons "Submit" :submit))
                                     (list (cons "Edit Readme" :readme))
                                     (list (cons "Change Default Branch" :default-branch))
+                                    (list (cons "Change Visibility" :visibility))
                                     (list (cons "Edit Description" :description))
                                     (list (cons "Edit Homepage URL" :homepage-url))
                                     (list (cons "Edit Topics" :topics))
@@ -9997,6 +10068,7 @@ buffer generated by `consult-gh--repo-view'."
                      (metadata (consult-gh-topics--repo-get-metadata))
                      (default-branch  (when metadata (cdr (assoc "default-branch" metadata))))
                      (description  (when metadata (cdr (assoc "description" metadata))))
+                     (visibility  (when metadata (cdr (assoc "visibility" metadata))))
                      (homepage-url  (when metadata (cdr (assoc "homepage-url" metadata))))
                      (repo-topics  (when metadata (cdr (assoc "topics" metadata))))
                      (template  (when metadata (cdr (assoc "template" metadata))))
@@ -10014,10 +10086,10 @@ buffer generated by `consult-gh--repo-view'."
             (':readme (consult-gh-repo--edit-readme))
             (':default-branch (consult-gh-repo--edit-default-branch))
             (':description (consult-gh-repo--edit-description nil description))
+            (':visibility (consult-gh-repo--edit-visibility nil visibility))
             (':homepage-url (consult-gh-repo--edit-homepage-url nil homepage-url))
             (':topics (consult-gh-repo--edit-change-topics nil repo-topics))
             (':template (consult-gh-repo--edit-toggle-template template))
-
             (':issues (consult-gh-repo--edit-toggle-issues issues))
             (':projects (consult-gh-repo--edit-toggle-projects projects))
             (':discussions (consult-gh-repo--edit-toggle-discussions discussions))
@@ -10028,7 +10100,7 @@ buffer generated by `consult-gh--repo-view'."
             (':delete-on-merge (consult-gh-repo--edit-toggle-delete-on-merge delete-on-merge))
             (':default (consult-gh-repo--edit-restore-default))
             (':submit
-             (and (consult-gh-topics--edit-repo-submit nil default-branch description homepage-url repo-topics template issues discussions wiki projects merge-commit squash-merge rebase-merge  delete-on-merge)
+             (and (consult-gh-topics--edit-repo-submit nil default-branch description visibility homepage-url repo-topics template issues discussions wiki projects merge-commit squash-merge rebase-merge  delete-on-merge)
                   (message "Edits Submitted!")
                   (funcall consult-gh-quit-window-func t))))))
     (message "Not in a repo editing buffer!")))
@@ -17526,8 +17598,9 @@ For more details refer to the manual with “gh repo edit --help”."
                    (message "The curent user, %s, %s to edit this repo" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
             (owner (substring-no-properties (consult-gh--get-username repo)))
             (name (substring-no-properties (consult-gh--get-package repo)))
-            (info (consult-gh--command-to-string "repo" "view" repo "--json" "description,repositoryTopics,hasDiscussionsEnabled,hasIssuesEnabled,hasProjectsEnabled,hasWikiEnabled,squashMergeAllowed,defaultBranchRef,deleteBranchOnMerge,isBlankIssuesEnabled,mergeCommitAllowed,rebaseMergeAllowed,isTemplate,homepageUrl"))
+            (info (consult-gh--command-to-string "repo" "view" repo "--json" "description,visibility,repositoryTopics,hasDiscussionsEnabled,hasIssuesEnabled,hasProjectsEnabled,hasWikiEnabled,squashMergeAllowed,defaultBranchRef,deleteBranchOnMerge,isBlankIssuesEnabled,mergeCommitAllowed,rebaseMergeAllowed,isTemplate,homepageUrl"))
             (description (consult-gh--json-to-hashtable info :description))
+            (visibility (consult-gh--json-to-hashtable info :visibility))
             (repo-topics (consult-gh--json-to-hashtable info :repositoryTopics))
             (repo-topics (and repo-topics
                               (listp repo-topics)
@@ -17558,13 +17631,12 @@ For more details refer to the manual with “gh repo edit --help”."
            (sit-for 0.01)))
 
        (add-text-properties 0 1 (text-properties-at 0 topic) newtopic)
-       (add-text-properties 0 1 (list :isComment nil :type type :new nil :name name :owner owner :original-description description
-:original-homepage-url homepage-url :original-repo-topics repo-topics :original-default-branch default-branch :original-isTemplate template :original-issuesEnabled issues :original-blankIssuesAllowed blank-issues :original-discussionsEnabled discussions :original-wikiEnabled wiki :original-projectsEnabled projects :original-squashMergeAllowed squash :original-rebaseMergeAllowed rebase-merge :original-mergeCommitAllowed merge-commit :original-deleteOnMerge delete-on-merge
-:description description :homepage-url homepage-url :repo-topics repo-topics :default-branch default-branch :isTemplate template :issuesEnabled issues :blankIssuesAllowed blank-issues :discussionsEnabled discussions :wikiEnabled wiki :projectsEnabled projects :squashMergeAllowed squash :rebaseMergeAllowed rebase-merge :mergeCommitAllowed merge-commit :deleteOnMerge delete-on-merge :view-buffer view-buffer)
+       (add-text-properties 0 1 (list :isComment nil :type type :new nil :name name :owner owner :original-description description :original-visibility visibility :original-homepage-url homepage-url :original-repo-topics repo-topics :original-default-branch default-branch :original-isTemplate template :original-issuesEnabled issues :original-blankIssuesAllowed blank-issues :original-discussionsEnabled discussions :original-wikiEnabled wiki :original-projectsEnabled projects :original-squashMergeAllowed squash :original-rebaseMergeAllowed rebase-merge :original-mergeCommitAllowed merge-commit :original-deleteOnMerge delete-on-merge
+:description description :visibility visibility :homepage-url homepage-url :repo-topics repo-topics :default-branch default-branch :isTemplate template :issuesEnabled issues :blankIssuesAllowed blank-issues :discussionsEnabled discussions :wikiEnabled wiki :projectsEnabled projects :squashMergeAllowed squash :rebaseMergeAllowed rebase-merge :mergeCommitAllowed merge-commit :deleteOnMerge delete-on-merge :view-buffer view-buffer)
                             newtopic)
 
        ;; insert buffer contents
-       (consult-gh-topics--insert-repo-contents (consult-gh-topics--get-buffer-create buffer "repo" newtopic) newtopic :name name :owner owner :repoTopics repo-topics :defaultBranch default-branch :description description :homepageUrl homepage-url :isTemplate template :issuesEnabled issues :discussionsEnabled discussions :wikiEnabled wiki :projectsEnabled projects :squashMergeAllowed squash :rebaseMergeAllowed rebase-merge :mergeCommitAllowed merge-commit :deleteOnMerge delete-on-merge)
+       (consult-gh-topics--insert-repo-contents (consult-gh-topics--get-buffer-create buffer "repo" newtopic) newtopic :name name :owner owner :repoTopics repo-topics :defaultBranch default-branch :description description :visibility visibility :homepageUrl homepage-url :isTemplate template :issuesEnabled issues :discussionsEnabled discussions :wikiEnabled wiki :projectsEnabled projects :squashMergeAllowed squash :rebaseMergeAllowed rebase-merge :mergeCommitAllowed merge-commit :deleteOnMerge delete-on-merge)
 
        (funcall consult-gh-pop-to-buffer-func buffer)))))
 
