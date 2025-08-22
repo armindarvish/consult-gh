@@ -6,7 +6,7 @@
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
 ;; Version: 3.0
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "3.0") (embark-consult "1.1"))
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (consult-gh "3.0") (embark-consult "1.1") (which-key "3.6.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -36,6 +36,7 @@
 ;;; Requirements
 (require 'embark-consult)
 (require 'consult-gh)
+(require 'which-key)
 
 (defun consult-gh--embark-restart (&rest _)
   "Restart current async search with current input.
@@ -1227,19 +1228,20 @@ uses `compose-mail' for composing an email."
 (fset 'consult-gh-embark-view-menu-map consult-gh-embark-view-menu-map)
 
 ;;;;; Main Menu Keymap
+
 (defvar-keymap consult-gh-embark-general-actions-map
   :doc "Keymap for consult-gh-embark"
   :parent embark-general-map
-  "b" '("gh bookmarks" . consult-gh-embark-bookmarks-menu-map)
-  "c" '("gh create" . consult-gh-embark-create-menu-map)
-  "f" '("gh find" . consult-gh-embark-find-menu-map)
-  "i" '("gh insert" . consult-gh-embark-insert-menu-map)
-  "l" '("gh links" . consult-gh-embark-links-menu-map)
-  "o" '("gh open" . consult-gh-embark-open-menu-map)
-  "r" '("gh repo" . consult-gh-embark-repo-menu-map)
-  "u" '("gh user" . consult-gh-embark-user-menu-map)
-  "w" '("gh copy-as-kill" . consult-gh-embark-copy-menu-map)
-  "v" '("gh view" . consult-gh-embark-view-menu-map))
+  "b" 'consult-gh-embark-bookmarks-menu-map
+  "c" 'consult-gh-embark-create-menu-map
+  "f" 'consult-gh-embark-find-menu-map
+  "i" 'consult-gh-embark-insert-menu-map
+  "l" 'consult-gh-embark-links-menu-map
+  "o"  'consult-gh-embark-open-menu-map
+  "r" 'consult-gh-embark-repo-menu-map
+  "u" 'consult-gh-embark-user-menu-map
+  "w" 'consult-gh-embark-copy-menu-map
+  "v" 'consult-gh-embark-view-menu-map)
 
 ;;;; Org Keymap
 (defvar-keymap consult-gh-embark-orgs-actions-map
@@ -1274,8 +1276,8 @@ uses `compose-mail' for composing an email."
 (defvar-keymap consult-gh-embark-repos-actions-map
   :doc "Keymap for consult-gh-embark-repos"
   :parent consult-gh-embark-general-actions-map
-  "v" '("gh view repo" . consult-gh-embark-repo-view-menu-map)
-  "e" '("gh edit repo" . consult-gh-embark-repo-edit-menu-map))
+  "e" 'consult-gh-embark-repo-edit-menu-map
+  "v" 'consult-gh-embark-repo-view-menu-map)
 
 ;;;;; Files Keymap
 ;;;;;; Files Insert Menu Keymap
@@ -1299,10 +1301,9 @@ uses `compose-mail' for composing an email."
 (defvar-keymap consult-gh-embark-files-actions-map
   :doc "Keymap for consult-gh-embark-files"
   :parent consult-gh-embark-general-actions-map
-  "s" '("gh save file" . consult-gh-embark-save-file)
-  "i" '("gh insert" . consult-gh-embark-files-insert-menu-map)
-  "e" '("gh edit file" . consult-gh-embark-files-edit-menu-map)
-  "e e" '("edit file" . consult-gh-embark-edit-file))
+  "e" 'consult-gh-embark-files-edit-menu-map
+  "i" 'consult-gh-embark-files-insert-menu-map
+  "s" '("gh save file" . consult-gh-embark-save-file))
 
 ;;;;; Issue Keymap
 ;;;;;; Edit Issue Menu Keymap
@@ -1324,9 +1325,9 @@ uses `compose-mail' for composing an email."
 (defvar-keymap consult-gh-embark-issues-actions-map
   :doc "Keymap for consult-gh-embark-issues"
   :parent consult-gh-embark-general-actions-map
-  "c" '("gh create" . consult-gh-embark-create-menu-map)
+  "c" 'consult-gh-embark-create-menu-map
   "c C-c" '("comment on issue" . consult-gh-embark-comment-on-issue)
-  "e" '("gh edit issue" . consult-gh-embark-issues-edit-menu-map))
+  "e" ' consult-gh-embark-issues-edit-menu-map)
 
 ;;;;; Pull Request Keymap
 ;;;;;; Edit PRs Menu Keymap
@@ -1347,7 +1348,7 @@ uses `compose-mail' for composing an email."
   :doc "Keymap for viewing PR details"
   :parent nil
   "d" '("view diff" . consult-gh-embark-view-pr-diff)
-  "r" '("view repo" . consult-gh-embark-repo-view-menu-map))
+  "r" 'consult-gh-embark-repo-view-menu-map)
 
 (fset 'consult-gh-embark-prs-view-menu-map consult-gh-embark-prs-view-menu-map)
 
@@ -1355,11 +1356,11 @@ uses `compose-mail' for composing an email."
 (defvar-keymap consult-gh-embark-prs-actions-map
   :doc "Keymap for consult-gh-embark-prs"
   :parent consult-gh-embark-general-actions-map
-  "c" '("gh create" . consult-gh-embark-create-menu-map)
+  "c" 'consult-gh-embark-create-menu-map
   "c C-c" '("comment on pr" . consult-gh-embark-comment-on-pr)
   "c C-r" '("review for pr" . consult-gh-embark-review-pr)
-  "e" '("gh edit pr" . consult-gh-embark-prs-edit-menu-map)
-  "v" '("gh view pr" . consult-gh-embark-prs-view-menu-map))
+  "e" 'consult-gh-embark-prs-edit-menu-map
+  "v" 'consult-gh-embark-prs-view-menu-map)
 
 ;;;;; Release Keymap
 ;;;;;; Edit Release Menu Keymap
@@ -1381,14 +1382,14 @@ uses `compose-mail' for composing an email."
   :parent consult-gh-embark-general-actions-map
   "c" '("gh create" . consult-gh-embark-create-menu-map)
   "d" '("gh download release" . consult-gh-embark-download-release)
-  "e" '("gh edit release" . consult-gh-embark-releases-edit-menu-map)
+  "e" 'consult-gh-embark-releases-edit-menu-map
   "T" '("gh test" . consult-gh-embark-test))
 
 ;;;;;; PR View Menu Keymap
 (defvar-keymap consult-gh-embark-workflows-view-menu-map
   :doc "Keymap for viewing workflow details"
   :parent nil
-  "r" '("view repo" . consult-gh-embark-repo-view-menu-map)
+  "r" 'consult-gh-embark-repo-view-menu-map
   "g" '("view runs" . consult-gh-embark-workflow-runs-list)
   "v" '("view workflow" . consult-gh-embark-workflow-view))
 
@@ -1402,14 +1403,14 @@ uses `compose-mail' for composing an email."
   "e" '("gh enable workflow" . consult-gh-embark-workflow-enable)
   "d" '("gh disable workflow" . consult-gh-embark-workflow-disable)
   "g" '("gh list action runs" . consult-gh-embark-workflow-runs-list)
-  "v" '("gh view workflow menu" . consult-gh-embark-workflows-view-menu-map)
+  "v" 'consult-gh-embark-workflows-view-menu-map
   "y" '("gh edit yaml file" .  consult-gh-embark-workflow-edit-yaml))
 
 ;;;;;; PR View Menu Keymap
 (defvar-keymap consult-gh-embark-runs-view-menu-map
   :doc "Keymap for viewing run details"
   :parent nil
-  "r" '("view repo" . consult-gh-embark-repo-view-menu-map)
+  "r" 'consult-gh-embark-repo-view-menu-map
   "a" '("view run's workflow" . consult-gh-embark-run-view-workflow)
   "v" '("view run" . consult-gh-embark-run-view))
 
@@ -1420,7 +1421,7 @@ uses `compose-mail' for composing an email."
   :doc "Keymap for consult-gh-embark-runs"
   :parent consult-gh-embark-general-actions-map
   "a" '("gh view run's workflow" . consult-gh-embark-run-view-workflow)
-  "v" '("gh view workflows view menu" . consult-gh-embark-runs-view-menu-map))
+  "v" 'consult-gh-embark-runs-view-menu-map)
 
 ;;;; Code Keymap
 (defvar-keymap consult-gh-embark-codes-actions-map
@@ -1441,7 +1442,7 @@ uses `compose-mail' for composing an email."
 (defvar-keymap consult-gh-embark-notifications-actions-map
   :doc "Keymap for consult-gh-embark-notifications"
   :parent consult-gh-embark-general-actions-map
-  "e" '("gh edit notification" . consult-gh-embark-notifications-edit-menu-map))
+  "e" 'consult-gh-embark-notifications-edit-menu-map)
 
 ;;;;; Dashboard Main Menu Keymap
 (defvar-keymap consult-gh-embark-dashboard-actions-map
@@ -1453,6 +1454,33 @@ uses `compose-mail' for composing an email."
   :doc "Keymap for consult-gh-embark-branches"
   :parent consult-gh-embark-general-actions-map
   "D" '("gh delete branch" . consult-gh-embark-delete-branch))
+
+;;; Replace key description in which-key
+
+(setq which-key-replacement-alist (append
+                                   (list
+             (cons (cons nil "consult-gh-embark-bookmarks-menu-map") (cons nil "gh bookmarks menu"))
+             (cons (cons nil "consult-gh-embark-create-menu-map") (cons nil "gh create menu"))
+             (cons (cons nil "consult-gh-embark-find-menu-map") (cons nil "gh find menu"))
+             (cons (cons nil "consult-gh-embark-insert-menu-map") (cons nil "gh insert menu"))
+             (cons (cons nil "consult-gh-embark-links-menu-map") (cons nil "gh links menu"))
+             (cons (cons nil "consult-gh-embark-open-menu-map") (cons nil "gh open menu"))
+             (cons (cons nil "consult-gh-embark-repo-menu-map") (cons nil "gh repo menu"))
+             (cons (cons nil "consult-gh-embark-user-menu-map") (cons nil "gh user menu"))
+             (cons (cons nil "consult-gh-embark-copy-menu-map") (cons nil "gh copy as kill menu"))
+             (cons (cons nil "consult-gh-embark-view-menu-map") (cons nil "gh view menu"))
+             (cons (cons nil "consult-gh-embark-repo-edit-menu-map") (cons nil "gh edit repo menu"))
+             (cons (cons nil "consult-gh-embark-repo-view-menu-map") (cons nil "gh view repo menu"))
+             (cons (cons nil "consult-gh-embark-files-edit-menu-map") (cons nil "gh edit file menu"))
+             (cons (cons nil "consult-gh-embark-files-insert-menu-map") (cons nil "gh insert file menu"))
+             (cons (cons nil "consult-gh-embark-issues-edit-menu-map") (cons nil "gh edit issue menu"))
+             (cons (cons nil "consult-gh-embark-prs-edit-menu-map") (cons nil "gh edit pr menu"))
+             (cons (cons nil "consult-gh-embark-prs-view-menu-map") (cons nil "gh view pr menu"))
+             (cons (cons nil "consult-gh-embark-releases-edit-menu-map") (cons nil "gh edit release menu"))
+             (cons (cons nil "consult-gh-embark-workflows-view-menu-map") (cons nil "gh view workflow menu"))
+             (cons (cons nil "consult-gh-embark-runs-view-menu-map") (cons nil "gh view run menu"))
+             (cons (cons nil "consult-gh-embark-notifications-edit-menu-map") (cons nil "gh view notification menu")))
+                                   which-key-replacement-alist))
 
 (defun consult-gh-embark--mode-on ()
   "Enable `consult-gh-embark-mode'."
