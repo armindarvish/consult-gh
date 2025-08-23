@@ -8050,7 +8050,8 @@ and is used to preview files or do other actions on the file."
                                                  (insert (consult-gh--files-get-content-by-api-url api-url))
                                                  (set-buffer-file-coding-system 'raw-text)
                                                  (set-buffer-multibyte t)
-                                                 (write-file temp-file)))
+                                                 (let ((after-save-hook nil))
+                                                   (write-file temp-file))))
                                              (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))))
                     (buffer (or (and file-p confirm (find-file-noselect temp-file t)) nil)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
@@ -8157,10 +8158,11 @@ Output is the buffer visiting the file."
       (make-directory (file-name-directory temp-file) t)
       (with-temp-file temp-file
         (insert (if api-url (consult-gh--files-get-content-by-api-url api-url)
-                      (consult-gh--files-get-content-by-path repo path ref)))
+                  (consult-gh--files-get-content-by-path repo path ref)))
         (set-buffer-file-coding-system 'raw-text)
         (set-buffer-multibyte t)
-        (write-file temp-file))
+        (let ((after-save-hook nil))
+          (write-file temp-file)))
       (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))
 
     (if no-select
@@ -8170,16 +8172,16 @@ Output is the buffer visiting the file."
                 (and (stringp consult-gh--topic)
                      (get-text-property 0 :changed-locally consult-gh--topic)
                      (y-or-n-p "The file has changed locally in this buffer.  Do you want to revert the buffer form remote? ")))
-          (let ((inhibit-read-only t)
-                (after-save-hook nil))
-            (save-excursion
-            (erase-buffer)
-            (insert (if api-url (consult-gh--files-get-content-by-api-url api-url)
-                      (consult-gh--files-get-content-by-path repo path ref)))
-            (set-buffer-file-coding-system 'raw-text)
-            (set-buffer-multibyte t)
-            (setq-local consult-gh--topic topic)
-            (write-file temp-file))))
+            (let ((inhibit-read-only t))
+              (save-excursion
+                (erase-buffer)
+                (insert (if api-url (consult-gh--files-get-content-by-api-url api-url)
+                          (consult-gh--files-get-content-by-path repo path ref)))
+                (set-buffer-file-coding-system 'raw-text)
+                (set-buffer-multibyte t)
+                (setq-local consult-gh--topic topic)
+                (let ((after-save-hook nil))
+                  (write-file temp-file)))))
         (if jump-to-str
             (progn
               (goto-char (point-min))
@@ -8295,12 +8297,13 @@ set `consult-gh-file-action' to `consult-gh--files-save-file-action'."
       (if (yes-or-no-p (format "File is %s Bytes.  Do you really want to load it?" file-size))
           (setq confirm t)
         (setq confirm nil)))
-    (let ((buffer (and file-p (consult-gh--files-view repo path api-url t nil nil ref t))))
+    (let* ((buffer (and file-p (consult-gh--files-view repo path api-url t nil nil ref t))))
       (if (and file-p confirm)
           (save-mark-and-excursion
             (save-restriction
               (with-current-buffer buffer
-                (write-file targetpath t))))))))
+                (let ((after-save-hook nil))
+                  (write-file targetpath t)))))))))
 
 (defun consult-gh--files-edit-presubmit (&optional file)
   "Prepare edits on FILE to submit.
@@ -8426,12 +8429,12 @@ and is used to preview existing files."
                                                  (unless (file-exists-p temp-file)
                                                    (make-directory (file-name-directory temp-file) t)
                                                    (with-temp-file temp-file
-                                                     (setq-local after-save-hook nil)
                                                      (insert (if api-url (consult-gh--files-get-content-by-api-url api-url)
                                                                (consult-gh--files-get-content-by-path repo path ref)))
                                                      (set-buffer-file-coding-system 'raw-text)
                                                      (set-buffer-multibyte t)
-                                                     (write-file temp-file)
+                                                     (let ((after-save-hook nil))
+                                                       (write-file temp-file))
                                                      (set-buffer-modified-p nil)))
                                                  (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))))
                         (buffer (or (and file-p confirm (find-file-noselect temp-file t)) nil)))
@@ -14012,7 +14015,7 @@ and is used to preview or do other actions on the code."
                         (code (get-text-property 0 :code cand))
                         (api-url (get-text-property 0 :api-url cand))
                         (tempdir (expand-file-name (concat repo "/" ref "/")
-                                    (or consult-gh--current-tempdir (consult-gh--tempdir))))
+                                                   (or consult-gh--current-tempdir (consult-gh--tempdir))))
                         (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" "path")) consult-gh--open-files-list)) (expand-file-name path tempdir)))
                         (text (if api-url (consult-gh--files-get-content-by-api-url api-url)
                                 (consult-gh--files-get-content-by-path repo path ref)))
@@ -14020,24 +14023,25 @@ and is used to preview or do other actions on the code."
                              (unless (file-exists-p temp-file)
                                (make-directory (file-name-directory temp-file) t))
                              (with-temp-file temp-file
-                                 (insert text)
-                                 (set-buffer-file-coding-system 'raw-text)
-                                 (set-buffer-multibyte t)
-                                 (write-file temp-file))
-                             (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file))))
-                        (buffer (or (find-file-noselect temp-file t) nil)))
-                   (when buffer
-                     (with-current-buffer buffer
-                       (if consult-gh-highlight-matches
-                           (highlight-regexp (string-trim code) 'consult-gh-preview-match))
-                       (goto-char (point-min))
-                       (search-forward code nil t)
-                       (add-to-list 'consult-gh--preview-buffers-list buffer)
-                       (funcall preview action
-                                buffer)
-                       (consult-gh-recenter 'middle))))))
-            ('return
-             cand))))))
+                               (insert text)
+                               (set-buffer-file-coding-system 'raw-text)
+                               (set-buffer-multibyte t)
+                               (let ((after-save-hook nil)
+                                     (write-file temp-file)))
+                               (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file))))
+                           (buffer (or (find-file-noselect temp-file t) nil)))
+                        (when buffer
+                          (with-current-buffer buffer
+                            (if consult-gh-highlight-matches
+                                (highlight-regexp (string-trim code) 'consult-gh-preview-match))
+                            (goto-char (point-min))
+                            (search-forward code nil t)
+                            (add-to-list 'consult-gh--preview-buffers-list buffer)
+                            (funcall preview action
+                                     buffer)
+                            (consult-gh-recenter 'middle))))))
+             ('return
+              cand))))))
 
 (defun consult-gh--code-group (cand transform)
   "Group function for code candidates, CAND.
@@ -16044,35 +16048,36 @@ and is used to preview YAML files."
              (let* ((path (plist-get cand :path)))
                (cond
                 ((stringp path)
-                   (let* ((repo (plist-get cand :repo))
-                          (branch (or (plist-get cand :branch) "HEAD"))
-                          (size (plist-get cand :size))
-                          (object-type (plist-get cand :object-type))
-                          (tempdir (expand-file-name (concat repo "/" branch "/")
-                                                     (or consult-gh--current-tempdir
-                                                         (consult-gh--tempdir))))
-                          (file-p (equal object-type "blob"))
-                          (file-size (and file-p size))
-                          (confirm (if (and file-size (>= file-size
-                                                          consult-gh-large-file-warning-threshold))
-                                       (yes-or-no-p (format "File is %s Bytes.  Do you really want to load it?" file-size))
-                                     t))
-                          (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" "path")) consult-gh--open-files-list)) (expand-file-name path tempdir)))
-                          (_ (and file-p confirm (progn
-                                                   (unless (file-exists-p temp-file)
-                                                     (make-directory (file-name-directory temp-file) t)
-                                                     (with-temp-file temp-file
-                       (setq-local after-save-hook nil)
-                                                       (insert (consult-gh--files-get-content-by-path repo path branch))
-                                                       (set-buffer-file-coding-system 'raw-text)
-                                                       (set-buffer-multibyte t)
-                                                       (write-file temp-file)
-                                                       (set-buffer-modified-p nil)))
-                                                   (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file)))))
-                          (buffer (or (and file-p confirm (find-file-noselect temp-file t)) nil)))
-                     (add-to-list 'consult-gh--preview-buffers-list buffer)
-                     (funcall preview action
-                              buffer)))))))))))
+                 (let* ((repo (plist-get cand :repo))
+                        (branch (or (plist-get cand :branch) "HEAD"))
+                        (size (plist-get cand :size))
+                        (object-type (plist-get cand :object-type))
+                        (tempdir (expand-file-name (concat repo "/" branch "/")
+                                                   (or consult-gh--current-tempdir
+                                                       (consult-gh--tempdir))))
+                        (file-p (equal object-type "blob"))
+                        (file-size (and file-p size))
+                        (confirm (if (and file-size (>= file-size
+                                                        consult-gh-large-file-warning-threshold))
+                                     (yes-or-no-p (format "File is %s Bytes.  Do you really want to load it?" file-size))
+                                   t))
+                        (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" "path")) consult-gh--open-files-list)) (expand-file-name path tempdir)))
+                        (_ (and file-p confirm (progn
+                                                 (unless (file-exists-p temp-file)
+                                                   (make-directory (file-name-directory temp-file) t)
+                                                   (with-temp-file temp-file
+                                                     (setq-local after-save-hook nil)
+                                                     (insert (consult-gh--files-get-content-by-path repo path branch))
+                                                     (set-buffer-file-coding-system 'raw-text)
+                                                     (set-buffer-multibyte t)
+                                                     (let ((after-save-hook nil))
+                                                       (write-file temp-file))
+                                                     (set-buffer-modified-p nil)))
+                                                 (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file)))))
+                        (buffer (or (and file-p confirm (find-file-noselect temp-file t)) nil)))
+                   (add-to-list 'consult-gh--preview-buffers-list buffer)
+                   (funcall preview action
+                            buffer)))))))))))
 
 (defun consult-gh--workflow-get-stater-workflows (input)
   "Search starter-workflows for INPUT."
