@@ -164,8 +164,7 @@ When `current-prefix-args' is non-nil, add repository's name at the front."
            (number (get-text-property 0 :number cand))
            (path (get-text-property 0 :path cand))
            (sha (get-text-property 0 :sha cand))
-           (branch (or (get-text-property 0 :ref cand)
-                       (get-text-property 0 :branch cand)))
+           (branch (get-text-property 0 :ref cand))
            (title (pcase class
                     ((or "file" "code")
                      (if current-prefix-arg
@@ -208,8 +207,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
             (id (get-text-property 0 :id cand))
             (sha (get-text-property 0 :sha cand))
             (url (get-text-property 0 :url cand))
-            (ref (or (get-text-property 0 :ref cand)
-                     (get-text-property 0 :branch cand))))
+            (ref (get-text-property 0 :ref cand)))
        (or url
            (pcase class
              ("issue"
@@ -538,8 +536,7 @@ CAND can be a repo, issue, PR, file path, ..."
     (let* ((api-url (get-text-property 0 :api-url cand))
            (repo (get-text-property 0 :repo cand))
            (path (get-text-property 0 :path cand))
-           (ref (or (get-text-property 0 :ref cand)
-                    (get-text-property 0 :branch cand) nil))
+           (ref (get-text-property 0 :ref cand))
            (contents (if (and api-url (stringp api-url))
                          (consult-gh--files-get-content-by-api-url api-url)
                        (consult-gh--files-get-content-by-path repo path ref))))
@@ -593,10 +590,9 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
            (repo (get-text-property 0 :repo cand))
            (url (consult-gh-embark-get-url cand))
            (title (consult-gh-embark-get-title cand))
-           (path (or (get-text-property 0 :path cand) nil))
-           (ref (or (get-text-property 0 :ref cand)
-                    (get-text-property 0 :branch cand) nil))
-           (sha (or (get-text-property 0 :sha cand) nil)))
+           (path (get-text-property 0 :path cand))
+           (ref (get-text-property 0 :ref cand))
+           (sha (get-text-property 0 :sha cand)))
 
       (pcase class
         ((or "issue" "pr")
@@ -630,8 +626,7 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
     (let* ((api-url (get-text-property 0 :api-url cand))
           (repo (get-text-property 0 :repo cand))
           (path (get-text-property 0 :path cand))
-          (ref (or (get-text-property 0 :ref cand)
-                    (get-text-property 0 :branch cand) nil))
+          (ref (get-text-property 0 :ref cand))
           (contents (if (and api-url (stringp api-url))
                         (consult-gh--files-get-content-by-api-url api-url)
                       (consult-gh--files-get-content-by-path repo path ref))))
@@ -1114,7 +1109,7 @@ CAND can be a PR or an issue."
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (let* ((repo (get-text-property 0 :repo cand))
-            (branch (get-text-property 0 :branch cand)))
+            (branch (get-text-property 0 :ref cand)))
      (funcall #'consult-gh-branch-delete repo branch)))))
 
 (defun consult-gh-embark-commit-browse-files (cand)

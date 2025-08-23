@@ -1591,6 +1591,9 @@ This is used in `consult-gh-dashboard'.")
 (defvar consult-gh--open-files-list nil
   "List of currently open files.")
 
+(defvar consult-gh--open-files-buffers nil
+  "List of buffers with open files.")
+
 (defvar consult-gh--current-tempdir nil
   "Current temporary directory.")
 
@@ -3362,7 +3365,7 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
     (consult-gh--make-process "consult-gh-valid-branches"
                               :when-done (lambda (_ out)
                                  (add-text-properties 0 1 (list
-                                                           :valid-branches (consult-gh--completion-get-branches-list out))
+                                                           :valid-refs (consult-gh--completion-get-branches-list out))
                                                       topic))
                               :cmd-args (list "api" (format "/repos/%s/branches" repo)))))
 
@@ -3688,7 +3691,7 @@ Completes “default_branch:.*” for referencing branches"
   (let* ((topic consult-gh--topic)
          (headrefs (completion-table-dynamic
                       (lambda (_)
-                         (get-text-property 0 :valid-branches topic))))
+                         (get-text-property 0 :valid-refs topic))))
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
@@ -3966,7 +3969,7 @@ Completes “target:.*” for referencing branches in a release"
   (let* ((topic consult-gh--topic)
          (targets (completion-table-dynamic
                       (lambda (_)
-                         (get-text-property 0 :valid-branches topic))))
+                         (get-text-property 0 :valid-refs topic))))
          (begin (or (match-beginning 1)
                     (save-excursion
                       (cond
@@ -5054,7 +5057,6 @@ uses `consult-gh--api-get-json' to get branches from GitHub API."
                   (when (stringp name)
                     (propertize name
                                :repo repo
-                               :branch name
                                :ref name
                                :api-url api-url
                                :sha sha
@@ -5066,14 +5068,14 @@ uses `consult-gh--api-get-json' to get branches from GitHub API."
 (defun consult-gh--repo-get-branches-list (repo &optional set-valid-branches)
   "Return REPO's information in propertized text format.
 
-When SET-VALID-BRANCHES in non-nil, set :valid-branches property of
+When SET-VALID-BRANCHES in non-nil, set :valid-refs property of
 the buffer-local variable for `consult-gh--topic'."
   (let* ((topic consult-gh--topic)
          (items (consult-gh--json-to-hashtable  (consult-gh--api-get-command-string (format "repos/%s/branches" repo))))
          (branches (consult-gh--repo-get-branches-hashtable-to-list items repo)))
 
 (when (and set-valid-branches (stringp topic) branches)
-      (add-text-properties 0 1 (list :valid-branches branches) topic))
+      (add-text-properties 0 1 (list :valid-refs branches) topic))
 
 branches))
 
@@ -5107,8 +5109,7 @@ Description of Arguments:
                              :add-history  (let* ((topicbranch
                                                    (and consult-gh--topic
                                                         (stringp consult-gh--topic)
-                                                        (or (get-text-property 0 :branch consult-gh--topic)
-                                                            (get-text-property 0 :ref consult-gh--topic)))))
+                                                        (get-text-property 0 :ref consult-gh--topic))))
                                              (append (list
                                                       topicbranch
                                                       (thing-at-point 'symbol))))
@@ -5116,7 +5117,7 @@ Description of Arguments:
                                        (or (car-safe (member sel cands)) sel))
                              :sort t
                              :predicate predicate)))
-    (if (get-text-property 0 :branch sel)
+    (if (get-text-property 0 :ref sel)
         sel
       (when (and create-new
                  (y-or-n-p "That branch does not exit.  Do you want to make a new branch?"))
@@ -5196,7 +5197,7 @@ If optional argument SYNC is non-nil, run the prcess synchronously."
          (_  (unless canwrite
                (user-error "Current user, %s, does not have permissions to create a branch in %s" user repo)))
          (branch (or branch
-                     (get-text-property 0 :branch (consult-gh--read-branch repo nil "Select the branch to delete: " t nil))))
+                     (get-text-property 0 :ref (consult-gh--read-branch repo nil "Select the branch to delete: " t nil))))
          (args (list "api" "-X" "DELETE")))
     (when (and repo branch)
       (setq args (append args (list (format "/repos/%s/git/refs/heads/%s" repo branch))))
@@ -5311,15 +5312,14 @@ Description of Arguments:
                                :add-history  (let* ((topicbranch
                                                      (and consult-gh--topic
                                                           (stringp consult-gh--topic)
-                                                          (or (get-text-property 0 :branch consult-gh--topic)
-                                                              (get-text-property 0 :ref consult-gh--topic)))))
+                                                              (get-text-property 0 :ref consult-gh--topic))))
                                                (append (list
                                                         topicbranch
                                                         (thing-at-point 'symbol)
                                                         )))
                                :history history
                                :default default
-                               :sort t)))
+                               :sort nil)))
     (when (listp sel)
         (cond
          ((equal (plist-get (cdr sel) :match) nil)
@@ -8055,8 +8055,11 @@ and is used to preview files or do other actions on the file."
                                              (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))))
                     (buffer (or (and file-p confirm (find-file-noselect temp-file t)) nil)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
+               (add-to-list 'consult-gh--open-files-buffers buffer)
                (funcall preview action
-                        buffer))))))))
+                        buffer))))
+        ('return
+         cand)))))
 
 (defun consult-gh--file-annotate ()
   "Annotate each file candidate for `consult-gh--files-read-file'.
@@ -8164,7 +8167,6 @@ Output is the buffer visiting the file."
         (let ((after-save-hook nil))
           (write-file temp-file)))
       (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))
-
     (if no-select
         (find-file-noselect temp-file)
       (with-current-buffer (funcall (or find-func #'find-file) temp-file)
@@ -8189,6 +8191,7 @@ Output is the buffer visiting the file."
               (consult-gh-recenter 'middle))
           nil)
         (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
+        (add-to-list 'consult-gh--open-files-buffers (current-buffer))
         (consult-gh-file-view-mode +1)
         (unless (stringp consult-gh--topic)
           (setq-local consult-gh--topic topic))
@@ -8439,6 +8442,7 @@ and is used to preview existing files."
                                                  (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))))
                         (buffer (or (and file-p confirm (find-file-noselect temp-file t)) nil)))
                    (add-to-list 'consult-gh--preview-buffers-list buffer)
+                   (add-to-list 'consult-gh--open-files-buffers buffer)
                    (funcall preview action
                             buffer)))))))
         ('return
@@ -8463,6 +8467,7 @@ Description of Arguments:
       (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))
     (with-current-buffer (find-file temp-file)
         (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
+        (add-to-list 'consult-gh--open-files-buffers (current-buffer))
         (consult-gh-file-view-mode +1)
         (read-only-mode -1)
         (setq-local consult-gh--topic topic)
@@ -11299,7 +11304,7 @@ Description of Arguments:
           (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t)))))
-    (add-text-properties 0 1 (list :repo repo :baserepo repo :user user :package package :number number :state state :title title :branch branch :headbranch headbranch :headrepo headrepo :date date :query query :class class :type type) str)
+    (add-text-properties 0 1 (list :repo repo :baserepo repo :user user :package package :number number :state state :title title :ref branch :headbranch headbranch :headrepo headrepo :date date :query query :class class :type type) str)
     str))
 
 (defun consult-gh--search-prs-format (string input highlight)
@@ -12351,7 +12356,7 @@ PR defaults to `consult-gh--topic'."
          (valid-labels (get-text-property 0 :valid-labels pr))
          (valid-projects (get-text-property 0 :valid-projects pr))
          (valid-milestones (get-text-property 0 :valid-milestones pr))
-         (valid-branches (or (get-text-property 0 :valid-branches pr)
+         (valid-branches (or (get-text-property 0 :valid-refs pr)
                              (consult-gh--repo-get-branches-list baserepo t))))
 
 
@@ -14021,27 +14026,28 @@ and is used to preview or do other actions on the code."
                                 (consult-gh--files-get-content-by-path repo path ref)))
                         (_ (progn
                              (unless (file-exists-p temp-file)
-                               (make-directory (file-name-directory temp-file) t))
-                             (with-temp-file temp-file
-                               (insert text)
-                               (set-buffer-file-coding-system 'raw-text)
-                               (set-buffer-multibyte t)
-                               (let ((after-save-hook nil)
-                                     (write-file temp-file)))
-                               (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file))))
-                           (buffer (or (find-file-noselect temp-file t) nil)))
-                        (when buffer
-                          (with-current-buffer buffer
-                            (if consult-gh-highlight-matches
-                                (highlight-regexp (string-trim code) 'consult-gh-preview-match))
-                            (goto-char (point-min))
-                            (search-forward code nil t)
-                            (add-to-list 'consult-gh--preview-buffers-list buffer)
-                            (funcall preview action
-                                     buffer)
-                            (consult-gh-recenter 'middle))))))
-             ('return
-              cand))))))
+                               (make-directory (file-name-directory temp-file) t)
+                               (with-temp-file temp-file
+                                 (insert text)
+                                 (set-buffer-file-coding-system 'raw-text)
+                                 (set-buffer-multibyte t)
+                                 (let ((after-save-hook nil))
+                                   (write-file temp-file))
+                                 (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file))))))
+                        (buffer (or (find-file-noselect temp-file t) nil)))
+                   (when buffer
+                     (with-current-buffer buffer
+                       (if consult-gh-highlight-matches
+                           (highlight-regexp (string-trim code) 'consult-gh-preview-match))
+                       (goto-char (point-min))
+                       (search-forward code nil t)
+                       (add-to-list 'consult-gh--preview-buffers-list buffer)
+                       (add-to-list 'consult-gh--open-files-buffers buffer)
+                       (funcall preview action
+                                buffer)
+                       (consult-gh-recenter 'middle))))))
+            ('return
+             cand))))))
 
 (defun consult-gh--code-group (cand transform)
   "Group function for code candidates, CAND.
@@ -14909,8 +14915,8 @@ Description of Arguments:
          (tags (or (get-text-property 0 :valid-release-tags release)
                    (and (not (member :valid-release-tags (text-properties-at 0 release)))
                               (consult-gh--repo-get-tags repo t))))
-         (targets (or (get-text-property 0 :valid-branches release)
-                   (and (not (member :valid-branches (text-properties-at 0 release)))
+         (targets (or (get-text-property 0 :valid-refs release)
+                   (and (not (member :valid-refs (text-properties-at 0 release)))
                         (consult-gh--repo-get-branches-list repo t))))
          (done nil))
 
@@ -14971,7 +14977,7 @@ REALESE defaults to `consult-gh--topic'."
 
         (when (and (stringp text-target) (not (string-empty-p text-target)))
           (cond
-           ((member text-target (or (get-text-property 0 :valid-branches release) (consult-gh--repo-get-branches-list repo t)))
+           ((member text-target (or (get-text-property 0 :valid-refs release) (consult-gh--repo-get-branches-list repo t)))
             (setq target text-target))
            (t (message "target not valid!")
               (setq target nil))))
@@ -15045,8 +15051,8 @@ This is used for creating new releases."
          (header (car (consult-gh--get-region-with-overlay ':consult-gh-header)))
          (tagname (cdr (assoc "tagname" meta)))
          (current (cdr (assoc "target" meta)))
-         (targets (or (get-text-property 0 :valid-branches release)
-                      (and (not (member :valid-branches (text-properties-at 0 release)))
+         (targets (or (get-text-property 0 :valid-refs release)
+                      (and (not (member :valid-refs (text-properties-at 0 release)))
                        (consult-gh--repo-get-branches-list repo t))))
          (selection (and (listp targets)
                          (consult--read targets
@@ -15309,8 +15315,8 @@ buffer generated by `consult-gh-release-create'."
         (if (equal type "release")
             (pcase-let* ((old-tagname (get-text-property 0 :tagname release))
                          (repo (get-text-property 0 :repo release))
-                         (targets (or (get-text-property 0 :valid-branches release)
-                                      (and (not (member :valid-branches (text-properties-at 0 release)))
+                         (targets (or (get-text-property 0 :valid-refs release)
+                                      (and (not (member :valid-refs (text-properties-at 0 release)))
                                            (consult-gh--repo-get-branches-list repo t))))
                          (new (or new (consult--read targets
                                                      :initial old
@@ -16049,10 +16055,10 @@ and is used to preview YAML files."
                (cond
                 ((stringp path)
                  (let* ((repo (plist-get cand :repo))
-                        (branch (or (plist-get cand :branch) "HEAD"))
+                        (ref (or (plist-get cand :ref) "HEAD"))
                         (size (plist-get cand :size))
                         (object-type (plist-get cand :object-type))
-                        (tempdir (expand-file-name (concat repo "/" branch "/")
+                        (tempdir (expand-file-name (concat repo "/" ref "/")
                                                    (or consult-gh--current-tempdir
                                                        (consult-gh--tempdir))))
                         (file-p (equal object-type "blob"))
@@ -16067,7 +16073,7 @@ and is used to preview YAML files."
                                                    (make-directory (file-name-directory temp-file) t)
                                                    (with-temp-file temp-file
                                                      (setq-local after-save-hook nil)
-                                                     (insert (consult-gh--files-get-content-by-path repo path branch))
+                                                     (insert (consult-gh--files-get-content-by-path repo path ref))
                                                      (set-buffer-file-coding-system 'raw-text)
                                                      (set-buffer-multibyte t)
                                                      (let ((after-save-hook nil))
@@ -16076,6 +16082,7 @@ and is used to preview YAML files."
                                                  (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file)))))
                         (buffer (or (and file-p confirm (find-file-noselect temp-file t)) nil)))
                    (add-to-list 'consult-gh--preview-buffers-list buffer)
+                   (add-to-list 'consult-gh--open-files-buffers buffer)
                    (funcall preview action
                             buffer)))))))))))
 
@@ -17821,7 +17828,7 @@ For more details on consult--async functionalities, see `consult-grep'
 and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
-  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
+  (if current-prefix-arg
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
   (when (bound-and-true-p consult-gh-embark-mode)
     (setq consult-gh--last-command #'consult-gh-search-issues))
@@ -18383,7 +18390,7 @@ For more details refer to the manual with “gh issue develop --help”."
                                          repo)))
           (base (or base
                     (if (eq (cadr branch) :new)
-                        (get-text-property 0 :branch
+                        (get-text-property 0 :ref
                                            (consult-gh--read-branch branch-repo nil (format "Select a reference branch in %s as starting point: " branch-repo) t nil)))))
           (args (if (eq (cadr branch) :new)
                     (list "issue" "develop" number "--repo" repo))))
@@ -18528,7 +18535,10 @@ URL `https://github.com/minad/consult'."
       (setq initial (or initial (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos initial t))))))
   (when (bound-and-true-p consult-gh-embark-mode)
     (setq consult-gh--last-command #'consult-gh-pr-list))
-  (let* ((prompt (or prompt "Enter Repo Name:  "))
+  (let* ((initial (or initial
+                      (and (stringp consult-gh--topic)
+                           (get-text-property 0 :repo consult-gh--topic))))
+         (prompt (or prompt "Enter Repo Name:  "))
          (sel (consult-gh--async-pr-list prompt #'consult-gh--pr-list-builder initial min-input)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
@@ -18650,7 +18660,7 @@ For more details on consult--async functionalities, see `consult-grep'
 and the official manual of consult, here:
 URL `https://github.com/minad/consult'."
   (interactive)
-  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
+  (if current-prefix-arg
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo  (consult-gh-search-repos repo t))))))
   (when (bound-and-true-p consult-gh-embark-mode)
     (setq consult-gh--last-command #'consult-gh-search-prs))
@@ -19267,7 +19277,7 @@ URL `https://github.com/minad/consult'."
   (interactive)
   (setq consult-gh--open-files-list nil
         consult-gh--current-tempdir (consult-gh--tempdir))
-  (if (xor current-prefix-arg consult-gh-use-search-to-find-name)
+  (if current-prefix-arg
       (setq repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t))))))
   (let* ((prompt (or prompt "Search Code:  "))
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
@@ -19456,7 +19466,14 @@ Description of Arguments:
   (setq consult-gh--open-files-list nil
         consult-gh--current-tempdir (consult-gh--tempdir))
   (let* ((repo (or repo
-                   (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
+                   (unless current-prefix-arg
+                     (and (stringp consult-gh--topic)
+                          (get-text-property 0 :repo consult-gh--topic)))
+                       (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
+         (ref (or ref
+               (unless current-prefix-arg
+                     (and (stringp consult-gh--topic)
+                          (get-text-property 0 :ref consult-gh--topic)))))
          (sel (if consult-gh-files-use-dired-like-mode
                   (consult-gh--files-read-file repo ref path initial nil nil t)
                   (consult-gh--files-read-file repo ref path initial))))
@@ -19645,7 +19662,7 @@ path of each file to delete.  For example see the buffer-local-variable
           (_ (if (not canwrite)
                  (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (ref (or (get-text-property 0 :ref file)
-                   (get-text-property 0 :branch (consult-gh--read-branch repo nil nil t nil))
+                   (get-text-property 0 :ref (consult-gh--read-branch repo nil nil t nil))
                    (or consult-gh-default-branch-to-load "HEAD")))
           (ref (cond
                 ((or (equal ref "HEAD") (equal ref ""))
@@ -19768,7 +19785,7 @@ path of the file to delete.  For example see the buffer-local-variable
           (_ (if (not canwrite)
                  (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (ref (or (get-text-property 0 :ref file)
-                   (get-text-property 0 :branch (consult-gh--read-branch repo nil nil t nil))
+                   (get-text-property 0 :ref (consult-gh--read-branch repo nil nil t nil))
                    (or consult-gh-default-branch-to-load "HEAD")))
           (ref (cond
                 ((or (equal ref "HEAD") (equal ref ""))
@@ -20244,7 +20261,7 @@ URL `https://github.com/minad/consult'"
   (when (bound-and-true-p consult-gh-embark-mode)
     (setq consult-gh--last-command #'consult-gh-release-list))
   (let* ((prompt (or prompt "Enter Repo Name:  "))
-        (sel (consult-gh--async-release-list prompt #'consult-gh--release-list-builder initial min-input)))
+         (sel (consult-gh--async-release-list prompt #'consult-gh--release-list-builder initial min-input)))
     ;;add org and repo to known lists
     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
@@ -20282,7 +20299,7 @@ For more details refer to the manual with “gh release create --help”."
                                                        :default tagname))))
               (title (and title (stringp title) (not (string-empty-p title)) (propertize title :consult-gh-draft-title t 'rear-nonsticky t)))
               (target (or target (consult-gh--read-branch repo nil "Select target branch: " nil t)))
-              (target (and (stringp target) (not (string-empty-p target)) (get-text-property :branch target)))
+              (target (and (stringp target) (not (string-empty-p target)) (get-text-property :ref target)))
               (body (or body (consult--read (list (cons "Blank" "")
                                                   (cons "Use generated notes as template" :generate))
                                             :prompt "Release notes: "
@@ -21377,8 +21394,7 @@ browser."
    (let* ((topic (or topic consult-gh--topic))
           (type (and (stringp topic) (get-text-property 0 :type topic)))
           (repo (and (stringp topic) (get-text-property 0 :repo topic)))
-          (branch (and (stringp topic) (or (get-text-property 0 :branch topic)
-                                           (get-text-property 0 :ref topic))))
+          (branch (and (stringp topic) (get-text-property 0 :ref topic)))
           (path (and (stringp topic) (get-text-property 0 :path topic)))
           (number (and (stringp topic) (get-text-property 0 :number topic)))
           (tagname (and (stringp topic) (get-text-property 0 :tagname topic)))
@@ -21951,6 +21967,24 @@ and removes the buffers that are killed from the list."
                 (setq consult-gh--preview-buffers-list
                       (delete buff consult-gh--preview-buffers-list))))
             consult-gh--preview-buffers-list)))
+
+;;;###autoload
+(defun consult-gh-kill-open-file-buffers ()
+  "Kill all open file buffers stored in `consult-gh--open-files-buffers'.
+
+It asks for confirmation if the buffer is modified
+and removes the buffers that are killed from the list."
+  (interactive)
+  (when (and consult-gh--open-files-buffers
+             (listp consult-gh--open-files-buffers))
+    (mapcar (lambda (buff)
+              (when (bufferp buff)
+                (if (buffer-live-p buff)
+                    (kill-buffer buff))
+                (unless (buffer-live-p buff)
+                  (setq consult-gh--open-files-buffers
+                        (delete buff consult-gh--open-files-buffers)))))
+            consult-gh--open-files-buffers)))
 
 ;;;###autoload
 (defun consult-gh-refresh-view ()
