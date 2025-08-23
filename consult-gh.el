@@ -2921,7 +2921,8 @@ For more details on ACTION and CAND refer to docstring of
            (with-current-buffer buff
              (erase-buffer)
              (insert content)
-             (set-buffer-file-coding-system 'utf-8))
+             (set-buffer-file-coding-system 'utf-8)
+             (set-buffer-multibyte t))
            (add-to-list 'consult-gh--preview-buffers-list buff)
            (funcall preview action
                     buff))))
@@ -2971,7 +2972,8 @@ For more details on ACTION and CAND refer to docstring of
            (with-current-buffer buff
              (erase-buffer)
              (insert content)
-             (set-buffer-file-coding-system 'utf-8))
+             (set-buffer-file-coding-system 'utf-8)
+             (set-buffer-multibyte t))
            (add-to-list 'consult-gh--preview-buffers-list buff)
            (funcall preview action
                     buff))))
@@ -3029,7 +3031,8 @@ major mode and format the contents."
     (while (re-search-forward "\r\n" nil t)
       (replace-match "\n")))
   (ansi-color-apply-on-region (point-min) (point-max))
-  (set-buffer-file-coding-system 'utf-8-unix))))
+  (set-buffer-file-coding-system 'utf-8)
+  (set-buffer-multibyte t))))
 
 (defun consult-gh--get-user-tooltip (user &rest _args)
   "Make tooltip for USER."
@@ -5045,17 +5048,19 @@ uses `consult-gh--api-get-json' to get branches from GitHub API."
   (mapcar (lambda (item)
             (when (hash-table-p item)
               (let* ((name (gethash :name item))
-                     (url (gethash :url (gethash :commit item)))
+                     (api-url (gethash :url (gethash :commit item)))
                      (sha (gethash :sha (gethash :commit item)))
                      (protected (gethash :protected item)))
                   (when (stringp name)
                     (propertize name
                                :repo repo
                                :branch name
-                               :url url
+                               :ref name
+                               :api-url api-url
                                :sha sha
                                :protected protected
-                               :type "branch")))))
+                               :type "branch"
+                               :class "branch")))))
           table))
 
 (defun consult-gh--repo-get-branches-list (repo &optional set-valid-branches)
@@ -6912,7 +6917,7 @@ Description of Arguments:
                   (add-text-properties 0 1 (list :repo repo
                                                  :old-path old-path
                                                  :new-path new-path
-                                                 :url nil
+                                                 :api-url nil
                                                  :mode "file"
                                                  :size nil
                                                  :ref ref
@@ -7191,11 +7196,11 @@ the header section for `consult-gh--commit-view'."
                                  collect
                                  (when (hash-table-p parent)
                                    (let* ((parent-sha (gethash :sha parent))
-                                          (url (gethash :html_url parent))
+                                          (html-url (gethash :html_url parent))
                                           (parent-sha-str (and (stringp parent-sha)
                                                                (substring parent-sha 0 6))))
                                           (when (stringp parent-sha-str)
-                                            (propertize parent-sha-str :sha parent-sha :url url))))))))
+                                            (propertize parent-sha-str :sha parent-sha :url html-url))))))))
    (cl-remove-duplicates (delq nil parents-list) :test #'equal)))
 
 (defun consult-gh--commit-read-filter-comments-query (comments &optional maxnum)
@@ -7861,7 +7866,7 @@ formatted properly to be sent to `consult-gh-find-file'."
                                 (file-name-as-directory parent)
                                 name)
                              name))
-                     (url (gethash :url item))
+                     (api-url (gethash :url item))
                      (mode (gethash :mode item))
                      (sha (gethash :sha item))
                      (size (gethash :size item))
@@ -7869,7 +7874,7 @@ formatted properly to be sent to `consult-gh-find-file'."
 
               (cons name
                     (list :repo repo
-                          :url url
+                          :api-url api-url
                           :mode mode
                           :path path
                           :ref ref
@@ -7981,7 +7986,7 @@ If HIGHLIGHT is non-nil, highlights the input in candidates."
          (object-type (plist-get info :object-type))
          (ref (plist-get info :ref))
          (sha (plist-get info :sha))
-         (url (plist-get info :url))
+         (api-url (plist-get info :api-url))
          (mode (pcase (plist-get info :mode)
                  ("100644" "file")
                  ("100755" "exec file")
@@ -8001,7 +8006,7 @@ If HIGHLIGHT is non-nil, highlights the input in candidates."
                                      :package package
                                      :path (and (stringp path)
                                                 (substring-no-properties path))
-                                     :url url
+                                     :api-url api-url
                                      :mode mode
                                      :size size
                                      :ref ref
@@ -8026,7 +8031,7 @@ and is used to preview files or do other actions on the file."
              (let* ((repo (get-text-property 0 :repo cand))
                     (path (get-text-property 0 :path cand))
                     (ref (or (get-text-property 0 :ref cand) "HEAD"))
-                    (url (get-text-property 0 :url cand))
+                    (api-url (get-text-property 0 :api-url cand))
                     (object-type (get-text-property 0 :object-type cand))
                     (tempdir (expand-file-name (concat repo "/" ref "/")
                                                (or consult-gh--current-tempdir
@@ -8042,8 +8047,9 @@ and is used to preview files or do other actions on the file."
                                              (unless (file-exists-p temp-file)
                                                (make-directory (file-name-directory temp-file) t)
                                                (with-temp-file temp-file
-                                                 (insert (consult-gh--files-get-content-by-api-url url))
+                                                 (insert (consult-gh--files-get-content-by-api-url api-url))
                                                  (set-buffer-file-coding-system 'raw-text)
+                                                 (set-buffer-multibyte t)
                                                  (write-file temp-file)))
                                              (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))))
                     (buffer (or (and file-p confirm (find-file-noselect temp-file t)) nil)))
@@ -8115,7 +8121,7 @@ set `consult-gh-file-action' to `consult-gh--files-browse-url-action'."
          (url (concat (string-trim (consult-gh--command-to-string "browse" "--repo" repo "--no-browser")) "/blob/" ref "/" path)))
     (funcall (or consult-gh-browse-url-func #'browse-url) url)))
 
-(defun consult-gh--files-view (repo path url &optional no-select tempdir jump-to-str ref revert find-func)
+(defun consult-gh--files-view (repo path api-url &optional no-select tempdir jump-to-str ref revert find-func)
   "Open file in an Emacs buffer.
 
 This is an internal function that gets the PATH to a file within a REPO and
@@ -8134,7 +8140,7 @@ Description of Arguments:
   REPO      full name of the repo e.g. “arimindarvish/consult-gh”
   PATH      the relative path of the file to the root of repo
             e.g “./README.org”
-  URL       the url of the file as retrieved from GitHub API
+  API-URL   the url of the file as retrieved from GitHub API
   NO-SELECT a boolean for whether to swith-to-buffer or not
   TEMPDIR   the directory where the temporary file is saved
   REF       a string; branch name, tag name or commit sha
@@ -8146,13 +8152,14 @@ Output is the buffer visiting the file."
   (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
          (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" ref "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir)))
          (topic (format "%s/%s" repo path)))
-    (add-text-properties 0 1 (list :repo repo :type "file" :path path :ref ref :title nil :url url :changed-locally nil) topic)
+    (add-text-properties 0 1 (list :repo repo :type "file" :path path :ref ref :title nil :api-url api-url :changed-locally nil) topic)
     (unless (file-exists-p temp-file)
       (make-directory (file-name-directory temp-file) t)
       (with-temp-file temp-file
-        (insert (if url (consult-gh--files-get-content-by-api-url url)
+        (insert (if api-url (consult-gh--files-get-content-by-api-url api-url)
                       (consult-gh--files-get-content-by-path repo path ref)))
         (set-buffer-file-coding-system 'raw-text)
+        (set-buffer-multibyte t)
         (write-file temp-file))
       (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))
 
@@ -8167,9 +8174,10 @@ Output is the buffer visiting the file."
                 (after-save-hook nil))
             (save-excursion
             (erase-buffer)
-            (insert (if url (consult-gh--files-get-content-by-api-url url)
+            (insert (if api-url (consult-gh--files-get-content-by-api-url api-url)
                       (consult-gh--files-get-content-by-path repo path ref)))
             (set-buffer-file-coding-system 'raw-text)
+            (set-buffer-multibyte t)
             (setq-local consult-gh--topic topic)
             (write-file temp-file))))
         (if jump-to-str
@@ -8191,7 +8199,7 @@ Output is the buffer visiting the file."
 This is a wrapper function around `consult-gh--files-view'.
 
 It parses CAND to extract relevant values
-\(e.g. repository, file path, url, ...\) and passes them to
+\(e.g. repository, file path, ...\) and passes them to
 `consult-gh--files-view'.
 
 To use this as the default action on consult-gh's files,
@@ -8199,7 +8207,7 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
   (save-match-data
     (let* ((repo (get-text-property 0 :repo cand))
            (path (get-text-property 0 :path cand))
-           (url (get-text-property 0 :url cand))
+           (api-url (get-text-property 0 :api-url cand))
            (ref (or (get-text-property 0 :ref cand) "HEAD"))
            (object-type (get-text-property 0 :object-type cand))
            (mode (get-text-property 0 :mode cand))
@@ -8219,7 +8227,7 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
                (setq confirm t)
              (setq confirm nil))))
          (if (and file-p confirm)
-             (consult-gh--files-view repo path url nil tempdir nil ref)))
+             (consult-gh--files-view repo path api-url nil tempdir nil ref)))
         ("directory"
          (if consult-gh-files-use-dired-like-mode
              (consult-gh-dired repo (or (and (stringp path)
@@ -8243,7 +8251,7 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
                      (consult-gh-find-file (string-remove-suffix ".git" (string-remove-prefix "/" urlpath)) module-sha))
                     (t
                       (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to browse the link:  %s? " git-url))
-                      (funcall consult-gh-browse-url-func git-url))))
+                      (funcall (or consult-gh-browse-url-func #'browse-url) git-url))))
                   ((and (stringp urlpath)
                         (string-match-p "git@.*" urlpath))
                    (cond
@@ -8252,7 +8260,7 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
                     ((string-match "git@.*gitlab.com:\\(?1:.*\\)" urlpath)
                      (let ((submodule-link (format "https://gitlab.com/%s" (match-string 1 urlpath))))
                         (and (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to open the link:  %s in the browser? " (propertize submodule-link 'face 'consult-gh-wraning)))
-                         (funcall consult-gh-browse-url-func submodule-link))))
+                         (funcall (or consult-gh-browse-url-func #'browse-url) submodule-link))))
                     (t
                       (message "Do not know how to open the submodule: %s" git-url)))))))))))))
 
@@ -8260,7 +8268,7 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
   "Save file candidate, CAND, to a file.
 
 Its parses CAND to extract relevant information
-\(e.g. repository name, file path, url, ...\)
+\(e.g. repository name, file path, ...\)
 and passes them to `consult-gh--files-view',
 then saves the buffer to file.
 
@@ -8273,7 +8281,7 @@ To use this as the default action on consult-gh's files,
 set `consult-gh-file-action' to `consult-gh--files-save-file-action'."
   (let* ((repo (get-text-property 0 :repo cand))
          (path (get-text-property 0 :path cand))
-         (url (get-text-property 0 :url cand))
+         (api-url (get-text-property 0 :api-url cand))
          (ref (get-text-property 0 :ref cand))
          (object-type (get-text-property 0 :object-type cand))
          (file-p (equal object-type "blob"))
@@ -8287,7 +8295,7 @@ set `consult-gh-file-action' to `consult-gh--files-save-file-action'."
       (if (yes-or-no-p (format "File is %s Bytes.  Do you really want to load it?" file-size))
           (setq confirm t)
         (setq confirm nil)))
-    (let ((buffer (and file-p (consult-gh--files-view repo path url t nil nil ref t))))
+    (let ((buffer (and file-p (consult-gh--files-view repo path api-url t nil nil ref t))))
       (if (and file-p confirm)
           (save-mark-and-excursion
             (save-restriction
@@ -8403,7 +8411,7 @@ and is used to preview existing files."
                         (ref (or (plist-get info :ref) "HEAD"))
                         (size (plist-get info :size))
                         (object-type (plist-get info :object-type))
-                        (url (plist-get info :url))
+                        (api-url (plist-get info :api-url))
                         (tempdir (expand-file-name (concat repo "/" ref "/")
                                                    (or consult-gh--current-tempdir
                                                        (consult-gh--tempdir))))
@@ -8419,9 +8427,10 @@ and is used to preview existing files."
                                                    (make-directory (file-name-directory temp-file) t)
                                                    (with-temp-file temp-file
                                                      (setq-local after-save-hook nil)
-                                                     (insert (if url (consult-gh--files-get-content-by-api-url url)
+                                                     (insert (if api-url (consult-gh--files-get-content-by-api-url api-url)
                                                                (consult-gh--files-get-content-by-path repo path ref)))
                                                      (set-buffer-file-coding-system 'raw-text)
+                                                     (set-buffer-multibyte t)
                                                      (write-file temp-file)
                                                      (set-buffer-modified-p nil)))
                                                  (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))))
@@ -8445,7 +8454,7 @@ Description of Arguments:
   (let* ((tempdir (or tempdir consult-gh--current-tempdir (consult-gh--tempdir)))
          (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" ref "/" path)) consult-gh--open-files-list)) (expand-file-name path tempdir)))
          (topic (format "%s/%s" repo path)))
-    (add-text-properties 0 1 (list :repo repo :type "file" :path path :ref ref :sha nil :title nil :url nil :changed-locally nil :new t :object-type "blob") topic)
+    (add-text-properties 0 1 (list :repo repo :type "file" :path path :ref ref :sha nil :title nil :api-url nil :changed-locally nil :new t :object-type "blob") topic)
     (unless (file-exists-p temp-file)
       (make-directory (file-name-directory temp-file) t)
       (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" ref "/" path)) . ,temp-file)))
@@ -8634,8 +8643,8 @@ by `consult-gh--repo-view'."
          (info  (consult-gh--api-get-command-string (format "repos/%s/readme" repo)))
          (path (consult-gh--json-to-hashtable info :path))
          (size (consult-gh--json-to-hashtable info :size))
-         (url (consult-gh--json-to-hashtable info :url)))
-    (add-text-properties 0 1 (list :readme-path path :readme-size size :readme-url url) topic)
+         (api-url (consult-gh--json-to-hashtable info :url)))
+    (add-text-properties 0 1 (list :readme-path path :readme-size size :readme-api-url api-url) topic)
     (when (stringp readme)
       (save-mark-and-excursion
         (insert readme)
@@ -8658,8 +8667,8 @@ by `consult-gh--repo-view'."
          (info  (consult-gh--api-get-command-string (format "repos/%s/readme" repo)))
          (path (consult-gh--json-to-hashtable info :path))
          (size (consult-gh--json-to-hashtable info :size))
-         (url (consult-gh--json-to-hashtable info :url)))
-    (add-text-properties 0 1 (list :readme-path path :readme-size size :readme-url url) topic)
+         (api-url (consult-gh--json-to-hashtable info :url)))
+    (add-text-properties 0 1 (list :readme-path path :readme-size size :readme-api-url api-url) topic)
     (when (stringp readme)
       (save-mark-and-excursion
         (insert readme)
@@ -8685,10 +8694,10 @@ by `consult-gh--repo-view'."
          (readme (consult-gh--api-get-command-string (format "repos/%s/readme" repo)))
          (path (consult-gh--json-to-hashtable readme :path))
          (size (consult-gh--json-to-hashtable readme :size))
-         (url (consult-gh--json-to-hashtable readme :url))
+         (api-url (consult-gh--json-to-hashtable readme :url))
          (extension (and (stringp path) (file-name-extension path)))
          (content (consult-gh--json-to-hashtable readme :content)))
-    (add-text-properties 0 1 (list :readme-path path :readme-size size :readme-url url) topic)
+    (add-text-properties 0 1 (list :readme-path path :readme-size size :readme-api-url api-url) topic)
     (save-mark-and-excursion
       (insert ""
               "#+name:\t" (or name "") "\n"
@@ -8697,7 +8706,8 @@ by `consult-gh--repo-view'."
               "\n\n")
       (when content
         (insert (base64-decode-string content))
-        (set-buffer-file-coding-system 'raw-text))
+        (set-buffer-file-coding-system 'raw-text)
+        (set-buffer-multibyte t))
       (cond
        ((and (stringp extension) (equal (downcase extension) "org"))
         (org-mode)
@@ -8725,10 +8735,10 @@ by `consult-gh--repo-view'."
          (readme (cadr (consult-gh--api-get-json (format "repos/%s/readme" repo))))
          (path (consult-gh--json-to-hashtable readme :path))
          (size (consult-gh--json-to-hashtable readme :size))
-         (url (consult-gh--json-to-hashtable readme :url))
+         (api-url (consult-gh--json-to-hashtable readme :url))
          (content (consult-gh--json-to-hashtable readme :content)))
 
-    (add-text-properties 0 1 (list :readme-path path :readme-size size :readme-url url) topic)
+    (add-text-properties 0 1 (list :readme-path path :readme-size size :readme-api-url api-url) topic)
 
     (save-mark-and-excursion
       (setq-local buffer-file-name path)
@@ -8739,7 +8749,8 @@ by `consult-gh--repo-view'."
               "\n\n")
       (when content
         (insert (base64-decode-string content))
-        (set-buffer-file-coding-system 'raw-text))
+        (set-buffer-file-coding-system 'raw-text)
+        (set-buffer-multibyte t))
       (normal-mode)
       (set-buffer-modified-p nil)))
   nil)
@@ -8770,10 +8781,10 @@ PREVIEW a boolean; when non-nil loads the preview without details."
            (info (consult-gh--api-get-command-string (format "/repos/%s" repo)))
            (default-branch (consult-gh--json-to-hashtable info :default_branch))
            (open-issues-count (consult-gh--json-to-hashtable info :open_issue_count))
-           (url (consult-gh--json-to-hashtable info :html_url))
+           (html-url (consult-gh--json-to-hashtable info :html_url))
           (topic (format "%s" repo)))
 
-      (add-text-properties 0 1 (list :repo repo :type "repo" :title repo :default-branch default-branch :open-issues-count open-issues-count :url url) topic)
+      (add-text-properties 0 1 (list :repo repo :type "repo" :title repo :default-branch default-branch :open-issues-count open-issues-count :url html-url) topic)
 
       (unless preview
       (consult-gh--completion-set-all-fields repo topic (consult-gh--user-canwrite repo)))
@@ -9536,9 +9547,9 @@ TOPIC defaults to `consult-gh--topic'."
            (path (get-text-property 0 :readme-path repo))
            (ref (get-text-property 0 :default-branch repo))
            (size (get-text-property 0 :readme-size repo))
-           (url (get-text-property 0 :readme-url repo))
+           (api-url (get-text-property 0 :readme-api-url repo))
            (newtopic (format "%s/%s" repo-name path)))
-    (add-text-properties 0 1 (list :repo repo-name :type "file" :path path :url url :size size :ref ref) newtopic)
+    (add-text-properties 0 1 (list :repo repo-name :type "file" :path path :api-url api-url :size size :ref ref) newtopic)
     (with-current-buffer (funcall #'consult-gh--files-view-action newtopic)
     (consult-gh-edit-file))))
    (t (let* ((repo (or repo consult-gh--topic))
@@ -10255,7 +10266,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
 
          (updatedAt (gethash :updatedAt table))
          (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time updatedAt))))
-         (url (gethash :url table))
+         (html-url (gethash :url table))
          (closedAt (gethash :closedAt table))
          (closedAt (and closedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time closedAt))))
          (labels (gethash :labels table))
@@ -10298,7 +10309,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             (and createdAt (concat "created: " createdAt "\n"))
             (and updatedAt (concat "lastUpdated: " updatedAt "\n"))
             (and closedAt (concat "closed: " closedAt "\n"))
-            (and url (concat "url: " url "\n"))
+            (and html-url (concat "url: " html-url "\n"))
             (and assignees-text (concat "assignees: " assignees-text "\n"))
             (and labels-text (concat "labels: " "[ " labels-text " ]""\n"))
             (and milestone-text (concat "milestone: " milestone-text "\n"))
@@ -11492,7 +11503,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (createdAt (gethash :createdAt table))
          (updatedAt (gethash :updatedAt table))
          (updatedAt (and updatedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time updatedAt))))
-         (url (gethash :url table))
+         (html-url (gethash :url table))
          (closedAt (gethash :closedAt table))
          (closedAt (and closedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time closedAt))))
 
@@ -11536,7 +11547,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
 
     (when (stringp topic)
       (add-text-properties 0 1 (list :author author :state state :lastUpdated updatedAt
-                                     :created createdAt :closed closedAt :labels labels :milestone milestone-title :reviewers reviewers :assignees assignees :projects projects :headrepo (concat headRepoOwner "/" headRepo) :headbranch headRef :baserepo repo :basebranch baseRef) topic))
+                                     :created createdAt :closed closedAt :labels labels :milestone milestone-title :reviewers reviewers :assignees assignees :projects projects :headrepo (concat headRepoOwner "/" headRepo) :headbranch headRef :baserepo repo :basebranch baseRef :url html-url) topic))
 
     (concat "title: " title "\n"
             "author: " author "\n"
@@ -11547,7 +11558,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             (and createdAt (concat "created: " createdAt "\n"))
             (and updatedAt (concat "lastUpdated: " updatedAt "\n"))
             (and closedAt (concat "closed: " closedAt "\n"))
-            (and url (concat "url: " url "\n"))
+            (and html-url (concat "url: " html-url "\n"))
             (and labels-text (concat "labels: " "[ " labels-text " ]""\n"))
             (and projects-text (concat "projects: " projects-text "\n"))
             (and milestone-text (concat "milestone: " milestone-text "\n"))
@@ -11573,7 +11584,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                                      (propertize author 'help-echo (apply-partially #'consult-gh--get-user-tooltip author))))
          (body (gethash :body table))
          (createdAt (gethash :createdAt table))
-         (url (gethash :url table))
+         (html-url (gethash :url table))
          (header-marker "#"))
     (save-match-data
       (when (and body (string-match (concat "^" header-marker "+?\s.*$")  body))
@@ -11590,7 +11601,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                         " " (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time createdAt)) "\n"
                         "\n" body "\n" "\n-----\n")
                 :consult-gh (list :author author
-                                  :url url))))
+                                  :url html-url))))
 
 (defun consult-gh--pr-format-files-changed (table)
   "Format a changed files section for a pull request.
@@ -11614,7 +11625,7 @@ Description of Arguments:
   NUMBER        a string; number id of the pull request
   COMMIT-ID     a string; commit id of pull request
   HEADER-LEVEL  a number; outline level for adding the diff section
-  URL           a string; url of the commit
+  URL           a string; html url of the commit
   PREVIEW       a boolean; whether this is for preview"
   (when (listp diffs)
     (with-temp-buffer
@@ -11968,7 +11979,7 @@ To use this as the default action for PRs, see
           (commits-section (consult-gh--pr-commits-section commits-text)))
 
 
-     (add-text-properties 0 1 (list :repo repo :type "pr" :number number :title title :state state :commenters (mapcar (lambda (item) (concat "@" item)) commenters) :view "pr") topic)
+     (add-text-properties 0 1 (list :repo repo :type "pr" :number number :title title :state state :commenters (mapcar (lambda (item) (concat "@" item)) commenters) :view "pr" :url url) topic)
 
      (unless preview
       (consult-gh--completion-set-all-fields repo topic (consult-gh--user-canwrite repo)))
@@ -13942,7 +13953,7 @@ the buffer generated by `consult-gh-pr-review'."
                                                      (let* ((table (consult-gh--json-to-hashtable out))
                                                             (url (and (hash-table-p table) (gethash :html_url table))))
                                                        (when url
-                                                         (funcall consult-gh-browse-url-func url))))
+                                                         (funcall (or consult-gh-browse-url-func #'browse-url) url))))
                                         :cmd-args (list "api" "-H" "Accept: application/vnd.github.json" (format "repos/%s/pulls/%s/reviews/%s" repo number id))))))))
     (message "%s in a %s buffer!" (propertize "Not" 'face 'consult-gh-error) (propertize "pull request editing" 'face 'consult-gh-error))))
 
@@ -13964,8 +13975,8 @@ Description of Arguments:
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
          (path (format "%s" (cadr parts)))
-         (url (format "repos/%s/contents/%s" repo path))
-         (branch "HEAD")
+         (api-url (format "repos/%s/contents/%s" repo path))
+         (ref "HEAD")
          (path (concat "./" path))
          (code (mapcar (lambda (x) (replace-regexp-in-string "\t" "\s\s" (replace-regexp-in-string "\n" "\\n" (format "%s" x)))) (cdr (cdr parts))))
          (code (string-join code ":"))
@@ -13981,7 +13992,7 @@ Description of Arguments:
           (mapc (lambda (match) (setq str (consult-gh--highlight-match match str t))) match-str))
          ((stringp match-str)
           (setq str (consult-gh--highlight-match match-str str t)))))
-    (add-text-properties 0 1 (list :repo repo :user user :package package :code code :path path :url url :query query :class class :type type :branch branch) str)
+    (add-text-properties 0 1 (list :repo repo :user user :package package :code code :path path :api-url api-url :query query :class class :type type :ref ref) str)
     str))
 
 (defun consult-gh--code-state ()
@@ -13997,23 +14008,23 @@ and is used to preview or do other actions on the code."
              (if (and consult-gh-show-preview cand)
                  (let* ((repo (get-text-property 0 :repo cand))
                         (path (get-text-property 0 :path cand))
-                        (branch (or (get-text-property 0 :branch cand) "HEAD"))
+                        (ref (or (get-text-property 0 :ref cand) "HEAD"))
                         (code (get-text-property 0 :code cand))
-                        (url (get-text-property 0 :url cand))
-                        (tempdir (expand-file-name (concat repo "/" branch "/")
+                        (api-url (get-text-property 0 :api-url cand))
+                        (tempdir (expand-file-name (concat repo "/" ref "/")
                                     (or consult-gh--current-tempdir (consult-gh--tempdir))))
                         (temp-file (or (cdr (assoc (substring-no-properties (concat repo "/" "path")) consult-gh--open-files-list)) (expand-file-name path tempdir)))
-                        (_ (make-directory (file-name-directory temp-file) t))
-                        (text (consult-gh--files-get-content-by-api-url url))
-                        (_ (with-temp-file temp-file (insert text) (set-buffer-file-coding-system 'raw-text)))
+                        (text (if api-url (consult-gh--files-get-content-by-api-url api-url)
+                                (consult-gh--files-get-content-by-path repo path ref)))
                         (_ (progn
                              (unless (file-exists-p temp-file)
-                               (make-directory (file-name-directory temp-file) t)
-                               (with-temp-file temp-file
-                                 (insert (consult-gh--files-get-content-by-api-url url))
+                               (make-directory (file-name-directory temp-file) t))
+                             (with-temp-file temp-file
+                                 (insert text)
                                  (set-buffer-file-coding-system 'raw-text)
-                                 (write-file temp-file)))
-                           (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file))))
+                                 (set-buffer-multibyte t)
+                                 (write-file temp-file))
+                             (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file))))
                         (buffer (or (find-file-noselect temp-file t) nil)))
                    (when buffer
                      (with-current-buffer buffer
@@ -14063,19 +14074,19 @@ set `consult-gh-code-action' to `consult-gh--code-browse-url-action'."
 
 This is a wrapper function around `consult-gh--files-view'.
 It parses CAND to extract relevant values
-\(e.g. repository, file path, url, ...\)
+\(e.g. repository, file path, ...\)
 and passes them to `consult-gh--files-view'.
 
 To use this as the default action on code candidates,
 set `consult-gh-code-action' to `consult-gh--code-view-action'."
   (let* ((repo (get-text-property 0 :repo cand))
-         (branch (or (get-text-property 0 :branch cand) "HEAD"))
+         (ref (or (get-text-property 0 :ref cand) "HEAD"))
          (code (get-text-property 0 :code cand))
-         (tempdir (expand-file-name (concat repo "/" branch "/")
+         (tempdir (expand-file-name (concat repo "/" ref "/")
                                     (or consult-gh--current-tempdir (consult-gh--tempdir))))
          (path (get-text-property 0 :path cand))
-         (url (get-text-property 0 :url cand)))
-    (consult-gh--files-view repo path url nil tempdir code branch)))
+         (api-url (get-text-property 0 :api-url cand)))
+    (consult-gh--files-view repo path api-url nil tempdir code ref)))
 
 (defun consult-gh--dashboard-format (string)
   "Format minibuffer candidates for dashboard items.
@@ -14086,27 +14097,33 @@ Description of Arguments:
             \(e.g. “gh search code ...”\)."
   (let* ((class "dashboard")
          (query "")
-         (parts (string-split string "\t"))
+         (parts (string-split string "      "))
          (isPR (car parts))
          (type (if (equal isPR "true") "pr" "issue"))
          (repo (cadr parts))
          (user (consult-gh--get-username repo))
          (package (consult-gh--get-package repo))
          (title (caddr parts))
+         (title (and (stringp title)
+                     (string-replace "\n" "  " title)))
          (number (cadddr parts))
-         (state (upcase (cadddr (cdr parts))))
-         (date (substring (cadddr (cddr parts)) 0 10))
+         (state (cadddr (cdr parts)))
+         (state (and (stringp state)
+                     (upcase state)))
+         (date (cadddr (cddr parts)))
+         (date (and (stringp date) (substring date 0 10)))
          (tags (cadddr (cdddr parts)))
          (tags (and (stringp tags) (progn (string-match "\\[map\\[\\(.*\\)\\]" tags)
                                           (concat "[" (match-string 1 tags) "]"))))
+         (url (cadddr (cdr (cdddr parts))))
          (commentscount (cadddr (cddr (cdddr parts))))
-         (reason (cadddr (cddr (cddddr parts))))
-         (reason-str (cond
-                      ((string-prefix-p "Assigned to" reason) "assigned")
-                      ((string-prefix-p "Authored by" reason) "authored")
-                      ((string-prefix-p "Mentions " reason) "mentions")
-                      ((string-prefix-p "Involves " reason) "involves")))
-         (url (cadddr (cdddr (cdddr parts))))
+         (reason (cadddr (cdddr (cdddr parts))))
+         (reason-str (and (stringp reason)
+                          (cond
+                           ((string-prefix-p "Assigned to" reason) "assigned")
+                           ((string-prefix-p "Authored by" reason) "authored")
+                           ((string-prefix-p "Mentions " reason) "mentions")
+                           ((string-prefix-p "Involves " reason) "involves"))))
          (face (pcase isPR
                  ("false"
                   (pcase state
@@ -14126,7 +14143,8 @@ Description of Arguments:
                                (propertize (format "%s" package) 'face 'consult-gh-package)
 
                                (propertize (format " - %s #%s: " (upcase (substring type 0 2)) number) 'face face)
-                               (propertize (format "%s" title) 'face 'consult-gh-default)) 80)
+                               (propertize (format "%s" title) 'face 'consult-gh-default))
+                       80)
                       (when reason-str (concat "\s\s" (propertize (consult-gh--set-string-width reason-str 8) 'face 'consult-gh-visibility)))
                       (when date (concat "\s\s" (propertize (consult-gh--set-string-width date 10) 'face 'consult-gh-date)))
                       (when state (concat "\s\s" (propertize (consult-gh--set-string-width state 6) 'face face)))
@@ -14145,7 +14163,8 @@ Description of Arguments:
                                    :type type
                                    :url url
                                    :reason reason
-                                   :class class) str)
+                                   :class class)
+                         str)
     str))
 
 (defun consult-gh--dashboard-state ()
@@ -14224,8 +14243,15 @@ in an external browser.
 
 To use this as the default action for issues,
 set `consult-gh-dashboard-action' to `consult-gh--dashboard-browse-url-action'."
-  (let* ((url (substring-no-properties (get-text-property 0  :type cand))))
-    (if url (funcall (or consult-gh-browse-url-func #'browse-url) url))))
+  (let* ((type (get-text-property 0 :type cand))
+         (url (substring-no-properties (get-text-property 0 :url cand))))
+    (if url
+        (funcall (or consult-gh-browse-url-func #'browse-url) url)
+      (cond
+       ((equal type "issue")
+        (funcall consult-gh-issue-action cand))
+       ((equal type "pr")
+        (funcall consult-gh-pr-action cand))))))
 
 (defun consult-gh-notifications-make-args ()
   "Make cmd arguments for notifications."
@@ -14263,8 +14289,8 @@ Description of Arguments:
                   (_ "Unknown")))
          (date (substring (cadddr (cdddr parts)) 0 10))
          (reltime (cadddr (cdr (cdddr parts))))
-         (url (cadddr (cddr (cdddr parts))))
-         (url-parts (and (stringp url) (split-string url "/" t)))
+         (api-url (cadddr (cddr (cdddr parts))))
+         (url-parts (and (stringp api-url) (split-string api-url "/" t)))
          (number (and url-parts
                       (or
                        (cadr (member "issues" url-parts))
@@ -14292,7 +14318,7 @@ Description of Arguments:
                                    :reltime reltime
                                    :query query
                                    :type type
-                                   :url url
+                                   :api-url api-url
                                    :reason reason
                                    :class class)
                          str)
@@ -14587,6 +14613,9 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                                        nil
                                      prerelease))
          (target (gethash :targetCommitish table))
+         (tarballUrl (gethash :tarballUrl table))
+         (zipballUrl (gethash :zipballUrl table))
+         (uploadUrl (gethash :uploadUrl table))
          (createdAt (gethash :createdAt table))
          (publishedAt (gethash :publisheddAt table))
          (publishedAt (and publishedAt (format-time-string "[%Y-%m-%d %H:%M]" (date-to-time publishedAt))))
@@ -14594,7 +14623,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (discussion (consult-gh--release-get-discussion repo tagname)))
 
     (when (stringp topic)
-      (add-text-properties 0 1 (list :title title :tagname tagname :target target :author author :published publishedAt :created createdAt :draft draft :prerelease prerelease :discussion discussion) topic))
+      (add-text-properties 0 1 (list :title title :tagname tagname :target target :author author :published publishedAt :created createdAt :draft draft :prerelease prerelease :discussion discussion :url url :uploadUrl uploadUrl :zipballUrl zipballUrl :tarballUrl tarballUrl) topic))
 
     (concat "title: " title "\n"
             "tag: " tagname "\n"
@@ -15621,21 +15650,23 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
                     (format "%s" (gethash :id json))))
          (state (and (hash-table-p json)
                     (gethash :state json)))
-         (url (and (hash-table-p json)
+         (yaml-url (and (hash-table-p json)
                     (gethash :html_url json)))
+         (workflow-url (and path-name (stringp path-name) (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/actions/workflows/%s" path-name))))
          (run-count (when (listp runs) (length runs)))
          (first-run (when (listp runs) (car runs)))
          (title (when (hash-table-p first-run)
                   (gethash :workflowName first-run))))
     (when (stringp topic)
-      (add-text-properties 0 1 (list :id id :path path :state state :name path-name :total-runs run-count) topic))
+      (add-text-properties 0 1 (list :id id :path path :state state :name path-name :total-runs run-count :yaml-url yaml-url :url workflow-url) topic))
 
     (concat (and title (concat "title: " title "\n"))
             (and repo (concat "repository: " (propertize repo 'help-echo (apply-partially #'consult-gh--get-repo-tooltip repo)) "\n"))
             (and id (concat "id: " (propertize id 'face 'consult-gh-description) "\n"))
             (and path-name (concat "name: " path-name "\n"))
             (and path (concat "path: " path "\n"))
-            (and url (concat "url: " url "\n"))
+            (and workflow-url (concat "workflow-url: " workflow-url "\n"))
+            (and yaml-url (concat "yaml-url: " yaml-url "\n"))
             (and (numberp run-count) (concat (format "runs: %s" run-count) "\n"))
             (and state (concat "state: " state))
             "\n--\n")))
@@ -16034,6 +16065,7 @@ and is used to preview YAML files."
                        (setq-local after-save-hook nil)
                                                        (insert (consult-gh--files-get-content-by-path repo path branch))
                                                        (set-buffer-file-coding-system 'raw-text)
+                                                       (set-buffer-multibyte t)
                                                        (write-file temp-file)
                                                        (set-buffer-modified-p nil)))
                                                    (add-to-list 'consult-gh--open-files-list `(,(substring-no-properties (concat repo "/" path)) . ,temp-file)))))
@@ -16264,8 +16296,9 @@ The optional argument TOPIC is a propertized text where the related info
 from the header will get appended to the properties.  For an example, see
 the buffer-local variable `consult-gh--topic' in the buffer created by
 `consult-gh--run-view'."
-  (when (hash-table-p table)
-  (let* ((status (gethash :status table))
+  (let* ((table (or (and (hash-table-p table) table)
+                    (consult-gh--run-read-json repo run-id)))
+         (status (gethash :status table))
          (conclusion (gethash :conclusion table))
          (state (consult-gh--workflow-format-status status conclusion))
          (branch (gethash :head_branch table))
@@ -16291,13 +16324,14 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
          (age (consult-gh--time-ago startedAt)))
 
      (when (stringp topic)
-      (add-text-properties 0 1 (list :workflow-id workflow-id :workflow-url workflow-url :workflow-name path-name :path path :status status :conclusion conclusion  :actor actor :event event) topic))
+      (add-text-properties 0 1 (list :workflow-id workflow-id :workflow-url workflow-url :workflow-name path-name :path path :status status :conclusion conclusion  :actor actor :event event :url url) topic))
 
       (concat (and title (concat "title: " title "\n"))
               (and repo (concat "repository: " (propertize repo 'help-echo (apply-partially #'consult-gh--get-repo-tooltip repo)) "\n"))
             (and run-id (concat "id: " (propertize run-id 'face 'consult-gh-description) "\n"))
             (and path-name (format "workflow: %s(%s)\n" path-name workflow-id))
             (and workflow-url (format "workflow_url: %s\n" workflow-url))
+            (and url (format "run_url: %s\n" url))
             (and startedAt (concat "started: " startedAt "\n"))
             (and updatedAt (concat "updated: " updatedAt "\n"))
             (and elapsed (format "run_time: %ss\n" elapsed))
@@ -16310,7 +16344,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             (and title (concat title "\s"))
             (and url (format ". [%s](%s)" run-id url))
             "\n\n"
-            (format "Trigerred via %s about %s by %s and took %ss\n" event age actor elapsed)))))
+            (format "Trigerred via %s about %s by %s and took %ss\n" event age actor elapsed))))
 
 (defun consult-gh--run-format-job-steps (job)
   "Format step section of JOB."
@@ -19287,11 +19321,11 @@ Description of Arguments:
                      ((and path
                            (stringp path)
                            (file-name-directory path))
-                        (append (list (list "../" :repo repo :ref ref :url nil :path (file-name-directory (string-remove-suffix "/" path)) :size nil :object-type "tree" :new nil :mode "040000"))
+                        (append (list (list "../" :repo repo :ref ref :api-url nil :path (file-name-directory (string-remove-suffix "/" path)) :size nil :object-type "tree" :new nil :mode "040000"))
                                 files-list))
                      ((and (not path)
                            consult-gh-files-use-dired-like-mode)
-                      (append (list (list "./" :repo repo :ref ref :url nil :path nil :size nil :object-type "tree" :new nil :mode "040000"))
+                      (append (list (list "./" :repo repo :ref ref :api-url nil :path nil :size nil :object-type "tree" :new nil :mode "040000"))
                                 files-list))
                      (t files-list)))
          (candidates (remove nil (mapcar (lambda (item)
@@ -19347,7 +19381,7 @@ Description of Arguments:
                                                  (concat (file-name-directory path)
                                                          (substring-no-properties sel))
                                                (substring-no-properties sel))
-                                       :url nil
+                                       :api-url nil
                                        :mode "file"
                                        :size nil
                                        :ref ref
@@ -19681,7 +19715,7 @@ buffer-local-variable `consult-gh--topic' in a buffer created by
                 ((equal (get-text-property 0 :type ref) "tag")
                  (user-error "Cannot upload files to a tag ref.  If this is a release tag, you can edit the release using `consult-gh-release-edit'")))))
           (dir (or (and (stringp topic) (get-text-property 0 :dir topic))
-                   (consult--read (mapcar #'consult-gh--file-format (append (list (list "." :repo repo :ref ref :url nil :path nil :size nil :object-type "tree" :new nil))
+                   (consult--read (mapcar #'consult-gh--file-format (append (list (list "." :repo repo :ref ref :api-url nil :path nil :size nil :object-type "tree" :new nil))
                                                                             (consult-gh--files-directory-items repo nil ref nil)))
                                   :prompt "Select Directory: "
                                   :lookup #'consult-gh--file-lookup)))
@@ -19883,7 +19917,7 @@ Format each candidate in CANDS with `consult-gh--dashboard-format'."
 
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((cmd
-                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--assignee" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t"
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--assignee" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "      " "{{.repository.nameWithOwner}}" "      " "{{.title}}" "      " "{{.number}}" "      " "{{.state}}" "      " "{{.updatedAt}}" "      " "{{.labels}}" "      " "{{.url}}" "      " "{{.commentsCount}}" "      "
  (format "Assigned to %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
@@ -19915,7 +19949,7 @@ INPUT is passed as extra arguments to “gh search issues”."
 
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((cmd
-                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--author" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Authored by %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--author" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "      " "{{.repository.nameWithOwner}}" "      " "{{.title}}" "      " "{{.number}}" "      " "{{.state}}" "      " "{{.updatedAt}}" "      " "{{.labels}}" "      " "{{.url}}" "      " "{{.commentsCount}}" "      " (format "Authored by %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-s" flags) (member "--state" flags))
@@ -19946,7 +19980,7 @@ INPUT is passed as extra arguments to “gh search issues”."
 
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((cmd
-                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--mentions" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Mentions %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--mentions" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "      " "{{.repository.nameWithOwner}}" "      " "{{.title}}" "      " "{{.number}}" "      " "{{.state}}" "      " "{{.updatedAt}}" "      " "{{.labels}}" "      " "{{.url}}" "      " "{{.commentsCount}}" "      " (format "Mentions %s" (or (consult-gh--get-current-username) "me")) "\n" "{{end}}"))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-s" flags) (member "--state" flags))
@@ -19978,7 +20012,7 @@ INPUT is passed as extra arguments to “gh search issues”."
 INPUT is passed as extra arguments to “gh search issues”."
   (pcase-let* ((user (consult-gh--get-current-username))
                (cmd
-                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--involves" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "\t" "{{.repository.nameWithOwner}}" "\t" "{{.title}}" "\t" "{{.number}}" "\t" "{{.state}}" "\t" "{{.updatedAt}}" "\t" "{{.labels}}" "\t" "{{.url}}" "\t" "{{.commentsCount}}" "\t" (format "Involves %s" (or user "me")) "\n" "{{end}}") "--" (concat "-author:" (or user "@me")))))
+                (append consult-gh-args (list "search" "issues" "--sort" "updated" "--include-prs" "--involves" "@me" "--json" "isPullRequest,repository,title,number,labels,updatedAt,state,url,commentsCount" "--template" (concat "{{range .}}" "{{.isPullRequest}}" "      " "{{.repository.nameWithOwner}}" "      " "{{.title}}" "      " "{{.number}}" "      " "{{.state}}" "      " "{{.updatedAt}}" "      " "{{.labels}}" "      " "{{.url}}" "      " "{{.commentsCount}}" "      " (format "Involves %s" (or user "me")) "\n" "{{end}}") "--" (concat "-author:" (or user "@me")))))
                (`(,arg . ,opts) (consult-gh--split-command input))
                (flags (append cmd opts)))
     (unless (or (member "-s" flags) (member "--state" flags))
@@ -21345,31 +21379,40 @@ browser."
           (tagname (and (stringp topic) (get-text-property 0 :tagname topic)))
           (ref (and (stringp topic) (get-text-property 0 :ref topic)))
           (sha (and (stringp topic) (get-text-property 0 :sha topic)))
+          (id (and (stringp topic) (get-text-property 0 :id topic)))
           (local-info (get-text-property (point) :consult-gh))
           (local-url (or (plist-get local-info :url)
                          (plist-get local-info :comment-url)
                          (plist-get local-info :commit-url)
                          (plist-get local-info :yaml-url)))
-          (url (or local-url (and (stringp type) (pcase type
-                                                   ("repo"
-                                                    (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
-                                                   ("file"
-                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" branch path)))
-                                                   ("issue"
-                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number)))
-                                                   ("pr"
-                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number)))
-                                                   ("release"
-                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/releases/%s" tagname)))
-                                                   ("workflow"
-                                                    (and path (stringp path) (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/actions/workflows/%s" (file-name-nondirectory path)))))
-                                                   ("compare"
-                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/compare/%s" ref)))
-                                                   ("commit"
-                                                    (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/commit/%s" sha))))))))
+          (topic-url (get-text-property 0 :url topic))
+          (url (or local-url
+                   topic-url
+                   (and (stringp type)
+                        (pcase type
+                          ("repo"
+                           (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))
+                          ("file"
+                           (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" branch path)))
+                          ("issue"
+                           (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number)))
+                          ("pr"
+                           (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number)))
+                          ("release"
+                           (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/releases/%s" tagname)))
+                          ("workflow"
+                           (and (stringp path)
+                                (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser"))
+                                           (format "/actions/workflows/%s" (file-name-nondirectory path)))))
+                          ("run"
+                           (and id (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/actions/runs/%s" id))))
+                          ("compare"
+                           (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/compare/%s" ref)))
+                          ("commit"
+                           (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/commit/%s" sha))))))))
      (if (stringp url)
          (funcall (or consult-gh-browse-url-func #'browse-url) url)
-       (message "No topic to browse in this buffer!")))))
+       (message "No url to browse in this buffer!")))))
 
 ;;;###autoload
 (defun consult-gh-commit-save-message (&optional commit-message)
@@ -21941,9 +21984,9 @@ and removes the buffers that are killed from the list."
       ((equal type "file")
        (when (and (buffer-modified-p) (y-or-n-p "This will discard your edits and pull the file from remote?  Do you want to Continue?"))
        (let* ((path (get-text-property 0 :path topic))
-              (url (get-text-property 0 :url topic))
+              (api-url (get-text-property 0 :api-url topic))
               (ref (get-text-property 0 :ref topic)))
-         (funcall #'consult-gh--files-view repo path url nil (file-name-directory (buffer-file-name)) nil ref t))))
+         (funcall #'consult-gh--files-view repo path api-url nil (file-name-directory (buffer-file-name)) nil ref t))))
       ((equal type "commit")
          (let* ((sha (get-text-property 0 :sha topic)))
            (funcall #'consult-gh--commit-view repo sha (current-buffer))))))))
@@ -21983,9 +22026,9 @@ Description of Arguments:
          (path (if (equal path "./") nil path))
          (files-list (consult-gh--files-list-items repo path ref nil))
          (files-list (if (and path (stringp path))
-                         (append (list (list ".." :repo repo :ref ref :url nil :path (and (stringp path) (file-name-directory path)) :size nil :object-type "tree" :new nil :mode "040000" :type "directory"))
+                         (append (list (list ".." :repo repo :ref ref :api-url nil :path (and (stringp path) (file-name-directory path)) :size nil :object-type "tree" :new nil :mode "040000" :type "directory"))
                                  files-list)
-                       (append (list (list "." :repo repo :ref ref :url nil :path nil :size nil :object-type "tree" :new nil :mode "040000" :type "directory"))
+                       (append (list (list "." :repo repo :ref ref :api-url nil :path nil :size nil :object-type "tree" :new nil :mode "040000" :type "directory"))
                                files-list)))
          (files-list (and (listp files-list)
                           (mapcar (lambda (item) (when (and (consp item)
@@ -22231,7 +22274,7 @@ Description of Arguments:
                       (consult-gh-dired (string-remove-suffix ".git" (string-remove-prefix "/" urlpath)) nil module-sha))
                     (t
                       (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to browse the link:  %s? " git-url))
-                      (funcall consult-gh-browse-url-func git-url))))
+                      (funcall (or consult-gh-browse-url-func #'browse-url) git-url))))
                   ((and (stringp urlpath)
                         (string-match-p "git@.*" urlpath))
                    (cond
@@ -22240,7 +22283,7 @@ Description of Arguments:
                     ((string-match "git@.*gitlab.com:\\(?1:.*\\)" urlpath)
                      (let ((submodule-link (format "https://gitlab.com/%s" (match-string 1 urlpath))))
                         (and (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to open the link:  %s in the browser? " (propertize submodule-link 'face 'consult-gh-wraning)))
-                    (funcall consult-gh-browse-url-func submodule-link))))
+                    (funcall (or consult-gh-browse-url-func #'browse-url) submodule-link))))
                     (t
                       (message "Do not know how to open the submodule: %s" git-url)))))))))
          ((equal mode "directory")
@@ -22371,7 +22414,7 @@ see `consult-gh-dired-find-file'."
                                        :path new-path
                                        :ref ref
                                        :title nil
-                                       :url nil
+                                       :api-url nil
                                        :changed-locally nil
                                        :new t
                                        :object-type "blob")
@@ -22441,7 +22484,7 @@ see `consult-gh-dired-find-file'."
               (when (stringp new-path)
                 (add-text-properties 0 1 (list :repo repo
                                                :path new-path
-                                               :url nil
+                                               :api-url nil
                                                :mode "file"
                                                :size nil
                                                :ref ref
@@ -22456,7 +22499,7 @@ see `consult-gh-dired-find-file'."
               (consult-gh--create-commit (list new-path) repo ref nil)))
 
            ((length> files 1)
-            (let* ((new-dir (consult--read (mapcar #'consult-gh--file-format (append (list (list "." :repo repo :ref ref :url nil :path nil :size nil :object-type "tree" :type "directory" :mode "directory" :new nil))
+            (let* ((new-dir (consult--read (mapcar #'consult-gh--file-format (append (list (list "." :repo repo :ref ref :api-url nil :path nil :size nil :object-type "tree" :type "directory" :mode "directory" :new nil))
                                                                                      (consult-gh--files-directory-items repo nil ref nil)))
                                            :prompt "Select Directory: "
                                            :lookup #'consult-gh--file-lookup))
@@ -22476,7 +22519,7 @@ see `consult-gh-dired-find-file'."
 
                                                         (add-text-properties 0 1 (list :repo repo
                                                                                        :path new-path
-                                                                                       :url nil
+                                                                                       :api-url nil
                                                                                        :mode "file"
                                                                                        :size nil
                                                                                        :ref ref
@@ -22568,7 +22611,7 @@ see `consult-gh-dired-find-file'."
               (add-text-properties 0 1 (list :repo repo
                                              :old-path (substring-no-properties path)
                                              :new-path (substring-no-properties new-path)
-                                             :url nil
+                                             :api-url nil
                                              :mode mode
                                              :size nil
                                              :ref ref
@@ -22585,7 +22628,7 @@ see `consult-gh-dired-find-file'."
               (message "%s" (propertize "The new file path is the same as old one. Nothing to change!" 'face 'warning)))))
 
          ((length> files 1)
-          (let* ((new-dir (consult--read (mapcar #'consult-gh--file-format (append (list (list "." :repo repo :ref ref :url nil :path nil :size nil :object-type "tree" :type "directory" :mode "directory" :new nil))
+          (let* ((new-dir (consult--read (mapcar #'consult-gh--file-format (append (list (list "." :repo repo :ref ref :api-url nil :path nil :size nil :object-type "tree" :type "directory" :mode "directory" :new nil))
                                                                                    (consult-gh--files-directory-items repo nil ref nil)))
                                          :prompt "Move file(s) to: "
                                          :lookup #'consult-gh--file-lookup))
@@ -22613,7 +22656,7 @@ see `consult-gh-dired-find-file'."
                                                           (add-text-properties 0 1 (list :repo repo
                                                                                          :old-path path
                                                                                          :new-path new-path
-                                                                                         :url nil
+                                                                                         :api-url nil
                                                                                          :mode mode
                                                                                          :size nil
                                                                                          :ref ref

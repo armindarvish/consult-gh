@@ -53,11 +53,11 @@ and pr review config do not match."
 
 (defun consult-gh-with-pr-review--pr-view (repo number)
   "Open pullrequest NUMBER in REPO  with `pr-review'."
-(if consult-gh-with-pr-review-mode
-  (let* ((repo-owner (consult-gh--get-username repo))
-         (repo-name (consult-gh--get-package repo)))
-    (pr-review-open repo-owner repo-name number))
-  (message "consult-gh-with-pr-review-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-pr-action'\).")))
+  (if consult-gh-with-pr-review-mode
+      (let* ((repo-owner (consult-gh--get-username repo))
+             (repo-name (consult-gh--get-package repo)))
+        (pr-review-open repo-owner repo-name number))
+    (message "consult-gh-with-pr-review-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-pr-action'\).")))
 
 (defun consult-gh-with-pr-review--pr-view-action (cand)
   "Open preview of a pr candidate, CAND, in `pr-review'.
@@ -78,6 +78,7 @@ saving tokens in auth sources.
 See `ghub--token' for definition of NOCREATE and FORGE as well as
 more info."
   (let* ((user (ghub--ident username package))
+         (ghub-default-host (alist-get 'github ghub-default-host-alist))
          (host (cond ((equal host ghub-default-host) (string-trim-left ghub-default-host "api."))
                      ((string-suffix-p "/api" host) (string-trim-right host "/api"))
                      ((string-suffix-p "/v3" host) (string-trim-right host "/v3"))
@@ -158,18 +159,19 @@ Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--username' to allow using
 `consult-gh' user name instead if the user chooses to."
 
-  (let ((ghub-user (cl-call-next-method))
-        (consult-gh-user (or (car-safe consult-gh--auth-current-account)
-                             (car-safe (consult-gh--auth-current-active-account
-                                        (cond ((equal host ghub-default-host)
-                                               (string-trim-left ghub-default-host "api."))
-                                              ((string-suffix-p "/api" host)
-                                               (string-trim-right host "/api"))
-                                              ((string-suffix-p "/v3" host)
-                                               (string-trim-right host "/v3"))
-                                              ((string-suffix-p "/api/v4" host)
-                                               (string-trim-right host "/api/v4"))
-                                              (t (or host consult-gh-default-host))))))))
+  (let* ((ghub-user (cl-call-next-method))
+         (ghub-default-host (alist-get 'github ghub-default-host-alist))
+         (consult-gh-user (or (car-safe consult-gh--auth-current-account)
+                              (car-safe (consult-gh--auth-current-active-account
+                                         (cond ((equal host ghub-default-host)
+                                                (string-trim-left ghub-default-host "api."))
+                                               ((string-suffix-p "/api" host)
+                                                (string-trim-right host "/api"))
+                                               ((string-suffix-p "/v3" host)
+                                                (string-trim-right host "/v3"))
+                                               ((string-suffix-p "/api/v4" host)
+                                                (string-trim-right host "/api/v4"))
+                                               (t (or host consult-gh-default-host))))))))
     (cond
      ((equal ghub-user consult-gh-user) ghub-user)
      (t

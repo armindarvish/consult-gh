@@ -163,15 +163,34 @@ When `current-prefix-args' is non-nil, add repository's name at the front."
            (title (get-text-property 0 :title cand))
            (number (get-text-property 0 :number cand))
            (path (get-text-property 0 :path cand))
+           (sha (get-text-property 0 :sha cand))
+           (branch (or (get-text-property 0 :ref cand)
+                       (get-text-property 0 :branch cand)))
            (title (pcase class
                     ((or "file" "code")
                      (if current-prefix-arg
                          (format "%s/%s" repo path)
                        (format "%s" path)))
-                    ((or "issue" "pr")
+                    ((or "issue" "pr" "dashboard")
                      (if current-prefix-arg
                          (format "%s/#%s: %s" repo number title)
                        (concat "#" (format "%s: %s" number title))))
+                    ("notification"
+                     (cond
+                      ((or (equal (get-text-property 0 :type cand) "issue")
+                           (equal (get-text-property 0 :type cand) "pr"))
+                       (if current-prefix-arg
+                           (format "%s/#%s: %s" repo number title)
+                         (concat "#" (format "%s: %s" number title))))
+                      (t title)))
+                    ("commit"
+                     (if current-prefix-arg
+                         (format "%s/%s" repo sha)
+                       (concat (format "%s" sha))))
+                    ("branch"
+                     (if current-prefix-arg
+                         (format "%s@%s" repo branch)
+                       (concat (format "%s" branch))))
                     (_ (format "%s" repo)))))
       (string-trim title))))
 
@@ -183,22 +202,61 @@ The candidate can be a repo, issue, PR, file path, or a branch."
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (let* ((repo (get-text-property 0 :repo cand))
-            (class (or (get-text-property 0 :class cand) nil))
-            (number (or (get-text-property 0 :number cand) nil))
-            (path (or (get-text-property 0 :path cand) nil))
-            (ref (or (get-text-property 0 :ref cand) nil)))
-       (pcase class
-         ("issue"
-          (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number))))
-         ((or "file" "code")
-          (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" (or ref "HEAD") path))))
-         ("pr"
-          (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
-         ("commit"
-          (when-let ((sha (get-text-property 0 :sha cand)))
-       (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/commit/%s" sha)))))
-         (_
-          (string-trim (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))))))
+            (class (get-text-property 0 :class cand))
+            (number (get-text-property 0 :number cand))
+            (path (get-text-property 0 :path cand))
+            (id (get-text-property 0 :id cand))
+            (sha (get-text-property 0 :sha cand))
+            (url (get-text-property 0 :url cand))
+            (ref (or (get-text-property 0 :ref cand)
+                     (get-text-property 0 :branch cand))))
+       (or url
+           (pcase class
+             ("issue"
+              (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/issues/%s" number))))
+             ((or "file" "code")
+              (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/blob/%s/%s" (or ref "HEAD") path))))
+             ("pr"
+              (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/pull/%s" number))))
+             ("notification"
+              (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (cond
+                                                                                                                                      ((equal (get-text-property 0 :type cand) "issue")
+                                                                                                                                       (format "/issues/%s" number))
+                                                                                                                                      ((equal (get-text-property 0 :type cand) "pr")
+                                                                                                                                       (format "/pull/%s" number))
+                                                                                                                                      (t
+                                                                                                                                       (let* ((api-url (get-text-property 0 :api-url cand))
+                                                                                                                                              (discussion
+                                                                                                                                               (and (stringp api-url)
+                                                                                                                                                    (cadr (member "discussions" (split-string api-url "/" t))))))
+
+                                                                                                                                         (format "/discussions/%s" discussion)))))))
+             ("dashboard"
+              (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (cond
+                                                                                                                                      ((equal (get-text-property 0 :type cand) "issue")
+                                                                                                                                       (format "/issues/%s" number))
+                                                                                                                                      ((equal (get-text-property 0 :type cand) "pr")
+                                                                                                                                       (format "/pull/%s" number))))))
+             ("commit"
+              (and (stringp sha)
+                   (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/commit/%s" sha)))))
+             ("branch"
+              (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/tree/%s" ref))))
+
+             ("release"
+              (when-let ((tagname (get-text-property 0 :tagname cand)))
+                  (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/releases/%s" tagname))))
+             ("workflow"
+              (and (stringp path)
+                   (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser"))
+                           (format "/actions/workflows/%s" (file-name-nondirectory path)))))
+             ("run"
+              (and id
+                   (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/actions/runs/%s" id))))
+             ("compare"
+              (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/compare/%s" ref)))
+             (_
+              (string-trim (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser"))))))))))
 
 
 (defun consult-gh-embark-get-other-repos-by-same-user (cand)
@@ -254,7 +312,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   "Open the url link of CAND with `consult-gh-browse-url-func'."
   (when (stringp cand)
     (let* ((url (consult-gh-embark-get-url cand)))
-      (funcall consult-gh-browse-url-func url))))
+      (funcall (or consult-gh-browse-url-func #'browse-url) url))))
 
 (defun consult-gh-embark-open-repo-in-system-browser (cand)
   "Open the url link for repo in CAND in the system's default browser."
@@ -272,7 +330,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
      (consult-gh--auth-account-host)
      (if-let* ((repo (get-text-property 0 :repo cand))
                (url (string-trim (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")))))
-         (funcall consult-gh-browse-url-func url)
+         (funcall (or consult-gh-browse-url-func #'browse-url) url)
        (message "No repo link at point!")))))
 
 (defun consult-gh-embark-user-open-in-system-browser (cand)
@@ -286,7 +344,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
   "Open the url link for user in CAND in the system's default browser."
   (when (stringp cand)
     (if-let* ((url (consult-gh-embark-get-user-link cand)))
-        (funcall consult-gh-browse-url-func url)
+        (funcall (or consult-gh-browse-url-func #'browse-url) url)
       (message "No user's link at point!"))))
 
 ;;;; View Actions
@@ -425,7 +483,14 @@ CAND can be a repo, issue, PR, file path, ..."
         ((or "issue" "pr")
          (when (not current-prefix-arg) (setq title (concat repo "/" title))))
         ((or "file" "code")
-         (when (not current-prefix-arg) (setq title (concat repo "/" ref "/" path)))))
+         (when (not current-prefix-arg) (setq title (concat repo "/" ref "/" path))))
+        ("commit"
+         (when-let ((sha (get-text-property 0 :sha cand))
+                    (sha-str (and (stringp sha)
+                                  (substring sha 0 6))))
+           (when (not current-prefix-arg) (setq title sha-str))))
+        ("branch"
+         (when ref (setq title ref))))
 
       (when url
         (setq str
@@ -470,9 +535,16 @@ CAND can be a repo, issue, PR, file path, ..."
 (defun consult-gh-embark-copy-file-contents-as-kill (cand)
   "Copy the contents of CAND file to `kill-ring'."
   (when (stringp cand)
-    (let ((url (get-text-property 0 :url cand)))
-      (when (and url (stringp url))
-        (kill-new (consult-gh--files-get-content-by-api-url url))))))
+    (let* ((api-url (get-text-property 0 :api-url cand))
+           (repo (get-text-property 0 :repo cand))
+           (path (get-text-property 0 :path cand))
+           (ref (or (get-text-property 0 :ref cand)
+                    (get-text-property 0 :branch cand) nil))
+           (contents (if (and api-url (stringp api-url))
+                         (consult-gh--files-get-content-by-api-url api-url)
+                       (consult-gh--files-get-content-by-path repo path ref))))
+      (when (and contents (stringp contents))
+        (kill-new contents)))))
 
 (defun consult-gh-embark-copy-user-as-kill (cand)
   "Copy the user in CAND to `kill-ring'."
@@ -522,13 +594,17 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
            (url (consult-gh-embark-get-url cand))
            (title (consult-gh-embark-get-title cand))
            (path (or (get-text-property 0 :path cand) nil))
-           (ref (or (get-text-property 0 :ref cand) nil)))
+           (ref (or (get-text-property 0 :ref cand)
+                    (get-text-property 0 :branch cand) nil))
+           (sha (or (get-text-property 0 :sha cand) nil)))
 
       (pcase class
         ((or "issue" "pr")
          (when (not current-prefix-arg) (setq title (concat repo "/" title))))
         ((or "file" "code")
-         (when (not current-prefix-arg) (setq title (concat repo "/" ref "/" path)))))
+         (when (not current-prefix-arg) (setq title (concat repo "/" ref "/" path))))
+        ("commit"
+         (when (not current-prefix-arg) (setq title (concat repo "@" sha)))))
 
       (when url
         (cond
@@ -551,9 +627,16 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
 (defun consult-gh-embark-insert-file-contents (cand)
   "Insert the contents of CAND file at point."
   (when (stringp cand)
-    (let ((url (get-text-property 0 :url cand)))
-      (when (and url (stringp url))
-        (embark-insert (consult-gh--files-get-content-by-api-url url))))))
+    (let* ((api-url (get-text-property 0 :api-url cand))
+          (repo (get-text-property 0 :repo cand))
+          (path (get-text-property 0 :path cand))
+          (ref (or (get-text-property 0 :ref cand)
+                    (get-text-property 0 :branch cand) nil))
+          (contents (if (and api-url (stringp api-url))
+                        (consult-gh--files-get-content-by-api-url api-url)
+                      (consult-gh--files-get-content-by-path repo path ref))))
+      (when (and contents (stringp contents))
+        (embark-insert contents)))))
 
 (defun consult-gh-embark-insert-user (cand)
   "Insert the user in CAND at point."
@@ -651,11 +734,11 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
                      ((or "repo" "issue") nil)
                      ("pr" (get-text-property 0 :title cand))
                      (_ (or (get-text-property 0 :title cand) (string-remove-prefix (consult-gh--get-split-style-character) (substring-no-properties cand))))))
-            (ref (pcase class
+            (ref-link (pcase class
                    ((or "pr" "notification" "dashboard" "code" "file")
                     (consult-gh-embark-get-url cand))
                    (_ nil)))
-            (body (when ref (not (string-empty-p ref)) (format "%s" ref))))
+            (body (when ref-link (not (string-empty-p ref-link)) (format "%s" ref-link))))
        (funcall #'consult-gh-issue-create repo title body)))))
 
 (defun consult-gh-embark-create-pr (cand)
@@ -669,11 +752,11 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
                      ((or "repo" "pr") nil)
                      ("issue" (get-text-property 0 :title cand))
                      (_ (or (get-text-property 0 :title cand) (string-remove-prefix (consult-gh--get-split-style-character) (substring-no-properties cand))))))
-            (ref (pcase class
+            (ref-link (pcase class
                    ((or "issue" "notification" "dashboard" "code" "file")
                     (consult-gh-embark-get-url cand))
                    (_ nil)))
-            (body (when ref (not (string-empty-p ref)) (format "%s" ref))))
+            (body (when ref-link (not (string-empty-p ref-link)) (format "%s" ref-link))))
        (funcall #'consult-gh-pr-create repo title body)))))
 
 (defun consult-gh-embark-create-release (cand)
