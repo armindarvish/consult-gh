@@ -2565,7 +2565,7 @@ PROMPT, INITIAL, and REQUIRE-MATCH are passed to `consult--read'."
 #+begin_src emacs-lisp
 ;;;###autoload
 (defmacro consult-gh-with-host (host &rest body)
-"Run BODY after setting environment var “GH_HOST” to HOST."
+  "Run BODY after setting environment var “GH_HOST” to HOST."
   `(progn
      (if ,host
          (with-environment-variables
@@ -5980,8 +5980,7 @@ Description of Arguments:
                                                               (get-text-property 0 :ref consult-gh--topic))))
                                                (append (list
                                                         topicbranch
-                                                        (thing-at-point 'symbol)
-                                                        )))
+                                                        (thing-at-point 'symbol))))
                                :history history
                                :default default
                                :sort nil)))
@@ -8295,8 +8294,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             (mapconcat (lambda (p)
                          (when (stringp p)
                            (concat "[" (substring p 0 6) "]"
-                                   (format "(%s)" (get-text-property 0 :url p))
-                                   )))
+                                   (format "(%s)" (get-text-property 0 :url p)))))
                        parents " + ")
             (and (stringp sha) (concat " commit " (substring sha 0 6)))
             "\n\n")))
@@ -22097,23 +22095,23 @@ Description of Arguments:
                    (unless current-prefix-arg
                      (and (stringp consult-gh--topic)
                           (get-text-property 0 :repo consult-gh--topic)))
-                       (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
+                   (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos repo t)))))
          (ref (or ref
-               (unless current-prefix-arg
-                     (and (stringp consult-gh--topic)
-                          (get-text-property 0 :ref consult-gh--topic)))))
+                  (unless current-prefix-arg
+                    (and (stringp consult-gh--topic)
+                         (get-text-property 0 :ref consult-gh--topic)))))
          (sel (if consult-gh-files-use-dired-like-mode
                   (consult-gh--files-read-file repo ref path initial nil nil t)
-                  (consult-gh--files-read-file repo ref path initial))))
+                (consult-gh--files-read-file repo ref path initial))))
     (when sel
-        ;;add org and repo to known lists
-        (when-let ((reponame (get-text-property 0 :repo sel)))
-          (add-to-history 'consult-gh--known-repos-list reponame))
-        (when-let ((username (get-text-property 0 :user sel)))
-          (add-to-history 'consult-gh--known-orgs-list username))
-        (if noaction
-            sel
-            (funcall consult-gh-file-action sel)))))
+      ;;add org and repo to known lists
+      (when-let ((reponame (get-text-property 0 :repo sel)))
+        (add-to-history 'consult-gh--known-repos-list reponame))
+      (when-let ((username (get-text-property 0 :user sel)))
+        (add-to-history 'consult-gh--known-orgs-list username))
+      (if noaction
+          sel
+        (funcall consult-gh-file-action sel)))))
 #+end_src
 **** consult-gh-edit-file
 
