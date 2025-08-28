@@ -1204,7 +1204,7 @@ uses `compose-mail' for composing an email."
   "r" '("gh create repo" . consult-gh-embark-create-repo)
   "R" '("gh create release" . consult-gh-embark-create-release)
   "c" '("gh create a clone of repo" . consult-gh-embark-clone-repo)
-  "f" '("hg create a fork repo" . consult-gh-embark-fork-repo))
+  "f" '("gh create a fork repo" . consult-gh-embark-fork-repo))
 
 (fset 'consult-gh-embark-create-menu-map consult-gh-embark-create-menu-map)
 
