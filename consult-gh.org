@@ -27498,12 +27498,12 @@ uses `compose-mail' for composing an email."
 (defvar-keymap consult-gh-embark-create-menu-map
   :doc "Keymap for create menu"
   :parent nil
-  "i" '("gh create issue" . consult-gh-embark-create-issue)
-  "p" '("gh create pull request" . consult-gh-embark-create-pr)
-  "r" '("gh create repo" . consult-gh-embark-create-repo)
-  "R" '("gh create release" . consult-gh-embark-create-release)
+  "i" '("gh create an issue in repo" . consult-gh-embark-create-issue)
+  "p" '("gh create a pull request in repo" . consult-gh-embark-create-pr)
+  "r" '("gh create new repo" . consult-gh-embark-create-repo)
+  "R" '("gh create a release in repo" . consult-gh-embark-create-release)
   "c" '("gh create a clone of repo" . consult-gh-embark-clone-repo)
-  "f" '("gh create a fork repo" . consult-gh-embark-fork-repo))
+  "f" '("gh create a fork of repo" . consult-gh-embark-fork-repo))
 
 (fset 'consult-gh-embark-create-menu-map consult-gh-embark-create-menu-map)
 #+end_src
@@ -27524,10 +27524,10 @@ uses `compose-mail' for composing an email."
 (defvar-keymap consult-gh-embark-find-menu-map
   :doc "Keymap for find menu"
   :parent nil
-  "f" '("gh find file (browse files of repo)" . consult-gh-embark-view-files-of-repo)
+  "f" '("gh find file in repo" . consult-gh-embark-view-files-of-repo)
   "r" '("gh find repos by user" . consult-gh-embark-get-other-repos-by-same-user)
-  "i" '("gh find issues of repo" . consult-gh-embark-view-issues-of-repo)
-  "p" '("gh find prs of repo" . consult-gh-embark-view-prs-of-repo)
+  "i" '("gh find issue in repo" . consult-gh-embark-view-issues-of-repo)
+  "p" '("gh find pr in repo" . consult-gh-embark-view-prs-of-repo)
   "c" '("gh find code in repo" . consult-gh-embark-search-code-in-repo)
   "a" '("gh find action workflows in repo" . consult-gh-embark-view-workflows-of-repo)
   "g" '("gh find action runs in repo" . consult-gh-embark-view-runs-of-repo))
@@ -27542,10 +27542,10 @@ uses `compose-mail' for composing an email."
 (defvar-keymap consult-gh-embark-user-insert-menu-map
   :doc "Keymap for inserting user info menu"
   :parent nil
-  "u" '("gh insert GitHub username" .  consult-gh-embark-insert-user)
-  "n" '("gh insert ful name" . consult-gh-embark-insert-user-name)
-  "e" '("gh insert email" . consult-gh-embark-insert-user-email)
-  "l" '("gh insert user url" . consult-gh-embark-insert-user-link))
+  "u" '("gh insert username" .  consult-gh-embark-insert-user)
+  "n" '("gh insert user's ful name" . consult-gh-embark-insert-user-name)
+  "e" '("gh insert user's email" . consult-gh-embark-insert-user-email)
+  "l" '("gh insert user's page url" . consult-gh-embark-insert-user-link))
 
 (fset 'consult-gh-embark-user-insert-menu-map consult-gh-embark-user-insert-menu-map)
 
