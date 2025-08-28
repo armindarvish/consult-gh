@@ -1202,7 +1202,7 @@ uses `compose-mail' for composing an email."
   "i" '("gh create issue" . consult-gh-embark-create-issue)
   "p" '("gh create pull request" . consult-gh-embark-create-pr)
   "r" '("gh create repo" . consult-gh-embark-create-repo)
-  "R" '("gh cretae release" . consult-gh-embark-create-release)
+  "R" '("gh create release" . consult-gh-embark-create-release)
   "c" '("gh create a clone of repo" . consult-gh-embark-clone-repo)
   "f" '("hg create a fork repo" . consult-gh-embark-fork-repo))
 
