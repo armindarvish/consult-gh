@@ -59,6 +59,7 @@
 (require 'ansi-color) ;; for rendering ansi colors in shell output
 (require 'yaml) ;; for parsing github action files
 (require 'org) ;; for its awesomeness!
+(require 'dired) ;; for uploading files
 
 
 #+end_src
@@ -1963,9 +1964,9 @@ By default, inherits from `dired-special'.")
 #+end_src
 
 ** Backend functions
-This section includes functions that make calls to =gh= in the shell or provide helper functionalities for formatting the responses to be passed to other functions in consulting.
+This section includes functions that make calls to =gh= in the shell or provide helper functionalities for formatting the responses to be passed to other functions.
 
-*** Utility (formatting, conversion, etc.)
+*** General Utility (formatting, conversion, etc.)
 **** formatting strings
 #+begin_src emacs-lisp
 ;;; Utility functions
@@ -2573,20 +2574,10 @@ PROMPT, INITIAL, and REQUIRE-MATCH are passed to `consult--read'."
            ,@body)
        ,@body)))
 #+end_src
-**** log
-#+begin_src emacs-lisp
-(defun consult-gh--async-log (formatted &rest args)
-  "Log FORMATTED ARGS to variable `consult-gh--async-log-buffer'.
-
-FORMATTED and ARGS are passed to `format' with \=(format FORMATTED ARGS)"
-  (with-current-buffer (get-buffer-create consult-gh--async-log-buffer)
-    (goto-char (point-max))
-    (insert (apply #'format formatted args))))
-#+end_src
 **** process and shell
 ***** make process
 #+begin_src emacs-lisp
-(cl-defun consult-gh--make-process (name &rest args &key filter when-done cmd-args)
+(cl-defun consult-gh--make-process (name &rest args &key filter when-done on-error cmd-args)
   "Make asynchronous process with NAME and pass ARGS to “gh” program.
 
 This command runs gh program asynchronously.
@@ -2594,53 +2585,68 @@ This command runs gh program asynchronously.
 Description of Arguments:
   NAME      a string; is passed as \=:name t `make-process'
   FILTER    a function: iss passed as \=:filter to `make-process'
-  WHEN-DONE a funciton; is applied to the the output of process when it is done
+  WHEN-DONE a function; is applied to the the output of process when it is done
             This function should take two input arguments STATUS and STRING
             STATUS is the status of the process and STRING is the output
+  ON-ERROR  a function; is applied to the the output of process when the process
+            is killed or fails.  This function should take two input arguments
+            STATUS and STRING.  STATUS is the status of the process and STRING
+            is the output.
   CMD-ARGS  a list of strings; is passed as \=:command to `make-process'"
   (if (executable-find "gh")
       (consult-gh-with-host
        (consult-gh--auth-account-host)
-        (when-let ((proc (get-process name)))
-          (delete-process proc))
-        (let* ((cmd-args (append (list "gh") cmd-args))
-               (proc-buf (generate-new-buffer (concat consult-gh--async-process-buffer-name "-" name)))
-               (when-done (if (functionp when-done)
-                                when-done
+       (when-let ((proc (get-process name)))
+         (delete-process proc))
+       (let* ((cmd-args (append (list "gh") cmd-args))
+              (proc-buf (generate-new-buffer (concat consult-gh--async-process-buffer-name "-" name)))
+              (when-done (if (functionp when-done)
+                             when-done
                            (lambda (_ str) str)))
-               (proc-sentinel
-                (lambda (proc event)
-                   (cond
-                    ((string-prefix-p "finished" event)
+              (proc-sentinel
+               (lambda (proc event)
+                 (cond
+                  ((string-prefix-p "finished" event)
+                   (with-current-buffer proc-buf
+                     (widen)
+                     (when when-done
+                       (funcall when-done event (buffer-string)))
+                     (erase-buffer)))
+                  ((string-prefix-p "killed" event)
+                   (if on-error
                        (with-current-buffer proc-buf
                          (widen)
-                         (funcall when-done event (buffer-string))
-                           (erase-buffer)))
-                     ((string-prefix-p "killed" event)
-                      (message "%s was %s" (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event)))
-                     (t (message "%s failed: %s " (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event))))
-                   (when (> (buffer-size proc-buf) 0)
-                     (with-current-buffer (get-buffer-create consult-gh--async-log-buffer)
-                       (goto-char (point-max))
-                       (insert (format ">>>>> stderr (%s) >>>>>\n" (process-name proc)))
-                       (let ((beg (point)))
-                         (insert-buffer-substring proc-buf)
-                         (save-excursion
-                           (goto-char beg)
+                         (funcall on-error event (buffer-string)))
+                     (message "%s was %s" (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event))))
+                  (t
+                   (if on-error
+                       (with-current-buffer proc-buf
+                         (widen)
+                         (funcall on-error event (buffer-string)))
+                     (message "%s failed: %s " (process-name proc) (add-text-properties 0 6 (list  'face 'warning) event)))))
+                 (when (> (buffer-size proc-buf) 0)
+                   (with-current-buffer (get-buffer-create consult-gh--async-log-buffer)
+                     (goto-char (point-max))
+                     (insert (format ">>>>> stderr (%s) >>>>>\n" (process-name proc)))
+                     (let ((beg (point)))
+                       (insert-buffer-substring proc-buf)
+                       (save-excursion
+                         (goto-char beg)
+                         (unless on-error
                            (message #("%s" 0 2 (face error))
-                                    (buffer-substring-no-properties (pos-bol) (pos-eol)))))
-                       (insert (format "<<<<< stderr (%s) <<<<<\n" (process-name proc)))))))
-               (process-adaptive-read-buffering t))
-          (with-current-buffer proc-buf
-            (set-buffer-file-coding-system 'unix))
-          (consult-gh--async-log "consult-gh--make-process %s started %s\n" name cmd-args)
-          (make-process :name name
-                        :buffer proc-buf
-                        :noquery t
-                        :command cmd-args
-                        :connection-type 'pipe
-                        :filter filter
-                        :sentinel proc-sentinel)))
+                                    (buffer-substring-no-properties (pos-bol) (pos-eol))))))
+                     (insert (format "<<<<< stderr (%s) <<<<<\n" (process-name proc)))))))
+              (process-adaptive-read-buffering t))
+         (with-current-buffer proc-buf
+           (set-buffer-file-coding-system 'unix))
+         (consult-gh--async-log "consult-gh--make-process %s started %s\n" name cmd-args)
+         (make-process :name name
+                       :buffer proc-buf
+                       :noquery t
+                       :command cmd-args
+                       :connection-type 'pipe
+                       :filter filter
+                       :sentinel proc-sentinel)))
     (progn
       (user-error (propertize "\"gh\" is not found on this system" 'face 'warning))
       nil)))
@@ -2754,7 +2760,54 @@ If optional argument KEYS is non-nil, returns only the value of KEYS."
     nil))
 #+end_src
 
-**** get login username
+*** Backend =consult-gh= functions
+This section contains all the functions that are used by the front-end interactive commands organized under appropriate header.
+**** utilities
+***** dynamic grouping
+#+begin_src emacs-lisp
+(defun consult-gh--group-function (cand transform &optional group-by)
+  "Group CAND by GROUP-BY keyword.
+
+This is passed as GROUP to `consult--read' on candidates
+and is used to define the grouping for CAND.
+
+If TRANSFORM is non-nil, the CAND itself is returned."
+  (if transform (substring cand)
+    (let* ((group-by (or consult-gh--override-group-by group-by consult-gh-group-by))
+           (group-by (if (stringp group-by) (if (not (keywordp (intern group-by))) (intern (concat ":" (format "%s" group-by))) (intern group-by)) group-by)))
+      (cond
+       ((member group-by '(nil :nil :none :no :not))
+        nil)
+       ((not (member group-by '(:t t)))
+        (if-let ((group (get-text-property 0 group-by cand)))
+            (format "%s" group)
+          "N/A"))
+       (t t)))))
+
+#+end_src
+***** split command
+#+begin_src emacs-lisp
+(defun consult-gh--split-command (input)
+  "Return command argument and options list given INPUT string.
+
+It sets `consult-gh--override-group-by' if and argument
+for grouping is provided in options.
+
+See `consult--command-split' for more info."
+  (pcase-let* ((`(,query . ,opts) (consult--command-split input)))
+    (if (and opts (listp opts) (> (length opts) 0))
+        (progn
+          (setq opts (cl-substitute ":group" ":g" opts :test 'equal))
+          (if (member ":group" opts)
+              (progn
+                (setq consult-gh--override-group-by (cadr (member ":group" opts)))
+                (setq opts (seq-difference opts (list ":group" (cadr (member ":group" opts))))))
+            (setq consult-gh--override-group-by nil)))
+      (setq consult-gh--override-group-by nil))
+    (append (list (or query input)) opts)))
+
+#+end_src
+***** get login username
 #+begin_src emacs-lisp
 (defun consult-gh--get-current-username ()
   "Get the currently logged in user.
@@ -2762,7 +2815,7 @@ If optional argument KEYS is non-nil, returns only the value of KEYS."
 Runs “gh api user” and returns the login field of json data."
   (consult-gh--json-to-hashtable (cadr (consult-gh--api-get-json "user")) :login))
 #+end_src
-**** get orgs of user (or current logged in user)
+***** get orgs of user (or current logged in user)
 #+begin_src emacs-lisp
 (defun consult-gh--get-current-user-orgs (&optional user include-user)
   "Get the organizations for USER.
@@ -2782,7 +2835,7 @@ When INCLUDE-USER is non-nil, add the name of the user to the list."
      (t (if include-user (list user))))))
 
 #+end_src
-**** get template repos of user
+***** get template repos of user
 #+begin_src emacs-lisp
 (defun consult-gh--get-user-template-repos (&optional user)
   "List template repository for USER.
@@ -2795,7 +2848,7 @@ When USER is nil, the curent authenticated user is used instead."
                        (cadr
                         (consult-gh--api-get-json endpoint)))))))
 #+end_src
-**** get GitHub repo name in the current directory
+***** get GitHub repo name in the current directory
 #+begin_src emacs-lisp
 (defun consult-gh--get-repo-from-directory (&optional dir)
   "Return the full name of the GitHub repository in current directory.
@@ -2811,19 +2864,30 @@ Formats the output as “[HOST/]OWNER/REPO” if any, otherwise returns nil."
       nil)))
 #+end_src
 
-*** Backend =consult-gh= functions
-This section contains all the functions that are used by the front-end interactive commands organized by the category of items (e.g. branches, files, repos, issues, ...) or the =gh= commands (e.g. search) that they use.
+***** get GitHub repo name form topic
+#+begin_src emacs-lisp
+(defun consult-gh--get-repo-from-topic (&optional topic)
+  "Return the full name of the GitHub repository in topic.
 
-Under each category we have sub-entries for different type of functions including but not limited to:
-- *list function(s):* get a list of items (formatted as list of propertized strings to pass to =consult--read= or =consult--multi=)
-- *action function(s):* that are used as action functions to be called on selected candidates
-- *narrow function(s):* define how narrowing would work for the items in this category
-- *state/preview function(s):* define how a state function to pass to =consult--read= or =consult--multi=, mainly to achieve previews.
-- *group function(s):* define how items are grouped for each category. For example when looking at files, we want to group them by the name of the repo and the branch that is being viewed.
-- *annotate function(s)*: define annotations for the items in each category for example for repositories we want annotations for the user, date and visibility, and for issues we want repo, status, tags and date
+TOPIC should be a string with property field :repo, and defaults to
+`consult-gh--topic'."
+  (when-let* ((topic (or topic consult-gh--topic)))
+    (if (stringp topic)
+        (get-text-property 0 :repo topic))))
+#+end_src
 
-Other functions can also be defined under appropriate sub-entries depending on the needs for each category.
-**** utilities
+
+
+***** log
+#+begin_src emacs-lisp
+(defun consult-gh--async-log (formatted &rest args)
+  "Log FORMATTED ARGS to variable `consult-gh--async-log-buffer'.
+
+FORMATTED and ARGS are passed to `format' with \=(format FORMATTED ARGS)"
+  (with-current-buffer (get-buffer-create consult-gh--async-log-buffer)
+    (goto-char (point-max))
+    (insert (apply #'format formatted args))))
+#+end_src
 ***** split repo name
 #+begin_src emacs-lisp
 ;;; Backend functions for internal consult-gh use
@@ -2851,6 +2915,68 @@ Returns a list where CAR is the user's name and CADR is the package name."
 
 \(e.g. “consult-gh” if REPO is “armindarvish/consult-gh”\)"
   (cadr (consult-gh--split-repo repo)))
+
+#+end_src
+***** get user's contact
+#+begin_src emacs-lisp
+(defun consult-gh--get-user-info (&optional user)
+  "Get the contact of USER from GitHub API."
+  (consult-gh-with-host
+   (consult-gh--auth-account-host)
+   (let* ((user (or user (consult-gh--get-current-username)))
+          (json (consult-gh--api-get-json (format "users/%s" user))))
+     (if (eq (car json) 0)
+         (consult-gh--json-to-hashtable (cadr json) '(:name :email :html_url))
+       user))))
+#+end_src
+
+#+begin_src emacs-lisp
+(defun consult-gh--get-user-fullname (&optional user)
+  "Get the name of USER from GitHub API."
+  (gethash :name (consult-gh--get-user-info user)))
+
+(defun consult-gh--get-user-email (&optional user)
+  "Get the email of USER from GitHub API."
+  (gethash :email (consult-gh--get-user-info user)))
+
+(defun consult-gh--get-user-link (&optional user)
+  "Get the link to USER page on GitHub."
+  (gethash :html_url (consult-gh--get-user-info user)))
+#+end_src
+***** can administer
+#+begin_src emacs-lisp
+(defun consult-gh--user-canadmin (repo)
+  "Determine if the current user can administer REPO."
+  (let ((json (consult-gh--command-to-string "repo" "view" repo "--json" "viewerCanAdminister")))
+    (and (stringp json)
+         (eq (consult-gh--json-to-hashtable json :viewerCanAdminister) 't))))
+
+#+end_src
+***** can write
+#+begin_src emacs-lisp
+(defun consult-gh--user-canwrite (repo)
+  "Determine if the current user have write premission in REPO."
+  (let* ((json (consult-gh--command-to-string "repo" "view" repo "--json" "viewerPermission"))
+        (permission (and (stringp json) (consult-gh--json-to-hashtable json :viewerPermission))))
+    (or (equal permission "WRITE") (equal permission "ADMIN"))))
+
+#+end_src
+***** is author
+#+begin_src emacs-lisp
+(defun consult-gh--user-isauthor (topic &optional user)
+  "Determine if the USER is the author of TOPIC.
+
+USER defaults to `consult-gh--auth-current-active-account'."
+  (let* ((user (or user (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (type (get-text-property 0 :type topic))
+         (repo (get-text-property 0 :repo topic))
+         (number (get-text-property 0 :number topic))
+         (author (get-text-property 0 :author topic))
+         (json (when (and (not author) number (member type '("issue" "pr")))
+                 (consult-gh--command-to-string type "view" number "--repo" repo "--json" "author")))
+         (table (and (stringp json) (consult-gh--json-to-hashtable json :author)))
+         (author (or author (and (hash-table-p table) (gethash :login table)))))
+         (equal user author)))
 
 #+end_src
 ***** create tempdir
@@ -2957,84 +3083,64 @@ Returns an alist with key value pairs of (file . diff)"
       (consult-gh--get-line-and-side-at-pos-inside-diff)))))
 
 #+end_src
-***** dynamic grouping
+***** gitignore templates
+****** get list of all gitignore templates
 #+begin_src emacs-lisp
-(defun consult-gh--group-function (cand transform &optional group-by)
-  "Group CAND by GROUP-BY keyword.
+(defun consult-gh--get-gitignore-template-list ()
+  "List name of .gitignore templates."
+  (string-split (string-trim
+                 (cadr
+                  (consult-gh--api-get-json "gitignore/templates"))
+                 "\\[" "\\]") "," t "\""))
+#+end_src
+****** get ignore template content
+#+begin_src emacs-lisp
+(defun consult-gh--get-gitignore-template-content (template)
+  "Get content of gitignore TEMPLATE."
+  (when-let ((response (consult-gh--command-to-string "api" (format "gitignore/templates/%s" template))))
+    (gethash :source (consult-gh--json-to-hashtable response))))
+#+end_src
+****** preview
+#+begin_src emacs-lisp
+(defun consult-gh--gitignore-template-preview (action cand)
+  "Preview function for gitignore templates.
 
-This is passed as GROUP to `consult--read' on candidates
-and is used to define the grouping for CAND.
+This is passed as state function to `consult--read'.
 
-If TRANSFORM is non-nil, the CAND itself is returned."
-  (if transform (substring cand)
-    (let* ((group-by (or consult-gh--override-group-by group-by consult-gh-group-by))
-           (group-by (if (stringp group-by) (if (not (keywordp (intern group-by))) (intern (concat ":" (format "%s" group-by))) (intern group-by)) group-by)))
-      (cond
-       ((member group-by '(nil :nil :none :no :not))
-        nil)
-       ((not (member group-by '(:t t)))
-        (if-let ((group (get-text-property 0 group-by cand)))
-            (format "%s" group)
-          "N/A"))
-       (t t)))))
+For more details on ACTION and CAND refer to docstring of
+`consult--with-preview'."
+  (let* ((preview (consult--buffer-preview)))
+  (pcase action
+    ('preview
+     (if (and consult-gh-show-preview cand (stringp cand))
+         (let* ((content (consult-gh--get-gitignore-template-content cand))
+                (buff (get-buffer-create (format "*consult-gh-preview: gitignore-%s*" cand))))
+           (with-current-buffer buff
+             (erase-buffer)
+             (insert content)
+             (set-buffer-file-coding-system 'utf-8)
+             (set-buffer-multibyte t))
+           (add-to-list 'consult-gh--preview-buffers-list buff)
+           (funcall preview action
+                    buff))))
+    ('return
+     cand))))
 
 #+end_src
-***** split command
+****** read gitignore template
 #+begin_src emacs-lisp
-(defun consult-gh--split-command (input)
-  "Return command argument and options list given INPUT string.
+(defun consult-gh--read-gitignore-template (&optional templates)
+"Read a gitignore template from TEMPLATES with preview.
 
-It sets `consult-gh--override-group-by' if and argument
-for grouping is provided in options.
-
-See `consult--command-split' for more info."
-  (pcase-let* ((`(,query . ,opts) (consult--command-split input)))
-    (if (and opts (listp opts) (> (length opts) 0))
-        (progn
-          (setq opts (cl-substitute ":group" ":g" opts :test 'equal))
-          (if (member ":group" opts)
-              (progn
-                (setq consult-gh--override-group-by (cadr (member ":group" opts)))
-                (setq opts (seq-difference opts (list ":group" (cadr (member ":group" opts))))))
-            (setq consult-gh--override-group-by nil)))
-      (setq consult-gh--override-group-by nil))
-    (append (list (or query input)) opts)))
-
-#+end_src
-***** can administer
-#+begin_src emacs-lisp
-(defun consult-gh--user-canadmin (repo)
-  "Determine if the current user can administer REPO."
-  (let ((json (consult-gh--command-to-string "repo" "view" repo "--json" "viewerCanAdminister")))
-    (and (stringp json)
-         (eq (consult-gh--json-to-hashtable json :viewerCanAdminister) 't))))
-
-#+end_src
-***** can write
-#+begin_src emacs-lisp
-(defun consult-gh--user-canwrite (repo)
-  "Determine if the current user have write premission in REPO."
-  (let* ((json (consult-gh--command-to-string "repo" "view" repo "--json" "viewerPermission"))
-        (permission (and (stringp json) (consult-gh--json-to-hashtable json :viewerPermission))))
-    (or (equal permission "WRITE") (equal permission "ADMIN"))))
-
-#+end_src
-***** is author
-#+begin_src emacs-lisp
-(defun consult-gh--user-isauthor (topic &optional user)
-  "Determine if the USER is the author of TOPIC.
-
-USER defaults to `consult-gh--auth-current-active-account'."
-  (let* ((user (or user (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-         (type (get-text-property 0 :type topic))
-         (repo (get-text-property 0 :repo topic))
-         (number (get-text-property 0 :number topic))
-         (author (get-text-property 0 :author topic))
-         (json (when (and (not author) number (member type '("issue" "pr")))
-                 (consult-gh--command-to-string type "view" number "--repo" repo "--json" "author")))
-         (table (and (stringp json) (consult-gh--json-to-hashtable json :author)))
-         (author (or author (and (hash-table-p table) (gethash :login table)))))
-         (equal user author)))
+TEMPLATES default to the list of templates from github:
+URL `https://github.com/github/gitignore'"
+  (consult--read (or templates (consult-gh--get-gitignore-template-list))
+                 :prompt (format "Select template for %s" (propertize ".gitignore " 'face 'error))
+                 :state #'consult-gh--gitignore-template-preview
+                 :require-match t
+                 :history 'consult-gh--gitignore-templates-history
+                 :preview-key consult-gh-preview-key
+                 :sort nil))
 
 #+end_src
 ***** repo has discussions enabled
@@ -3167,92 +3273,6 @@ STYLE defaults to `consult-async-split-style'."
   (or (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :initial))
       (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :separator))
       "")))
-#+end_src
-***** get user's contact
-#+begin_src emacs-lisp
-(defun consult-gh--get-user-info (&optional user)
-  "Get the contact of USER from GitHub API."
-  (consult-gh-with-host
-   (consult-gh--auth-account-host)
-   (let* ((user (or user (consult-gh--get-current-username)))
-          (json (consult-gh--api-get-json (format "users/%s" user))))
-     (if (eq (car json) 0)
-         (consult-gh--json-to-hashtable (cadr json) '(:name :email :html_url))
-       user))))
-#+end_src
-
-#+begin_src emacs-lisp
-(defun consult-gh--get-user-fullname (&optional user)
-  "Get the name of USER from GitHub API."
-  (gethash :name (consult-gh--get-user-info user)))
-
-(defun consult-gh--get-user-email (&optional user)
-  "Get the email of USER from GitHub API."
-  (gethash :email (consult-gh--get-user-info user)))
-
-(defun consult-gh--get-user-link (&optional user)
-  "Get the link to USER page on GitHub."
-  (gethash :html_url (consult-gh--get-user-info user)))
-#+end_src
-***** gitignore templates
-****** get list of all gitignore templates
-#+begin_src emacs-lisp
-(defun consult-gh--get-gitignore-template-list ()
-  "List name of .gitignore templates."
-  (string-split (string-trim
-                 (cadr
-                  (consult-gh--api-get-json "gitignore/templates"))
-                 "\\[" "\\]") "," t "\""))
-#+end_src
-****** get ignore template content
-#+begin_src emacs-lisp
-(defun consult-gh--get-gitignore-template-content (template)
-  "Get content of gitignore TEMPLATE."
-  (when-let ((response (consult-gh--command-to-string "api" (format "gitignore/templates/%s" template))))
-    (gethash :source (consult-gh--json-to-hashtable response))))
-#+end_src
-****** preview
-#+begin_src emacs-lisp
-(defun consult-gh--gitignore-template-preview (action cand)
-  "Preview function for gitignore templates.
-
-This is passed as state function to `consult--read'.
-
-For more details on ACTION and CAND refer to docstring of
-`consult--with-preview'."
-  (let* ((preview (consult--buffer-preview)))
-  (pcase action
-    ('preview
-     (if (and consult-gh-show-preview cand (stringp cand))
-         (let* ((content (consult-gh--get-gitignore-template-content cand))
-                (buff (get-buffer-create (format "*consult-gh-preview: gitignore-%s*" cand))))
-           (with-current-buffer buff
-             (erase-buffer)
-             (insert content)
-             (set-buffer-file-coding-system 'utf-8)
-             (set-buffer-multibyte t))
-           (add-to-list 'consult-gh--preview-buffers-list buff)
-           (funcall preview action
-                    buff))))
-    ('return
-     cand))))
-
-#+end_src
-****** read gitignore template
-#+begin_src emacs-lisp
-(defun consult-gh--read-gitignore-template (&optional templates)
-"Read a gitignore template from TEMPLATES with preview.
-
-TEMPLATES default to the list of templates from github:
-URL `https://github.com/github/gitignore'"
-  (consult--read (or templates (consult-gh--get-gitignore-template-list))
-                 :prompt (format "Select template for %s" (propertize ".gitignore " 'face 'error))
-                 :state #'consult-gh--gitignore-template-preview
-                 :require-match t
-                 :history 'consult-gh--gitignore-templates-history
-                 :preview-key consult-gh-preview-key
-                 :sort nil))
-
 #+end_src
 ***** license
 
@@ -3502,20 +3522,6 @@ DESCRIPTION and COLOR are description and color of label from GitHub API."
           (if (stringp description)
                   (concat "\n"  (propertize description 'face 'consult-gh-description)))))
 #+end_src
-
-***** get GitHub repo name form topic
-#+begin_src emacs-lisp
-(defun consult-gh--get-repo-from-topic (&optional topic)
-  "Return the full name of the GitHub repository in topic.
-
-TOPIC should be a string with property field :repo, and defaults to
-`consult-gh--topic'."
-  (when-let* ((topic (or topic consult-gh--topic)))
-    (if (stringp topic)
-        (get-text-property 0 :repo topic))))
-#+end_src
-
-
 
 **** buffers handling
 everything to do with handling buffers (such as preview buffers) that are created by consult-gh.
@@ -4882,7 +4888,6 @@ Completes for issue/pr numbers or user names."
 
 
 **** auth
-
 ***** consult-gh--auth-accounts
 #+begin_src emacs-lisp
 (defun consult-gh--auth-accounts ()
@@ -5998,32 +6003,10 @@ Description of Arguments:
 #+end_src
 **** commits
 ***** make commits
-****** commit diff
-******* diff strings
+****** get commit diff buffer
 #+begin_src emacs-lisp
-(defun consult-gh--commit-diff-strings (string1 string2)
-  "Get diff of STRING1 and STRING2."
-  (with-temp-buffer
-    (insert string1)
-    (set-buffer-file-coding-system 'raw-text)
-    (set-buffer-multibyte t)
-    (let ((old-buffer (current-buffer)))
-      (with-temp-buffer
-        (insert string2)
-        (set-buffer-file-coding-system 'raw-text)
-        (set-buffer-multibyte t)
-        (let ((new-buffer (current-buffer)))
-          (with-temp-buffer
-            (diff-no-select old-buffer new-buffer nil t (current-buffer))
-            (buffer-string)))))))
-
-#+end_src
-******* get diffs
-#+begin_src emacs-lisp
-(defun consult-gh--commit-get-diff-buffer (&optional commit update)
+(defun consult-gh--commit-get-diff-buffer (&optional commit)
   "Ger diff buffer for COMMIT.
-
-When UPDATE is non-nil, update the diff-buffer.
 
 COMMIT is a string with properties that identify a commit.
 For an example see the buffer-local variable `consult-gh--topic' in the
@@ -6032,153 +6015,34 @@ buffer generated by `consult-gh--commit-create'."
          (repo (get-text-property 0 :repo commit))
          (ref (or (get-text-property 0 :commit-ref commit)
                   (get-text-property 0 :ref commit)))
-         (diff-buff (get-text-property 0 :diff-buffer commit))
          (target (get-text-property 0 :commit-target commit)))
+      (let* ((files (get-text-property 0 :files commit))
+             (buffername (format "consult-gh-diff-%s:%s/%s" target repo ref))
+             (content
+              (when (listp files)
+                (consult--slow-operation "Collecting file contents. This may take a while!"
+                  (cl-loop for file in files
+                           collect
+                           (let* ((file-diff-buff (get-text-property 0 :diff-buffer file))
+                                  (file-diff-done (get-text-property 0 :diff-done file)))
+                             (and file-diff-done
+                                  (bufferp file-diff-buff)
+                                  (buffer-live-p file-diff-buff))
+                             (with-current-buffer file-diff-buff
+                               (buffer-string)))))))
+             (diff-content (when (listp content)
+                             (mapconcat #'identity content "\n\n"))))
 
-    (pcase target
-      ("create"
-       (if (and (bufferp diff-buff)
-                (buffer-live-p diff-buff)
-                (not update)
-                (> (buffer-size diff-buff) 0))
-           diff-buff
-         (let* ((files (get-text-property 0 :files commit))
-                (buffername (format "consult-gh-diff-create:%s/%s" repo ref))
-                (content
-                 (when (listp files)
-                   (consult--slow-operation "Collecting file contents. This may take a while!"
-                   (cl-loop for file in files
-                            collect
-                            (let* ((file-path (get-text-property 0 :path file))
-                                   (file-buffer (get-text-property 0 :view-buffer file))
-                                   (new-content (or (get-text-property 0 :content file)
-                                                    (base64-decode-string (get-text-property 0 :base64-content file))
-                                                    (and (bufferp file-buffer)
-                                                         (buffer-live-p file-buffer)
-                                                         (with-current-buffer file-buffer
-                                                           (buffer-substring-no-properties (point-min) (point-max))))))
-                                   (remote-content  (consult-gh--files-get-content-by-path repo file-path ref)))
-                              (concat
-(format "Diff for %s\n\n" file)                               (consult-gh--commit-diff-strings remote-content new-content)
-"\n\n")))))))
-           (with-current-buffer (get-buffer-create buffername)
-             (erase-buffer)
-             (when (listp content)
-               (insert (mapconcat #'identity content "\n\n")))
-             (set-buffer-file-coding-system 'raw-text)
-             (set-buffer-multibyte t)
-             (diff-mode)
-             (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
-             (add-text-properties 0 1 (list :diff-buffer (current-buffer)) commit)
-             (current-buffer)))))
-      ("delete"
-       (if (and (bufferp diff-buff)
-                (buffer-live-p diff-buff)
-                (> (buffer-size diff-buff) 0))
-           diff-buff
-         (let* ((files (get-text-property 0 :files commit))
-                (buffername (format "consult-gh-diff-delete:%s/%s" repo ref))
-                (content
-                 (when (listp files)
-                   (consult--slow-operation "Collecting file contents form GitHub. This may take a while!"
-                   (cl-loop for file in files
-                            collect
-                            (let* ((file-type (get-text-property 0 :type file))
-                                   (file-path (get-text-property 0 :path file))
-                                   (remote-content
-                                    (cond
-                                     ((equal file-type "directory")
-                                      (let* ((files-list (consult-gh--files-nodirectory-items repo file-path ref))
-                                             (file-content
-                                              (when (listp files-list)
-                                                (mapconcat (lambda (p)
-                                                             (if-let* ((f-path (and (consp p)
-                                                                                    (plistp (cdr p))
-                                                                                    (plist-get (cdr p) :path)))
-                                                                       (f-path (and (stringp f-path)
-                                                                                    (not (string-empty-p f-path))
-                                                                                    f-path)))
-                                                                 (consult-gh--files-get-content-by-path repo f-path ref)))
-                                                           files-list "\n\n"))))
-                                        (setq my:test file-content)
-                                        file-content))
-                                        ((equal file-type "file")
-                                         (consult-gh--files-get-content-by-path repo file-path ref))))
-                                     (new-content ""))
-                                                                  (concat
-(format "Diff for %s\n\n" file) (consult-gh--commit-diff-strings remote-content new-content)
-"\n\n")))))))
-
-                 (with-current-buffer (get-buffer-create buffername)
-                   (erase-buffer)
-                   (when (listp content)
-                     (insert (mapconcat #'identity content "\n\n")))
-                   (set-buffer-file-coding-system 'raw-text)
-                   (set-buffer-multibyte t)
-                   (diff-mode)
-                   (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
-                   (add-text-properties 0 1 (list :diff-buffer (current-buffer)) commit)
-                   (current-buffer)))))
-         ("upload"
-          (if (and (bufferp diff-buff)
-                   (buffer-live-p diff-buff)
-                   (> (buffer-size diff-buff) 0))
-              diff-buff
-            (let* ((files (get-text-property 0 :files commit))
-                   (path (get-text-property 0 :path commit))
-                   (buffername (format "consult-gh-diff-upload:%s/%s/%s" repo ref path))
-                   (content
-                    (when (listp files)
-                      (consult--slow-operation "Collecting file contents. This may take a while!"
-                      (cl-loop for file in files
-                               collect
-                               (let* ((new-content (if (file-directory-p file)
-                                                       (mapconcat (lambda (f)
-                                                                    (with-temp-buffer
-                                                                      (insert-file-contents f)
-                                                                      (set-buffer-file-coding-system 'raw-text)
-                                                                      (set-buffer-multibyte t)
-                                                                      (buffer-substring-no-properties (point-min) (point-max))))
-                                                                  (directory-files-recursively file ".*")
-                                                                  "\n\n")
-                                                     (with-temp-buffer
-                                                       (insert-file-contents file)
-                                                       (set-buffer-file-coding-system 'raw-text)
-                                                       (set-buffer-multibyte t)
-                                                       (buffer-substring-no-properties (point-min) (point-max)))))
-                                      (remote-content (if (file-directory-p file)
-                                                          (mapconcat (lambda (f)
-                                                                       (let* ((file-name (file-name-nondirectory f))
-                                                                              (relative-path (string-remove-prefix (file-name-directory (file-truename file)) (file-truename f)))
-                                                                              (parent-path (concat (if path (file-name-as-directory path))
-                                                                                                   (file-name-as-directory (file-name-directory relative-path))))
-                                                                              (file-path (format "%s%s" (if (stringp parent-path) (file-name-as-directory parent-path) "") file-name))
-                                                                              (file-content (consult-gh--files-get-content-by-path repo file-path ref)))
-                                                                         (if (stringp file-content)
-                                                                             file-content
-                                                                           "")))
-                                                                     (directory-files-recursively file ".*")
-                                                                     "\n\n")
-                                                        (let* ((file-name (file-name-nondirectory file))
-                                                               (parent-path (if (stringp path) (file-name-as-directory path)))
-                                                               (file-path (format "%s%s" (if (stringp parent-path) (file-name-as-directory parent-path) "") file-name)))
-
-                                                          (consult-gh--files-get-content-by-path repo file-path ref)))))
-                                                               (concat
-(format "Diff for %s\n\n" file) (consult-gh--commit-diff-strings remote-content new-content)
-"\n\n")))))))
-              (with-current-buffer (get-buffer-create buffername)
-                (erase-buffer)
-                (when (listp content)
-                  (insert (mapconcat #'identity content "\n\n")))
-                (set-buffer-file-coding-system 'raw-text)
-                (set-buffer-multibyte t)
-                (diff-mode)
-                (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
-                (add-text-properties 0 1 (list :diff-buffer (current-buffer)) commit)
-                (current-buffer))))))))
-
-
+        (with-current-buffer (get-buffer-create buffername)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert diff-content)
+            (set-buffer-file-coding-system 'raw-text)
+            (set-buffer-multibyte t)
+            (diff-mode)
+            (add-to-list 'consult-gh--preview-buffers-list (current-buffer))
+            (add-text-properties 0 1 (list :diff-buffer (current-buffer)) commit)
+            (current-buffer))))))
 #+end_src
 
 ****** get commit message
@@ -6239,7 +6103,6 @@ buffer generated by `consult-gh--commit-create'."
     (puthash :email committer-email committer-info)
     (add-text-properties 0 1 (list :committer-info committer-info) commit)))
 
-
 #+end_src
 
 ****** change author
@@ -6270,7 +6133,6 @@ buffer generated by `consult-gh--commit-create'."
     (puthash :email author-email author-info)
     (add-text-properties 0 1 (list :author-info author-info) commit)))
 
-
 #+end_src
 
 ****** change branch
@@ -6292,11 +6154,89 @@ buffer generated by `consult-gh--commit-create'."
     (setq ref (or (consult-gh--read-branch repo nil "Select New Ref (i.e. Branch): " nil t) ref))
     (add-text-properties 0 1 (list :commit-ref ref) commit)))
 
-
 #+end_src
 
 ****** commit for creating/updating files
+******* make diff buffer
+#+begin_src emacs-lisp
+(defun consult-gh--commit-create-make-diff-buffer (repo file &optional ref)
+  "Make a diff buffer for a commit to create a FILE in REPO.
 
+REF is the name of a branch or tag name."
+  (let* ((viewbuffer (get-text-property 0 :view-buffer file))
+         (local-path (get-text-property 0 :local-path file))
+         (target "create")
+         (new-content (or (and (bufferp viewbuffer)
+                               (buffer-live-p viewbuffer)
+                               (with-current-buffer viewbuffer
+                                 (save-restriction
+                                   (widen)
+                                   (buffer-substring-no-properties (point-min) (point-max)))))
+                          (and (file-exists-p local-path)
+                               (with-temp-buffer (insert-file-contents local-path)
+                                                 (buffer-string)))))
+         (base64-content (and (stringp new-content)
+                              (base64-encode-string (substring-no-properties (encode-coding-string new-content 'utf-8)))))
+         (path (get-text-property 0 :path file))
+         (url (format "/repos/%s/contents/%s" repo path))
+         (url-ref (if ref (concat url (format "?ref=%s" ref)) url))
+         (diff-buff (get-buffer-create (format " *consult-gh-diff-create-%s-%s-%s:%s*" target repo ref path))))
+    (with-current-buffer diff-buff
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (add-text-properties 0 1 (list :diff-done nil) file))
+      (add-text-properties 0 1 (list :diff-buffer diff-buff) file))
+    (consult-gh--make-process (format "consult-gh-diff-create:%s/%s/%s" repo ref path)
+                              :on-error
+                              (lambda (_event _str)
+                                (with-temp-buffer
+                                  (insert (or new-content ""))
+                                  (set-buffer-file-coding-system 'raw-text)
+                                  (set-buffer-multibyte t)
+                                  (let ((new-buffer (current-buffer)))
+                                    (with-temp-buffer
+                                      (insert "")
+                                      (set-buffer-file-coding-system 'raw-text)
+                                      (set-buffer-multibyte t)
+                                      (let ((old-buffer (current-buffer)))
+                                        (with-temp-buffer
+                                          (diff-no-select old-buffer new-buffer nil t (current-buffer))
+                                          (let ((diff-str (buffer-string)))
+                                            (when (stringp diff-str)
+                                              (with-current-buffer diff-buff
+                                                (goto-char (point-max))
+                                                (insert (concat (format "Creating %s:\n\n" path)
+                                                                diff-str
+                                                                "\n\n"))))
+                                            (add-text-properties 0 1 (list :diff-done t) file))))))))
+                              :when-done
+                              (lambda (_event str)
+                                (let* ((content (when (stringp str) (consult-gh--json-to-hashtable str :content)))
+                                       (old-content (when (stringp content)
+                                                      (base64-decode-string content))))
+                                  (with-temp-buffer
+                                    (insert (or new-content ""))
+                                    (set-buffer-file-coding-system 'raw-text)
+                                    (set-buffer-multibyte t)
+                                    (let ((new-buffer (current-buffer)))
+                                      (with-temp-buffer
+                                        (insert (or old-content ""))
+                                        (set-buffer-file-coding-system 'raw-text)
+                                        (set-buffer-multibyte t)
+                                        (let ((old-buffer (current-buffer)))
+                                          (with-temp-buffer
+                                            (diff-no-select old-buffer new-buffer nil t (current-buffer))
+                                            (let ((diff-str (buffer-string)))
+                                              (when (stringp diff-str)
+                                                (with-current-buffer diff-buff
+                                                  (goto-char (point-max))
+                                                  (insert (concat (format "Updating %s:\n\n" path)
+                                                                  diff-str
+                                                                  "\n\n"))))
+                                              (add-text-properties 0 1 (list :diff-done t) file)))))))))
+                              :cmd-args (list "api" "-H" "Accept: application/vnd.github+json" "--paginate" url-ref))
+    (add-text-properties 0 1 (list :base64-content base64-content) file)))
+#+end_src
 ******* create commit
 #+begin_src emacs-lisp
 (defun consult-gh--create-commit (files repo ref &optional commit-message)
@@ -6312,46 +6252,38 @@ a file.  For an example, see the buffer-local variable
 It opens a buffer to enter the commit message for editing FILES.
 If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial
 message."
-   (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
-          (committer-info (consult-gh--get-user-info user))
-          (author-info (consult-gh--get-user-info user))
-          (buffer (format "*consult-gh-file-edit-commit-message: %s/%s" repo ref))
-          (newtopic (format "%s/%s" repo ref))
-          (type "commit message"))
+  (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
+         (committer-info (consult-gh--get-user-info user))
+         (author-info (consult-gh--get-user-info user))
+         (buffer (format "*consult-gh-file-edit-commit-message: %s/%s" repo ref))
+         (newtopic (format "%s/%s" repo ref))
+         (target "create")
+         (type "commit message"))
 
-     (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-ref ref :content nil :commit-target "create" :repo repo :ref ref :files files) newtopic)
+    (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-ref ref :content nil :commit-target target :repo repo :ref ref :files files) newtopic)
 
-     ;; insert commit message
-     (consult-gh-topics--get-buffer-create buffer "commit message" newtopic)
-     (with-current-buffer buffer
-       (consult-gh-commit-message-mode +1)
-       (save-excursion
-         (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
-                    (goto-char (or (car-safe (car-safe regions)) (point-min))))
-         (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
-       (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
-       (when (listp files)
-         (insert (propertize "\n\n" :consult-gh-commit-instructions t))
-         (insert (propertize "# Files to Create/Update:" :consult-gh-commit-instructions t))
-         (mapc (lambda (f)
-                   (let* ((viewbuffer (get-text-property 0 :view-buffer f))
-                          (content (and (bufferp viewbuffer)
-                                        (buffer-live-p viewbuffer)
-                                        (with-current-buffer viewbuffer
-                                          (save-restriction
-                                            (widen)
-                                            (buffer-substring-no-properties (point-min) (point-max))))))
-                          (base64-content (and (stringp content)
-                                              (base64-encode-string (substring-no-properties (encode-coding-string content 'utf-8))))))
-
-                     (add-text-properties 0 1 (list :base64-content base64-content :commit-buffer (get-buffer buffer)) f)
-                   (insert (propertize (format "\n# - create/update %s" f) :consult-gh-commit-instructions t))))
-                 files))
-       (goto-char (point-min))
-       (when (stringp commit-message)
-         (insert commit-message)
-         (consult-gh-commit-save-message))
-       (funcall consult-gh-pop-to-buffer-func buffer)))))
+    ;; insert commit message
+    (consult-gh-topics--get-buffer-create buffer "commit message" newtopic)
+    (with-current-buffer buffer
+      (consult-gh-commit-message-mode +1)
+      (save-excursion
+        (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+          (goto-char (or (car-safe (car-safe regions)) (point-min))))
+        (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
+        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
+        (when (listp files)
+          (insert (propertize "\n\n" :consult-gh-commit-instructions t))
+          (insert (propertize "# Files to Create/Update:" :consult-gh-commit-instructions t))
+          (mapc (lambda (f)
+                  (consult-gh--commit-create-make-diff-buffer repo f ref)
+                  (add-text-properties 0 1 (list :commit-buffer (get-buffer buffer)) f)
+                  (insert (propertize (format "\n# - create/update %s" f) :consult-gh-commit-instructions t)))
+                files))
+        (goto-char (point-min))
+        (when (stringp commit-message)
+          (insert commit-message)
+          (consult-gh-commit-save-message))
+        (funcall consult-gh-pop-to-buffer-func buffer)))))
 #+end_src
 ******* create commit by pull request
 #+begin_src emacs-lisp
@@ -6637,8 +6569,7 @@ Description of Arguments:
                existing
                (equal (get-text-property 0 :object-type new-file) "tree"))
           (let* ((new-file (consult-gh--files-read-file repo ref (file-name-as-directory path) nil "File Name: " nil nil nil 'branch)))
-            (consult-gh--create-commit-add-file commit new-file)
-            (add-text-properties 0 1 (list :diff-buffer nil) commit)))
+            (consult-gh--create-commit-add-file commit new-file)))
       ((and (stringp new-file)
             existing
             (equal (get-text-property 0 :object-type new-file) "blob"))
@@ -6652,8 +6583,7 @@ Description of Arguments:
           (let* ((new-file (consult-gh--files-read-file repo ref (or (and (stringp (file-name-directory path)) (file-name-as-directory (file-name-directory path)))
                                                                      nil)
                                                         nil "File Name: " nil nil nil 'branch)))
-            (consult-gh--create-commit-add-file commit new-file)
-            (add-text-properties 0 1 (list :diff-buffer nil) commit)))
+            (consult-gh--create-commit-add-file commit new-file)))
          (':edit
           (consult-gh-edit-file new-file (current-buffer)))))
       (t
@@ -6662,13 +6592,11 @@ Description of Arguments:
                    (tempdir (expand-file-name (concat repo "/" (or ref "HEAD") "/")
                                     (or consult-gh--current-tempdir (consult-gh--tempdir)))))
               (with-current-buffer (consult-gh--files-create-buffer repo path ref nil tempdir)
-                (add-text-properties 0 1 (list :commit-buffer buffer) consult-gh--topic))
-             (add-text-properties 0 1 (list :diff-buffer nil) commit))))))))
+                (add-text-properties 0 1 (list :commit-buffer buffer) consult-gh--topic)))))))))
 #+end_src
 
 ******* remove files
 #+begin_src emacs-lisp
-
 (defun consult-gh--create-commit-remove-file (&optional commit)
   "Remove file from the files to create/update in COMMIT."
   (if consult-gh-topics-edit-mode
@@ -6690,16 +6618,9 @@ Description of Arguments:
             (insert (propertize "\n\n" :consult-gh-commit-instructions t))
             (insert (propertize "# Files to Create/Update:" :consult-gh-commit-instructions t))
             (mapc (lambda (f)
-                    (let* ((content (with-current-buffer (get-text-property 0 :file-buffer f)
-                                      (save-restriction
-                                        (widen)
-                                        (buffer-substring-no-properties (point-min) (point-max)))))
-                           (base64-content (and (stringp content)
-                                                (base64-encode-string (substring-no-properties (encode-coding-string content 'utf-8))))))
-
-                      (add-text-properties 0 1 (list :base64-content base64-content :content content) f)
-                      (insert (propertize (format "\n# - create/update %s" f) :consult-gh-commit-instructions t))))
+                    (insert (propertize (format "\n# - create/update %s" f) :consult-gh-commit-instructions t)))
                   new-files))))))
+
 #+end_src
 
 
@@ -6771,13 +6692,114 @@ buffer generated by `consult-gh--commit-create'."
 
 #+end_src
 ****** commits for deleting files
+******* make diff buffer
+#+begin_src emacs-lisp
+(defun consult-gh--commit-delete-make-diff-buffer (repo file &optional ref)
+  "Make a diff buffer for a commit to delete a FILE in REPO.
+
+REF is the name of a branch or tag name."
+  (let* ((target "delete")
+         (new-content "")
+         (path (get-text-property 0 :path file))
+         (type (get-text-property 0 :type file))
+         (ref (or ref "HEAD"))
+         (diff-buff (get-buffer-create (format " *consult-gh-diff-%s-%s-%s:%s*" target repo ref path))))
+    (with-current-buffer diff-buff
+      (erase-buffer)
+      (add-text-properties 0 1 (list :diff-done nil) file))
+    (add-text-properties 0 1 (list :diff-buffer diff-buff) file)
+    (pcase type
+      ("directory"
+       (let* ((dir-path (and (stringp path) (file-name-as-directory path)))
+              (files-list (consult-gh--files-nodirectory-items repo dir-path ref)))
+         (mapc (lambda (f)
+                 (let* ((f-path (and (consp f)
+                                     (plistp (cdr f))
+                                     (plist-get (cdr f) :path)))
+                        (f-path (and (stringp f-path)
+                                     (not (string-empty-p f-path))
+                                     f-path))
+                        (url (format "/repos/%s/contents/%s" repo f-path))
+                        (url-ref (if ref (concat url (format "?ref=%s" ref)) url)))
+                   (when (stringp f-path)
+                     (add-text-properties 0 1 (list :diff-done nil) file)
+                     (consult-gh--make-process (format "consult-gh-diff-delete:%s/%s/%s" repo ref f-path)
+                                               :on-error
+                                               (lambda (_event _str)
+                                                 (ignore))
+                                               :when-done
+                                               (lambda (_event str)
+                                                 (let* ((content (when (stringp str) (consult-gh--json-to-hashtable str :content)))
+                                                        (old-content (when (stringp content)
+                                                                       (base64-decode-string content))))
+                                                   (if (equal old-content new-content)
+                                                       (with-current-buffer diff-buff
+                                                         (goto-char (point-max))
+                                                         (insert (concat (format "Deleting %s:\n\n" f-path)
+                                                                         "\n\n")))
+                                                     (with-temp-buffer
+                                                       (insert new-content)
+                                                       (let ((new-buffer (current-buffer)))
+                                                         (with-temp-buffer
+                                                           (insert (or old-content ""))
+                                                           (set-buffer-file-coding-system 'raw-text)
+                                                           (set-buffer-multibyte t)
+                                                           (let ((old-buffer (current-buffer)))
+                                                             (with-temp-buffer
+                                                               (diff-no-select old-buffer new-buffer nil t (current-buffer))
+                                                               (let ((diff-str (buffer-string)))
+                                                                 (when (stringp diff-str)
+                                                                   (with-current-buffer diff-buff
+                                                                     (goto-char (point-max))
+                                                                     (insert (concat (format "Deleting %s:\n\n" f-path)
+                                                                                     diff-str
+                                                                                     "\n\n")))
+                                                                   (add-text-properties 0 1 (list :diff-done t) file)))))))))))
+                                               :cmd-args (list "api" "-H" "Accept: application/vnd.github+json" "--paginate" url-ref)))))
+               files-list)))
+      ("file"
+       (let* ((url (format "/repos/%s/contents/%s" repo path))
+              (url-ref (if ref (concat url (format "?ref=%s" ref)) url)))
+         (consult-gh--make-process (format "consult-gh-diff-create:%s/%s/%s" repo ref path)
+                                   :on-error
+                                   (lambda (_event _str)
+                                     (ignore))
+                                   :when-done
+                                   (lambda (_event str)
+                                     (let* ((content (when (stringp str) (consult-gh--json-to-hashtable str :content)))
+                                            (old-content (when (stringp content)
+                                                           (base64-decode-string content))))
+                                       (with-temp-buffer
+                                         (insert new-content)
+                                         (let ((new-buffer (current-buffer)))
+                                           (with-temp-buffer
+                                             (insert (or old-content ""))
+                                             (set-buffer-file-coding-system 'raw-text)
+                                             (set-buffer-multibyte t)
+                                             (let ((old-buffer (current-buffer)))
+                                               (with-temp-buffer
+                                                 (diff-no-select old-buffer new-buffer nil t (current-buffer))
+                                                 (let ((diff-str (buffer-string)))
+                                                   (when (stringp diff-str)
+                                                     (with-current-buffer diff-buff
+                                                       (goto-char (point-max))
+                                                       (insert (concat (format "Deleting %s:\n\n" path)
+                                                                       diff-str
+                                                                       "\n\n"))
+                                                       (add-text-properties 0 1 (list :diff-done t) file)))))))))))
+                                   :cmd-args (list "api" "-H" "Accept: application/vnd.github+json" "--paginate" url-ref))))
+      (_
+       (with-current-buffer diff-buff
+         (goto-char (point-max))
+         (insert (format "Deleting %s:\n\n" path)
+                 "\n\n"))))))
+#+end_src
 ******* create commit
 #+begin_src emacs-lisp
-(defun consult-gh--delete-commit (repo files ref &optional commit-message)
+(defun consult-gh--delete-commit (repo files &optional ref commit-message)
   "Create a commit to delete FILES in REPO and REF.
 
 REF is the name of a branch for commit ref.
-It opens a buffer to enter the commit message for deleting FILES.
 
 If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
    (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
@@ -6802,7 +6824,8 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
          (insert (propertize "\n\n" :consult-gh-commit-instructions t))
          (insert (propertize "# Files to delete:" :consult-gh-commit-instructions t))
          (mapc (lambda (f)
-                   (insert (propertize (format "\n# - delete %s" f) :consult-gh-commit-instructions t)))
+                 (consult-gh--commit-delete-make-diff-buffer repo f ref)
+                 (insert (propertize (format "\n# - delete %s" f) :consult-gh-commit-instructions t)))
                  files)))
        (goto-char (point-min))
        (when (stringp commit-message)
@@ -6826,9 +6849,7 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
                         new-path))
              (_ (when (stringp new-path)
                   (add-text-properties 0 1 (list :path (substring-no-properties new-path) :type (if (equal type "tree") "directory" "file")) new-path)))
-             (new-files (remove nil (cl-remove-duplicates (append (list (and (stringp new-path) new-path))
-                                                                  files)
-                                                          :test #'equal))))
+             (new-files (remove nil (cl-remove-duplicates (append (list (and (stringp new-path) new-path)) files) :test #'equal))))
         (add-text-properties 0 1 (list :files new-files) commit)
         (add-text-properties 0 1 (list :diff-buffer nil) commit)
         (save-excursion
@@ -6840,13 +6861,14 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
          (insert (propertize "\n\n" :consult-gh-commit-instructions t))
          (insert (propertize "# Files to delete:" :consult-gh-commit-instructions t))
          (mapc (lambda (f)
+                 (unless (member f files)
+                 (consult-gh--commit-delete-make-diff-buffer repo f ref))
                    (insert (propertize (format "\n# - delete %s" f) :consult-gh-commit-instructions t)))
                  new-files))))))
 #+end_src
 
 ******* remove files
 #+begin_src emacs-lisp
-
 (defun consult-gh--delete-commit-remove-files (&optional commit)
   "Remove files from the files to upload in COMMIT."
   (if consult-gh-topics-edit-mode
@@ -6867,6 +6889,7 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
          (mapc (lambda (f)
                    (insert (propertize (format "\n# - delete %s" f) :consult-gh-commit-instructions t)))
                  new-files))))))
+
 #+end_src
 
 ******* delete commit by pull request
@@ -7120,10 +7143,156 @@ buffer generated by `consult-gh--delete-commit'."
 
 ****** commits for uploading files
 
+******* make diff buffer
+#+begin_src emacs-lisp
+(defun consult-gh--commit-upload-make-diff-buffer (repo file path &optional ref)
+  "Make a diff buffer for a commit to upload FILE in REPO at PATH.
+
+REF is the name of a branch or tag name."
+  (let* ((target "upload")
+         (local-path (get-text-property 0 :local-path file))
+         (remote-path (get-text-property 0 :remote-path file))
+         (type (get-text-property 0 :type file))
+         (ref (or ref "HEAD"))
+         (diff-buff (get-buffer-create (format " *consult-gh-diff-%s-%s-%s:%s*" target repo ref remote-path))))
+    (with-current-buffer diff-buff
+      (let ((inhibit-read-only t))
+        (erase-buffer))
+      (add-text-properties 0 1 (list :diff-done nil) file))
+    (add-text-properties 0 1 (list :diff-buffer diff-buff) file)
+    (pcase type
+      ("directory"
+       (let* ((files-list (directory-files-recursively local-path ".*")))
+         (mapc (lambda (f)
+                 (let* ((f-name (file-name-nondirectory f))
+                        (f-relative-path (string-remove-prefix (file-name-directory (file-truename local-path)) (file-truename f)))
+
+                        (f-parent-path (concat
+                                        (if path (file-name-as-directory path))
+                                        (file-name-as-directory (file-name-directory f-relative-path))))
+                        (f-path (format "%s%s" (if (stringp f-parent-path) (file-name-as-directory f-parent-path) "") f-name))
+
+                        (url (format "/repos/%s/contents/%s" repo f-path))
+                        (url-ref (if ref (concat url (format "?ref=%s" ref)) url)))
+                   (when (stringp f-path)
+                     (add-text-properties 0 1 (list :diff-done nil) file)
+                     (consult-gh--make-process (format "consult-gh-diff-upload:%s/%s/%s" repo ref f-path)
+                                               :on-error
+                                               (lambda (_event _str)
+                                                 (with-temp-buffer
+                                                   (when (file-exists-p f)
+                                                     (insert-file-contents f)
+                                                     (set-buffer-file-coding-system 'raw-text)
+                                                     (set-buffer-multibyte t))
+                                                   (let ((new-buffer (current-buffer)))
+                                                     (with-temp-buffer
+                                                       (insert "")
+                                                       (set-buffer-file-coding-system 'raw-text)
+                                                       (set-buffer-multibyte t)
+                                                       (let ((old-buffer (current-buffer)))
+
+                                                         (with-temp-buffer
+                                                           (diff-no-select old-buffer new-buffer nil t (current-buffer))
+                                                           (let ((diff-str (buffer-string)))
+                                                             (when (stringp diff-str)
+                                                               (with-current-buffer diff-buff
+                                                                 (goto-char (point-max))
+                                                                 (insert (concat (format "Uploading %s:\n\n" f-path)
+                                                                         diff-str
+                                                                         "\n\n"))
+                                                                 (add-text-properties 0 1 (list :diff-done t) file))))))))))
+                                               :when-done
+                                               (lambda (_event str)
+                                                 (let* ((content (when (stringp str) (consult-gh--json-to-hashtable str :content)))
+                                                        (old-content (when (stringp content)
+                                                                       (base64-decode-string content))))
+                                                   (with-temp-buffer
+                                                     (when (file-exists-p f)
+                                                       (insert-file-contents f)
+                                                       (set-buffer-file-coding-system 'raw-text)
+                                                       (set-buffer-multibyte t))
+                                                     (let ((new-buffer (current-buffer)))
+                                                       (with-temp-buffer
+                                                         (insert (or old-content ""))
+                                                         (set-buffer-file-coding-system 'raw-text)
+                                                         (set-buffer-multibyte t)
+                                                         (let ((old-buffer (current-buffer)))
+                                                           (with-temp-buffer
+                                                             (diff-no-select old-buffer new-buffer nil t (current-buffer))
+                                                             (let ((diff-str (buffer-string)))
+                                                               (when (stringp diff-str)
+                                                                 (with-current-buffer diff-buff
+                                                                   (goto-char (point-max))
+                                                                   (insert (concat (format "Uploading %s:\n\n" f-path)
+                                                                           diff-str
+                                                                           "\n\n"))
+                                                                   (add-text-properties 0 1 (list :diff-done t) file)))))))))))
+                                               :cmd-args (list "api" "-H" "Accept: application/vnd.github+json" "--paginate" url-ref)))))
+               files-list)))
+      ("file"
+       (let* ((url (format "/repos/%s/contents/%s" repo remote-path))
+              (url-ref (if ref (concat url (format "?ref=%s" ref)) url)))
+         (consult-gh--make-process (format "consult-gh-diff-upload:%s/%s/%s" repo ref remote-path)
+                                   :on-error
+                                   (lambda (_event _str)
+                                     (with-temp-buffer
+                                       (when (file-exists-p local-path)
+                                         (insert-file-contents local-path)
+                                         (set-buffer-file-coding-system 'raw-text)
+                                         (set-buffer-multibyte t))
+                                       (let ((new-buffer (current-buffer)))
+                                         (with-temp-buffer
+                                           (insert "")
+                                           (set-buffer-file-coding-system 'raw-text)
+                                           (set-buffer-multibyte t)
+                                           (let ((old-buffer (current-buffer)))
+                                             (with-temp-buffer
+                                               (diff-no-select old-buffer new-buffer nil t (current-buffer))
+                                               (let ((diff-str (buffer-string)))
+                                                 (when (stringp diff-str)
+                                                   (with-current-buffer diff-buff
+                                                     (goto-char (point-max))
+                                                     (insert (concat (format "Uploading %s:\n\n" remote-path)
+                                                             diff-str
+                                                             "\n\n"))
+                                                     (add-text-properties 0 1 (list :diff-done t) file))))))))))
+                                   :when-done
+                                   (lambda (_event str)
+                                     (let* ((content (when (stringp str) (consult-gh--json-to-hashtable str :content)))
+                                            (old-content (when (stringp content)
+                                                           (base64-decode-string content))))
+                                       (with-temp-buffer
+                                         (when (file-exists-p local-path)
+                                           (insert-file-contents local-path)
+                                           (set-buffer-file-coding-system 'raw-text)
+                                           (set-buffer-multibyte t))
+                                         (let ((new-buffer (current-buffer)))
+                                           (with-temp-buffer
+                                             (insert (or old-content ""))
+                                             (set-buffer-file-coding-system 'raw-text)
+                                             (set-buffer-multibyte t)
+                                             (let ((old-buffer (current-buffer)))
+                                               (with-temp-buffer
+                                                 (diff-no-select old-buffer new-buffer nil t (current-buffer))
+                                                 (let ((diff-str (buffer-string)))
+                                                   (when (stringp diff-str)
+                                                     (with-current-buffer diff-buff
+                                                       (goto-char (point-max))
+                                                       (insert (concat (format "Uploading %s:\n\n" remote-path)
+                                                               diff-str
+                                                               "\n\n"))
+                                                       (add-text-properties 0 1 (list :diff-done t) file)))))))))))
+                                   :cmd-args (list "api" "-H" "Accept: application/vnd.github+json" "--paginate" url-ref))))
+      (_
+       (with-current-buffer diff-buff
+         (goto-char (point-max))
+          (insert (concat (format "Uploading %s:\n\n" (get-text-property 0 :remote-path file))
+                  "\n\n")))))))
+#+end_src
 ******* create upload commit
 #+begin_src emacs-lisp
 (defun consult-gh--upload-commit (files repo path ref &optional commit-message)
-  "Create a commit to upload files at PATH in REPO and REF.
+  "Create a commit to upload FILES at PATH in REPO and REF.
 
 It opens a buffer to enter the commit message for uploading FILES.
 FILES must be a list of local file paths.
@@ -7153,9 +7322,13 @@ message."
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
        (when (listp files)
          (insert (propertize "\n\n" :consult-gh-commit-instructions t))
-         (insert (propertize "# Files to upload:" :consult-gh-commit-instructions t))
+         (insert (propertize (concat "# Files to upload:" (if path (format "at %s" path))) :consult-gh-commit-instructions t))
          (mapc (lambda (f)
-                   (insert (propertize (format "\n# - upload %s" f) :consult-gh-commit-instructions t)))
+                 (add-text-properties 0 1 (list :local-path (substring-no-properties f) :remote-path (concat (file-name-as-directory path) (file-name-nondirectory f))
+                                                :type (if (file-directory-p f) "directory" "file"))
+                                      f)
+                 (consult-gh--commit-upload-make-diff-buffer repo f path ref)
+                 (insert (propertize (format "\n# - upload %s" f) :consult-gh-commit-instructions t)))
                  files)))
        (goto-char (point-min))
        (when (stringp commit-message)
@@ -7170,21 +7343,27 @@ message."
   "Add files to the files to upload in COMMIT."
   (if consult-gh-topics-edit-mode
       (let* ((files (get-text-property 0 :files commit))
+             (repo (get-text-property 0 :repo commit))
+             (ref (get-text-property 0 :ref commit))
+             (path (get-text-property 0 :path commit))
              (new-file (consult-gh--read-local-file nil "Add Files: " default-directory t))
              (new-files (remove nil (cl-remove-duplicates (append (list (and (stringp new-file) (string-remove-suffix "/" new-file))) files) :test #'equal))))
         (add-text-properties 0 1 (list :files new-files)
                                commit)
-        (add-text-properties 0 1 (list :diff-buffer nil) commit)
 (save-excursion
          (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                     (goto-char (car-safe (car-safe regions)))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
-       (when (listp files)
+       (when (listp new-files)
          (insert (propertize "\n\n" :consult-gh-commit-instructions t))
          (insert (propertize "# Files to upload:" :consult-gh-commit-instructions t))
          (mapc (lambda (f)
-                   (insert (propertize (format "\n# - upload %s" f) :consult-gh-commit-instructions t)))
+                 (add-text-properties 0 1 (list :local-path (substring-no-properties f) :remote-path (concat (file-name-as-directory path) (file-name-nondirectory f))
+                                                :type (if (file-directory-p f) "directory" "file"))
+                                      f)
+                 (consult-gh--commit-upload-make-diff-buffer repo f path ref)
+                 (insert (propertize (format "\n# - upload %s" f) :consult-gh-commit-instructions t)))
                  new-files))))))
 #+end_src
 
@@ -7480,6 +7659,34 @@ buffer generated by `consult-gh--upload-commit'."
 
 ****** commit for renaming files
 
+******* make diff buffer
+#+begin_src emacs-lisp
+(defun consult-gh--commit-rename-make-diff-buffer (repo file &optional ref)
+  "Make a diff buffer for a commit to rename a FILE in REPO.
+
+REF is the name of a branch or tag name."
+  (let* ((old-path (get-text-property 0 :old-path file))
+         (new-path (get-text-property 0 :new-path file))
+         (viewbuffer (or (get-text-property 0 :view-buffer file)
+                         (consult-gh--files-view repo old-path nil t nil nil ref)))
+         (target "rename")
+         (content  (or (get-text-property 0 :content file)
+                       (and (bufferp viewbuffer)
+                            (buffer-live-p viewbuffer)
+                            (with-current-buffer viewbuffer
+                              (save-restriction
+                                (widen)
+                                (buffer-substring-no-properties (point-min) (point-max)))))))
+         (base64-content (and (stringp content)
+                              (base64-encode-string (substring-no-properties (encode-coding-string content 'utf-8)))))
+         (diff-buffer (with-current-buffer (get-buffer-create (format " *consult-gh-diff-%s-%s-%s:%s-%s*" target repo ref old-path new-path))
+                        (let ((inhibit-read-only t))
+                          (erase-buffer)
+                          (insert (format "diff --git a/%s b/%s\nsimilarity index 100%%\nrename from %s\nrename to %s" old-path new-path old-path new-path))
+                          (current-buffer)))))
+    (add-text-properties 0 1 (list :base64-content base64-content :diff-buffer diff-buffer) file)))
+
+#+end_src
 ******* create commit
 #+begin_src emacs-lisp
 (defun consult-gh--rename-commit (files repo ref &optional commit-message)
@@ -7502,7 +7709,7 @@ message."
          (newtopic (format "%s/%s" repo ref))
          (type "commit message"))
 
-    (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-ref ref :content nil :commit-target "rename" :repo repo :ref ref :files files) newtopic)
+    (add-text-properties 0 1 (list :isComment nil :type type :new t :number nil :committer-info committer-info :author-info author-info :commit-ref ref :commit-target "rename" :repo repo :ref ref :files files) newtopic)
 
     ;; insert commit message
     (consult-gh-topics--get-buffer-create buffer "commit message" newtopic)
@@ -7518,25 +7725,11 @@ message."
           (insert (propertize "# Files to Rename:" :consult-gh-commit-instructions t))
           (mapc (lambda (f)
                   (let* ((old-path (get-text-property 0 :old-path f))
-                         (new-path (get-text-property 0 :new-path f))
-                         (mode (get-text-property 0 :mode f))
-                         (viewbuffer (or (get-text-property 0 :view-buffer f)
-                                         (if (or (equal mode "file")
-                                                 (equal mode "symlink"))
-                                             (consult-gh--files-view repo old-path nil t nil nil ref))))
-                         (content (or (get-text-property 0 :content f)
-                                      (and (bufferp viewbuffer)
-                                           (buffer-live-p viewbuffer)
-                                           (with-current-buffer viewbuffer
-                                             (save-restriction
-                                               (widen)
-                                               (buffer-substring-no-properties (point-min) (point-max)))))))
-                         (base64-content (and (stringp content)
-                                              (base64-encode-string (substring-no-properties (encode-coding-string content 'utf-8))))))
-
-                    (add-text-properties 0 1 (list :base64-content base64-content :commit-buffer (get-buffer buffer)) f)
-                    (unless (equal old-path new-path)
-                      (insert (propertize (format "\n# - rename %s -> %s" old-path new-path) :consult-gh-commit-instructions t)))))
+                         (new-path (get-text-property 0 :new-path f)))
+                  (consult-gh--commit-rename-make-diff-buffer repo f ref)
+                  (add-text-properties 0 1 (list :commit-buffer (get-buffer buffer)) f)
+                  (unless (equal old-path new-path)
+                    (insert (propertize (format "\n# - rename %s -> %s" old-path new-path) :consult-gh-commit-instructions t)))))
                 files))
         (goto-char (point-min))
         (when (stringp commit-message)
@@ -7868,8 +8061,8 @@ Description of Arguments:
              (files (get-text-property 0 :files commit))
              (old-file (or file
                            (consult-gh--files-read-file repo ref (and (listp files)
-          (stringp (get-text-property 0 :old-path (car files)))
-          (file-name-directory (get-text-property 0 :old-path (car files))))
+                                                                      (stringp (get-text-property 0 :old-path (car files)))
+                                                                      (file-name-directory (get-text-property 0 :old-path (car files))))
                                                         nil "Select a File: " t nil nil 'branch)))
              (old-path (and (stringp old-file)
                             (not (string-empty-p old-file))
@@ -7879,9 +8072,9 @@ Description of Arguments:
                             old-path))
              (new-file (consult-gh--files-read-file repo ref (and (stringp old-path)
                                                                   (file-name-directory old-path))
-                                                                  (and (stringp old-path)
-                                                                       (file-name-nondirectory old-path))
-                                                                  "Enter new path: " nil nil nil 'branch))
+                                                    (and (stringp old-path)
+                                                         (file-name-nondirectory old-path))
+                                                    "Enter new path: " nil nil nil 'branch))
              (new-path (and (stringp new-file)
                             (not (string-empty-p new-file))
                             (get-text-property 0 :path new-file)))
@@ -7914,30 +8107,17 @@ Description of Arguments:
         (add-text-properties 0 1 (list :files new-files) commit)
         (save-excursion
           (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                    (goto-char (car-safe (car-safe regions)))))
-         (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
-       (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
-       (when (listp new-files)
-         (insert (propertize "\n\n" :consult-gh-commit-instructions t))
-         (insert (propertize "# Files to Rename:" :consult-gh-commit-instructions t))
-         (mapc (lambda (f)
-                 (let* ((old-path (get-text-property 0 :old-path f))
-                        (new-path (get-text-property 0 :new-path f))
-                        (viewbuffer (or (get-text-property 0 :view-buffer f)
-                                         (consult-gh--files-view repo old-path nil t nil nil ref)))
-                        (content  (or (get-text-property 0 :content f)
-                                      (and (bufferp viewbuffer)
-                                       (buffer-live-p viewbuffer)
-                                       (with-current-buffer viewbuffer
-                                         (save-restriction
-                                           (widen)
-                                           (buffer-substring-no-properties (point-min) (point-max)))))))
-                        (base64-content (and (stringp content)
-                                              (base64-encode-string (substring-no-properties (encode-coding-string content 'utf-8))))))
-
-                   (add-text-properties 0 1 (list :base64-content base64-content :commit-buffer (current-buffer)) f)
-                    (insert (propertize (format "\n# - rename %s -> %s" (propertize old-path 'face 'warning) (propertize new-path 'face 'success)) :consult-gh-commit-instructions t))))
-                 new-files))))))
+                     (goto-char (car-safe (car-safe regions)))))
+          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
+          (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
+          (when (listp new-files)
+            (insert (propertize "\n\n" :consult-gh-commit-instructions t))
+            (insert (propertize "# Files to Rename:" :consult-gh-commit-instructions t))
+            (mapc (lambda (f)
+                    (add-text-properties 0 1 (list :commit-buffer (current-buffer)) f)
+                    (consult-gh--commit-rename-make-diff-buffer repo f ref)
+                    (insert (propertize (format "\n# - rename %s -> %s" (propertize old-path 'face 'warning) (propertize new-path 'face 'success)) :consult-gh-commit-instructions t)))
+            new-files))))))
 #+end_src
 
 ******* remove files
@@ -8868,6 +9048,7 @@ REF is name of a branch in REPO."
       str)))
 #+end_src
 
+
 **** files
 
 This section deals with fetching file trees and file contents of repositories by using GitHub API e.g. =gh api repos/armindarvish/consult-gh/git/trees/main:?recursive=1=
@@ -9486,6 +9667,7 @@ buffer generated by `consult-gh--files-view'."
                         consult-gh--topic)))
          (ref (and (stringp file)
                    (get-text-property 0 :ref file)))
+         (repo (get-text-property 0 :repo file))
          (commit-buffer (get-text-property 0 :commit-buffer file)))
 
     (when (stringp ref)
@@ -9502,8 +9684,9 @@ buffer generated by `consult-gh--files-view'."
           (with-current-buffer commit-buffer
             (let* ((files (get-text-property 0 :files consult-gh--topic))
                    (new-files  (cl-remove-duplicates (append (list file) files) :test #'equal)))
+
               (add-text-properties 0 1 (list :files new-files) consult-gh--topic)
-              (add-text-properties 0 1 (list :diff-buffer nil) consult-gh--topic)
+
               (save-excursion
                 (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                            (goto-char (car-safe (car-safe regions)))))
@@ -9513,16 +9696,10 @@ buffer generated by `consult-gh--files-view'."
                   (insert (propertize "\n\n" :consult-gh-commit-instructions t))
                   (insert (propertize "# Files to Create/Update:" :consult-gh-commit-instructions t))
                   (mapc (lambda (f)
-                          (let* ((content (or (get-text-property 0 :content f)
-                                              (with-current-buffer (get-text-property 0 :view-buffer f)
-                                                (save-restriction
-                                                  (widen)
-                                                  (buffer-substring-no-properties (point-min) (point-max))))))
-                                 (base64-content (and (stringp content)
-                                                      (base64-encode-string (substring-no-properties (encode-coding-string content 'utf-8))))))
+                          (consult-gh--commit-create-make-diff-buffer repo f ref)
+                          (add-text-properties 0 1 (list :commit-buffer commit-buffer) f)
 
-                            (add-text-properties 0 1 (list :base64-content base64-content) f)
-                            (insert (propertize (format "\n# - create/update %s" f) :consult-gh-commit-instructions t))))
+(insert (propertize (format "\n# - create/update %s" f) :consult-gh-commit-instructions t)))
                         new-files)))
 
               (funcall consult-gh-pop-to-buffer-func commit-buffer)))
@@ -9616,7 +9793,7 @@ Description of Arguments:
         (consult-gh-file-view-mode +1)
         (read-only-mode -1)
         (setq-local consult-gh--topic topic)
-        (add-text-properties 0 1 (list :view-buffer (current-buffer)) consult-gh--topic)
+        (add-text-properties 0 1 (list :view-buffer (current-buffer) :local-path (buffer-file-name (current-buffer))) consult-gh--topic)
         (when (and content (stringp content))
           (erase-buffer)
           (insert content)
@@ -9636,17 +9813,6 @@ PATHS is a list of strings."
   (let* ((ref (or ref "HEAD")))
     (consult-gh--delete-commit repo files ref commit-message)))
 #+end_src
-****** rename
-#+begin_src emacs-lisp
-(defun consult-gh--files-rename (repo files &optional ref commit-message)
-  "Rename the list of FILES in REF of REPO.
-
-FILES is a list of propertized strings with
-old-path and new-path in properties."
-  (let* ((ref (or ref "HEAD")))
-    (consult-gh--rename-commit files repo ref commit-message)))
-#+end_src
-
 ****** upload
 ******* read upload targets
 #+begin_src emacs-lisp
@@ -9675,8 +9841,9 @@ old-path and new-path in properties."
 #+begin_src emacs-lisp
 (defun consult-gh--files-upload-marked-dired-files ()
 "Get files to upload to GitHUb from Dired."
-  (if (derived-mode-p 'dired-mode)
-      (nreverse (dired-map-over-marks (dired-get-filename) nil))))
+(require 'dired nil t)
+(if (derived-mode-p 'dired-mode)
+    (nreverse (dired-map-over-marks (dired-get-filename) nil))))
 
 #+end_src
 
@@ -9694,7 +9861,7 @@ for uploading files."
       (setq-local consult-gh--upload-topic topic)
       (add-to-list 'consult-gh--upload-targets topic)
       (consult-gh-upload-files-mode +1)
-      (setq-local header-line-format (concat "Mark files upload to "
+      (setq-local header-line-format (concat "Mark files to upload to "
                                                      (consult-gh--get-package repo)
                                                      (concat "/" path)
                                             ".  "
@@ -9703,6 +9870,17 @@ for uploading files."
 #+end_src
 
 
+
+****** rename
+#+begin_src emacs-lisp
+(defun consult-gh--files-rename (repo files &optional ref commit-message)
+  "Rename the list of FILES in REF of REPO.
+
+FILES is a list of propertized strings with
+old-path and new-path in properties."
+  (let* ((ref (or ref "HEAD")))
+    (consult-gh--rename-commit files repo ref commit-message)))
+#+end_src
 
 **** repos
 This section deals with fetching repos belonging to a user or organization e.g. =gh repo list armindarvish=
@@ -25997,7 +26175,7 @@ If there is already something hidden, make everything visible again."
 :header-args:emacs-lisp: :results none :mkdirp yes :link yes :tangle ./consult-gh-embark.el
 :END:
 
-This section includes additional useful embark actions as well as possible keymaps. This will be provided as examples and starting point to users, so that they can make their own custom embark actions and functions.
+This section includes additional useful embark actions as well as keymaps.
 
 *** Header
 #+begin_src  emacs-lisp
