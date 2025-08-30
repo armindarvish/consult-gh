@@ -49,6 +49,7 @@
 (require 'yaml) ;; for parsing github action files
 (require 'org) ;; for its awesomeness!
 (require 'dired) ;; for uploading files
+(require 'mm-decode) ;; for parsing urls
 
 ;;; Group
 
@@ -1627,6 +1628,9 @@ This is used in `consult-gh-dashboard'.")
 (defvar consult-gh--license-key-history nil
   "History variable for license keys.")
 
+(defvar consult-gh--repo-clone-extra-args-history nil
+  "History variable for extra args in cloning.")
+
 (defvar consult-gh--commit-comment-start-save nil
   "Variable to save `comment-start' before changing it.")
 
@@ -1789,7 +1793,7 @@ Every line should start with git comment character or
 ;;; Faces
 
 (defface consult-gh-success
-  `((t :inherit 'success))
+  '((t :inherit success))
   "The face used to show issues or PRS that are successfully dealt with.
 
 \(e.g. “closed” issues or “merged” PRS)\ when listing or searching
@@ -1798,25 +1802,25 @@ issues and PRS with `consult-gh'.
 By default inherits from `success'.")
 
 (defface consult-gh-warning
-  `((t :inherit 'warning))
+  '((t :inherit warning))
   "The face to show currently open issues or PRS.
 
 By default inherits from `warning'.")
 
 (defface consult-gh-error
-  `((t :inherit 'error))
+  '((t :inherit error))
   "The face to show closed PRS.
 
 By default inherits from `error'.")
 
 (defface consult-gh-highlight-match
-  `((t :inherit 'consult-highlight-match))
+  '((t :inherit consult-highlight-match))
   "Highlight match face in preview buffers.
 
 By default, inherits from `consult-highlight-match'.")
 
 (defface consult-gh-preview-match
-  `((t :inherit 'consult-preview-match))
+  '((t :inherit consult-preview-match))
   "Highlight match face in preview buffers.
 
  By default, inherits from `consult-preview-match'.
@@ -1825,110 +1829,110 @@ search queries \(e.g. when using `consult-gh-search-repos')\ or
 code snippets \(e.g. when using `consult-gh-search-code')\ in preview buffer.")
 
 (defface consult-gh-default
-  `((t :inherit 'default))
+  '((t :inherit default))
   "Default face in minibuffer annotations.
 
 By default, inherits from `default'.")
 
 (defface consult-gh-user
-  `((t :inherit 'font-lock-constant-face))
+  '((t :inherit font-lock-constant-face))
   "User face in minibuffer annotations.
 
 By default, inherits from `font-lock-constant-face'.")
 
 (defface consult-gh-package
-  `((t :inherit 'font-lock-type-face))
+  '((t :inherit font-lock-type-face))
   "Packageface in minibuffer annotations.
 
 By default, inherits from `font-lock-type-face'.")
 
 (defface consult-gh-repo
-  `((t :inherit 'font-lock-type-face))
+  '((t :inherit font-lock-type-face))
   "Repository face in minibuffer annotations.
 
 By default, inherits from `font-lock-type-face'.")
 
 (defface consult-gh-issue
-  `((t :inherit 'warning))
+  '((t :inherit warning))
   "Issue number face in minibuffer annotations.
 
 By default, inherits from `warning'.")
 
 (defface consult-gh-pr
-  `((t :inherit 'font-lock-function-name-face))
+  '((t :inherit font-lock-function-name-face))
   "Pull request number face in minibuffer annotations.
 
 By default, inherits from `font-lock-function-name-face'.")
 
 (defface consult-gh-branch
-  `((t :inherit 'font-lock-string-face))
+  '((t :inherit font-lock-string-face))
   "Branch face in minibuffer annotations.
 
 By default, inherits from `font-lock-string-face'.")
 
 (defface consult-gh-visibility
-  `((t :inherit 'font-lock-warning-face))
+  '((t :inherit font-lock-warning-face))
   "Visibility face in minibuffer annotations.
 
 By default, inherits from `font-lock-warning-face'.")
 
 (defface consult-gh-date
-  `((t :inherit 'font-lock-keyword-face))
+  '((t :inherit font-lock-keyword-face))
   "Date face in minibuffer annotations.
 
 By default, inherits from `font-lock-keyword-face'.")
 
 (defface consult-gh-tags
-  `((t :inherit 'font-lock-comment-face))
+  '((t :inherit font-lock-comment-face))
   "Tags/Comments face in minibuffer annotations.
 
 By default, inherits from `font-lock-comment-face'.")
 
 (defface consult-gh-description
-  `((t :inherit 'font-lock-builtin-face))
+  '((t :inherit font-lock-builtin-face))
   "Repository description face in minibuffer annotations.
 
 By default, inherits from `font-lock-builtin-face'.")
 
 (defface consult-gh-code
-  `((t :inherit 'font-lock-variable-use-face))
+  '((t :inherit font-lock-variable-use-face))
   "Code snippets face in minibuffer annotations.
 
 By default, inherits from `font-lock-vairable-use-face'.")
 
 (defface consult-gh-url
-  `((t :inherit 'link))
+  '((t :inherit link))
   "URL face in minibuffer annotations.
 
 By default, inherits from `link'.")
 
 (defface consult-gh-sha
-  `((t :inherit 'font-lock-doc-face))
+  '((t :inherit font-lock-doc-face))
   "URL face in minibuffer annotations.
 
 By default, inherits from `font-lock-doc-face'.")
 
 (defface consult-gh-dired-directory
-  `((t :inherit 'dired-directory))
+  '((t :inherit dired-directory))
   "Directory face in `consult-gh-dired-mode'.
 
 By default, inherits from `dired-directory'.")
 
 
 (defface consult-gh-dired-file
-  `((t :inherit 'default))
+  '((t :inherit default))
   "File face in `consult-gh-dired-mode'.
 
 By default, inherits from `default'.")
 
 (defface consult-gh-dired-symlink
-  `((t :inherit 'dired-symlink))
+  '((t :inherit dired-symlink))
   "Symlink face in `consult-gh-dired-mode'.
 
 By default, inherits from `dired-symlink'.")
 
 (defface consult-gh-dired-commit
-  `((t :inherit 'dired-special))
+  '((t :inherit dired-special))
   "Commit face in `consult-gh-dired-mode'.
 
 By default, inherits from `dired-special'.")
@@ -2413,11 +2417,14 @@ Both arguments must be strings."
                        (kill-buffer (current-buffer))))))
     nil)
 
-(defun consult-gh--read-local-file (&optional files prompt initial require-match)
+(defun consult-gh--read-local-file (&optional files prompt initial require-match default-dir)
   "Read file name from FILES.
 
 When FILES is nil, read file from file-system.
-PROMPT, INITIAL, and REQUIRE-MATCH are passed to `consult--read'."
+PROMPT, INITIAL, and REQUIRE-MATCH are passed to `consult--read'.
+when DEFAULT-DIR is non-nil, set `default-directory' to
+DEFAULT-DIR before querying for files."
+  (let ((default-directory (or default-dir default-directory)))
   (consult--read (or files
                      (completion-table-in-turn #'completion--embedded-envvar-table
                                            #'completion--file-name-table))
@@ -2432,21 +2439,20 @@ PROMPT, INITIAL, and REQUIRE-MATCH are passed to `consult--read'."
                             (pcase action
                               ('preview
                                (if cand
-                                   (when (not (file-directory-p cand))
-                                     (let* ((filename (file-truename cand))
-                                            (filesize (float
-                                                       (file-attribute-size
-                                                        (file-attributes filename))))
-                                            (confirm (if (and filename
-                                                              (>= filesize large-file-warning-threshold))
-                                                         (yes-or-no-p (format "File is %s Bytes.  Do you really want to preview it?" filesize))
-                                                       t)))
-                                       (if confirm
+                                   (when (and (file-exists-p cand)
+                                              (not (file-directory-p cand)))
+                                     (let* ((filesize (file-attribute-size
+                                                        (file-attributes cand)))
+                                            (filesize (or (and (numberp filesize)
+                                                               (float filesize))
+                                                          0))
+                                            (not-large (<= filesize large-file-warning-threshold)))
+                                       (if not-large
                                            (funcall preview action
                                                     (find-file-noselect (file-truename cand))))))))
                               ('return
                                cand))))
-                          :preview-key consult-preview-key))
+                          :preview-key consult-gh-preview-key)))
 
 ;;; Backend functions for call to `gh` program
 
@@ -8719,13 +8725,31 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
                     (t
                       (message "Do not know how to open the submodule: %s" git-url)))))))))))))
 
+(defun consult-gh--files-save-file (repo path targetpath &optional ref api-url )
+  "Save fileat REPO and PATH to TARGETPATH.
+
+Optional argument REF is name of a branch or tag.
+When API-URL is non-nil, it is used to get file contents
+instea dof repo and path.  This is useful for example for
+getting contents of files in a specific commit."
+  (let* ((ref (or ref "HEAD"))
+         (save-path (file-truename targetpath))
+         (save-dir (and (stringp save-path) (file-name-directory save-path)))
+         (file-buff (consult-gh--files-view repo path api-url t nil nil ref t)))
+    (when save-dir
+      (unless (file-exists-p save-dir)
+              (make-directory save-dir t)))
+    (with-current-buffer file-buff
+      (let ((after-save-hook nil))
+        (write-file save-path t)
+        save-path))))
+
 (defun consult-gh--files-save-file-action (cand)
   "Save file candidate, CAND, to a file.
 
 Its parses CAND to extract relevant information
 \(e.g. repository name, file path, ...\)
-and passes them to `consult-gh--files-view',
-then saves the buffer to file.
+and passes them to `consult-gh--files-save-file',
 
 If `consult-gh-ask-for-path-before-save' is non-nil,
 it queries the user for a file path, otherwise it saves the file under
@@ -8750,13 +8774,10 @@ set `consult-gh-file-action' to `consult-gh--files-save-file-action'."
       (if (yes-or-no-p (format "File is %s Bytes.  Do you really want to load it?" file-size))
           (setq confirm t)
         (setq confirm nil)))
-    (let* ((buffer (and file-p (consult-gh--files-view repo path api-url t nil nil ref t))))
       (if (and file-p confirm)
           (save-mark-and-excursion
             (save-restriction
-              (with-current-buffer buffer
-                (let ((after-save-hook nil))
-                  (write-file targetpath t)))))))))
+              (consult-gh--files-save-file repo path targetpath ref api-url))))))
 
 (defun consult-gh--files-edit-presubmit (&optional file)
   "Prepare edits on FILE to submit.
@@ -9314,7 +9335,7 @@ set `consult-gh-repo-action' to `consult-gh--repo-browse-files-action'."
 
 Full path of the cloned repo is passed to these functions.")
 
-(defun consult-gh--repo-clone (repo name targetdir &rest _)
+(defun consult-gh--repo-clone (repo name targetdir &optional extra-args &rest _)
   "Clones REPO to the path TARGETDIR/NAME.
 
 This is an internal function for non-interactive use.
@@ -9323,15 +9344,23 @@ For interactive use see `consult-gh-repo-clone'.
 It runs the command “gh clone REPO TARGETDIR/NAME”
 using `consult-gh--command-to-string'.
 
-ARGS are ignored."
-  (let ((buffer (current-buffer)))
+EXTRA-ARGS are passed to “gh repo clone”."
+  (let* ((buffer (current-buffer))
+        (extra-args (cond
+               ((stringp extra-args)
+                  (list extra-args))
+               ((listp extra-args)
+                extra-args)))
+        (cmd-args (append (list "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))
+                          extra-args)))
+
     (consult-gh--make-process (format "consult-gh-clone-%s" repo)
                             :when-done (lambda (_event _out)
                                           (with-current-buffer buffer
                                             (progn
                                             (run-hook-with-args 'consult-gh-repo-post-clone-hook (expand-file-name name targetdir))
                                             (message "repo %s was cloned to %s" (propertize repo 'face 'font-lock-keyword-face) (propertize (expand-file-name name targetdir) 'face 'font-lock-type-face)))))
-                            :cmd-args (list "repo" "clone" (format "%s" repo) (expand-file-name name targetdir))))
+                            :cmd-args cmd-args))
     (let ((inhibit-message t))
        (propertize (expand-file-name name targetdir) :origin repo)))
 
@@ -17039,9 +17068,13 @@ set `consult-gh-run-action' to `consult-gh--run-rerun-action'."
 
                "\n")))
 
-(defun consult-gh-dired-line-marked-p ()
-  "Check whether lines is marked."
-  (string-match-p "\*\s" (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
+(defun consult-gh-dired-line-marked-p (&optional pos)
+  "Check whether line at POS is marked.
+
+POS defaults to the current point."
+  (save-excursion
+    (when pos (goto-char pos))
+    (string-match-p "\*\s" (buffer-substring-no-properties (line-beginning-position) (line-end-position)))))
 
 (defun consult-gh-dired--hidden-p (&optional pos)
   "Whether the character at POS is hidden.
@@ -17050,7 +17083,7 @@ POS defaults to the current point."
   (eq (get-char-property (or pos (point)) 'invisible) 'consult-gh-dired))
 
 (defun consult-gh--dired-map-over-marks (fun)
-  "Apply FUN on each each marked line."
+  "Apply FUN on each marked line."
   (if (derived-mode-p 'consult-gh-dired-mode)
       (save-excursion
         (goto-char (point-min))
@@ -17078,6 +17111,22 @@ POS defaults to the current point."
                                (get-text-property (point) :path)))))
            (cl-remove-duplicates (remove nil files) :test #'equal))))
 
+(defun consult-gh--dired-file-name-position (&optional pos)
+  "Get the position of beginning of the file name at POS.
+
+POS defaults to current point."
+  (save-excursion
+    (when pos (goto-char pos))
+    (goto-char (line-beginning-position))
+    (next-single-property-change (point) :consult-gh-dired-file-name-begin nil (line-end-position))))
+
+(defun consult-gh--dired-goto-file-name-position (&optional pos)
+  "Go to the position of beginning of the file name at POS.
+
+POS defaults to current point."
+  (when-let ((p (consult-gh--dired-file-name-position pos)))
+    (goto-char p)))
+
 (defun consult-gh--dired-hide (start end)
 "Hide region from START to END."
 (save-excursion
@@ -17093,6 +17142,56 @@ POS defaults to the current point."
        (progn (goto-char start) (line-end-position))
        (progn (goto-char end) (line-end-position))
        '(invisible)))))
+
+(defun consult-gh--dired-mark-line (&optional pos)
+  "Mark the line at POS.
+
+POS defaults to current point."
+  (save-excursion
+    (let* ((inhibit-read-only t))
+      (when pos (goto-char pos))
+      (goto-char (line-beginning-position))
+      (delete-char 1)
+      (insert (apply #'propertize "*"
+                     (append (list 'face 'dired-mark)
+                             (text-properties-at (line-beginning-position)))))
+      (consult-gh--dired-goto-file-name-position)
+      (add-text-properties (point) (line-end-position) (list ' face 'dired-marked)))))
+
+(defun consult-gh--dired-unmark-line (&optional pos)
+  "Unmark the line at POS.
+
+POS defaults to current point."
+  (save-excursion
+    (let* ((inhibit-read-only t)
+           (file-path (get-text-property (point) :path))
+           (file-mode (get-text-property (point) :mode))
+           (file-name (if (stringp file-path)
+                          (pcase file-mode
+                            ("directory"
+                             (file-name-as-directory file-path))
+                            (_
+                             (file-name-nondirectory file-path)))
+                        ""))
+           (face (consult-gh-dired--get-face file-name file-mode)))
+
+      (when pos (goto-char pos))
+      (when (consult-gh-dired-line-marked-p)
+        (goto-char (line-beginning-position))
+        (delete-char 1)
+        (insert (apply #'propertize " " (append (text-properties-at (line-beginning-position))
+                                                (list 'face face))))
+        (consult-gh--dired-goto-file-name-position)
+        (add-text-properties (point) (line-end-position) (list 'face face))))))
+
+(defun consult-gh--dired-toggle-mark (&optional pos)
+  "Toggle mark on the line at POS.
+
+marked line becomes unmarked and unmakrd line becomes marked.
+POS defaults to current point."
+    (if (consult-gh-dired-line-marked-p pos)
+        (consult-gh--dired-unmark-line pos)
+      (consult-gh--dired-mark-line pos)))
 
 (defun consult-gh--dired-fold-show-directories ()
   "Show headers of directories only in `consult-gh-dired-mode'."
@@ -17232,6 +17331,8 @@ in the list retrieved from `consult-gh--files-list-items'."
                             (_
                              (file-name-nondirectory file-path)))
                         ""))
+           (_ (if (and (stringp file-name) (length> file-name 0))
+                  (add-text-properties 0 1 (list :consult-gh-dired-file-name-begin t) file-name)))
            (file-parent (when (stringp file-path)
                           (pcase file-mode
                             ("directory"
@@ -17248,7 +17349,7 @@ in the list retrieved from `consult-gh--files-list-items'."
                                      (make-string (+ (cl-count ?/ file-parent) 2)  ?\s))
                                  icon
                                  " "
-                                 (if (equal file-parent "./") nil (propertize "./" 'face face))
+                                 (if (equal file-parent "./") nil (propertize "./" 'face face :consult-gh-dired-file-name-begin t))
                                  (propertize file-name 'face face)
                                  ":")
                                 :class "file"
@@ -17266,7 +17367,7 @@ in the list retrieved from `consult-gh--files-list-items'."
                                  (if file-parent (make-string (+ (cl-count ?/ file-parent) 2)  ?\s))
                                  icon
                                  " "
-                                 (if file-parent nil (propertize "./" 'face face))
+                                 (if file-parent nil (propertize "./" 'face face :consult-gh-dired-file-name-begin t))
                                  (propertize file-name 'face face)
                                  (cond
                                   ((equal file-mode "file")
@@ -17305,6 +17406,48 @@ in the list retrieved from `consult-gh--files-list-items'."
                                  'help-echo "mouse-2: visit this file in other window"
                                  'mouse-face 'highlight)))))
            str)))
+
+(defun consult-gh-dired--save-file (repo path mode save-path &optional ref)
+"Save the file at path in `consult-gh-dired-mode'.
+
+This is used to save files when in `consult-gh-dired-mode'.
+
+Description of Arguments:
+  REPO       a string; full name of a repository.
+  PATH       a string; path of the file to copy.
+  MODE       a string; mode of object “file”, “directory”, “symlink”
+             or “commit”.
+  SAVE-PATH  a string; the path of the folder where the files should
+             be saved in.
+  REF        a string; the name of a branch or tag in REPO."
+  (pcase mode
+        ("directory"
+         (let* ((targetdir (or consult-gh-default-save-directory default-directory))
+                (dir-path (and (stringp path)
+                               (file-name-as-directory path)))
+                (files-list (consult-gh--files-nodirectory-items repo dir-path ref nil "30s"))
+                (save-path (or save-path (consult-gh--read-local-file nil "Save in Directory: " (and (stringp targetdir) (file-name-as-directory targetdir)) nil nil))))
+           (when (listp files-list)
+             (mapc (lambda (f)
+                     (when (and (consp f)
+                                (plistp (cdr f)))
+                       (let* ((info (cdr f))
+                              (file-path (plist-get info :path))
+                              (save-path (expand-file-name file-path save-path)))
+                         (when (and file-path save-path)
+                          (consult-gh--files-save-file repo file-path save-path ref)))))
+                   files-list))))
+        ("file"
+         (let* ((targetdir (or consult-gh-default-save-directory default-directory))
+                (filename (and (stringp path) (file-name-nondirectory path)))
+                (save-path (or save-path (file-truename (consult-gh--read-local-file nil "Enter File Save Path: " (expand-file-name filename (and (stringp targetdir) (file-name-as-directory targetdir))) nil nil))))
+                (save-path (if (and (stringp save-path)
+                                    (file-directory-p save-path))
+                               (expand-file-name filename save-path)
+                             save-path)))
+           (consult-gh--files-save-file repo path save-path ref)))
+        (_ (message "%s" (format "consult-gh: cannot save %s on local disk becuase it is a %s" (propertize path 'face 'consult-gh-warning)  (propertize mode 'face 'consult-gh-warning)))
+                                   nil)))
 
 (defun consult-gh-dired--find-file (repo path mode &optional ref no-select tempdir find-func)
 "Open the file at path in `consult-gh-dired-mode'.
@@ -17642,6 +17785,7 @@ Helps with autocompleting usernames, issue numbers, etc."
   "SPC" #'consult-gh-dired-next-line
   "<remap> <previous-line>" #'consult-gh-dired-previous-line
   "<remap> <next-line>" #'consult-gh-dired-next-line
+  "<remap> <save-buffer>" #'consult-gh-dired-save-file
   "+" #'consult-gh-dired-create-file
   "m" #'consult-gh-dired-mark
   "* m" #'consult-gh-dired-mark
@@ -17649,6 +17793,8 @@ Helps with autocompleting usernames, issue numbers, etc."
   "* u" #'consult-gh-dired-unmark
   "* ?" #'consult-gh-dired-unmark-all-marks
   "* !" #'consult-gh-dired-unmark-all-marks
+  "t" #'consult-gh-dired-toggle-marks
+  "* t" #'consult-gh-dired-toggle-marks
   "U" #'consult-gh-dired-unmark-all-marks
   "D" #'consult-gh-dired-delete-file
   "C" #'consult-gh-dired-copy-file
@@ -17695,6 +17841,7 @@ Helps with autocompleting usernames, issue numbers, etc."
       (kbd "m") #'consult-gh-dired-mark
       (kbd "u") #'consult-gh-dired-unmark
       (kbd "U") #'consult-gh-dired-unmark-all-marks
+      (kbd "t") #'consult-gh-dired-toggle-marks
       (kbd "D") #'consult-gh-dired-delete-file
       (kbd "C") #'consult-gh-dired-copy-file
       (kbd "R") #'consult-gh-dired-rename-file
@@ -18121,27 +18268,45 @@ If REPOS not supplied, interactively asks user to pick REPOS."
             repos)))
 
 ;;;###autoload
-(defun consult-gh-repo-clone (&optional repos targetdir)
+(defun consult-gh-repo-clone (&optional repos targetdir extra-args)
   "Interactively clone REPOS to TARGETDIR.
 
-It runs the command “gh clone repo ...” to fork a repository
+It runs the command “gh clone repo ...” to clone a repository
 using the internal function `consult-gh--repo-clone'.
 
 If REPOS or TARGETDIR are not supplied, interactively asks user
-to pick them."
+to pick them.
+
+EXTRA-ARGS are passed to “git clone”.  With prefix arg, user is qeried to
+edit/enter EXTRA-ARGS."
   (interactive)
   (let* ((repos (or repos (substring-no-properties (get-text-property 0 :repo (consult-gh-search-repos nil t)))))
          (targetdir (or targetdir consult-gh-default-clone-directory default-directory))
+         (extra-args (cond
+                      ((listp extra-args)
+                         extra-args)
+                      ((stringp extra-args)
+                       (list extra-args))))
+         (extra-args (or (and current-prefix-arg
+                              (consult--read extra-args
+                                             :prompt "Extra args for git (e.g., --depth 1 --branch develop): "
+                                             :require-match nil
+                                             :sort nil
+                                             :history 'consult-gh--repo-clone-extra-args-history))
+                         extra-args))
          (clonedir (if consult-gh-confirm-before-clone
                        (read-directory-name "Select Target Directory: " (and (stringp targetdir) (file-name-as-directory targetdir)))
-                     (and (stringp targetdir) (file-name-as-directory targetdir)))))
+                     (and (stringp targetdir) (file-name-as-directory targetdir))))
+         (extra-args (if (and (stringp extra-args)
+                              (not (string-empty-p extra-args)))
+                         (consult--split-escaped (concat "-- " extra-args)))))
     (if (stringp repos)
         (setq repos (list repos)))
     (mapcar (lambda (repo)
               (let* ((package (consult-gh--get-package repo))
                      (name (if consult-gh-confirm-before-clone (read-string (concat "name for " (propertize (format "%s: " repo) 'face 'consult-gh-repo)) package) package)))
                 (consult-gh-with-host (consult-gh--auth-account-host)
-                                      (consult-gh--repo-clone repo name clonedir))))
+                                      (consult-gh--repo-clone repo name clonedir extra-args))))
             repos)))
 
 (defun consult-gh-repo-create (&optional name)
@@ -20562,6 +20727,64 @@ path of the file to delete.  For example see the buffer-local-variable
               (consult-gh--files-rename repo (list new-path) ref)
             (message "%s" (propertize "The new file path is the same as old one. Nothing to change!" 'face 'warning)))))))
 
+;;;###autoload
+(defun consult-gh-save-file (&optional file targetdir)
+  "Interactively  save FILE in TARGETDIR.
+
+Description of Arguments:
+  FILE       a string with properties; the file to save
+             for example see the local variable `consult-gh--topic'
+             in  a buffer created by `consult-gh-find-file'.
+  TARGETDIR  a string; the path of the folder where the files should
+             be saved in."
+  (interactive)
+  (let* ((repo (or (and file (get-text-property 0 :repo file))
+                   (and consult-gh--topic (get-text-property 0 :repo consult-gh--topic))
+                   (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+         (file (or file
+                   (and consult-gh--topic
+                        (equal (get-text-property 0 :type consult-gh--topic) "file")
+                        consult-gh--topic)
+                   (consult-gh--files-read-file repo nil nil nil nil t t nil 'branch)))
+         (ref (and (stringp file)
+                   (get-text-property 0 :ref file)))
+         (mode (get-text-property 0 :mode file))
+         (path (get-text-property 0 :path file))
+         (path (and (stringp path)
+                    (not (string-empty-p path))
+                    path))
+         (targetdir (or targetdir consult-gh-default-save-directory default-directory)))
+    (when (and repo path)
+      (pcase mode
+        ("directory"
+         (let* ((dir-path (and (stringp path)
+                               (file-name-as-directory path)))
+                (files-list (consult-gh--files-nodirectory-items repo dir-path ref nil "30s"))
+                (targetdir (if consult-gh-ask-for-path-before-save
+                             (consult-gh--read-local-file nil "Save in Directory: " (and (stringp targetdir) (file-name-as-directory targetdir)) nil nil)
+                             (and (stringp targetdir)
+                                  (file-name-as-directory targetdir)))))
+           (when (listp files-list)
+             (mapc (lambda (f)
+                     (when (and (consp f)
+                                (plistp (cdr f)))
+                       (let* ((info (cdr f))
+                              (file-path (plist-get info :path))
+                              (save-path (expand-file-name file-path targetdir)))
+                         (when (and file-path save-path)
+                          (consult-gh--files-save-file repo file-path save-path ref)))))
+                   files-list))))
+        ("file"
+         (let* ((filename (and (stringp path) (file-name-nondirectory path)))
+                (save-path (if consult-gh-ask-for-path-before-save
+                               (file-truename (consult-gh--read-local-file nil "Enter File Save Path: " (expand-file-name filename (and (stringp targetdir) (file-name-as-directory targetdir))) nil nil))
+                             (expand-file-name filename consult-gh-default-save-directory)))
+                (save-path (if (and (stringp save-path)
+                                    (file-directory-p save-path))
+                               (expand-file-name filename save-path)
+                             save-path)))
+           (consult-gh--files-save-file repo path save-path ref)))))))
+
 (defun consult-gh--notifications-items ()
   "Find all the user's notifications."
   (let* ((notifications (string-split (apply #'consult-gh--command-to-string (funcall consult-gh-notifications-args-func)) "      " t)))
@@ -22692,6 +22915,7 @@ and passes ARGS to it."
   (interactive)
   (apply (or consult-gh-default-interactive-command #'consult-gh-search-repos) args))
 
+;;;###autoload
 (defun consult-gh-dired (&optional repo path ref buffer no-select revert)
   "Open consult-gh REPO contents in REF at PATH in a dired-like BUFFER.
 
@@ -23192,6 +23416,63 @@ see `consult-gh-dired-find-file'."
             (consult-gh--rename-commit files-list repo ref)))))
     (message "Not in a `consult-gh-dired-mode' buffer!")))
 
+(defun consult-gh-dired-save-file ()
+  "Save file(s) in `consult-gh-dired-mode'."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (let* ((topic consult-gh--topic)
+             (repo (get-text-property 0 :repo topic))
+             (ref (get-text-property 0 :ref topic))
+             (targetdir (or consult-gh-default-save-directory default-directory))
+             (files (list)))
+
+        (setq files (or (consult-gh--dired-map-over-marks (lambda () (text-properties-at (point))))
+                        (and (region-active-p)
+                             (save-mark-and-excursion
+                               (let* ((start (region-beginning))
+                                      (end (region-end)))
+                                 (goto-char start)
+                                 (while (< (point) end)
+                                   (setq files (append files (list (text-properties-at (point)))))
+                                   (if (< (line-end-position) end)
+                                       (forward-line +1)
+                                     (goto-char end)))
+                                 files)))
+                        (list (text-properties-at (point)))))
+        (when files
+          (cond
+           ((and (length= files 1)
+                 (plist-get (car files) :type))
+            (let* ((file (car files))
+                   (path (plist-get file :path))
+                   (mode (plist-get file :mode))
+                   (filename (and (stringp path) (file-name-nondirectory path)))
+                   (save-path (pcase mode
+                                ("directory"
+                                 (consult-gh--read-local-file nil "Save in Directory: " (and (stringp targetdir) (file-name-as-directory targetdir)) nil nil))
+                                (_
+                                 (consult-gh--read-local-file nil "Enter File Save Path: " (concat (and (stringp targetdir) (file-name-as-directory targetdir)) filename) nil nil))))
+                   (save-path (if (and (equal mode "file")
+                                           (stringp save-path)
+                                           (file-directory-p save-path))
+                                      (expand-file-name filename save-path)
+                                    (expand-file-name save-path))))
+              (when (and repo path save-path)
+                (consult-gh-dired--save-file repo path mode save-path ref))))
+         ((length> files 1)
+          (let* ((save-dir (consult-gh--read-local-file nil "Save in Directory: " (and (stringp targetdir) (file-name-as-directory targetdir)) nil nil)))
+          (mapc (lambda (f)
+                  (when (plistp f)
+                    (let* ((path (plist-get f :path))
+                           (mode (plist-get f :mode))
+                           (save-path (and (stringp path)
+                                           (stringp save-dir)
+                                           (expand-file-name path save-dir))))
+                           (when (and repo path save-path)
+                             (consult-gh-dired--save-file repo path mode save-path ref)))))
+                files))))))
+    (message "Not in a `consult-gh-dired-mode' buffer!")))
+
 (defun consult-gh--dired-goto-prev-directory-header ()
   "Move mark to the previous directory header."
   (interactive nil consult-gh-dired-mode)
@@ -23238,33 +23519,27 @@ see `consult-gh-dired-find-file'."
   (if (derived-mode-p 'consult-gh-dired-mode)
       (let* ((inhibit-read-only t)
              (mode (get-text-property (point) :mode)))
-        (cond
-         ((or (equal mode "file") (equal mode "symlink"))
-          (unless (consult-gh-dired-line-marked-p)
-            (save-excursion
-              (goto-char (line-beginning-position))
-              (delete-char 1)
-              (add-text-properties (line-beginning-position) (line-end-position) (list ' face 'dired-marked))
-              (insert (apply #'propertize "*" (append (list 'face 'dired-mark)
-                                                      (text-properties-at (line-beginning-position))))))
-            (forward-line +1)))
-         ((equal mode "directory")
-          (let ((parent (get-text-property (point) :parent)))
+        (pcase mode
+          ('nil )
+          ("directory"
+           (let ((parent (get-text-property (point) :parent)))
             (save-excursion
               (forward-line)
-              (while (equal (get-text-property (point) :parent) parent)
-                (unless (consult-gh-dired-line-marked-p)
-                  (when (or (equal (get-text-property (point) :mode) "file")
-                            (equal (get-text-property (point) :mode) "symlink"))
-                    (goto-char (line-beginning-position))
-                    (delete-char 1)
-                    (add-text-properties (line-beginning-position) (line-end-position) (list ' face 'dired-marked))
-                    (insert (apply #'propertize "*" (append (list 'face 'dired-mark)
-                                                            (text-properties-at (line-beginning-position))))))
-                  (forward-line))))
-            (consult-gh--dired-goto-next-directory-header)))
-         ((equal mode "commit")
-          (message "Cannot operate on submodules!"))))
+              (while (and (< (point) (point-max))
+                          (cond
+                           ((get-text-property (point) :type)
+                            (if (string-prefix-p (or parent "") (or (get-text-property (point) :parent) ""))
+                                (progn
+                                  (unless (or (consult-gh-dired-line-marked-p)
+                                            (equal (get-text-property (line-beginning-position) :mode) "directory"))
+                                  (consult-gh--dired-mark-line))
+                                  (if (equal (forward-line +1) 0) t nil))))
+                           (t
+                            (if (equal (forward-line +1) 0) t nil))))))))
+          (_
+           (unless (consult-gh-dired-line-marked-p)
+             (consult-gh--dired-mark-line)
+             (forward-line +1)))))
 (message "Not in a `consult-gh-dired-mode' buffer!")))
 
 (defun consult-gh-dired-unmark ()
@@ -23273,49 +23548,53 @@ see `consult-gh-dired-find-file'."
   (if (derived-mode-p 'consult-gh-dired-mode)
       (let* ((inhibit-read-only t)
              (mode (get-text-property (point) :mode)))
-        (cond
-         ((equal mode "file")
-          (when (consult-gh-dired-line-marked-p)
-            (save-excursion
-              (goto-char (line-beginning-position))
-              (delete-char 1)
-              (insert (apply #'propertize " " (append (text-properties-at (line-beginning-position))
-                                                      (list 'face 'dired-mark))))
-              (add-text-properties (line-beginning-position) (line-end-position) (list 'face 'default)))
-            (forward-line +1)))
-         ((equal mode "symlink")
-          (when (consult-gh-dired-line-marked-p)
-            (save-excursion
-              (goto-char (line-beginning-position))
-              (delete-char 1)
-              (insert (apply #'propertize " " (append (text-properties-at (line-beginning-position))
-                                                      (list 'face 'dired-mark))))
-              (add-text-properties (line-beginning-position) (line-end-position) (list 'face 'dired-symlink)))
-            (forward-line +1)))
-         ((equal mode "commit")
-          (when (consult-gh-dired-line-marked-p)
-            (save-excursion
-              (goto-char (line-beginning-position))
-              (delete-char 1)
-              (insert (apply #'propertize " " (append (text-properties-at (line-beginning-position))
-                                                      (list 'face 'dired-mark))))
-              (add-text-properties (line-beginning-position) (line-end-position) (list 'face 'dired-special)))
-            (forward-line +1)))
-         ((equal mode "directory")
-          (let ((parent (get-text-property (point) :parent)))
+        (pcase mode
+          ('nil )
+          ("directory"
+           (let ((parent (get-text-property (point) :parent)))
             (save-excursion
               (forward-line)
-              (while (equal (get-text-property (point) :parent) parent)
-                (when (consult-gh-dired-line-marked-p)
-                  (goto-char (line-beginning-position))
-                  (delete-char 1)
-                  (insert (apply #'propertize " " (append (text-properties-at (line-beginning-position))
-                                                          (list 'face 'dired-mark))))
-                  (add-text-properties (line-beginning-position) (line-end-position) (list ' face 'default)))
-                (forward-line)))
-            (forward-line +1)))
-         ((equal mode "commit")
-          (message "Cannot operate on submodules!"))))
+              (while (and (< (point) (point-max))
+                          (cond
+                           ((get-text-property (point) :type)
+                            (if (string-prefix-p (or parent "") (or (get-text-property (point) :parent) ""))
+                                (progn (consult-gh--dired-unmark-line)
+                                       (if (equal (forward-line +1) 0) t nil))))
+                           (t
+                            (if (equal (forward-line +1) 0) t nil))))))))
+          (_
+           (consult-gh--dired-unmark-line))))
+(message "Not in a `consult-gh-dired-mode' buffer!")))
+
+(defun consult-gh-dired-toggle-marks (&optional start end)
+  "Toggle marked files from START to END in `consult-gh-dired-mode'.
+
+marked files become unmarked, and vice versa.
+
+If START and END are non-nil, toggle marks in the region from
+START to END.  If not, but region is active, toggle marks in
+active region only.  Otherwise toggle marks in the entire buffer region only."
+  (interactive nil consult-gh-dired-mode)
+  (if (derived-mode-p 'consult-gh-dired-mode)
+      (let* ((inhibit-read-only t)
+             (start (or start
+                        (and (region-active-p)
+                             (region-beginning))
+                        (point-min)))
+             (end (or end
+                      (and (region-active-p)
+                             (region-end))
+                        (point-max))))
+        (save-excursion
+          (goto-char start)
+          (while (and (< (point) end)
+                      (cond
+                       ((get-text-property (point) :type)
+                        (unless (equal (get-text-property (point) :mode) "directory")
+                          (consult-gh--dired-toggle-mark))
+                        (if (equal (forward-line +1) 0) t nil))
+                      (t
+                       (if (equal (forward-line +1) 0) t nil)))))))
 (message "Not in a `consult-gh-dired-mode' buffer!")))
 
 (defun consult-gh-dired-unmark-all-marks ()
