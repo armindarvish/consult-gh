@@ -50,10 +50,8 @@
 (unless  (executable-find "gh")
   (display-warning 'consult-gh (propertize "\"gh\" is not found on this system" 'face 'warning) :warning))
 
-(eval-when-compile
-  (require 'json))
-
 (require 'consult) ;; core dependency
+(require 'json) ;; for parsing jsons
 (require 'markdown-mode) ;; markdown-mode for viewing issues,prs, ...
 (require 'ox-gfm) ;; for exporting org-mode to github flavored markdown
 (require 'ansi-color) ;; for rendering ansi colors in shell output
@@ -61,6 +59,10 @@
 (require 'org) ;; for its awesomeness!
 (require 'dired) ;; for uploading files
 (require 'mm-decode) ;; for parsing urls
+(require 'log-edit) ;; for caching commit messages
+(require 'diff) ;; for seeing diffs in commits
+(require 'crm) ;; for multi-selection in minibuffer
+(require 'map) ;; for parsing nested maps
 
 #+end_src
 
@@ -1965,6 +1967,446 @@ By default, inherits from `dired-symlink'.")
 
 By default, inherits from `dired-special'.")
 #+end_src
+
+** Modes
+*** Minor Modes
+**** consult-gh-repo-view-mode
+#+begin_src emacs-lisp
+;;; Minor modes
+
+(defvar-keymap consult-gh-repo-view-mode-map
+  :doc "Keymap for `consult-gh-repo-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-repo-view-mode
+  "Minor-mode for viewing GitHub repositories."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-repo-view"
+  :keymap consult-gh-repo-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
+**** consult-gh-file-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-file-view-mode-map
+  :doc "Keymap for `consult-gh-file-view-mode'.")
+
+
+(defun consult-gh-file-view-mode-on ()
+  "Enable `consult-gh-file-view-mode'."
+  (read-only-mode +1)
+  (add-hook 'after-save-hook #'consult-gh--files-edit-save-buffer-hook 99 t))
+
+(defun consult-gh-file-view-mode-off ()
+  "Disable `consult-gh-file-view-mode'."
+  (remove-hook 'after-save-hook #'consult-gh--files-edit-save-buffer-hook t))
+
+
+;;;###autoload
+(define-minor-mode consult-gh-file-view-mode
+  "Minor-mode for viewing GitHub files."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-file-view"
+  :keymap consult-gh-file-view-mode-map
+  (cond (consult-gh-file-view-mode
+         (consult-gh-file-view-mode-on))
+        (t
+         (consult-gh-file-view-mode-off))))
+
+#+end_src
+
+**** consult-gh-issue-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-issue-view-mode-map
+  :doc "Keymap for `consult-gh-issue-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-issue-view-mode
+  "Minor-mode for viewing GitHub issues."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-issue-view"
+  :keymap consult-gh-issue-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
+
+**** consult-gh-pr-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-pr-view-mode-map
+  :doc "Keymap for `consult-gh-pr-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-pr-view-mode
+  "Minor-mode for viewing GitHub pull request."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-pr-view"
+  :keymap consult-gh-pr-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
+
+
+**** consult-gh-release-view-mode
+#+begin_src emacs-lisp
+;;; Minor modes
+
+(defvar-keymap consult-gh-release-view-mode-map
+  :doc "Keymap for `consult-gh-release-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-release-view-mode
+  "Minor-mode for viewing GitHub repositories."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-release-view"
+  :keymap consult-gh-release-view-mode-map
+  (read-only-mode +1))
+#+end_src
+**** consult-gh-workflow-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-workflow-view-mode-map
+  :doc "Keymap for `consult-gh-workflow-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-workflow-view-mode
+  "Minor-mode for viewing GitHub workflows."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-workflow-view"
+  :keymap consult-gh-workflow-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
+
+
+
+**** consult-gh-run-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-run-view-mode-map
+  :doc "Keymap for `consult-gh-run-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-run-view-mode
+  "Minor-mode for viewing GitHub action runs."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-run-view"
+  :keymap consult-gh-run-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
+
+
+
+**** consult-gh-misc-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-misc-view-mode-map
+  :doc "Keymap for `consult-gh-misc-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-misc-view-mode
+  "Minor-mode for viewing miscellanous consult-gh buffers."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-misc-view"
+  :keymap consult-gh-misc-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
+
+
+**** consult-gh-topics-edit-mode
+***** consult-gh-topics-edit-capf minor-mode
+#+begin_src emacs-lisp
+(defun consult-gh-topics-edit-capf-mode-on ()
+  "Enable `consult-gh-topics-edit-capf-mode'."
+  (add-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf -100 t)
+  (add-to-list 'completion-at-point-functions #'consult-gh--topics-edit-capf))
+
+(defun consult-gh-topics-edit-capf-mode-off ()
+  "Disable `consult-gh-topics-edit-capf-mode'."
+  (remove-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf)
+  (remove #'consult-gh--topics-edit-capf completion-at-point-functions))
+
+;;;###autoload
+(define-minor-mode consult-gh-topics-edit-capf-mode
+  "Minor-mode for completion at point in `consult-gh-topics-edit-comment-mode'.
+
+Helps with autocompleting usernames, issue numbers, etc."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-topics-edit-capf"
+  :keymap nil
+  (cond (consult-gh-topics-edit-capf-mode
+         (consult-gh-topics-edit-capf-mode-on))
+        (t
+         (consult-gh-topics-edit-capf-mode-off))))
+
+#+end_src
+***** consult-gh-topics-edit minor-mode
+#+begin_src emacs-lisp
+(defun consult-gh-topics-edit-header-line ()
+  "Create `header-line-format' for `consult-gh-topics-edit-mode'."
+  (let* ((topic consult-gh--topic)
+         (repo (get-text-property 0 :repo topic))
+         (type (get-text-property 0 :type topic))
+         (number (get-text-property 0 :number topic))
+         (new (get-text-property 0 :new topic))
+         (isComment (get-text-property 0 :isComment topic))
+         (cand (concat repo (and number (concat ":#" number)))))
+    (add-text-properties 0 1 (list :repo repo :number number) cand)
+    (list
+     (concat (and new "New ") (if isComment
+                                  (concat "comment on ")
+                                (concat type " for "))
+             (buttonize (concat (consult-gh--get-package repo) (and isComment type (concat ": " (upcase type))) (and number (concat "#" number)))
+                        (lambda (&rest _)
+                           (if new
+                               (funcall consult-gh-repo-action cand)
+                             (pcase type
+                               ("issue"
+                                (funcall consult-gh-issue-action cand))
+                               ("pr"
+                                (funcall consult-gh-pr-action cand)))))))
+     ".  "
+     (substitute-command-keys "When done, use `\\[consult-gh-ctrl-c-ctrl-c]' to submit or `\\[consult-gh-topics-cancel]' to cancel."))))
+
+(defvar-keymap consult-gh-topics-edit-mode-map
+  :doc "Keymap for `consult-gh-topics-edit-mode'.")
+
+(defun consult-gh-topics-edit-mode-on ()
+  "Enable `consult-gh-topics-edit-mode'."
+  (setq-local header-line-format (consult-gh-topics-edit-header-line)))
+
+(defun consult-gh-topics-edit-mode-off ()
+  "Disable `consult-gh-topics-edit-mode'."
+  (setq-local header-line-format nil))
+
+;;;###autoload
+(define-minor-mode consult-gh-topics-edit-mode
+  "Minor-mode for editable consult-gh topics."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-topics-edit"
+  :keymap consult-gh-topics-edit-mode-map
+  (cond (consult-gh-topics-edit-mode
+         (consult-gh-topics-edit-mode-on)
+         (when consult-gh-topic-use-capf
+           (consult-gh-topics-edit-capf-mode +1)))
+        (t
+         (consult-gh-topics-edit-mode-off)
+         (if consult-gh-topics-edit-capf-mode
+             (consult-gh-topics-edit-capf-mode -1)))))
+
+#+end_src
+
+**** consult-gh-commit-message-mode
+
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-commit-message-mode-map
+  :doc "Keymap for `consult-gh-commit-message-mode'.")
+
+(defun consult-gh-commit-message-mode-on ()
+  "Enable `consult-gh-topics-edit-mode'."
+  (let* ((char (shell-command-to-string "git config --get core.commentchar"))
+        (char (and (stringp char)
+                   (not (string-empty-p char))
+                   char)))
+    (setq-local consult-gh--commit-comment-start-save comment-start)
+  (setq-local comment-start (or char consult-gh-commit-messgae-ignore-char))))
+
+(defun consult-gh-commit-message-mode-off ()
+  "Disable `consult-gh-topics-edit-mode'."
+  (setq-local comment-start consult-gh--commit-comment-start-save))
+
+;;;###autoload
+(define-minor-mode consult-gh-commit-message-mode
+  "Minor-mode for editing commit messages in consult-gh."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-commit-message"
+  :keymap consult-gh-commit-message-mode-map
+  (cond (consult-gh-commit-message-mode
+         (consult-gh-commit-message-mode-on))
+        (t
+         (consult-gh-commit-message-mode-off))))
+
+#+end_src
+
+**** consult-gh-commit-view-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-commit-view-mode-map
+  :doc "Keymap for `consult-gh-commit-view-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-commit-view-mode
+  "Minor-mode for viewing GitHub commits."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-commit-view"
+  :keymap consult-gh-commit-view-mode-map
+  (read-only-mode +1))
+
+#+end_src
+
+**** consult-gh-upload-files-mode
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-upload-files-mode-map
+ :doc "Keymap for `consult-gh-upload-files-mode'.")
+
+(defun consult-gh-upload-files-mode-on ()
+  "Enable `consult-gh-topics-edit-mode'.")
+
+(defun consult-gh-upload-files-mode-off ()
+  "Disable `consult-gh-topics-edit-mode'.")
+
+;;;###autoload
+(define-minor-mode consult-gh-upload-files-mode
+  "Minor-mode for uploading files in consult-gh."
+  :init-value nil
+  :global nil
+  :group 'consult-gh
+  :lighter " consult-gh-upload-files-mode"
+  :keymap consult-gh-upload-files-mode-map
+  (cond (consult-gh-upload-files-mode
+         (consult-gh-upload-files-mode-on))
+        (t
+         (consult-gh-upload-files-mode-off))))
+
+#+end_src
+
+*** Major Modes
+**** consult-gh-dired-mode
+***** consult-gh-dired-mode-map
+#+begin_src emacs-lisp
+(defvar-keymap consult-gh-dired-mode-map
+  :doc "Keymap for `consult-gh-dired-mode'."
+  "p" #'consult-gh-dired-previous-line
+  "n" #'consult-gh-dired-next-line
+  "S-SPC" #'consult-gh-dired-previous-line
+  "SPC" #'consult-gh-dired-next-line
+  "<remap> <previous-line>" #'consult-gh-dired-previous-line
+  "<remap> <next-line>" #'consult-gh-dired-next-line
+  "<remap> <save-buffer>" #'consult-gh-dired-save-file
+  "+" #'consult-gh-dired-create-file
+  "m" #'consult-gh-dired-mark
+  "* m" #'consult-gh-dired-mark
+  "u" #'consult-gh-dired-unmark
+  "* u" #'consult-gh-dired-unmark
+  "* ?" #'consult-gh-dired-unmark-all-marks
+  "* !" #'consult-gh-dired-unmark-all-marks
+  "t" #'consult-gh-dired-toggle-marks
+  "* t" #'consult-gh-dired-toggle-marks
+  "U" #'consult-gh-dired-unmark-all-marks
+  "D" #'consult-gh-dired-delete-file
+  "C" #'consult-gh-dired-copy-file
+  "R" #'consult-gh-dired-rename-file
+  "g" #'consult-gh-dired-revert
+  "^" #'consult-gh-dired-up-directory
+  "<" #'consult-gh--dired-goto-prev-directory-header
+  ">" #'consult-gh--dired-goto-next-directory-header
+  "M-{" #'consult-gh-dired-prev-marked-file
+  "M-}" #'consult-gh-dired-next-marked-file
+  "* C-p" #'consult-gh-dired-prev-marked-file
+  "* C-n" #'consult-gh-dired-next-marked-file
+  "$" #'consult-gh-dired-hide-subdir
+  "M-$" #'consult-gh-dired-hide-all
+  "<backtab>" #'consult-gh-dired-fold-cycle
+  "(" #'consult-gh-dired-hide-details
+  "RET" #'consult-gh-dired-find-file
+  "e" #'consult-gh-dired-find-file
+  "f" #'consult-gh-dired-find-file
+  "<mouse-1>" #'consult-gh-dired-mouse-find-file
+  "C-m" #'consult-gh-dired-find-file
+  "o" #'consult-gh-dired-find-file-other-window
+  "<mouse-2>" #'consult-gh-dired-mouse-find-file-other-window
+  "v" #'consult-gh-dired-file-view
+  "<remap> <undo>" #'consult-gh-dired-undo
+  "<remap> <advertised-undo>" #'consult-gh-dired-undo)
+#+end_src
+
+***** setup for evil
+#+begin_src emacs-lisp
+(defvar consult-gh--dired-setup-for-evil-done nil
+"Whether the evil key binding setup has been done.")
+
+(defun consult-gh--dired-mode-map-setup-for-evil ()
+  "Setup map in `consult-gh-dired-mode-map' for evil mode (if loaded)."
+  (when (and (fboundp 'evil-define-key*)
+             (not consult-gh--dired-setup-for-evil-done))
+
+    (and (evil-define-key* '(normal) consult-gh-dired-mode-map
+      (kbd "k") #'consult-gh-dired-previous-line
+      (kbd "j") #'consult-gh-dired-next-line
+      (kbd "S-SPC") #'consult-gh-dired-previous-line
+      (kbd "SPC") #'consult-gh-dired-next-line
+      [remap previous-line] #'consult-gh-dired-previous-line
+      [remap next-line] #'consult-gh-dired-next-line
+      (kbd "+") #'consult-gh-dired-create-file
+      (kbd "m") #'consult-gh-dired-mark
+      (kbd "u") #'consult-gh-dired-unmark
+      (kbd "U") #'consult-gh-dired-unmark-all-marks
+      (kbd "t") #'consult-gh-dired-toggle-marks
+      (kbd "D") #'consult-gh-dired-delete-file
+      (kbd "C") #'consult-gh-dired-copy-file
+      (kbd "R") #'consult-gh-dired-rename-file
+      (kbd "RET") #'consult-gh-dired-find-file
+      (kbd "g f") #'consult-gh-dired-find-file
+      (kbd "C-m") #'consult-gh-dired-find-file
+      (kbd "^") #'consult-gh-dired-up-directory
+      (kbd "<") #'consult-gh--dired-goto-prev-directory-header
+      (kbd ">") #'consult-gh--dired-goto-next-directory-header
+      (kbd "g k") #'consult-gh--dired-goto-prev-directory-header
+      (kbd "g j") #'consult-gh--dired-goto-next-directory-header
+      (kbd "[[") #'consult-gh--dired-goto-prev-directory-header
+      (kbd "]]") #'consult-gh--dired-goto-next-directory-header
+      (kbd "M-{") #'consult-gh-dired-prev-marked-file
+      (kbd "M-}") #'consult-gh-dired-next-marked-file
+      (kbd "$") #'consult-gh-dired-hide-subdir
+      (kbd "M-$") #'consult-gh-dired-hide-all
+      (kbd "TAB") #'consult-gh-dired-hide-subdir
+      (kbd "<backtab>") #'consult-gh-dired-fold-cycle
+      (kbd "(") #'consult-gh-dired-hide-details
+      (kbd "S-<return>") #'consult-gh-dired-find-file-other-window
+      (kbd "g 0") #'consult-gh-dired-find-file-other-window
+      (kbd "o") #'consult-gh-dired-find-file-other-window
+      (kbd "g o") #'consult-gh-dired-file-view
+      (kbd "g r") #'consult-gh-dired-revert)
+         (setq consult-gh--dired-setup-for-evil-done t))))
+#+end_src
+***** define derived mode
+#+begin_src emacs-lisp
+(define-derived-mode consult-gh-dired-mode fundamental-mode "consult-gh-dired"
+  "Major mode for viewing directories."
+  (consult-gh--dired-mode-map-setup-for-evil)
+  (use-local-map consult-gh-dired-mode-map)
+  (setq-local major-mode 'consult-gh-dired-mode))
+
+#+end_src
+
+
 
 ** Backend functions
 This section includes functions that make calls to =gh= in the shell or provide helper functionalities for formatting the responses to be passed to other functions.
@@ -19441,446 +19883,6 @@ Description of Arguments:
          (t
           (message "No file on this line")))))
 #+end_src
-** Modes
-*** Minor Modes
-**** consult-gh-repo-view-mode
-#+begin_src emacs-lisp
-;;; Minor modes
-
-(defvar-keymap consult-gh-repo-view-mode-map
-  :doc "Keymap for `consult-gh-repo-view-mode'.")
-
-;;;###autoload
-(define-minor-mode consult-gh-repo-view-mode
-  "Minor-mode for viewing GitHub repositories."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-repo-view"
-  :keymap consult-gh-repo-view-mode-map
-  (read-only-mode +1))
-
-#+end_src
-
-**** consult-gh-file-view-mode
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-file-view-mode-map
-  :doc "Keymap for `consult-gh-file-view-mode'.")
-
-
-(defun consult-gh-file-view-mode-on ()
-  "Enable `consult-gh-file-view-mode'."
-  (read-only-mode +1)
-  (add-hook 'after-save-hook #'consult-gh--files-edit-save-buffer-hook 99 t))
-
-(defun consult-gh-file-view-mode-off ()
-  "Disable `consult-gh-file-view-mode'."
-  (remove-hook 'after-save-hook #'consult-gh--files-edit-save-buffer-hook t))
-
-
-;;;###autoload
-(define-minor-mode consult-gh-file-view-mode
-  "Minor-mode for viewing GitHub files."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-file-view"
-  :keymap consult-gh-file-view-mode-map
-  (cond (consult-gh-file-view-mode
-         (consult-gh-file-view-mode-on))
-        (t
-         (consult-gh-file-view-mode-off))))
-
-#+end_src
-
-**** consult-gh-issue-view-mode
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-issue-view-mode-map
-  :doc "Keymap for `consult-gh-issue-view-mode'.")
-
-;;;###autoload
-(define-minor-mode consult-gh-issue-view-mode
-  "Minor-mode for viewing GitHub issues."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-issue-view"
-  :keymap consult-gh-issue-view-mode-map
-  (read-only-mode +1))
-
-#+end_src
-
-
-**** consult-gh-pr-view-mode
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-pr-view-mode-map
-  :doc "Keymap for `consult-gh-pr-view-mode'.")
-
-;;;###autoload
-(define-minor-mode consult-gh-pr-view-mode
-  "Minor-mode for viewing GitHub pull request."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-pr-view"
-  :keymap consult-gh-pr-view-mode-map
-  (read-only-mode +1))
-
-#+end_src
-
-
-
-**** consult-gh-release-view-mode
-#+begin_src emacs-lisp
-;;; Minor modes
-
-(defvar-keymap consult-gh-release-view-mode-map
-  :doc "Keymap for `consult-gh-release-view-mode'.")
-
-;;;###autoload
-(define-minor-mode consult-gh-release-view-mode
-  "Minor-mode for viewing GitHub repositories."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-release-view"
-  :keymap consult-gh-release-view-mode-map
-  (read-only-mode +1))
-#+end_src
-**** consult-gh-workflow-view-mode
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-workflow-view-mode-map
-  :doc "Keymap for `consult-gh-workflow-view-mode'.")
-
-;;;###autoload
-(define-minor-mode consult-gh-workflow-view-mode
-  "Minor-mode for viewing GitHub workflows."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-workflow-view"
-  :keymap consult-gh-workflow-view-mode-map
-  (read-only-mode +1))
-
-#+end_src
-
-
-
-
-**** consult-gh-run-view-mode
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-run-view-mode-map
-  :doc "Keymap for `consult-gh-run-view-mode'.")
-
-;;;###autoload
-(define-minor-mode consult-gh-run-view-mode
-  "Minor-mode for viewing GitHub action runs."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-run-view"
-  :keymap consult-gh-run-view-mode-map
-  (read-only-mode +1))
-
-#+end_src
-
-
-
-
-**** consult-gh-misc-view-mode
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-misc-view-mode-map
-  :doc "Keymap for `consult-gh-misc-view-mode'.")
-
-;;;###autoload
-(define-minor-mode consult-gh-misc-view-mode
-  "Minor-mode for viewing miscellanous consult-gh buffers."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-misc-view"
-  :keymap consult-gh-misc-view-mode-map
-  (read-only-mode +1))
-
-#+end_src
-
-
-
-**** consult-gh-topics-edit-mode
-***** consult-gh-topics-edit minor-mode
-#+begin_src emacs-lisp
-(defun consult-gh-topics-edit-header-line ()
-  "Create `header-line-format' for `consult-gh-topics-edit-mode'."
-  (let* ((topic consult-gh--topic)
-         (repo (get-text-property 0 :repo topic))
-         (type (get-text-property 0 :type topic))
-         (number (get-text-property 0 :number topic))
-         (new (get-text-property 0 :new topic))
-         (isComment (get-text-property 0 :isComment topic))
-         (cand (concat repo (and number (concat ":#" number)))))
-    (add-text-properties 0 1 (list :repo repo :number number) cand)
-    (list
-     (concat (and new "New ") (if isComment
-                                  (concat "comment on ")
-                                (concat type " for "))
-             (buttonize (concat (consult-gh--get-package repo) (and isComment type (concat ": " (upcase type))) (and number (concat "#" number)))
-                        (lambda (&rest _)
-                           (if new
-                               (funcall consult-gh-repo-action cand)
-                             (pcase type
-                               ("issue"
-                                (funcall consult-gh-issue-action cand))
-                               ("pr"
-                                (funcall consult-gh-pr-action cand)))))))
-     ".  "
-     (substitute-command-keys "When done, use `\\[consult-gh-ctrl-c-ctrl-c]' to submit or `\\[consult-gh-topics-cancel]' to cancel."))))
-
-(defvar-keymap consult-gh-topics-edit-mode-map
-  :doc "Keymap for `consult-gh-topics-edit-mode'.")
-
-(defun consult-gh-topics-edit-mode-on ()
-  "Enable `consult-gh-topics-edit-mode'."
-  (setq-local header-line-format (consult-gh-topics-edit-header-line)))
-
-(defun consult-gh-topics-edit-mode-off ()
-  "Disable `consult-gh-topics-edit-mode'."
-  (setq-local header-line-format nil))
-
-;;;###autoload
-(define-minor-mode consult-gh-topics-edit-mode
-  "Minor-mode for editable consult-gh topics."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-topics-edit"
-  :keymap consult-gh-topics-edit-mode-map
-  (cond (consult-gh-topics-edit-mode
-         (consult-gh-topics-edit-mode-on)
-         (when consult-gh-topic-use-capf
-           (consult-gh-topics-edit-capf-mode +1)))
-        (t
-         (consult-gh-topics-edit-mode-off)
-         (if consult-gh-topics-edit-capf-mode
-             (consult-gh-topics-edit-capf-mode -1)))))
-
-#+end_src
-
-***** consult-gh-topics-edit-capf minor-mode
-#+begin_src emacs-lisp
-(defun consult-gh-topics-edit-capf-mode-on ()
-  "Enable `consult-gh-topics-edit-capf-mode'."
-  (add-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf -100 t)
-  (add-to-list 'completion-at-point-functions #'consult-gh--topics-edit-capf))
-
-(defun consult-gh-topics-edit-capf-mode-off ()
-  "Disable `consult-gh-topics-edit-capf-mode'."
-  (remove-hook 'completion-at-point-functions #'consult-gh--topics-edit-capf)
-  (remove #'consult-gh--topics-edit-capf completion-at-point-functions))
-
-;;;###autoload
-(define-minor-mode consult-gh-topics-edit-capf-mode
-  "Minor-mode for completion at point in `consult-gh-topics-edit-comment-mode'.
-
-Helps with autocompleting usernames, issue numbers, etc."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-topics-edit-capf"
-  :keymap nil
-  (cond (consult-gh-topics-edit-capf-mode
-         (consult-gh-topics-edit-capf-mode-on))
-        (t
-         (consult-gh-topics-edit-capf-mode-off))))
-
-#+end_src
-**** consult-gh-commit-message-mode
-
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-commit-message-mode-map
-  :doc "Keymap for `consult-gh-commit-message-mode'.")
-
-(defun consult-gh-commit-message-mode-on ()
-  "Enable `consult-gh-topics-edit-mode'."
-  (let* ((char (shell-command-to-string "git config --get core.commentchar"))
-        (char (and (stringp char)
-                   (not (string-empty-p char))
-                   char)))
-    (setq-local consult-gh--commit-comment-start-save comment-start)
-  (setq-local comment-start (or char consult-gh-commit-messgae-ignore-char))))
-
-(defun consult-gh-commit-message-mode-off ()
-  "Disable `consult-gh-topics-edit-mode'."
-  (setq-local comment-start consult-gh--commit-comment-start-save))
-
-;;;###autoload
-(define-minor-mode consult-gh-commit-message-mode
-  "Minor-mode for editing commit messages in consult-gh."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-commit-message"
-  :keymap consult-gh-commit-message-mode-map
-  (cond (consult-gh-commit-message-mode
-         (consult-gh-commit-message-mode-on))
-        (t
-         (consult-gh-commit-message-mode-off))))
-
-#+end_src
-
-**** consult-gh-commit-view-mode
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-commit-view-mode-map
-  :doc "Keymap for `consult-gh-commit-view-mode'.")
-
-;;;###autoload
-(define-minor-mode consult-gh-commit-view-mode
-  "Minor-mode for viewing GitHub commits."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-commit-view"
-  :keymap consult-gh-commit-view-mode-map
-  (read-only-mode +1))
-
-#+end_src
-
-**** consult-gh-upload-files-mode
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-upload-files-mode-map
- :doc "Keymap for `consult-gh-upload-files-mode'.")
-
-(defun consult-gh-upload-files-mode-on ()
-  "Enable `consult-gh-topics-edit-mode'.")
-
-(defun consult-gh-upload-files-mode-off ()
-  "Disable `consult-gh-topics-edit-mode'.")
-
-;;;###autoload
-(define-minor-mode consult-gh-upload-files-mode
-  "Minor-mode for uploading files in consult-gh."
-  :init-value nil
-  :global nil
-  :group 'consult-gh
-  :lighter " consult-gh-upload-files-mode"
-  :keymap consult-gh-upload-files-mode-map
-  (cond (consult-gh-upload-files-mode
-         (consult-gh-upload-files-mode-on))
-        (t
-         (consult-gh-upload-files-mode-off))))
-
-#+end_src
-
-*** Major Modes
-**** consult-gh-dired-mode
-***** consult-gh-dired-mode-map
-#+begin_src emacs-lisp
-(defvar-keymap consult-gh-dired-mode-map
-  :doc "Keymap for `consult-gh-dired-mode'."
-  "p" #'consult-gh-dired-previous-line
-  "n" #'consult-gh-dired-next-line
-  "S-SPC" #'consult-gh-dired-previous-line
-  "SPC" #'consult-gh-dired-next-line
-  "<remap> <previous-line>" #'consult-gh-dired-previous-line
-  "<remap> <next-line>" #'consult-gh-dired-next-line
-  "<remap> <save-buffer>" #'consult-gh-dired-save-file
-  "+" #'consult-gh-dired-create-file
-  "m" #'consult-gh-dired-mark
-  "* m" #'consult-gh-dired-mark
-  "u" #'consult-gh-dired-unmark
-  "* u" #'consult-gh-dired-unmark
-  "* ?" #'consult-gh-dired-unmark-all-marks
-  "* !" #'consult-gh-dired-unmark-all-marks
-  "t" #'consult-gh-dired-toggle-marks
-  "* t" #'consult-gh-dired-toggle-marks
-  "U" #'consult-gh-dired-unmark-all-marks
-  "D" #'consult-gh-dired-delete-file
-  "C" #'consult-gh-dired-copy-file
-  "R" #'consult-gh-dired-rename-file
-  "g" #'consult-gh-dired-revert
-  "^" #'consult-gh-dired-up-directory
-  "<" #'consult-gh--dired-goto-prev-directory-header
-  ">" #'consult-gh--dired-goto-next-directory-header
-  "M-{" #'consult-gh-dired-prev-marked-file
-  "M-}" #'consult-gh-dired-next-marked-file
-  "* C-p" #'consult-gh-dired-prev-marked-file
-  "* C-n" #'consult-gh-dired-next-marked-file
-  "$" #'consult-gh-dired-hide-subdir
-  "M-$" #'consult-gh-dired-hide-all
-  "<backtab>" #'consult-gh-dired-fold-cycle
-  "(" #'consult-gh-dired-hide-details
-  "RET" #'consult-gh-dired-find-file
-  "e" #'consult-gh-dired-find-file
-  "f" #'consult-gh-dired-find-file
-  "<mouse-1>" #'consult-gh-dired-mouse-find-file
-  "C-m" #'consult-gh-dired-find-file
-  "o" #'consult-gh-dired-find-file-other-window
-  "<mouse-2>" #'consult-gh-dired-mouse-find-file-other-window
-  "v" #'consult-gh-dired-file-view
-  "<remap> <undo>" #'consult-gh-dired-undo
-  "<remap> <advertised-undo>" #'consult-gh-dired-undo)
-#+end_src
-
-***** setup for evil
-#+begin_src emacs-lisp
-(defvar consult-gh--dired-setup-for-evil-done nil
-"Whether the evil key binding setup has been done.")
-
-(defun consult-gh--dired-mode-map-setup-for-evil ()
-  "Setup map in `consult-gh-dired-mode-map' for evil mode (if loaded)."
-  (when (and (fboundp 'evil-define-key*)
-             (not consult-gh--dired-setup-for-evil-done))
-
-    (and (evil-define-key* '(normal) consult-gh-dired-mode-map
-      (kbd "k") #'consult-gh-dired-previous-line
-      (kbd "j") #'consult-gh-dired-next-line
-      (kbd "S-SPC") #'consult-gh-dired-previous-line
-      (kbd "SPC") #'consult-gh-dired-next-line
-      [remap previous-line] #'consult-gh-dired-previous-line
-      [remap next-line] #'consult-gh-dired-next-line
-      (kbd "+") #'consult-gh-dired-create-file
-      (kbd "m") #'consult-gh-dired-mark
-      (kbd "u") #'consult-gh-dired-unmark
-      (kbd "U") #'consult-gh-dired-unmark-all-marks
-      (kbd "t") #'consult-gh-dired-toggle-marks
-      (kbd "D") #'consult-gh-dired-delete-file
-      (kbd "C") #'consult-gh-dired-copy-file
-      (kbd "R") #'consult-gh-dired-rename-file
-      (kbd "RET") #'consult-gh-dired-find-file
-      (kbd "g f") #'consult-gh-dired-find-file
-      (kbd "C-m") #'consult-gh-dired-find-file
-      (kbd "^") #'consult-gh-dired-up-directory
-      (kbd "<") #'consult-gh--dired-goto-prev-directory-header
-      (kbd ">") #'consult-gh--dired-goto-next-directory-header
-      (kbd "g k") #'consult-gh--dired-goto-prev-directory-header
-      (kbd "g j") #'consult-gh--dired-goto-next-directory-header
-      (kbd "[[") #'consult-gh--dired-goto-prev-directory-header
-      (kbd "]]") #'consult-gh--dired-goto-next-directory-header
-      (kbd "M-{") #'consult-gh-dired-prev-marked-file
-      (kbd "M-}") #'consult-gh-dired-next-marked-file
-      (kbd "$") #'consult-gh-dired-hide-subdir
-      (kbd "M-$") #'consult-gh-dired-hide-all
-      (kbd "TAB") #'consult-gh-dired-hide-subdir
-      (kbd "<backtab>") #'consult-gh-dired-fold-cycle
-      (kbd "(") #'consult-gh-dired-hide-details
-      (kbd "S-<return>") #'consult-gh-dired-find-file-other-window
-      (kbd "g 0") #'consult-gh-dired-find-file-other-window
-      (kbd "o") #'consult-gh-dired-find-file-other-window
-      (kbd "g o") #'consult-gh-dired-file-view
-      (kbd "g r") #'consult-gh-dired-revert)
-         (setq consult-gh--dired-setup-for-evil-done t))))
-#+end_src
-***** define derived mode
-#+begin_src emacs-lisp
-(define-derived-mode consult-gh-dired-mode fundamental-mode "consult-gh-dired"
-  "Major mode for viewing directories."
-  (consult-gh--dired-mode-map-setup-for-evil)
-  (use-local-map consult-gh-dired-mode-map)
-  (setq-local major-mode 'consult-gh-dired-mode))
-
-#+end_src
-
-
-
 ** Frontend Interactive Commands
 *** auth
 **** consult-gh-auth-switch
@@ -25681,10 +25683,14 @@ Description of Arguments:
              (repo (or repo (get-text-property 0 :repo topic)))
              (ref (or ref (get-text-property 0 :ref topic)))
              (tempdir (or (get-text-property 0 :tempdir topic)
-                          (expand-file-name (concat repo "/" ref "/")
-                                        (or consult-gh--current-tempdir (consult-gh--tempdir)))))
+                          (expand-file-name
+                           (concat repo "/" ref "/")
+                           (or consult-gh--current-tempdir (consult-gh--tempdir))
+                           )))
              (mode (or mode (get-text-property (point) :mode)))
              (path (or path (get-text-property (point) :path))))
+        (unless (file-exists-p tempdir)
+           (make-directory (file-name-directory tempdir) t))
 (consult-gh-dired--find-file repo path mode ref no-select tempdir find-func))
 (message "Not in a `consult-gh-dired-mode' buffer!")))
 #+end_src
