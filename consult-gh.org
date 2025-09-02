@@ -392,7 +392,7 @@ The default is set to `consult-gh-maxnum'."
   "Maximum number of comments to show when viewing issues or prs.
 
 If there are more than this many comments, the user is queried about
-whether to filer comments or not."
+whether to filter comments or not."
   :group 'consult-gh
   :type 'integer)
 
