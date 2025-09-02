@@ -5,8 +5,8 @@
 ;; Author: Armin Darvish
 ;; Maintainer: Armin Darvish
 ;; Created: 2023
-;; Version: 2.6
-;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "2.6"))
+;; Version: 3.0
+;; Package-Requires: ((emacs "29.4") (consult "2.0") (forge "0.3.3") (consult-gh "3.0"))
 ;; Homepage: https://github.com/armindarvish/consult-gh
 ;; Keywords: matching, git, repositories, forges, completion
 
@@ -34,6 +34,7 @@
 
 ;;; Requirements
 (require 'forge)
+(require 'ghub)
 (require 'consult-gh)
 
 ;;; Customization Variables
@@ -225,8 +226,8 @@ This is a wrapper function around `consult-gh-forge--issue-view'."
   (if consult-gh-forge-mode
       (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
              (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
-    (consult-gh-forge--issue-view repo number))
-  (message "consult-gh-forge-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-issue-action'\).")))
+        (consult-gh-forge--issue-view repo number))
+    (message "consult-gh-forge-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-issue-action'\).")))
 
 (defun consult-gh-forge--pr-view (repo number &optional timeout)
   "Add the REPO and PR to forge database.
@@ -259,9 +260,9 @@ identified by NUMBER."
 This is a wrapper function around `consult-gh-forge--pr-view'."
   (if consult-gh-forge-mode
       (let* ((repo (substring-no-properties (get-text-property 0 :repo cand)))
-         (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
-    (consult-gh-forge--pr-view repo number))
-(message "consult-gh-forge-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-pr-action'\).")))
+             (number (substring-no-properties (format "%s" (get-text-property 0 :number cand)))))
+        (consult-gh-forge--pr-view repo number))
+    (message "consult-gh-forge-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-pr-action'\).")))
 
 (defun consult-gh-forge--ghub-token (host username package &optional nocreate forge)
   "Get GitHub token for HOST USERNAME and PACKAGE.
@@ -274,6 +275,7 @@ in auth sources.
 See `ghub--token' for definition of NOCREATE and FORGE as well as
 more info."
   (let* ((user (ghub--ident username package))
+         (ghub-default-host (alist-get 'github ghub-default-host-alist))
          (host (cond ((equal host ghub-default-host)
                       (string-trim-left ghub-default-host "api."))
                      ((string-suffix-p "/api/v3" host) (string-trim-right host "/api/v3"))
@@ -318,22 +320,23 @@ Note that this is created by `consult-gh' and overrides the
 default behavior of `ghub--username' to allow using
 `consult-gh' user name instead if the user chooses to."
 
-  (let ((ghub-user (cl-call-next-method))
-        (consult-gh-user (or (car-safe consult-gh--auth-current-account)
-                             (car-safe (consult-gh--auth-current-active-account
-                                        (cond ((equal host ghub-default-host)
-                                               (string-trim-left ghub-default-host "api."))
-                                              ((string-suffix-p "/api/v3" host)
-                                               (string-trim-right host "/api/v3"))
-                                              ((string-suffix-p "/api/v4" host)
-                                               (string-trim-right host "/api/v4"))
-                                              ((string-suffix-p "/v3" host)
-                                               (string-trim-right host "/v3"))
-                                              ((string-suffix-p "/v4" host)
-                                               (string-trim-right host "/v4"))
-                                              ((string-suffix-p "/api" host)
-                                               (string-trim-right host "/api"))
-                                              (t (or host consult-gh-default-host))))))))
+  (let* ((ghub-user (cl-call-next-method))
+         (ghub-default-host (alist-get 'github ghub-default-host-alist))
+         (consult-gh-user (or (car-safe consult-gh--auth-current-account)
+                              (car-safe (consult-gh--auth-current-active-account
+                                         (cond ((equal host ghub-default-host)
+                                                (string-trim-left ghub-default-host "api."))
+                                               ((string-suffix-p "/api/v3" host)
+                                                (string-trim-right host "/api/v3"))
+                                               ((string-suffix-p "/api/v4" host)
+                                                (string-trim-right host "/api/v4"))
+                                               ((string-suffix-p "/v3" host)
+                                                (string-trim-right host "/v3"))
+                                               ((string-suffix-p "/v4" host)
+                                                (string-trim-right host "/v4"))
+                                               ((string-suffix-p "/api" host)
+                                                (string-trim-right host "/api"))
+                                               (t (or host consult-gh-default-host))))))))
     (cond
      ((equal ghub-user consult-gh-user) ghub-user)
      (t
@@ -386,13 +389,13 @@ default behavior of `ghub--host' to allow using
          (func (cond ((forge-pullreq-p topic) #'consult-gh--pr-view)
                      ((forge-issue-p topic) #'consult-gh--issue-view))))
     (if (forge-github-repository-p repo)
-          (when-let* ((owner (oref repo owner))
-                     (name (oref repo name))
-                     (reponame (concat owner "/" name))
-                     (number (oref topic number))
-                     (number (cond ((numberp number) (number-to-string number))
-                                   ((stringp number) number))))
-        (funcall consult-gh-switch-to-buffer-func (funcall func reponame number)))
+        (when-let* ((owner (oref repo owner))
+                    (name (oref repo name))
+                    (reponame (concat owner "/" name))
+                    (number (oref topic number))
+                    (number (cond ((numberp number) (number-to-string number))
+                                  ((stringp number) number))))
+          (funcall consult-gh-switch-to-buffer-func (funcall func reponame number)))
       (message "There is no Github Pullrequest at point!"))))
 
 ;;;###autoload
@@ -405,11 +408,11 @@ default behavior of `ghub--host' to allow using
           (type (and (stringp topic) (get-text-property 0 :type topic)))
           (repo (and (stringp topic) (get-text-property 0 :repo topic)))
           (number (and (stringp topic) (get-text-property 0 :number topic))))
-          (pcase type
-            ("issue"
-             (consult-gh-forge--issue-view repo number))
-            ("pr"
-             (consult-gh-forge--pr-view repo number))))))
+     (pcase type
+       ("issue"
+        (consult-gh-forge--issue-view repo number))
+       ("pr"
+        (consult-gh-forge--pr-view repo number))))))
 
 ;;; Provide `consult-gh-forge' module
 
