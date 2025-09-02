@@ -254,7 +254,7 @@ PROMPT, INITIAL-INPUT, and HISTORY are passed to `read-from-minibffer'."
   (interactive)
   (consult-gh-search-code))
 
-;;; Provide `consul-gh-transient' module
+;;; Provide `consult-gh-transient' module
 
 (provide 'consult-gh-transient)
 
