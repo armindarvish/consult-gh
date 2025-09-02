@@ -127,9 +127,9 @@ As of Emacs 27, json is available as built-in *if Emacs is compiled with json.* 
 
 
 *** [[https://github.com/jrblevin/markdown-mode][markdown-mode]]
-Since =gh= returns information in markdown, [[https://github.com/jrblevin/markdown-mode][markdown-mode]] is needed for seeing contents of issues, pull requests, etc. IN earlier versions markdown-mode was recommended but not required, but as of consult-gh version 2.0, =markdown-mode= is a requirement to ensure the viewing of issues and pull requests etc. work as expected.
+Since =gh= returns information in markdown, [[https://github.com/jrblevin/markdown-mode][markdown-mode]] is needed for seeing contents of issues, pull requests, etc. In earlier versions markdown-mode was recommended but not required, but as of consult-gh version 2.0, =markdown-mode= is a requirement to ensure the viewing of issues and pull requests etc. work as expected.
 *** [[https://github.com/zkry/yaml.el][yaml.el]]
-Github actions are written in YAML format, so yaml.el is needed for parsing Github action files. Particularly, it is needed for reading input varibales in the YAML content of GitHub actions when manually running workflows.
+GitHub actions are written in YAML format, so yaml.el is needed for parsing these action files. Particularly, it is needed for reading input variables in the YAML content of GitHub actions when manually running workflows.
 
 
 ** Installation
@@ -265,7 +265,7 @@ Here is a good customization for great performance as well as functionality:
 #+end_src
 
 * Features and Demos
-For background and context,  you can see this blog post: [[https://www.armindarvish.com/post/consult-gh_working_with_github_inside_emacs_in_2023_/][Working with GitHub inside Emacs in 2023]], and watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]]. Note that the blog post and some of the YouTube are out of date since the release of newer versions of consult-gh.
+For background and context, you can see this blog post: [[https://www.armindarvish.com/post/consult-gh_working_with_github_inside_emacs_in_2023_/][Working with GitHub inside Emacs in 2023]], and watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]]. Note that the blog post and some of the YouTube are out of date since the release of newer versions of consult-gh.
 
 In the screenshots below,  I am generally using vanilla Emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], [[https://github.com/oantolin/embark][embark]], and this package with the following config:
 
@@ -284,7 +284,7 @@ In the screenshots below,  I am generally using vanilla Emacs and a minimal conf
   (consult-gh-file-action #'consult-gh--files-view-action) ;;open files in an emacs buffer
 
   (consult-gh-notifications-action #'consult-gh--notifications-action) ;;open notifications using default actions for issue/pr
-  (consult-gh-dashboard-action #'consult-gh--dashboard-action) ;;open dashbaord items using default actions for issue/pr
+  (consult-gh-dashboard-action #'consult-gh--dashboard-action) ;;open dashboard items using default actions for issue/pr
   (consult-gh-default-interactive-command #'consult-gh-transient)
   :config
   ;; optionally set favorite orgs
@@ -396,7 +396,7 @@ In the screenshot below, I use =consult-gh-search-code= to search for some code 
 ** Creating a New Repository, Issue or Pull Request on GitHub
 Since Version 2.0, you can also make a new repository on GitHub from inside Emacs by calling =consult-gh-repo-create=. This is similar to running =gh repo create= in the terminal. It will walk you through steps to either make  new repository from scratch or from an existing folder, etc.
 
-Here is a screenshot showing making anew repository from scratch:
+Here is a screenshot showing making a new repository from scratch:
 
 
 #+ATTR_ORG: :width 800px
@@ -581,7 +581,7 @@ Whether consult-gh-forge should ask for confirmation when choosing the account f
 
 ** PR-Review Integration
 
-If you use [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review (pr-review package on MELPA)]] for reviewing pull requests, you can use =consult-gh-with-pr-review= to directly open issues in a pr-review buffer. To do so,  enable =consult-gh-with-pr-review-mode= by running =M-x consult-gh-with-pt-review-mode= or putting the following in your init file:
+If you use [[https://github.com/blahgeek/emacs-pr-review][emacs-pr-review (pr-review package on MELPA)]] for reviewing pull requests, you can use =consult-gh-with-pr-review= to directly open issues in a pr-review buffer. To do so, enable =consult-gh-with-pr-review-mode= by running =M-x consult-gh-with-pr-review-mode= or putting the following in your init file:
 #+begin_src emacs-lisp
 (consult-gh-with-pr-review-mode +1)
 #+end_src
