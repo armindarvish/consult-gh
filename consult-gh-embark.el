@@ -1235,7 +1235,7 @@ uses `compose-mail' for composing an email."
   :doc "Keymap for inserting user info menu"
   :parent nil
   "u" '("gh insert username" .  consult-gh-embark-insert-user)
-  "n" '("gh insert user's ful name" . consult-gh-embark-insert-user-name)
+  "n" '("gh insert user's full name" . consult-gh-embark-insert-user-name)
   "e" '("gh insert user's email" . consult-gh-embark-insert-user-email)
   "l" '("gh insert user's page url" . consult-gh-embark-insert-user-link))
 
