@@ -248,7 +248,7 @@ Common options include:
  - `consult-gh-quit-window'  Quit or delete window
  - `quit-window'             Quit window"
   :group 'consult-gh
-  :type '(choice (function :tag "(Default) Quite or delete window" consult-gh-quit-window)
+  :type '(choice (function :tag "(Default) Quit or delete window" consult-gh-quit-window)
                  (function :tag "Quit window" quit-window)
                  (function :tag "Custom Function")))
 
@@ -261,7 +261,7 @@ Common options include:
 Each source in this list is a plist that can be passed to `consult--multi'.
 For an example see `consult-gh--dashboard-assigned-to-user'.  For more
 details on defining sources, refer to `consult--multi' and `consult--read'
-documentaion."
+documentation."
   :group 'consult-gh
   :type '(repeat symbol))
 
@@ -276,7 +276,7 @@ pulling files for viewing."
 (make-obsolete-variable 'consult-gh-crm-separator nil "1.0")
 
 (defcustom consult-gh-temp-tempdir-time-format "%Y%m%d%I%H%M"
-  "Tme FORMAT-STRING for temporary directories.
+  "Time FORMAT-STRING for temporary directories.
 
 This is passed as FORMAT-STRING to `format-time-string' for naming
 temporary directories."
@@ -372,7 +372,7 @@ The default is set to `consult-gh-maxnum'."
   "Maximum number of comments to show when viewing issues or prs.
 
 If there are more than this many comments, the user is queried about
-whether to filer comments or not."
+whether to filter comments or not."
   :group 'consult-gh
   :type 'integer)
 
@@ -715,7 +715,7 @@ issue/pr numbers or user names."
   :type 'string)
 
 (defcustom consult-gh-star-icon " "
-  "Icon uses for stars."
+  "Icon used for stars."
   :group 'consult-gh
   :type 'string)
 
@@ -834,25 +834,25 @@ This is used as a prefix for topics in
   "Face variable used for directories in `consult-gh-dired'."
   :group 'consult-gh
   :type '(choice (variable :tag "A face variable")
-                 (function :tag "A function that takes file name and returns a face varible")))
+                 (function :tag "A function that takes file name and returns a face variable")))
 
 (defcustom consult-gh-dired-file-face 'consult-gh-dired-file
   "Face variable for files in `consult-gh-dired'."
   :group 'consult-gh
   :type '(choice (variable :tag "A face variable")
-                 (function :tag "A function that takes file name and returns a face varible")))
+                 (function :tag "A function that takes file name and returns a face variable")))
 
 (defcustom consult-gh-dired-symlink-face 'consult-gh-dired-symlink
   "Face variable for symlinks in `consult-gh-dired'."
   :group 'consult-gh
   :type '(choice (variable :tag "A face variable")
-                 (function :tag "A function that takes file name and returns a face varible")))
+                 (function :tag "A function that takes file name and returns a face variable")))
 
 (defcustom consult-gh-dired-commit-face 'consult-gh-dired-special
   "Face variable for commits (a.k.a. submodules) in `consult-gh-dired'."
   :group 'consult-gh
   :type '(choice (variable :tag "A face variable")
-                 (function :tag "A function that takes file name and returns a face varible")))
+                 (function :tag "A function that takes file name and returns a face variable")))
 
 
 (defcustom consult-gh-completion-max-items "2000"
@@ -898,7 +898,7 @@ By default it is set to t, but can be any of:
   :url        Group by URL
   :date       Group by the last updated date
   :visibility Group by visibility (e.g. public or private)
-  symbol    Group by another pr(operty of the candidate"
+  symbol    Group by another property of the candidate"
   :group 'consult-gh
   :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
                  (const :tag "Do Not Group" nil)
@@ -937,7 +937,7 @@ By default it is set to t, but can be any of:
   t         Use headers for marginalia info
   nil       Do not group
   :repo     Group by repository full name
-  :state    Group by status og issue (i.e. open or closed)
+  :state    Group by status of issue (i.e. open or closed)
   :user     Group by repository owner
   :package  Group by package name
   :date     Group by the last updated date
@@ -946,7 +946,7 @@ By default it is set to t, but can be any of:
   :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
                  (const :tag "Do Not Group" nil)
                  (const :tag "Repository's full name" :repo)
-                 (const :tag "State of issue (e.g. open or closes)" :state)
+                 (const :tag "State of issue (e.g. open or closed)" :state)
                  (const :tag "Repository's owner" :user)
                  (const :tag "Repository's package name" :package)
                  (const :tag "Date the repo was last updated" :date)))
@@ -960,7 +960,7 @@ By default it is set to t, but can be any of:
   t        Use headers for marginalia info
   nil      Do not group
   :repo    Group by repository full name
-  :state   Group by status og issue (i.e. open or closed)
+  :state   Group by status of issue (i.e. open or closed)
   :user    Group by repository owner
   :package Group by package name
   :date    Group by the last updated date
@@ -969,7 +969,7 @@ By default it is set to t, but can be any of:
   :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
                  (const :tag "Do Not Group" nil)
                  (const :tag "Repository's full name" :repo)
-                 (const :tag "State of issue (e.g. open or closes)" :state)
+                 (const :tag "State of issue (e.g. open or closed)" :state)
                  (const :tag "Repository's owner" :user)
                  (const :tag "Repository's package name" :package)
                  (const :tag "Date the repo was last updated" :date)))
@@ -1108,7 +1108,7 @@ By default it is set to t, but can be any of:
   t         Use headers for marginalia info
   nil       Do not group
   :repo     Group by repository full name
-  :state    Group by status of workflow (i.e. enabled, diabled)
+  :state    Group by status of workflow (i.e. enabled, disabled)
   :user     Group by repository owner
   :package  Group by package name
   symbol    Group by another property of the candidate"
@@ -1116,7 +1116,7 @@ By default it is set to t, but can be any of:
   :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
                  (const :tag "Do Not Group" nil)
                  (const :tag "Repository's full name" :repo)
-                 (const :tag "State of workflow (e.g. enbaled)" :state)
+                 (const :tag "State of workflow (e.g. enabled)" :state)
                  (const :tag "Repository's owner" :user)
                  (const :tag "Repository's package name" :package)))
 
@@ -1129,7 +1129,7 @@ By default it is set to t, but can be any of:
   t         Use headers for marginalia info
   nil       Do not group
   :repo     Group by repository full name
-  :state    Group by status of workflow (i.e. enabled, diabled)
+  :state    Group by status of workflow (i.e. enabled, disabled)
   :user     Group by repository owner
   :package  Group by package name
   symbol    Group by another property of the candidate"
@@ -1137,7 +1137,7 @@ By default it is set to t, but can be any of:
   :type '(choice (const :tag "(Default) Use Headers of Marginalia Info" t)
                  (const :tag "Do Not Group" nil)
                  (const :tag "Repository's full name" :repo)
-                 (const :tag "State of run (e.g. enbaled)" :state)
+                 (const :tag "State of run (e.g. enabled)" :state)
                  (const :tag "Repository's owner" :user)
                  (const :tag "Repository's package name" :package)))
 
@@ -1197,7 +1197,7 @@ recommended to set this to t."
 (defcustom consult-gh-confirm-before-delete-release t
   "Should confirmation be requested before deleting releases?
 
-When set to non-nil, the user is asked to confrim deletion of releases.
+When set to non-nil, the user is asked to confirm deletion of releases.
 
 IMPORTANT NOTE: To avoid deleting releases by accident, It is highly
 recommended to set this to t."
@@ -1241,7 +1241,7 @@ Common options include:
 
  - `consult-gh--repo-browse-files-action' Open files in Emacs
 
- - `consult-gh--repo-view-action'         Open repository's READMEe in Emacs
+ - `consult-gh--repo-view-action'         Open repository's README in Emacs
 
  - `consult-gh--repo-clone-action'        Clone the repository
 
@@ -1314,7 +1314,7 @@ Common options include:
 
  - `consult-gh--code-browse-url-action' Opens the code in default browser
 
- - `consult-gh--pr-view-action'         Opens the codein Emacs
+ - `consult-gh--pr-view-action'         Opens the code in Emacs
 
  - A custom function                    A function that takes
                                         only 1 input argument,
@@ -1490,15 +1490,15 @@ search first."
   "Whether to ask user to fill pull request body?
 
 When creating a pull request, the user is asked whether to fill the
-body of the pull requests from commits info, when this varibale is non-nil."
+body of the pull requests from commits info, when this variable is non-nil."
   :group 'consult-gh
   :type 'boolean)
 
 
 (defcustom consult-gh-files-use-dired-like-mode t
-  "Whether to open directories in `conuslt-gh-dired-mode'?
+  "Whether to open directories in `consult-gh-dired-mode'?
 
-When this is non-nil, directories are opened in `conuslt-gh-dired-mode'."
+When this is non-nil, directories are opened in `consult-gh-dired-mode'."
   :group 'consult-gh
   :type 'boolean)
 
@@ -1506,11 +1506,11 @@ When this is non-nil, directories are opened in `conuslt-gh-dired-mode'."
   "Whether to use the same buffer when opening directories?
 
 When this is non-nil, directories are opened in the same buffer,
-otherwise a new `conuslt-gh-dired-mode' buffer is created."
+otherwise a new `consult-gh-dired-mode' buffer is created."
   :group 'consult-gh
   :type 'boolean)
 
-(defcustom consult-gh-commit-messgae-ignore-char "#"
+(defcustom consult-gh-commit-message-ignore-char "#"
   "The string used to ignore lines in commit messages.
 
 When creating a commit message, lines starting with this string will be ignored."
@@ -1786,7 +1786,7 @@ This is used to change grouping dynamically.")
 
 When creating a commit, these instructions are shown.
 Every line should start with git comment character or
-`consult-gh-commit-messgae-ignore-char'.")
+`consult-gh-commit-message-ignore-char'.")
 
 
 (defvar-local consult-gh--dired-fold-cycle 'all
@@ -1844,7 +1844,7 @@ By default, inherits from `font-lock-constant-face'.")
 
 (defface consult-gh-package
   '((t :inherit font-lock-type-face))
-  "Packageface in minibuffer annotations.
+  "Package face in minibuffer annotations.
 
 By default, inherits from `font-lock-type-face'.")
 
@@ -1900,7 +1900,7 @@ By default, inherits from `font-lock-builtin-face'.")
   '((t :inherit font-lock-variable-use-face))
   "Code snippets face in minibuffer annotations.
 
-By default, inherits from `font-lock-vairable-use-face'.")
+By default, inherits from `font-lock-variable-use-face'.")
 
 (defface consult-gh-url
   '((t :inherit link))
@@ -2150,7 +2150,7 @@ Helps with autocompleting usernames, issue numbers, etc."
                    (not (string-empty-p char))
                    char)))
     (setq-local consult-gh--commit-comment-start-save comment-start)
-  (setq-local comment-start (or char consult-gh-commit-messgae-ignore-char))))
+  (setq-local comment-start (or char consult-gh-commit-message-ignore-char))))
 
 (defun consult-gh-commit-message-mode-off ()
   "Disable `consult-gh-topics-edit-mode'."
@@ -5457,7 +5457,7 @@ This command submits the content of the COMMENT string github api for topic
 of TYPE (e.g. issue, pr, ...) and id NUMBER.
 
 Description of Arguments:
-  REPO   a string; full name of target epository
+  REPO   a string; full name of target repository
   TARGET a string; TARGET topic (e.g. issue, pr, review ...)
   NUMBER a string; id number for issue, pr, or ..."
   (let* ((args (list "api" "-X" "POST"))
@@ -5706,7 +5706,7 @@ the buffer-local variable for `consult-gh--topic'."
 REPO must be a Github repository full name
 for example “armindarvish/consult-gh”.
 
-INITIAL is passed as :inital to `consult--read'.
+INITIAL is passed as :initial to `consult--read'.
 
 REQUIRE-MATCH is passed as :require-match to `consult--read'.
 
@@ -6106,7 +6106,7 @@ Description of Arguments:
   "Submit commit by forking REPO and creating a pull request.
 
 This is used when user does not have write access in REPO.  The REPO is
-first forked, then the changes are commited in the fork and pull
+first forked, then the changes are committed in the fork and pull
 request is made to merge the new branch in the fork back to REF in
 REPO.
 
@@ -7470,7 +7470,7 @@ Description of Arguments:
   "Submit rename commit by forking REPO and creating a pull request.
 
 This is used when user does not have write access in REPO.  The REPO is
-first forked, then the changes are commited in the fork and pull
+first forked, then the changes are committed in the fork and pull
 request is made to merge the new branch in the fork back to REF in
 REPO.
 
@@ -9085,7 +9085,7 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
                     (consult-gh-find-file (string-remove-prefix "/" (string-remove-suffix ".git" (match-string 1 urlpath))) module-sha))
                     ((string-match "git@.*gitlab.com:\\(?1:.*\\)" urlpath)
                      (let ((submodule-link (format "https://gitlab.com/%s" (match-string 1 urlpath))))
-                        (and (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to open the link:  %s in the browser? " (propertize submodule-link 'face 'consult-gh-wraning)))
+                        (and (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to open the link:  %s in the browser? " (propertize submodule-link 'face 'consult-gh-warning)))
                          (funcall (or consult-gh-browse-url-func #'browse-url) submodule-link))))
                     (t
                       (message "Do not know how to open the submodule: %s" git-url)))))))))))))
@@ -9803,7 +9803,7 @@ When NOCONFIRM is non-nil, does not ask for confirmation."
             (repo-confirm (read-string (format "Type %s to confirm deleting repo: " (propertize repo 'face 'consult-gh-repo)))))
       (while (and (not (equal repo repo-confirm)) (< try 3))
                         (setq try (1+ try))
-                        (setq repo-confirm (read-string (format "Try %s. Try again and type %s to confirm deleting repo: " (propertize (format "%s/3" try) 'face 'consult-gh-wraning) (propertize repo 'face 'consult-gh-repo)))))
+                        (setq repo-confirm (read-string (format "Try %s. Try again and type %s to confirm deleting repo: " (propertize (format "%s/3" try) 'face 'consult-gh-warning) (propertize repo 'face 'consult-gh-repo)))))
       (if (not (equal repo repo-confirm))
                (message "Did not get confirmation in 3 trials. Canceled!")
         (setq noconfirm (equal repo repo-confirm)))))
@@ -9848,7 +9848,7 @@ When NOCONFIRM is non-nil, does not ask for confirmation."
             (repo-confirm (read-string (format "Type %s to confirm renaming repo: " (propertize new-name 'face 'consult-gh-repo)))))
       (while (and (not (equal new-name repo-confirm)) (< try 3))
                         (setq try (1+ try))
-                        (setq repo-confirm (read-string (format "Try %s. Try again and type %s to confirm renaming repo: " (propertize (format "%s/3" try) 'face 'consult-gh-wraning) (propertize new-name 'face 'consult-gh-repo)))))
+                        (setq repo-confirm (read-string (format "Try %s. Try again and type %s to confirm renaming repo: " (propertize (format "%s/3" try) 'face 'consult-gh-warning) (propertize new-name 'face 'consult-gh-repo)))))
       (if (not (equal new-name repo-confirm))
                (message "Did not get confirmation in 3 trials. Canceled!")
         (setq noconfirm (equal new-name repo-confirm)))))
@@ -17811,7 +17811,7 @@ Description of Arguments:
                                (expand-file-name filename save-path)
                              save-path)))
            (consult-gh--files-save-file repo path save-path ref)))
-        (_ (message "%s" (format "consult-gh: cannot save %s on local disk becuase it is a %s" (propertize path 'face 'consult-gh-warning)  (propertize mode 'face 'consult-gh-warning)))
+        (_ (message "%s" (format "consult-gh: cannot save %s on local disk because it is a %s" (propertize path 'face 'consult-gh-warning)  (propertize mode 'face 'consult-gh-warning)))
                                    nil)))
 
 (defun consult-gh-dired--find-file (repo path mode &optional ref no-select tempdir find-func)
@@ -17862,7 +17862,7 @@ Description of Arguments:
                     (consult-gh-dired (string-remove-prefix "/" (string-remove-suffix ".git" (match-string 1 urlpath))) nil module-sha))
                     ((string-match "git@.*gitlab.com:\\(?1:.*\\)" urlpath)
                      (let ((submodule-link (format "https://gitlab.com/%s" (match-string 1 urlpath))))
-                        (and (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to open the link:  %s in the browser? " (propertize submodule-link 'face 'consult-gh-wraning)))
+                        (and (y-or-n-p (format "Cannot open that submodule in consult-gh.  Do you want to open the link:  %s in the browser? " (propertize submodule-link 'face 'consult-gh-warning)))
                     (funcall (or consult-gh-browse-url-func #'browse-url) submodule-link))))
                     (t
                       (message "Do not know how to open the submodule: %s" git-url)))))))))
@@ -21246,7 +21246,7 @@ For more details refer to the manual with “gh release create --help”."
               (body (consult-gh--format-text-for-mode body))
               (buffer (format "*consult-gh-release-create: %s" repo)))
          ;; add properties to consult-gh--topic
-         (add-text-properties 0 1 (list :title title :tagname tagname :type type :target target :isComment nil :new t :repo (substring-no-properties repo) :author author :inital-body body) topic)
+         (add-text-properties 0 1 (list :title title :tagname tagname :type type :target target :isComment nil :new t :repo (substring-no-properties repo) :author author :initial-body body) topic)
 
 
          (consult-gh--completion-set-all-fields repo topic canwrite)
@@ -21488,7 +21488,7 @@ For more details refer to the manual with “gh release edit --help”."
 
 ;;;###autoload
 (defun consult-gh-release-download (&optional repo tagname)
-  "Download teh release with TAGNAME from REPO.
+  "Download the release with TAGNAME from REPO.
 
 This mimicks the same function as running
 “gh release download TGNAME --repo REPO” in the terminal.
@@ -22319,7 +22319,7 @@ buffer generated by commands such as `consult-gh-pr-create',
 `consult-gh-pr-review', or `consult-gh-topics-comment-create'.
 TOPIC defaults to `consult-gh--topic'.
 
-This funciton uses `consult-gh-browse-url-func' for opening a url in the
+This function uses `consult-gh-browse-url-func' for opening a url in the
 browser."
   (interactive "P" consult-gh-pr-view-mode consult-gh-issue-view-mode consult-gh-workflow-view-mode consult-gh-commit-view-mode consult-gh-misc-view-mode)
   (consult-gh-with-host
