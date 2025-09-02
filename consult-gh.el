@@ -4180,7 +4180,7 @@ Completes “assignees:.*” for adding assignees."
   (let* ((topic consult-gh--topic)
          (candidates (completion-table-dynamic
                       (lambda (_)
-                         (cl-remove-duplicates (delq nil (get-text-property 0 :assignable-users topic))))))
+                         (cl-remove-duplicates (delq nil (append (list "@copilot") (get-text-property 0 :assignable-users topic)))))))
         (begin (save-excursion
                   (cond
                    ((looking-back ", " (- (point) 2))
@@ -11532,7 +11532,7 @@ ISSUE defaults to `consult-gh--topic'."
          (labels (get-text-property 0 :labels issue))
          (milestone (get-text-property 0 :milestone issue))
          (projects  (get-text-property 0 :projects issue))
-         (valid-assignees (append (get-text-property 0 :assignable-users issue) (list "@me")))
+         (valid-assignees (append (get-text-property 0 :assignable-users issue) (list "@me" "@copilot")))
          (valid-labels (get-text-property 0 :valid-labels issue))
          (valid-projects (get-text-property 0 :valid-projects issue))
          (valid-milestones (get-text-property 0 :valid-milestones issue)))
@@ -11600,7 +11600,7 @@ This is used when creating new issues for REPO."
       (and (y-or-n-p "Would you like to add assignees?")
            (let* ((table (or (get-text-property 0 :assignable-users issue)
                               (consult-gh--get-assignable-users repo)))
-                  (users (append (list "@me") table))
+                  (users (append (list "@me" "@copilot") table))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Users: " users)) :test #'equal)))
                   (consult-gh-topics--create-add-metadata-header "assignees" selection nil issue meta)))
 
@@ -13192,7 +13192,7 @@ PR defaults to `consult-gh--topic'."
          (labels (get-text-property 0 :labels pr))
          (milestone (get-text-property 0 :milestone pr))
          (projects  (get-text-property 0 :projects pr))
-         (valid-assignees (append (get-text-property 0 :assignable-users pr) (list "@me")))
+         (valid-assignees (append (get-text-property 0 :assignable-users pr) (list "@me" "@copilot")))
          (valid-reviewers (delq author (append (get-text-property 0 :assignable-users pr) (list "@me"))))
          (valid-labels (get-text-property 0 :valid-labels pr))
          (valid-projects (get-text-property 0 :valid-projects pr))
@@ -13330,7 +13330,7 @@ This is used for creating new pull requests."
            (let* ((table (or (get-text-property 0 :assignable-users pr)
                              (and (not (member :assignable-users (text-properties-at 0 pr)))
                                   (consult-gh--get-assignable-users repo))))
-                  (users (append (list "@me") table))
+                  (users (append (list "@me" "@copilot") table))
                   (selection (cl-remove-duplicates (delq nil (completing-read-multiple "Select Users: " users)) :test #'equal)))
 
 (consult-gh-topics--create-add-metadata-header "assignees" selection nil pr meta)))
