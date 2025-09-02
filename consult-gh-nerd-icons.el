@@ -59,7 +59,7 @@
     (milestone . (nerd-icons-octicon "nf-oct-milestone" 'consult-gh-branch))
     (project . (nerd-icons-mdicon "nf-md-rocket" 'consult-gh-package))
     (tag . (nerd-icons-faicon "nf-fa-barcode" 'consult-gh-pr))
-    (star . (nerd-icons-octicon "nf-oct-star" 'consult-gh-highligt-match))
+    (star . (nerd-icons-octicon "nf-oct-star" 'consult-gh-highlight-match))
     (topic . (nerd-icons-mdicon "nf-md-focus_field" 'consult-gh-description))
     (dired-dir . (nerd-icons-mdicon "nf-md-folder" 'consult-gh-dired-directory))
     (dired-file . (nerd-icons-mdicon "nf-md-file" 'consult-gh-dired-file))
@@ -158,7 +158,7 @@
       'default)))
 
 (defun consult-gh-nerd-icons-get-icon-for-dir (name)
-  "Return the face for a file NAME."
+  "Return the icon for a directory."
   (if (stringp name)
   (nerd-icons-icon-for-dir name :face 'consult-gh-dired-directory)))
 
