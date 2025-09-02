@@ -384,7 +384,7 @@ whether to filter comments or not."
 (defcustom consult-gh-issues-show-comments-in-view t
   "Whether to include comments in `consult-gh--issue-view'?
 
-Not including comments make viewing long issues faster.
+Not including comments makes viewing long issues faster.
 
 Common options include:
  - \='t       Ask user how many comments to show
@@ -458,7 +458,7 @@ The possible options are “open”, “closed”, “merged”, or “all”."
 (defcustom consult-gh-prs-show-commits-in-view nil
   "Whether to include all commits in `consult-gh--pr-view'?
 
-Not including all commits make viewing long PRs faster.  Note that
+Not including all commits makes viewing long PRs faster.  Note that
 when commits are hidden `consult-gh-pr-view-commits'
 can be used to load all commits."
   :group 'consult-gh
@@ -467,7 +467,7 @@ can be used to load all commits."
 (defcustom consult-gh-prs-show-file-changes-in-view t
   "Whether to include file change diff in `consult-gh--pr-view'?
 
-Not including file changes make viewing long PRs faster.  Note that
+Not including file changes makes viewing long PRs faster.  Note that
 when file changes are hidden `consult-gh-pr-view-file-changes'
 can be used to load all comments."
   :group 'consult-gh
@@ -476,7 +476,7 @@ can be used to load all comments."
 (defcustom consult-gh-prs-show-comments-in-view t
   "Whether to include comments in `consult-gh--pr-view'?
 
-Not including comments make viewing long PRs faster.
+Not including comments makes viewing long PRs faster.
 
 Common options include:
  - \='t       Ask user how many comments to show
@@ -510,7 +510,7 @@ Common options include:
 (defcustom consult-gh-commits-show-comments-in-view t
   "Whether to include comments in `consult-gh--commit-view'?
 
-Not including comments make viewing long commits faster.
+Not including comments makes viewing long commits faster.
 
 Common options include:
  - \='t       Ask user how many comments to show
@@ -749,7 +749,7 @@ This is used as a prefix for pull requests in
 
 
 (defcustom consult-gh-branch-icon " "
-  "Icon used for milestones.
+  "Icon used for branches.
 
 This is used as a prefix for milestones in
 `consult-gh--topics-edit-capf'."
@@ -3067,7 +3067,7 @@ When INCLUDE-USER is non-nil, add the name of the user to the list."
 (defun consult-gh--get-user-template-repos (&optional user)
   "List template repository for USER.
 
-When USER is nil, the curent authenticated user is used instead."
+When USER is nil, the current authenticated user is used instead."
   (let ((endpoint (if user (format "users/%s/repos" user) "user/repos")))
     (delq nil (mapcar (lambda (item) (when (eq (gethash :is_template item) t)
                                        (gethash :full_name item)))
@@ -3670,7 +3670,7 @@ When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
                                   :cmd-args (list "issue" "list" "--repo" repo "--state" "all" "--limit" consult-gh-completion-max-items "--search" "sort:updated" "--json" "number,title")))))
 
 (defun consult-gh--completion-set-prs (&optional topic repo)
-  "Make async process to get list of pullrequests of REPO in TOPIC.
+  "Make async process to get list of pull requests of REPO in TOPIC.
 
 When TOPIC is nil, uses buffer-local variable `consult-gh--topic'."
   (let* ((topic (or topic consult-gh--topic))
@@ -5163,7 +5163,7 @@ Description of Arguments:
   TAGNAME            a string; tag name for a release
   DRAFT              a boolean; whether release is a draft
   PRERELEASE         a boolean; whether release is a prerelease
-  CANWRITE           a boolean; whether the curent user has write
+  CANWRITE           a boolean; whether the current user has write
                      permission on topic"
 
   (let* ((type (get-text-property 0 :type topic))
@@ -6062,7 +6062,7 @@ Description of Arguments:
   REPO           a string; full name of repository
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
 
   (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
@@ -6116,7 +6116,7 @@ Description of Arguments:
   REPO           a string; full name of repository to fork
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
 
   (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
@@ -6183,7 +6183,7 @@ Description of Arguments:
   REPO           a string; full name of repository
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)
   API-RESPONSE   a cons; api response from “repos/REPO/contents/FILE”
                  where car is the response code, and the cdr is the
@@ -6235,7 +6235,7 @@ Description of Arguments:
   REPO           a string; full name of repository
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
   (pcase-let* ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))))
                (canwrite (consult-gh--user-canwrite repo))
@@ -6632,7 +6632,7 @@ Description of Arguments:
   FILES          a list strings; each string must be a path in REPO
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of the protected branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist
+  COMMITTER-INFO a plist; committer info plist
                  \(:name NAME :email EMAIL\)
   AUTHOR-INFO    a plist; author info plist
                  \(:name NAME :email EMAIL\)"
@@ -6682,7 +6682,7 @@ Description of Arguments:
   FILE           a string; path of file in REPO to delete
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
   (pcase-let* ((committer-name (when (hash-table-p committer-info) (gethash :name committer-info)))
                (committer-email (when (hash-table-p committer-info) (gethash :email committer-info)))
@@ -6738,7 +6738,7 @@ Description of Arguments:
   FILES          a list of strings; list of paths for files to delete
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
 
   (let* ((canwrite (consult-gh--user-canwrite repo))
@@ -7103,7 +7103,7 @@ Description of Arguments:
   PATH           a string; path of file to change
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of the protected branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist
+  COMMITTER-INFO a plist; committer info plist
                  \(:name NAME :email EMAIL\)
   AUTHOR-INFO    a plist; author info plist
                  \(:name NAME :email EMAIL\)
@@ -7155,7 +7155,7 @@ Description of Arguments:
   PARENT-PATH    a string; path of the parent directory in repo for file
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
 
   (let* ((file-name (file-name-nondirectory file))
@@ -7209,7 +7209,7 @@ Description of Arguments:
   PATH           a string; path of file to delete
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
 
   (pcase-let* ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))))
@@ -7426,7 +7426,7 @@ Description of Arguments:
   REPO           a string; full name of repository
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
 
   (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
@@ -7480,7 +7480,7 @@ Description of Arguments:
   REPO           a string; full name of repository to fork
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
 
   (let* ((user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
@@ -7547,7 +7547,7 @@ Description of Arguments:
   REPO               a string; full name of repository
   COMMIT-MESSAGE     a string; commit message
   REF                a string; name of branch ref for commit
-  COMMITTER-INFO     a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO     a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO        a plist; author info plist, (:name NAME :email EMAIL)"
 
   (let* ((repo (or repo (get-text-property 0 :repo file)))
@@ -7655,7 +7655,7 @@ Description of Arguments:
   REPO           a string; full name of repository
   COMMIT-MESSAGE a string; commit message
   REF            a string; name of branch ref for commit
-  COMMITTER-INFO a plist; commiter info plist, (:name NAME :email EMAIL)
+  COMMITTER-INFO a plist; committer info plist, (:name NAME :email EMAIL)
   AUTHOR-INFO    a plist; author info plist, (:name NAME :email EMAIL)"
   (pcase-let* ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))))
                (canwrite (consult-gh--user-canwrite repo))
@@ -9095,7 +9095,7 @@ set `consult-gh-file-action' to `consult-gh--files-view-action'."
 
 Optional argument REF is name of a branch or tag.
 When API-URL is non-nil, it is used to get file contents
-instea dof repo and path.  This is useful for example for
+instead of repo and path.  This is useful for example for
 getting contents of files in a specific commit."
   (let* ((ref (or ref "HEAD"))
          (save-path (file-truename targetpath))
@@ -9810,7 +9810,7 @@ When NOCONFIRM is non-nil, does not ask for confirmation."
     (if noconfirm
         (progn
           (consult-gh--command-to-string "repo" "delete" repo "--yes")
-          (message "repo %s was %s" (propertize repo 'face 'consult-gh-repo) (propertize "DELTETED!" 'face 'consult-gh-warning)))))
+          (message "repo %s was %s" (propertize repo 'face 'consult-gh-repo) (propertize "DELETED!" 'face 'consult-gh-warning)))))
 
 (defun consult-gh--repo-delete-action (cand)
   "Delete a repo candidate, CAND.
@@ -13023,7 +13023,7 @@ set `consult-gh-pr-action' to `consult-gh--pr-view-diff-action'."
 (defun consult-gh-topics--pr-get-siblings (repo)
   "Get the siblings of REPO.
 
-Sinblings here means forks of the upstream repositories."
+Siblings here means forks of the upstream repositories."
   (let* ((current repo)
          (forks (list)))
     (while-let ((parent (consult-gh-topics--pr-get-parent repo)))
@@ -15287,7 +15287,7 @@ set `consult-gh-notificatios-action' to
   "Mark CAND as read.
 
 This is an internal action function that gets a notification candidate, CAND,
-from `consult-gh-notifications' and makrs it as read."
+from `consult-gh-notifications' and marks it as read."
   (when-let ((thread (get-text-property 0 :thread cand)))
     (when (consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH")
       (message "marked as read!"))))
@@ -15609,7 +15609,7 @@ When NOCONFIRM is non-nil, does not ask for confirmation."
 
   (and confirm
        (apply #'consult-gh--command-to-string "release" "delete" args)
-       (message "release %s in %s was %s" (propertize tagname 'face 'consult-gh-warning) (propertize repo 'face 'consult-gh-repo) (propertize "DELTETED!" 'face 'consult-gh-warning)))))
+       (message "release %s in %s was %s" (propertize tagname 'face 'consult-gh-warning) (propertize repo 'face 'consult-gh-repo) (propertize "DELETED!" 'face 'consult-gh-warning)))))
 
 (defun consult-gh--release-delete-action (cand)
   "Delete a release candidate, CAND.
@@ -16801,7 +16801,7 @@ see `consult-gh--workflow-view-action'."
   (let* ((canwrite (consult-gh--user-canwrite repo))
          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
          (_ (unless canwrite
-              (user-error "The curent user, %s, %s to enable a workflow in repo, %s"
+              (user-error "The current user, %s, %s to enable a workflow in repo, %s"
                           (propertize user 'face 'consult-gh-error)
                           (propertize "does not have permission" 'face 'consult-gh-error)
                           (propertize repo 'face 'consult-gh-repo))))
@@ -16828,7 +16828,7 @@ see `consult-gh--workflow-view-action'."
   (let* ((canwrite (consult-gh--user-canwrite repo))
          (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
          (_ (unless canwrite
-              (user-error "The curent user, %s, %s to enable a workflow in repo, %s"
+              (user-error "The current user, %s, %s to enable a workflow in repo, %s"
                           (propertize user 'face 'consult-gh-error)
                           (propertize "does not have permission" 'face 'consult-gh-error)
                           (propertize repo 'face 'consult-gh-repo))))
@@ -18377,7 +18377,7 @@ For more details refer to the manual with “gh repo edit --help”."
               (canadmin (consult-gh--user-canadmin repo))
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account)))))
          (if (not canadmin)
-             (message "The curent user, %s, %s to edit this repo" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
+             (message "The current user, %s, %s to edit this repo" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
            (funcall #'consult-gh--repo-view-action cand)
            (consult-gh-repo-edit-settings)))
      (let* ((topic consult-gh--topic)
@@ -18385,7 +18385,7 @@ For more details refer to the manual with “gh repo edit --help”."
             (canadmin (consult-gh--user-canadmin repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (if (not canadmin)
-                   (message "The curent user, %s, %s to edit this repo" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                   (message "The current user, %s, %s to edit this repo" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
             (owner (substring-no-properties (consult-gh--get-username repo)))
             (name (substring-no-properties (consult-gh--get-package repo)))
             (info (consult-gh--command-to-string "repo" "view" repo "--json" "description,visibility,repositoryTopics,hasDiscussionsEnabled,hasIssuesEnabled,hasProjectsEnabled,hasWikiEnabled,squashMergeAllowed,defaultBranchRef,deleteBranchOnMerge,isBlankIssuesEnabled,mergeCommitAllowed,rebaseMergeAllowed,isTemplate,homepageUrl"))
@@ -18448,7 +18448,7 @@ returned by `consult-gh-repo-list'."
               (canadmin (consult-gh--user-canadmin repo))
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account)))))
          (if (not canadmin)
-             (message "The curent user, %s, %s to edit readme of that repo" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
+             (message "The current user, %s, %s to edit readme of that repo" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
            (when cand
              (with-current-buffer (funcall #'consult-gh--repo-view-action cand)
              (consult-gh-repo-edit-readme)))))
@@ -18929,7 +18929,7 @@ For more details refer to the manual with “gh issue edit --help”."
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
               (isAuthor (consult-gh--user-isauthor issue)))
          (if (not (or canwrite isAuthor))
-             (message "The curent user, %s, %s to edit this issue" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
+             (message "The current user, %s, %s to edit this issue" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
            (with-current-buffer
                (funcall #'consult-gh--issue-view-action issue)
              (consult-gh-issue-edit))))
@@ -18939,7 +18939,7 @@ For more details refer to the manual with “gh issue edit --help”."
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (if (not (or canwrite isAuthor))
-                   (message "The curent user, %s, %s to edit this issue" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                   (message "The current user, %s, %s to edit this issue" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
             (number (get-text-property 0 :number issue))
             (title (get-text-property 0 :title issue))
             (body (get-text-property 0 :body issue))
@@ -19755,7 +19755,7 @@ For more details refer to the manual with “gh pr edit --help”."
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
               (isAuthor (consult-gh--user-isauthor pr)))
          (if (not (or canwrite isAuthor))
-             (message "The curent user, %s, %s to edit this pull request" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
+             (message "The current user, %s, %s to edit this pull request" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
            (with-current-buffer (funcall #'consult-gh--pr-view-action pr)
            (consult-gh-pr-edit))))
      (let* ((pr consult-gh--topic)
@@ -19764,7 +19764,7 @@ For more details refer to the manual with “gh pr edit --help”."
             (canwrite (consult-gh--user-canwrite baserepo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (if (not (or canwrite isAuthor))
-                   (message "The curent user, %s, %s to edit this pull request" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                   (message "The current user, %s, %s to edit this pull request" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
             (number (get-text-property 0 :number pr))
             (newtopic (format "%s/#%s" baserepo number))
             (title (get-text-property 0 :title pr))
@@ -19819,7 +19819,7 @@ buffer created by `consult-gh--pr-view'."
               (canwrite (consult-gh--user-canwrite repo))
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
               (_ (if (not canwrite)
-                     (message "The user, %s, %s to merege PRs in that repository" (propertize user 'face 'consult-gh-user) (propertize "does not have permissions" 'face 'consult-gh-error))))
+                     (message "The user, %s, %s to merge PRs in that repository" (propertize user 'face 'consult-gh-user) (propertize "does not have permissions" 'face 'consult-gh-error))))
               (pr (or pr (consult-gh-pr-list repo t))))
          (funcall #'consult-gh--pr-view-action pr)
          (consult-gh-pr-merge))
@@ -19829,7 +19829,7 @@ buffer created by `consult-gh--pr-view'."
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (if (not canwrite)
-                   (message "The user, %s, %s to merege PRs in that repository" (propertize user 'face 'consult-gh-user) (propertize "does not have permissions" 'face 'consult-gh-error))))
+                   (message "The user, %s, %s to merge PRs in that repository" (propertize user 'face 'consult-gh-user) (propertize "does not have permissions" 'face 'consult-gh-error))))
             (number (get-text-property 0 :number pr))
             (state (get-text-property 0 :state pr)))
 
@@ -20175,7 +20175,7 @@ Description of Arguments:
   REPO          a string; repository's full name
                 \(e.g., armindarvish/consult-gh\)
   REF           a propertized string; branch name, tag name or commit sha
-                The ref should have a property :type to specifiy whether
+                The ref should have a property :type to specify whether
                 it is a “branch”, “tag”, or “sha”.
   PATH          a string; when non-nil search is done relative to PATH
   INITIAL       a string; used as initial input in searching files
@@ -20379,7 +20379,7 @@ When COMMIT-BUFFER is non-nil, use it for commiting the edits."
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
               (canwrite (consult-gh--user-canwrite repo))
               (_ (unless canwrite
-                   (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                   (user-error "The current user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
               (file (or file
                         (and consult-gh--topic
                              (equal (get-text-property 0 :type consult-gh--topic) "file")
@@ -20405,7 +20405,7 @@ When COMMIT-BUFFER is non-nil, use it for commiting the edits."
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (unless canwrite
-                 (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error)))))
+                 (user-error "The current user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error)))))
 
 
        (when (and (stringp ref)
@@ -20455,7 +20455,7 @@ If CONTENT is non-nil insert it in the file buffer."
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (unless canwrite
-               (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+               (user-error "The current user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (ref (or (get-text-property 0 :ref file)
                    (substring-no-properties (consult-gh--read-branch repo nil nil nil t))
                    (or consult-gh-default-branch-to-load "HEAD")))
@@ -20534,7 +20534,7 @@ path of each file to delete.  For example see the buffer-local-variable
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (if (not canwrite)
-                 (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                 (user-error "The current user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (ref (or (get-text-property 0 :ref file)
                    (get-text-property 0 :ref (consult-gh--read-branch repo nil nil t nil))
                    (or consult-gh-default-branch-to-load "HEAD")))
@@ -20595,7 +20595,7 @@ buffer-local-variable `consult-gh--topic' in a buffer created by
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (if (not canwrite)
-                 (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                 (user-error "The current user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (ref (or (and (stringp topic) (get-text-property 0 :ref topic))
                    (substring-no-properties (consult-gh--read-branch repo nil nil nil t))
                    (or consult-gh-default-branch-to-load "HEAD")))
@@ -20658,7 +20658,7 @@ path of the file to delete.  For example see the buffer-local-variable
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (if (not canwrite)
-                 (user-error "The curent user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                 (user-error "The current user, %s, %s to edit this file" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (ref (or (get-text-property 0 :ref file)
                    (get-text-property 0 :ref (consult-gh--read-branch repo nil nil t nil))
                    (or consult-gh-default-branch-to-load "HEAD")))
@@ -21222,7 +21222,7 @@ For more details refer to the manual with “gh release create --help”."
           (author (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account)))))
 
      (if (not canwrite)
-         (message "The curent user, %s, %s to create a release in that repo" (propertize author 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
+         (message "The current user, %s, %s to create a release in that repo" (propertize author 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
        (let* ((tags (consult-gh--repo-get-tags repo t))
               (tagname (or tagname (consult--read tags
                                           :prompt "Select/Create a tag: ")))
@@ -21318,7 +21318,7 @@ For more details refer to the manual with “gh release edit --help”."
                       (consult-gh-release-list (if canwrite repo) t)))
               (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account)))))
          (if (not canwrite)
-             (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
+             (message "The current user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))
            (funcall #'consult-gh--release-view-action release)
            (consult-gh-release-edit)))
      (let* ((release consult-gh--topic)
@@ -21326,7 +21326,7 @@ For more details refer to the manual with “gh release edit --help”."
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (if (not canwrite)
-                   (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                   (message "The current user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
             (tagname (get-text-property 0 :tagname release))
             (title (get-text-property 0 :title release))
             (target (get-text-property 0 :target release))
@@ -21367,7 +21367,7 @@ For more details refer to the manual with “gh release edit --help”."
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (if (not canwrite)
-                 (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                 (message "The current user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (tagname (get-text-property 0 :tagname release))
           (args (list "release" "edit" tagname "--repo" repo "--draft")))
      (when (and canwrite (equal type "release"))
@@ -21393,7 +21393,7 @@ For more details refer to the manual with “gh release edit --help”."
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (if (not canwrite)
-                 (user-error "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                 (user-error "The current user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (tagname (get-text-property 0 :tagname release))
           (prerelease (get-text-property 0 :prerelease release))
           (prerelease (if (or (equal prerelease :false)
@@ -21433,7 +21433,7 @@ For more details refer to the manual with “gh release edit --help”."
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (if (not canwrite)
-                 (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                 (message "The current user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (tagname (get-text-property 0 :tagname release))
           (draft (get-text-property 0 :draft release))
           (draft (if (or (equal draft :false)
@@ -21472,7 +21472,7 @@ For more details refer to the manual with “gh release edit --help”."
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (if (not canwrite)
-                 (message "The curent user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
+                 (message "The current user, %s, %s to edit this release" (propertize user 'face 'consult-gh-error) (propertize "does not have permission" 'face 'consult-gh-error))))
           (tagname (get-text-property 0 :tagname release))
           (args (list "release" "edit" tagname "--repo" repo "--draft=false" "--latest=false")))
      (when (and canwrite (equal type "release"))
@@ -21694,7 +21694,7 @@ returned by `consult-gh-workflow-list'."
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (unless canwrite
-                   (user-error "The curent user, %s, %s to enable a workflow in repo, %s"
+                   (user-error "The current user, %s, %s to enable a workflow in repo, %s"
                           (propertize user 'face 'consult-gh-error)
                           (propertize "does not have permission" 'face 'consult-gh-error)
                           (propertize repo 'face 'consult-gh-repo))))
@@ -21723,7 +21723,7 @@ returned by `consult-gh-workflow-list'."
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (unless canwrite
-                   (user-error "The curent user, %s, %s to disable a workflow in repo, %s"
+                   (user-error "The current user, %s, %s to disable a workflow in repo, %s"
                           (propertize user 'face 'consult-gh-error)
                           (propertize "does not have permission" 'face 'consult-gh-error)
                           (propertize repo 'face 'consult-gh-repo))))
@@ -21754,7 +21754,7 @@ tagname that contains the version of WORKFLOW to run."
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (unless canwrite
-                   (user-error "The curent user, %s, %s to run a workflow in repo, %s"
+                   (user-error "The current user, %s, %s to run a workflow in repo, %s"
                           (propertize user 'face 'consult-gh-error)
                           (propertize "does not have permission" 'face 'consult-gh-error)
                           (propertize repo 'face 'consult-gh-repo))))
@@ -21786,7 +21786,7 @@ tagname or commit sha that contains the version of WORKFLOW to edit."
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (unless canwrite
-                   (user-error "The curent user, %s, %s to edit a workflow in repo, %s"
+                   (user-error "The current user, %s, %s to edit a workflow in repo, %s"
                           (propertize user 'face 'consult-gh-error)
                           (propertize "does not have permission" 'face 'consult-gh-error)
                           (propertize repo 'face 'consult-gh-repo))))
@@ -21820,7 +21820,7 @@ tagname or commit sha that contains the version of WORKFLOW to edit."
           (canwrite (consult-gh--user-canwrite repo))
           (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
           (_ (unless canwrite
-               (user-error "The curent user, %s, %s to create a workflow in repo, %s"
+               (user-error "The current user, %s, %s to create a workflow in repo, %s"
                            (propertize user 'face 'consult-gh-error)
                            (propertize "does not have permission" 'face 'consult-gh-error)
                            (propertize repo 'face 'consult-gh-repo))))
@@ -21865,7 +21865,7 @@ tagname or commit sha that contains the version of WORKFLOW to edit."
             (canwrite (consult-gh--user-canwrite repo))
             (user (or (car-safe consult-gh--auth-current-account) (car-safe (consult-gh--auth-current-active-account))))
             (_ (unless canwrite
-                   (user-error "The curent user, %s, %s to edit a workflow in repo, %s"
+                   (user-error "The current user, %s, %s to edit a workflow in repo, %s"
                           (propertize user 'face 'consult-gh-error)
                           (propertize "does not have permission" 'face 'consult-gh-error)
                           (propertize repo 'face 'consult-gh-repo))))
@@ -22535,7 +22535,7 @@ If PROMPT is non-nil, use it as the query prompt."
 (defun consult-gh--search-commits-transform (input)
   "Add annotation to commit candidates in `consult-gh-search-commits'.
 
-Format each candidates with `consult-gh--search-comits-format' and INPUT."
+Format each candidates with `consult-gh--search-commits-format' and INPUT."
   (lambda (cands)
     (cl-loop for cand in cands
              collect
@@ -23418,7 +23418,7 @@ see `consult-gh-dired-find-file'."
                                                                                new-path)
                                                           (if (not (equal new-path path))
                                                               new-path
-                                                            (message "Skipping %s beacuse %s" (propertize path 'face 'consult-gh-date) (propertize "The new file path is the same as old one for this file!" 'face 'warning))))))))))
+                                                            (message "Skipping %s because %s" (propertize path 'face 'consult-gh-date) (propertize "The new file path is the same as old one for this file!" 'face 'warning))))))))))
             (consult-gh--rename-commit files-list repo ref)))))
     (message "Not in a `consult-gh-dired-mode' buffer!")))
 

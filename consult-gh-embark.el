@@ -397,7 +397,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
        (message "No user at point!")))))
 
 (defun consult-gh-embark-view-prs-involves-user (cand)
-  "Search pullrequests involving the user in CAND."
+  "Search pull requests involving the user in CAND."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
@@ -509,7 +509,7 @@ CAND can be a repo, issue, PR, file path, ..."
        (kill-new (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser"))  ".git"))))))
 
 (defun consult-gh-embark-copy-ssh-link-as-kill (cand)
-  "Copy shh link of CAND to `kill-ring'."
+  "Copy ssh link of CAND to `kill-ring'."
   (when (stringp cand)
     (consult-gh-with-host
      (consult-gh--auth-account-host)
@@ -680,7 +680,7 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
                      (t "")))))
         (message "No link found for user at point!")))))
 
-;;;; Svae/Clone/Fork Actions
+;;;; Save/Clone/Fork Actions
 
 (defun consult-gh-embark-clone-repo (cand)
   "Clone the CAND repo at point."
@@ -1148,7 +1148,7 @@ uses `compose-mail' for composing an email."
   :doc "Keymap for bookmarking repos menu"
   :parent nil
   "r" '("gh add repo to known repos" . consult-gh-embark-add-repo-to-known-repos)
-  "k" '("gh remove rpo from known repos" . consult-gh-embark-remove-repo-from-known-repos)
+  "k" '("gh remove repo from known repos" . consult-gh-embark-remove-repo-from-known-repos)
   "w" '("gh add repo to workflow template repos" . consult-gh-embark-add-repo-to-workflow-template-list)
   "W" '("gh remove repo from workflow template repos" . consult-gh-embark-remove-repo-from-workflow-template-list))
 
@@ -1703,7 +1703,7 @@ uses `compose-mail' for composing an email."
       (consult-gh-embark--mode-on)
     (consult-gh-embark--mode-off)))
 
-;;; Provide `consul-gh-embark' module
+;;; Provide `consult-gh-embark' module
 
 (provide 'consult-gh-embark)
 
