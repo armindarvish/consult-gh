@@ -2345,7 +2345,8 @@ Helps with autocompleting usernames, issue numbers, etc."
   "<mouse-2>" #'consult-gh-dired-mouse-find-file-other-window
   "v" #'consult-gh-dired-file-view
   "<remap> <undo>" #'consult-gh-dired-undo
-  "<remap> <advertised-undo>" #'consult-gh-dired-undo)
+  "<remap> <advertised-undo>" #'consult-gh-dired-undo
+  "q" #'quit-window)
 #+end_src
 
 ***** setup for evil
@@ -2394,7 +2395,8 @@ Helps with autocompleting usernames, issue numbers, etc."
       (kbd "g 0") #'consult-gh-dired-find-file-other-window
       (kbd "o") #'consult-gh-dired-find-file-other-window
       (kbd "g o") #'consult-gh-dired-file-view
-      (kbd "g r") #'consult-gh-dired-revert)
+      (kbd "g r") #'consult-gh-dired-revert
+      (kbd "q") #'quit-window)
          (setq consult-gh--dired-setup-for-evil-done t))))
 #+end_src
 ***** define derived mode
