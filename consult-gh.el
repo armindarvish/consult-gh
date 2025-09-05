@@ -2248,7 +2248,8 @@ Helps with autocompleting usernames, issue numbers, etc."
   "<mouse-2>" #'consult-gh-dired-mouse-find-file-other-window
   "v" #'consult-gh-dired-file-view
   "<remap> <undo>" #'consult-gh-dired-undo
-  "<remap> <advertised-undo>" #'consult-gh-dired-undo)
+  "<remap> <advertised-undo>" #'consult-gh-dired-undo
+  "q" #'quit-window)
 
 (defvar consult-gh--dired-setup-for-evil-done nil
 "Whether the evil key binding setup has been done.")
@@ -2294,7 +2295,8 @@ Helps with autocompleting usernames, issue numbers, etc."
       (kbd "g 0") #'consult-gh-dired-find-file-other-window
       (kbd "o") #'consult-gh-dired-find-file-other-window
       (kbd "g o") #'consult-gh-dired-file-view
-      (kbd "g r") #'consult-gh-dired-revert)
+      (kbd "g r") #'consult-gh-dired-revert
+      (kbd "q") #'quit-window)
          (setq consult-gh--dired-setup-for-evil-done t))))
 
 (define-derived-mode consult-gh-dired-mode fundamental-mode "consult-gh-dired"
