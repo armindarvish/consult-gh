@@ -2236,6 +2236,7 @@ Helps with autocompleting usernames, issue numbers, etc."
   "* C-n" #'consult-gh-dired-next-marked-file
   "$" #'consult-gh-dired-hide-subdir
   "M-$" #'consult-gh-dired-hide-all
+  "TAB" #'consult-gh-dired-hide-subdir
   "<backtab>" #'consult-gh-dired-fold-cycle
   "(" #'consult-gh-dired-hide-details
   "RET" #'consult-gh-dired-find-file
