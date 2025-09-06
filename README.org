@@ -3,6 +3,7 @@
 
 #+TITLE: consult-gh - A [[https://cli.github.com/][GitHub CLI]] client inside GNU Emacs using [[https://github.com/minad/consult][Consult]]
 #+AUTHOR: Armin Darvish
+#+VERSION: 3.0
 #+LANGUAGE: en
 
 #+html: <a href="https://github.com/armindarvish"><img alt="Armin Darvish" src="https://img.shields.io/static/v1?label=Armin%20Darvish&message=consult-gh&color=00A8B0&logo=github"/></a>
@@ -29,6 +30,7 @@
   - [[#searching/viewing-issues-or-pull-requests][Searching/Viewing Issues or Pull Requests]]
   - [[#commenting-on-issues-and-pull-requests][Commenting on Issues and Pull Requests]]
   - [[#browsing-files-in-a-repository][Browsing Files in a Repository]]
+  - [[#directly-editing-files][Directly Editing Files]]
   - [[#searching-codes][Searching Codes]]
   - [[#creating-a-new-repository,-issue-or-pull-request-on-github][Creating a New Repository, Issue or Pull Request on GitHub]]
   - [[#managing-github-actions][Managing GitHub Actions]]
@@ -374,6 +376,8 @@ To open an issue or a pull request inside Emacs, make sure =consult-gh-issue-act
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-topics-create-comment.gif]]
 
 ** Browsing Files in a Repository
+
+*** using =consult-gh-find-file=
 In the screenshot below, I use =consult-gh-find-file= to browse files of a repository. The command first uses =consult-gh-search-repos= to get a repo, then asks the user to select a branch before showing a list of files in that repo and branch.
 
 
@@ -381,6 +385,26 @@ In the screenshot below, I use =consult-gh-find-file= to browse files of a repos
 #+ATTR_LATEX: :width 800px
 #+ATTR_HTML: :width 800px
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-find-file.gif]]
+
+*** using =consult-gh-dired=
+In the screenshot below, I use =consult-gh-dired= to browse all the files of a repository in a *dired-like* buffer and show how to mark files with =m= and submit commits to run actions such as deleting (bound to =D=) using familiar dired key bindings.
+
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-dired.gif]]
+
+
+** Directly Editing Files
+Since version 3.0, you can also directly edit files on GitHub by using commands like =consult-gh-edit-file=, =consult-gh-rename-file=, ... In the screenshot below, I show how you can edit a file and directly push it to GitHub (without cloning the whole repo locally).
+
+
+#+ATTR_ORG: :width 800px
+#+ATTR_LATEX: :width 800px
+#+ATTR_HTML: :width 800px
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/consult-gh-edit-file.gif]]
+
 
 
 ** Searching Codes
