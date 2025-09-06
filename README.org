@@ -62,16 +62,16 @@ For the latest news see [[file:CHANGELOG.org][The ChangeLog]].
 
 ** Main Functions and Interactive Commands
 
-=consult-gh= offers the following "MAIN" interactive commands
+=consult-gh= offers the following "MAIN" interactive commands (This is not a comprehensive list, just hte most commonly used commands).
 
 _Switch between accounts_:
 - =consult-gh-auth-switch=: Quickly switch between multiple logged in accounts.
 
 _List Repos, Issues or PRs_:
 
-- =consult-gh-repo-list=: Finds repositories for a given GitHub user/organization, similar to running =gh repo list= in the command line.
-- =consult-gh-issue-list=: Lists issues of a given GitHub repository, similar to running =gh issue list= in the command line.
-- =consult-gh-pr-list=: Lists pull requests of a given GitHub repository, similar to running =gh pr list= in the command line.
+- =consult-gh-repo-list=: Find repositories for a given GitHub user/organization, similar to running =gh repo list= in the command line.
+- =consult-gh-issue-list=: List issues of a given GitHub repository, similar to running =gh issue list= in the command line.
+- =consult-gh-pr-list=: List pull requests of a given GitHub repository, similar to running =gh pr list= in the command line.
 
 _Search Functions_:
 
@@ -82,7 +82,16 @@ _Search Functions_:
 
 _Browse File Contents_:
 
-- =consult-gh-find-file=: Find files within any branch of any repository.
+- =consult-gh-find-file=: Find and open a single file within any branch of any repository.
+- =consult-gh-dired=: Browse *whole* repositories in a *dired-like* buffer.
+
+_Create or Edit Files and Push to GitHub_:
+
+- =consult-gh-edit-file=: Edit a file and directly push the changes to GitHub.
+- =consult-gh-rename-file=: Rename a file and directly push the changes to GitHub.
+- =consult-gh-delete-file=: Delete a file and directly push the changes to GitHub.
+- =consult-gh-create-file=: Create a new file and directly push the changes to GitHub.
+- =consult-gh-upload-files=: Directly upload files to a repository on GitHub.
 
 _Quickly See Repositories of Favorite Users/Organizations_:
 
@@ -96,14 +105,24 @@ _Clone or Fork Repos_:
 
 _Create New Repos, Issues, or Pull Requests_:
 
-- =consult-gh-repo-create=: Create repos from scratch (or templates), or push existing git repositories to GitHub.
-- =consult-gh-issue-create=: Create new issues from within emacs on any repository.
-- =consult-gh-pr-create=: Create pull requests from within Emacs for any repository.
+- =consult-gh-repo-create=: Create a repo from scratch (or templates), or push existing git repositories to GitHub.
+- =consult-gh-issue-create=: Create a new issue from within emacs on any repository.
+- =consult-gh-pr-create=: Create a pull request from within Emacs for any repository.
 
 
 _Notifications and Dashboard_:
-- =consult-gh-dashboard=: Shows user's relevant work on GitHub (similar to [[https://github.com/dlvhdr/gh-dash][gh-dash]] extension)
-- =consult-gh-notifications=: Shows user's notifications and allows seeing and interacting with notifications inside Emacs.
+- =consult-gh-dashboard=: Show user's relevant work on GitHub (similar to [[https://github.com/dlvhdr/gh-dash][gh-dash]] extension)
+- =consult-gh-notifications=: Show user's notifications.
+
+_See GitHub Action Workflows and Runs or Create New Ones_:
+
+- =consult-gh-workflow-list=: Finds GitHub Action workflows of a repository
+- =consult-gh-workflow-edit=: Enable, Disable or edit the YAML file of a workflow.
+- =consult-gh-workflow-create=: Create a new GitHub Action workflow.
+- =consult-gh-workflow-run=: Manually run an action workflow
+- =consult-gh-run-list=: List the recent runs for a GitHub Action workflow
+- =consult-gh-run-rerun=: Re-run the last run of a GitHub Action workflow
+
 
 Furthermore, =consult-gh=, also provides a number of useful [[https://github.com/oantolin/embark][Embark]] actions (see examples below), as well as integration with [[https://github.com/magit/forge][magit/forge]] package.
 
@@ -236,14 +255,16 @@ Here is a good customization for great performance as well as functionality:
   (consult-gh-show-preview t)
   (consult-gh-preview-key "C-o")
   (consult-gh-repo-action #'consult-gh--repo-browse-files-action)
-  (consult-gh-issue-action #'consult-gh--issue-view-action)
-  (consult-gh-pr-action #'consult-gh--pr-view-action)
-  (consult-gh-code-action #'consult-gh--code-view-action)
-  (consult-gh-file-action #'consult-gh--files-view-action)
-  (consult-gh-notifications-action #'consult-gh--notifications-action)
-  (consult-gh-dashboard-action #'consult-gh--dashboard-action)
   (consult-gh-large-file-warning-threshold 2500000)
-  (consult-gh-prioritize-local-folder 'suggest)
+  (consult-gh-confirm-name-before-fork nil)
+  (consult-gh-confirm-before-clone t)
+  (consult-gh-notifications-show-unread-only nil)
+  (consult-gh-default-interactive-command #'consult-gh-transient)
+  (consult-gh-prioritize-local-folder 'nil)
+  (consult-gh-group-dashboard-by :reason)
+  ;;;; Optional
+  (consult-gh-repo-preview-major-mode nil) ; show readmes in their original format
+  (consult-gh-preview-major-mode 'org-mode) ; use 'org-mode for editing comments, commit messages, ...
   :config
   ;; Remember visited orgs and repos across sessions
   (add-to-list 'savehist-additional-variables 'consult-gh--known-orgs-list)
