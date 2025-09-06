@@ -3,6 +3,8 @@
 #+language: en
 
 * Development
+
+* Version 3.0 (2025-09-06)
 This is a major update that adds a whole bunch of new features, especially for viewing/editing files.
 
   - *Editing Files*:

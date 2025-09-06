@@ -21235,7 +21235,7 @@ For more details refer to the manual with “gh release create --help”."
                                                        :default tagname))))
               (title (and title (stringp title) (not (string-empty-p title)) (propertize title :consult-gh-draft-title t 'rear-nonsticky t)))
               (target (or target (consult-gh--read-branch repo nil "Select target branch: " nil t)))
-              (target (and (stringp target) (not (string-empty-p target)) (get-text-property :ref target)))
+              (target (and (stringp target) (not (string-empty-p target)) (get-text-property 0 :ref target)))
               (body (or body (consult--read (list (cons "Blank" "")
                                                   (cons "Use generated notes as template" :generate))
                                             :prompt "Release notes: "
@@ -21266,7 +21266,7 @@ For more details refer to the manual with “gh release create --help”."
   (consult-gh-with-host
    (consult-gh--auth-account-host)
   (let* ((release consult-gh--topic)
-         (type (get-text-property 0 :type release)))
+         (type (get-text-property 0 () :type release)))
     (if (equal type "release")
         (let* ((repo (get-text-property 0 :repo release))
                (meta (consult-gh-topics--release-get-metadata release))
