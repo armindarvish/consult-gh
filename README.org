@@ -550,6 +550,27 @@ The default keybindings are:
 | consult-gh-misc-view-mode     | C-c C-RET | consult-gh-topics-open-in-browser   | open the gh topic in the buffer in browser                                      |
 |                               | C-c C-k   | consult-gh-topics-cancel            | close/kill the buffer and/or window                                             |
 
+You can see the default keybindings for the =consult-gh-dired-mode= in the major mode's keymap: =consult-gh-dired-mode-map=. But some useful examples are
+
+
+| key   | command                                                 |
+|-------+---------------------------------------------------------|
+| RET   | open the file on currnet line                           |
+| m     | mark files on current line                              |
+| u     | unmark file on current line                             |
+| U     | unmark all marked files                                 |
+| t     | toggle marks (make marked files unmarked and vise versa |
+| D     | delete file                                             |
+| C     | copy file                                               |
+| R     | rename file                                             |
+| ^     | up directory                                            |
+| >     | jump to the next directory line                         |
+| <     | jump to the previous directory line                     |
+| TAB   | fold/unfold the directory on the current line           |
+| S-TAB | cycle folding level                                     |
+
+
+
 ** Embark Integration
 =consult-gh= also provides embark integration defined in =consult-gh-embark.el= If you use [[https://github.com/oantolin/embark][Embark]], you can use these commands for additional actions on items in consult-gh menu.
 For example, you can set your default action for repos bound to =consult-gh-repo-browse-url-action= which opens the repo's URL in a browser, but then call embark on any item for running alternative actions such as =consult-gh-repo-clone= or =consult-gh-repo-fork= etc. You can also call embark and select items with =embark-select= (by default bound to =SPC=) before running some commands on all of them, for example select multiple repos and run clone for all of them.
