@@ -666,6 +666,15 @@ In addition, with =consult-gh-with-pr-view=, you get one more customization vari
 **** =consult-gh-with-pr-review-confirm-account=
 Whether consult-gh-with-pr-review should ask for confirmation when choosing the account for authorization.  If this is set to =nil=, consult-gh uses the =gh= setting to get the account name and token for authorization. Otherwise, it compares the setting from =gh= with that of pr-review settings (e.g. the credentials stored in authinfo), and when they are different, queries the user to pick which account should be used.
 
+** Nerd-Icons Integration
+If you use  [[https://github.com/rainstormstudio/nerd-icons.el][nerd-icons.el]] , you can use =consult-gh-nerd-icons= to set the icons used in consult-gh (in completion functions or in =consult-gh-dired=). To do so, enable =consult-gh-nerd-icons-mode= by running =M-x consult-gh-nerd-icons-mode= or putting the following in your init file:
+#+begin_src emacs-lisp
+(require 'consult-gh-nerd-icons)
+(consult-gh-nerd-icons-mode +1)
+#+end_src
+
+*NOTE*: Currently, this dooes not work if you install consult-gh from MELPA. I am going to submit consult-gh-nerd-icons as a separate package to MELPA, but that is not done yet. For now this is only available if you use a package manager like Straight.el and install directly from consult-gh's repo.
+
 ** Transient Menu
 consult-gh provides a transient menu as well. It can be accessed by running =M-x consult-gh-transient= after loading consult-gh-transient module e.g. =(require 'consult-gh-transient)=. Here is a screenshot:
 
