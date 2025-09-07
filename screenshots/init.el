@@ -668,9 +668,7 @@ mouse-1: Display minor modes menu"
 
 (use-package consult-gh-forge
   :custom
-  (consult-gh-forge-timeout-seconds 20)
-  :config
-  (consult-gh-forge-mode +1))
+  (consult-gh-forge-timeout-seconds 20))
 
 (use-package consult-gh-with-pr-review)
 
