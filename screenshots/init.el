@@ -5,35 +5,24 @@
 (setq package-archives
       '(("elpa" . "https://elpa.gnu.org/packages/")
         ("melpa-stable" . "https://stable.melpa.org/packages/")
-        ("melpa" . "https://melpa.org/packages/")
-        ("org" . "https://orgmode.org/elpa/"))
-      tls-checktrust t
-      tls-program '("gnutls-cli --x509cafile %t -p %p %h")
-      gnutls-verify-error t
-      )
-;; Initializes the package infrastructure
+        ("melpa" . "https://melpa.org/packages/")))
+
 (package-initialize)
 (package-refresh-contents)
-
-;; Makes sure required packages get installed
 (setq use-package-always-ensure t)
 (setq enable-recursive-minibuffers t)
 
-(use-package savehist
-  :init
-  (savehist-mode 1))
-
+;; Looks
 (add-to-list 'default-frame-alist '(background-mode . light))
 (add-to-list 'default-frame-alist '(alpha . (95 85)))
 (add-to-list 'default-frame-alist '(inhibit-double-buffering . t))
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
-
 (menu-bar-mode -1)
 (tool-bar-mode -1)
 (tooltip-mode 1)
 (scroll-bar-mode -1)
 (set-fringe-mode 20)
-(setq linum-format "%3d \u2502 ");; format line number spacing
+(setq linum-format "%3d \u2502 ")
 (column-number-mode)
 (global-display-line-numbers-mode t)
 (global-visual-line-mode 1)
@@ -179,6 +168,7 @@
 
 (defun my:vc-mode-line (&optional file backend &rest args)
   "Set `vc-mode' to display type of version control for FILE.
+
 The value is set in the current buffer, which should be the buffer
 visiting FILE.
 If BACKEND is passed use it as the VC backend when computing the result."
@@ -237,23 +227,17 @@ If BACKEND is passed use it as the VC backend when computing the result."
   :init
   (defun my:moody-enable ()
     (interactive)
-    ;;(moody-replace-element)
     (moody-replace-vc-mode)
-    ;;(moody-replace-mode-line-front-space)
     (moody-replace-mode-line-buffer-identification)
     (moody-replace-eldoc-minibuffer-message-function)
     (moody-redisplay t))
 
   (defun my:moody-disable ()
     (interactive)
-    ;;(moody-replace-element t)
     (moody-replace-vc-mode t)
-    ;; (moody-replace-mode-line-front-space t)
     (moody-replace-mode-line-buffer-identification t)
     (moody-replace-eldoc-minibuffer-message-function t)
-    (moody-redisplay t)
-    ;;(moody-replace-sml/mode-line-buffer-identification t)
-    )
+    (moody-redisplay t))
   :config
   (my:moody-enable))
 
@@ -309,8 +293,7 @@ mouse-1: Display minor modes menu"
           (minions-mode -1)
           (minions-mode +1)
           (ignore-errors (funcall major-mode))
-          (my:minions-mode-line-modes)
-          ))))
+          (my:minions-mode-line-modes)))))
 
 (use-package modus-themes
   :ensure t
@@ -319,8 +302,7 @@ mouse-1: Display minor modes menu"
         modus-themes-bold-constructs nil
         modus-themes-disable-other-themes t)
   (setq modus-vivendi-deuteranopia-palette-overrides
-        '(
-          (bg-mode-line-active "#232635")
+        '((bg-mode-line-active "#232635")
           (blue            "#00ffb4")
           (blue-warmer     "#00A8B0")
           (blue-cooler     "#00ff8a")
@@ -342,6 +324,13 @@ mouse-1: Display minor modes menu"
   :config
   (zoom-mode +1))
 
+;; Behavior
+
+(use-package savehist
+  :init
+  (savehist-mode 1))
+
+
 ;; better options for switiching windows and buffers
 (use-package ace-window
   :ensure t
@@ -355,8 +344,7 @@ mouse-1: Display minor modes menu"
 
 (use-package pulsar
   :custom
-  (pulsar-pulse-functions '(
-                            ace-window
+  (pulsar-pulse-functions '(ace-window
                             backward-page
                             consult--jump
                             recenter-top-bottom
@@ -419,7 +407,6 @@ mouse-1: Display minor modes menu"
               ("<backtab>" . vertico-next-group)
 
               (:map minibuffer-local-map
-                    ;;("<backspace>" . my:minibuffer-backward-kill)
                     ("M-j" . next-history-element)
                     ("M-k" . previous-history-element)
                     ("M-i" . completion-at-point)))
