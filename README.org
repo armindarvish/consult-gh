@@ -290,7 +290,11 @@ Here is a good customization for great performance as well as functionality:
 * Features and Demos
 For background and context, you can see this blog post: [[https://www.armindarvish.com/post/consult-gh_working_with_github_inside_emacs_in_2023_/][Working with GitHub inside Emacs in 2023]], and watch this [[https://www.youtube.com/playlist?list=PLLKxLZdx_YyZdW4CidqbVPJjyo396Y1cx][YouTube Playlist]]. Note that the blog post and some of the YouTube are out of date since the release of newer versions of consult-gh.
 
-In the screenshots below,  I am generally using vanilla Emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], [[https://github.com/oantolin/embark][embark]], and this package with the following config:
+In the screenshots below,  I am generally using vanilla Emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], [[https://github.com/oantolin/embark][embark]]. You can see an example of the init.el here:
+
+[[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/init.el][Emacs Config of the Demo Screenshots]]
+
+The consult-gh config section looks like this:
 
 #+begin_src emacs-lisp
 (use-package consult-gh
