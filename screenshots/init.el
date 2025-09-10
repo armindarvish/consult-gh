@@ -654,6 +654,7 @@ mouse-1: Display minor modes menu"
   (consult-gh-show-preview t)
   (consult-gh-preview-key "C-o")
   (consult-gh-repo-preview-mode nil)
+  (consult-gh-preview-major-mode 'org-mode)
   (consult-gh-repo-action #'consult-gh--repo-browse-files-action)
   (consult-gh-default-interactive-command #'consult-gh-transient)
   (consult-gh-group-dashboard-by :reason)
