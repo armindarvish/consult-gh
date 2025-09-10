@@ -260,7 +260,7 @@ Here is a good customization for great performance as well as functionality:
   (consult-gh-confirm-before-clone t)
   (consult-gh-notifications-show-unread-only nil)
   (consult-gh-default-interactive-command #'consult-gh-transient)
-  (consult-gh-prioritize-local-folder 'nil)
+  (consult-gh-prioritize-local-folder nil)
   (consult-gh-group-dashboard-by :reason)
   ;;;; Optional
   (consult-gh-repo-preview-major-mode nil) ; show readmes in their original format
@@ -293,39 +293,6 @@ For background and context, you can see this blog post: [[https://www.armindarvi
 In the screenshots below,  I am generally using vanilla Emacs and a minimal config with [[https://github.com/protesilaos/modus-themes][modus-themes]], [[https://github.com/minad/vertico][vertico]], [[https://github.com/minad/marginalia][marginalia]], [[https://github.com/minad/consult][consult]], [[https://github.com/oantolin/embark][embark]]. You can see an example of the init.el here:
 
 [[https://github.com/armindarvish/consult-gh/blob/screenshots/screenshots/init.el][Emacs Config of the Demo Screenshots]]
-
-The consult-gh config section looks like this:
-
-#+begin_src emacs-lisp
-(use-package consult-gh
-  :ensure t
-  :after embark-consult
-  :custom
-  (consult-gh-show-preview t) ;;show previews
-  (consult-gh-preview-key "C-o") ;;show previews on demand by hitting "C-o"
-  (consult-gh-repo-preview-mode nil) ;;use the default README extension in preview
-  (consult-gh-repo-action #'consult-gh--repo-browse-files-action) ;;open file tree of repo on selection
-  (consult-gh-issue-action #'consult-gh--issue-view-action) ;;open issues in an emacs buffer
-  (consult-gh-pr-action #'consult-gh--pr-view-action) ;;open pull requests in an emacs buffer
-  (consult-gh-code-action #'consult-gh--code-view-action) ;;open files that contain code snippet in an emacs buffer
-  (consult-gh-file-action #'consult-gh--files-view-action) ;;open files in an emacs buffer
-
-  (consult-gh-notifications-action #'consult-gh--notifications-action) ;;open notifications using default actions for issue/pr
-  (consult-gh-dashboard-action #'consult-gh--dashboard-action) ;;open dashboard items using default actions for issue/pr
-  (consult-gh-default-interactive-command #'consult-gh-transient)
-  :config
-  ;; optionally set favorite orgs
-  ;; (setq consult-gh-favorite-orgs-list '("minad" "oantolin" "karthink" "alphapapa" "systemcrafters"))
-
-  (add-to-list 'savehist-additional-variables 'consult-gh--known-orgs-list) ;;keep record of searched orgs
-  (add-to-list 'savehist-additional-variables 'consult-gh--known-repos-list) ;;keep record of searched repos
-  )
-
-;;; enable embark actions
-(use-package consult-gh-embark
-  :config
-  (consult-gh-embark-mode +1))
-#+end_src
 
 ** Search for Repositories
 In the screenshot below, I use =consult-gh-search-repos= to search for repositories. The screenshot shows the updated capabilities with consult-async (since version 1.0):
