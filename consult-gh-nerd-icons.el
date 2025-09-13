@@ -49,7 +49,7 @@
 
 ;;; Customization Variables
 
-(defcustom consult-gh-nerd-icons
+(defcustom consult-gh-nerd-icons-icons
   '((repo  . (nerd-icons-octicon "nf-oct-repo" 'consult-gh-repo))
     (issue  . (nerd-icons-codicon "nf-cod-issues" 'consult-gh-issue))
     (pr  . (nerd-icons-mdicon "nf-md-source_pull" 'consult-gh-pr))
@@ -70,7 +70,7 @@
   :type '(alist :key-type symbol
                 :value-type (list symbol string symbol)))
 
-(defcustom consult-gh-nerd-faces
+(defcustom consult-gh-nerd-icons-faces
   '((dired-dir . consult-gh-dired-directory)
     (dired-file . consult-gh-dired-file)
     (dired-symlink . consult-gh-dired-symlink)
@@ -81,67 +81,67 @@
                 :value-type (choice (variable :tag "A face variable")
                                     (function :tag "A function that takes name of the file and return a face variable"))))
 
-(defvar consult-gh-repo-icon-default consult-gh-repo-icon
+(defvar consult-gh-nerd-icons--repo-icon-default consult-gh-repo-icon
   "Default value of `consult-gh-repo-icon'.")
 
-(defvar consult-gh-issue-icon-default consult-gh-issue-icon
+(defvar consult-gh-nerd-icons--issue-icon-default consult-gh-issue-icon
   "Default value of `consult-gh-issue-icon'.")
 
-(defvar consult-gh-pr-icon-default consult-gh-pr-icon
+(defvar consult-gh-nerd-icons--pr-icon-default consult-gh-pr-icon
   "Default value of `consult-gh-pr-icon'.")
 
-(defvar consult-gh-user-icon-default consult-gh-user-icon
+(defvar consult-gh-nerd-icons--user-icon-default consult-gh-user-icon
   "Default value of `consult-gh-user-icon'.")
 
-(defvar consult-gh-branch-icon-default consult-gh-branch-icon
+(defvar consult-gh-nerd-icons--branch-icon-default consult-gh-branch-icon
   "Default value of `consult-gh-branch-icon'.")
 
-(defvar consult-gh-label-icon-default consult-gh-label-icon
+(defvar consult-gh-nerd-icons--label-icon-default consult-gh-label-icon
   "Default value of `consult-gh-label-icon'.")
 
-(defvar consult-gh-milestone-icon-default consult-gh-milestone-icon
+(defvar consult-gh-nerd-icons--milestone-icon-default consult-gh-milestone-icon
   "Default value of `consult-gh-milestone-icon'.")
 
-(defvar consult-gh-project-icon-default consult-gh-project-icon
+(defvar consult-gh-nerd-icons--project-icon-default consult-gh-project-icon
   "Default value of `consult-gh-project-icon'.")
 
-(defvar consult-gh-star-icon-default consult-gh-star-icon
+(defvar consult-gh-nerd-icons--star-icon-default consult-gh-star-icon
   "Default value of `consult-gh-star-icon'.")
 
-(defvar consult-gh-tag-icon-default consult-gh-tag-icon
+(defvar consult-gh-nerd-icons--tag-icon-default consult-gh-tag-icon
   "Default value of `consult-gh-tag-icon'.")
 
-(defvar consult-gh-topic-icon-default consult-gh-topic-icon
+(defvar consult-gh-nerd-icons--topic-icon-default consult-gh-topic-icon
   "Default value of `consult-gh-topic-icon'.")
 
-(defvar consult-gh-dired-dir-icon-default consult-gh-dired-dir-icon
+(defvar consult-gh-nerd-icons--dired-dir-icon-default consult-gh-dired-dir-icon
   "Default value of `consult-gh-dired-dir-icon'.")
 
-(defvar consult-gh-dired-file-icon-default consult-gh-dired-file-icon
+(defvar consult-gh-nerd-icons--dired-file-icon-default consult-gh-dired-file-icon
   "Default value of `consult-gh-dired-file-icon'.")
 
-(defvar consult-gh-dired-symlink-icon-default consult-gh-dired-symlink-icon
+(defvar consult-gh-nerd-icons--dired-symlink-icon-default consult-gh-dired-symlink-icon
   "Default value of `consult-gh-dired-symlink-icon'.")
 
-(defvar consult-gh-dired-commit-icon-default consult-gh-dired-commit-icon
+(defvar consult-gh-nerd-icons--dired-commit-icon-default consult-gh-dired-commit-icon
   "Default value of `consult-gh-dired-commit-icon'.")
 
-(defvar consult-gh-dired-dir-face-default consult-gh-dired-dir-face
+(defvar consult-gh-nerd-icons--dired-dir-face-default consult-gh-dired-dir-face
   "Default value of `consult-gh-dired-dir-face'.")
 
-(defvar consult-gh-dired-file-face-default consult-gh-dired-file-face
+(defvar consult-gh-nerd-icons--dired-file-face-default consult-gh-dired-file-face
   "Default value of `consult-gh-dired-file-face'.")
 
-(defvar consult-gh-dired-symlink-face-default consult-gh-dired-symlink-face
+(defvar consult-gh-nerd-icons--dired-symlink-face-default consult-gh-dired-symlink-face
   "Default value of `consult-gh-dired-symlink-face'.")
 
-(defvar consult-gh-dired-commit-face-default consult-gh-dired-commit-face
+(defvar consult-gh-nerd-icons--dired-commit-face-default consult-gh-dired-commit-face
   "Default value of `consult-gh-dired-commit-face'.")
 
 
 (defun consult-gh-nerd-icons-get-icon (symbol)
   "Return the icon for SYMBOL."
-  (if-let* ((spec (cdr (assoc symbol consult-gh-nerd-icons)))
+  (if-let* ((spec (cdr (assoc symbol consult-gh-nerd-icons-icons)))
             (func (car spec))
             (name (cadr spec))
             (face (caddr spec)))
@@ -152,93 +152,122 @@
 
 (defun consult-gh-nerd-icons-get-face (symbol)
   "Return the face for SYMBOL."
-  (let* ((face (cdr-safe (assoc symbol consult-gh-nerd-faces))))
+  (let* ((face (cdr-safe (assoc symbol consult-gh-nerd-icons-faces))))
     (if (facep face)
         face
       'default)))
 
-(defun consult-gh-nerd-icons-get-icon-for-dir (name)
-  "Return the icon for a directory."
-  (if (stringp name)
-  (nerd-icons-icon-for-dir name :face 'consult-gh-dired-directory)))
+(defun consult-gh-nerd-icons-get-icon-for-dir (directory)
+  "Return the icon for a DIRECTORY."
+  (if (stringp directory)
+      (nerd-icons-icon-for-dir directory :face 'consult-gh-dired-directory)))
 
 
 (defun consult-gh-nerd-icons-get-face-for-file (name)
   "Return the face for a file NAME."
   (if (stringp name)
-  (let* ((name (file-name-nondirectory name))
-         (ext (file-name-extension name))
-         (icon (or (and ext
-                        (cdr (assoc (downcase ext)
-                                    nerd-icons-extension-icon-alist)))
-                   (nerd-icons-match-to-alist name nerd-icons-regexp-icon-alist)
-                   nerd-icons-default-file-icon))
-         (face (or (plist-get icon :face) 'default)))
-    face)
-  'default))
+      (let* ((name (file-name-nondirectory name))
+             (ext (file-name-extension name))
+             (icon (or (and ext
+                            (cdr (assoc (downcase ext)
+                                        nerd-icons-extension-icon-alist)))
+                       (nerd-icons-match-to-alist name nerd-icons-regexp-icon-alist)
+                       nerd-icons-default-file-icon))
+             (face (or (plist-get icon :face) 'default)))
+        face)
+    'default))
+
+(defun consult-gh-nerd-icons-restore-default ()
+  "Restore default icons."
+  (setq consult-gh-repo-icon consult-gh-nerd-icons--repo-icon-default
+        consult-gh-issue-icon consult-gh-nerd-icons--issue-icon-default
+        consult-gh-pr-icon consult-gh-nerd-icons--pr-icon-default
+        consult-gh-user-icon consult-gh-nerd-icons--user-icon-default
+        consult-gh-branch-icon consult-gh-nerd-icons--branch-icon-default
+        consult-gh-label-icon consult-gh-nerd-icons--label-icon-default
+        consult-gh-milestone-icon consult-gh-nerd-icons--milestone-icon-default
+        consult-gh-project-icon consult-gh-nerd-icons--project-icon-default
+        consult-gh-star-icon consult-gh-nerd-icons--star-icon-default
+        consult-gh-tag-icon consult-gh-nerd-icons--tag-icon-default
+        consult-gh-topic-icon consult-gh-nerd-icons--topic-icon-default
+        consult-gh-dired-dir-icon consult-gh-nerd-icons--dired-dir-icon-default
+        consult-gh-dired-file-icon consult-gh-nerd-icons--dired-file-icon-default
+        consult-gh-dired-symlink-icon consult-gh-nerd-icons--dired-symlink-icon-default
+        consult-gh-dired-commit-icon consult-gh-nerd-icons--dired-commit-icon-default
+        consult-gh-dired-dir-face consult-gh-nerd-icons--dired-dir-face-default
+        consult-gh-dired-file-face consult-gh-nerd-icons--dired-file-face-default
+        consult-gh-dired-symlink-face consult-gh-nerd-icons--dired-symlink-face-default
+        consult-gh-dired-commit-face consult-gh-nerd-icons--dired-commit-face-default))
+
+(defun consult-gh-nerd-icons-save-default ()
+  "Restore default icons."
+  (setq consult-gh-nerd-icons--repo-icon-default consult-gh-repo-icon
+        consult-gh-nerd-icons--issue-icon-default consult-gh-issue-icon
+        consult-gh-nerd-icons--pr-icon-default consult-gh-pr-icon
+        consult-gh-nerd-icons--user-icon-default consult-gh-user-icon
+        consult-gh-nerd-icons--branch-icon-default consult-gh-branch-icon
+        consult-gh-nerd-icons--label-icon-default consult-gh-label-icon
+        consult-gh-nerd-icons--milestone-icon-default consult-gh-milestone-icon
+        consult-gh-nerd-icons--project-icon-default consult-gh-project-icon
+        consult-gh-nerd-icons--star-icon-default consult-gh-star-icon
+        consult-gh-nerd-icons--tag-icon-default consult-gh-tag-icon
+        consult-gh-nerd-icons--topic-icon-default consult-gh-topic-icon
+        consult-gh-nerd-icons--dired-dir-icon-default consult-gh-dired-dir-icon
+        consult-gh-nerd-icons--dired-file-icon-default consult-gh-dired-file-icon
+        consult-gh-nerd-icons--dired-symlink-icon-default consult-gh-dired-symlink-icon
+        consult-gh-nerd-icons--dired-commit-icon-default consult-gh-dired-commit-icon
+        consult-gh-nerd-icons--dired-dir-face-default consult-gh-dired-dir-face
+        consult-gh-nerd-icons--dired-file-face-default consult-gh-dired-file-face
+        consult-gh-nerd-icons--dired-symlink-face-default consult-gh-dired-symlink-face
+        consult-gh-nerd-icons--dired-commit-face-default consult-gh-dired-commit-face))
+
+(defun consult-gh-nerd-icons-set-icons (&optional icons)
+  "Set icons to ICONS.
+
+ICONS is an alist with (key . icon) pairs for different categories,
+and defaults to `consult-gh-nerd-icons-icons'"
+  (let ((consult-gh-nerd-icons-icons (or icons consult-gh-nerd-icons-icons)))
+    (setq consult-gh-repo-icon (consult-gh-nerd-icons-get-icon 'repo)
+          consult-gh-issue-icon (consult-gh-nerd-icons-get-icon 'issue)
+          consult-gh-pr-icon (consult-gh-nerd-icons-get-icon 'pr)
+          consult-gh-user-icon (consult-gh-nerd-icons-get-icon 'user)
+          consult-gh-branch-icon (consult-gh-nerd-icons-get-icon 'branch)
+          consult-gh-label-icon (consult-gh-nerd-icons-get-icon 'label)
+          consult-gh-milestone-icon (consult-gh-nerd-icons-get-icon 'milestone)
+          consult-gh-project-icon (consult-gh-nerd-icons-get-icon 'project)
+          consult-gh-star-icon (consult-gh-nerd-icons-get-icon 'star)
+          consult-gh-tag-icon (consult-gh-nerd-icons-get-icon 'tag)
+          consult-gh-topic-icon (consult-gh-nerd-icons-get-icon 'topic)
+          consult-gh-dired-dir-icon #'consult-gh-nerd-icons-get-icon-for-dir
+          consult-gh-dired-file-icon #'nerd-icons-icon-for-file
+          consult-gh-dired-symlink-icon (consult-gh-nerd-icons-get-icon 'dired-symlink)
+          consult-gh-dired-commit-icon (consult-gh-nerd-icons-get-icon 'dired-commit)
+          consult-gh-dired-dir-face (consult-gh-nerd-icons-get-face 'dired-dir)
+          consult-gh-dired-file-face (consult-gh-nerd-icons-get-face 'dired-file)
+          consult-gh-dired-symlink-face (consult-gh-nerd-icons-get-face 'dired-symlink)
+          consult-gh-dired-commit-face (consult-gh-nerd-icons-get-face 'dired-commit))))
+
+(defun consult-gh-nerd-icons-set-faces (&optional faces)
+  "Set faces to FACES.
+
+FACES is an alist with (key . face) pairs for different categories,
+and defaults to `consult-gh-nerd-icons-faces'"
+  (let ((consult-gh-nerd-icons-faces (or faces consult-gh-nerd-icons-faces)))
+    (setq consult-gh-dired-dir-face (consult-gh-nerd-icons-get-face 'dired-dir)
+          consult-gh-dired-file-face (consult-gh-nerd-icons-get-face 'dired-file)
+          consult-gh-dired-symlink-face (consult-gh-nerd-icons-get-face 'dired-symlink)
+          consult-gh-dired-commit-face (consult-gh-nerd-icons-get-face 'dired-commit))))
+
 
 (defun consult-gh-nerd-icons--mode-on ()
   "Enable `consult-gh-nerd-icons-mode'."
-  (setq consult-gh-repo-icon-default consult-gh-repo-icon
-        consult-gh-issue-icon-default consult-gh-issue-icon
-        consult-gh-pr-icon-default consult-gh-pr-icon
-        consult-gh-user-icon-default consult-gh-user-icon
-        consult-gh-branch-icon-default consult-gh-branch-icon
-        consult-gh-label-icon-default consult-gh-label-icon
-        consult-gh-milestone-icon-default consult-gh-milestone-icon
-        consult-gh-project-icon-default consult-gh-project-icon
-        consult-gh-star-icon-default consult-gh-star-icon
-        consult-gh-tag-icon-default consult-gh-tag-icon
-        consult-gh-topic-icon-default consult-gh-topic-icon
-        consult-gh-dired-dir-icon-default consult-gh-dired-dir-icon
-        consult-gh-dired-file-icon-default consult-gh-dired-file-icon
-        consult-gh-dired-symlink-icon-default consult-gh-dired-symlink-icon
-        consult-gh-dired-commit-icon-default consult-gh-dired-commit-icon
-        consult-gh-dired-dir-face-default consult-gh-dired-dir-face
-        consult-gh-dired-file-face-default consult-gh-dired-file-face
-        consult-gh-dired-symlink-face-default consult-gh-dired-symlink-face
-        consult-gh-dired-commit-face-default consult-gh-dired-commit-face
-        consult-gh-repo-icon (consult-gh-nerd-icons-get-icon 'repo)
-        consult-gh-issue-icon (consult-gh-nerd-icons-get-icon 'issue)
-        consult-gh-pr-icon (consult-gh-nerd-icons-get-icon 'pr)
-        consult-gh-user-icon (consult-gh-nerd-icons-get-icon 'user)
-        consult-gh-branch-icon (consult-gh-nerd-icons-get-icon 'branch)
-        consult-gh-label-icon (consult-gh-nerd-icons-get-icon 'label)
-        consult-gh-milestone-icon (consult-gh-nerd-icons-get-icon 'milestone)
-        consult-gh-project-icon (consult-gh-nerd-icons-get-icon 'project)
-        consult-gh-star-icon (consult-gh-nerd-icons-get-icon 'star)
-        consult-gh-tag-icon (consult-gh-nerd-icons-get-icon 'tag)
-        consult-gh-topic-icon (consult-gh-nerd-icons-get-icon 'topic)
-        consult-gh-dired-dir-icon #'consult-gh-nerd-icons-get-icon-for-dir
-        consult-gh-dired-file-icon #'nerd-icons-icon-for-file
-        consult-gh-dired-symlink-icon (consult-gh-nerd-icons-get-icon 'dired-symlink)
-        consult-gh-dired-commit-icon (consult-gh-nerd-icons-get-icon 'dired-commit)
-        consult-gh-dired-dir-face (consult-gh-nerd-icons-get-face 'dired-dir)
-        consult-gh-dired-file-face (consult-gh-nerd-icons-get-face 'dired-file)
-        consult-gh-dired-symlink-face (consult-gh-nerd-icons-get-face 'dired-symlink)
-        consult-gh-dired-commit-face (consult-gh-nerd-icons-get-face 'dired-commit)))
+  (consult-gh-nerd-icons-save-default)
+  (consult-gh-nerd-icons-set-icons)
+  (consult-gh-nerd-icons-set-faces))
 
 (defun consult-gh-nerd-icons--mode-off ()
   "Disable `consult-gh-nerd-icons-mode'."
-  (setq consult-gh-repo-icon consult-gh-repo-icon-default
-        consult-gh-issue-icon consult-gh-issue-icon-default
-        consult-gh-pr-icon consult-gh-pr-icon-default
-        consult-gh-user-icon consult-gh-user-icon-default
-        consult-gh-branch-icon consult-gh-branch-icon-default
-        consult-gh-label-icon consult-gh-label-icon-default
-        consult-gh-milestone-icon consult-gh-milestone-icon-default
-        consult-gh-project-icon consult-gh-project-icon-default
-        consult-gh-star-icon consult-gh-star-icon-default
-        consult-gh-tag-icon consult-gh-tag-icon-default
-        consult-gh-topic-icon consult-gh-topic-icon-default
-        consult-gh-dired-dir-icon consult-gh-dired-dir-icon-default
-        consult-gh-dired-file-icon consult-gh-dired-file-icon-default
-        consult-gh-dired-symlink-icon consult-gh-dired-symlink-icon-default
-        consult-gh-dired-commit-icon consult-gh-dired-commit-icon-default
-        consult-gh-dired-dir-face consult-gh-dired-dir-face-default
-        consult-gh-dired-file-face consult-gh-dired-file-face-default
-        consult-gh-dired-symlink-face consult-gh-dired-symlink-face-default
-        consult-gh-dired-commit-face consult-gh-dired-commit-face-default))
+  (consult-gh-nerd-icons-restore-default))
 
 ;;;###autoload
 (define-minor-mode consult-gh-nerd-icons-mode
