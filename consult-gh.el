@@ -21266,7 +21266,7 @@ For more details refer to the manual with “gh release create --help”."
   (consult-gh-with-host
    (consult-gh--auth-account-host)
   (let* ((release consult-gh--topic)
-         (type (get-text-property 0 () :type release)))
+         (type (get-text-property 0 :type release)))
     (if (equal type "release")
         (let* ((repo (get-text-property 0 :repo release))
                (meta (consult-gh-topics--release-get-metadata release))
