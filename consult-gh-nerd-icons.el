@@ -1,4 +1,4 @@
-;;; consult-gh-nerd-icons.el --- nerd icons Integration for consult-gh -*- lexical-binding: t -*-
+;;; consult-gh-nerd-icons.el --- Nerd icons integration for consult-gh -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Armin Darvish
 
