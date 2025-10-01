@@ -400,7 +400,7 @@ Since version 3.0, you can also directly edit files on GitHub by using commands 
 
 
 ** Searching Codes
-In the screenshot below, I use =consult-gh-search-code= to search for some code on GitHub. For example, I search for =deque=, then I add some command line arguments to limit the search to python files only (e.g. =deque -- --language==python=). When a preview is opened, consult-gh open the file containing the code and tries to find the region where the code is. This enables the user to interactively use the GitHub code search, find relevant files and jump right to where the relevant code is used in the file.
+In the screenshot below, I use =consult-gh-search-code= to search for some code on GitHub. For example, I search for =deque=, then I add some command line arguments to limit the search to python files only (e.g. =deque -- --language=python=). When a preview is opened, consult-gh open the file containing the code and tries to find the region where the code is. This enables the user to interactively use the GitHub code search, find relevant files and jump right to where the relevant code is used in the file.
 
 
 #+ATTR_ORG: :width 800px
