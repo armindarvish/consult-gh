@@ -12407,6 +12407,7 @@ the buffer-local variable `consult-gh--topic' in the buffer created by
             "number: " number "\n"
             "ref: " repo ":" baseRef " <- " (and headRepoOwner (concat headRepoOwner "/")) (and headRepo (format "%s:" headRepo)) headRef "\n"
             "state: " state "\n"
+            "options: ^:{}\n"
             (and createdAt (concat "created: " createdAt "\n"))
             (and updatedAt (concat "lastUpdated: " updatedAt "\n"))
             (and closedAt (concat "closed: " closedAt "\n"))
