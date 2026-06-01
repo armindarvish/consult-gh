@@ -733,7 +733,7 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
                    ((or "pr" "notification" "dashboard" "code" "file")
                     (consult-gh-embark-get-url cand))
                    (_ nil)))
-            (body (when ref-link (not (string-empty-p ref-link)) (format "%s" ref-link))))
+            (body (when (and ref-link (not (string-empty-p ref-link))) (format "%s" ref-link))))
        (funcall #'consult-gh-issue-create repo title body)))))
 
 (defun consult-gh-embark-create-pr (cand)
@@ -751,7 +751,7 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
                    ((or "issue" "notification" "dashboard" "code" "file")
                     (consult-gh-embark-get-url cand))
                    (_ nil)))
-            (body (when ref-link (not (string-empty-p ref-link)) (format "%s" ref-link))))
+            (body (when (and ref-link (not (string-empty-p ref-link))) (format "%s" ref-link))))
        (funcall #'consult-gh-pr-create repo title body)))))
 
 (defun consult-gh-embark-create-release (cand)
