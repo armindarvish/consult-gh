@@ -2859,7 +2859,7 @@ Description of Arguments:
   (if (executable-find "gh")
       (consult-gh-with-host
        (consult-gh--auth-account-host)
-       (when-let ((proc (get-process name)))
+       (when-let* ((proc (get-process name)))
          (delete-process proc))
        (let* ((cmd-args (append (list "gh") cmd-args))
               (proc-buf (generate-new-buffer (concat consult-gh--async-process-buffer-name "-" name)))
@@ -3020,7 +3020,7 @@ If TRANSFORM is non-nil, the CAND itself is returned."
        ((member group-by '(nil :nil :none :no :not))
         nil)
        ((not (member group-by '(:t t)))
-        (if-let ((group (get-text-property 0 group-by cand)))
+        (if-let* ((group (get-text-property 0 group-by cand)))
             (format "%s" group)
           "N/A"))
        (t t)))))
@@ -3277,7 +3277,7 @@ Returns an alist with key value pairs of (file . diff)"
 
 (defun consult-gh--get-gitignore-template-content (template)
   "Get content of gitignore TEMPLATE."
-  (when-let ((response (consult-gh--command-to-string "api" (format "gitignore/templates/%s" template))))
+  (when-let* ((response (consult-gh--command-to-string "api" (format "gitignore/templates/%s" template))))
     (gethash :source (consult-gh--json-to-hashtable response))))
 
 (defun consult-gh--gitignore-template-preview (action cand)
@@ -3429,7 +3429,7 @@ Each item is a cons of (name . key) for a license."
 
 (defun consult-gh--get-license-content (license)
   "Get body of LICENSE."
-  (when-let ((response (consult-gh--command-to-string "api" (format "licenses/%s" license))))
+  (when-let* ((response (consult-gh--command-to-string "api" (format "licenses/%s" license))))
     (gethash :body (consult-gh--json-to-hashtable response))))
 
 (defun consult-gh--license-preview (action cand)
@@ -3978,10 +3978,10 @@ Completes “@.*” for mentionng users in comments, posts,..."
                                 (list item consult-gh-user-icon ""))
                               list)))
          (exit-fun (lambda (str _status)
-                      (when-let (cand (car (member str (cl-remove-duplicates
+                      (when-let* ((cand (car (member str (cl-remove-duplicates
                          (delq nil (append
                                     (get-text-property 0 :mentionable-users topic)
-                                    (get-text-property 0 :commenters topic)))))))
+                                    (get-text-property 0 :commenters topic))))))))
                       (and (stringp cand)
                            (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand)))
@@ -4208,7 +4208,7 @@ Completes “assignees:.*” for adding assignees."
                                 (list item consult-gh-user-icon ""))
                               list)))
          (exit-fun (lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :assignable-users topic))))))
+                      (when-let* ((cand (car (member str (delq nil (get-text-property 0 :assignable-users topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -4259,7 +4259,7 @@ Completes “labels:.*” for adding labels."
                                 (list item consult-gh-label-icon ""))
                               list)))
          (exit-fun (lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :valid-labels topic))))))
+                      (when-let* ((cand (car (member str (delq nil (get-text-property 0 :valid-labels topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -4296,7 +4296,7 @@ Completes “milestone:.*” for adding a milestone."
                                 (list item consult-gh-milestone-icon ""))
                               list)))
          (exit-fun (lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :valid-milestones topic))))))
+                      (when-let* ((cand (car (member str (delq nil (get-text-property 0 :valid-milestones topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -4383,7 +4383,7 @@ Completes “reviewers:.*” for adding reviewers."
                                 (list item consult-gh-user-icon ""))
                               list)))
          (exit-fun (lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :assignable-users topic))))))
+                      (when-let* ((cand (car (member str (delq nil (get-text-property 0 :assignable-users topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -4526,7 +4526,7 @@ Completes “topics:.*” for adding topics."
                                 (list item consult-gh-topic-icon ""))
                               list)))
          (exit-fun (lambda (str _status)
-                      (when-let ((cand (car (member str (delq nil (get-text-property 0 :popular-topics topic))))))
+                      (when-let* ((cand (car (member str (delq nil (get-text-property 0 :popular-topics topic))))))
                         (and (stringp cand)
                              (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand))
@@ -5689,7 +5689,7 @@ the buffer-local variable for `consult-gh--topic'."
          (tags  (when (listp table)
                   (mapcar (lambda (item)
                             (when (hash-table-p item)
-                              (if-let ((name (gethash :name item)))
+                              (if-let* ((name (gethash :name item)))
                                   (when (stringp name)
                                     (propertize name
                                                 :repo repo
@@ -6034,7 +6034,7 @@ message."
     (with-current-buffer buffer
       (consult-gh-commit-message-mode +1)
       (save-excursion
-        (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+        (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
           (goto-char (or (car-safe (car-safe regions)) (point-min))))
         (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
         (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -6359,7 +6359,7 @@ Description of Arguments:
                              commit)
         (add-text-properties 0 1 (list :diff-buffer nil) commit)
         (save-excursion
-          (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                      (goto-char (car-safe (car-safe regions)))))
           (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
           (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -6554,7 +6554,7 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
      (with-current-buffer buffer
        (consult-gh-commit-message-mode +1)
        (save-excursion
-         (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                     (goto-char (car-safe (car-safe regions)))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -6589,7 +6589,7 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
         (add-text-properties 0 1 (list :files new-files) commit)
         (add-text-properties 0 1 (list :diff-buffer nil) commit)
         (save-excursion
-          (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                     (goto-char (car-safe (car-safe regions)))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -6612,7 +6612,7 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
           (add-text-properties 0 1 (list :files new-files) commit)
           (add-text-properties 0 1 (list :diff-buffer nil) commit)
        (save-excursion
-         (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                     (goto-char (car-safe (car-safe regions)))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -7024,7 +7024,7 @@ message."
      (with-current-buffer buffer
        (consult-gh-commit-message-mode +1)
        (save-excursion
-         (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                     (goto-char (car-safe (car-safe regions)))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -7056,7 +7056,7 @@ message."
         (add-text-properties 0 1 (list :files new-files)
                                commit)
 (save-excursion
-         (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                     (goto-char (car-safe (car-safe regions)))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -7082,7 +7082,7 @@ message."
                                commit)
           (add-text-properties 0 1 (list :diff-buffer nil) commit)
        (save-excursion
-         (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                     (goto-char (car-safe (car-safe regions)))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -7322,7 +7322,7 @@ buffer generated by `consult-gh--upload-commit'."
                (and (consult-gh--upload-commit-submit files repo path commit-message ref committer-info author-info)
                     (message "Commit Submitted!")
                     (with-current-buffer buffer
-                      (when-let ((remove-topics (remove nil (mapcar (lambda (topic) (when (stringp topic)
+                      (when-let* ((remove-topics (remove nil (mapcar (lambda (topic) (when (stringp topic)
                                               (let* ((topic-repo (get-text-property 0 :repo topic))
                                                      (topic-ref (get-text-property 0 :ref topic))
                                                      (topic-path (get-text-property 0 :path topic)))
@@ -7395,7 +7395,7 @@ message."
     (with-current-buffer buffer
       (consult-gh-commit-message-mode +1)
       (save-excursion
-        (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+        (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
           (goto-char (or (car-safe (car-safe regions)) (point-min))))
         (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
         (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -7770,7 +7770,7 @@ Description of Arguments:
                                                           :test #'equal))))
         (add-text-properties 0 1 (list :files new-files) commit)
         (save-excursion
-          (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                      (goto-char (car-safe (car-safe regions)))))
           (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
           (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -7795,7 +7795,7 @@ Description of Arguments:
         (add-text-properties 0 1 (list :files new-files)
                              commit)
         (save-excursion
-          (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                      (goto-char (car-safe (car-safe regions)))))
           (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
           (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -7949,7 +7949,7 @@ and is used to preview or do other actions on the issue."
       (pcase action
         ('preview
          (if (and consult-gh-show-preview cand)
-             (when-let ((repo (get-text-property 0 :repo cand))
+             (when-let* ((repo (get-text-property 0 :repo cand))
                         (sha (get-text-property 0 :sha cand))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
                (add-to-list 'consult-gh--preview-buffers-list buffer)
@@ -9211,7 +9211,7 @@ buffer generated by `consult-gh--files-view'."
               (add-text-properties 0 1 (list :files new-files) consult-gh--topic)
 
               (save-excursion
-                (when-let ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
+                (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
                            (goto-char (car-safe (car-safe regions)))))
                 (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
                 (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
@@ -9423,7 +9423,7 @@ to preview or do other actions on the repo."
       (pcase action
         ('preview
          (if (and consult-gh-show-preview cand)
-             (when-let ((repo (get-text-property 0 :repo cand))
+             (when-let* ((repo (get-text-property 0 :repo cand))
                         (query (get-text-property 0 :query cand))
                         (match-str (consult--build-args query))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
@@ -11004,7 +11004,7 @@ and is used to preview or do other actions on the issue."
       (pcase action
         ('preview
          (if (and consult-gh-show-preview cand)
-             (when-let ((repo (get-text-property 0 :repo cand))
+             (when-let* ((repo (get-text-property 0 :repo cand))
                         (query (get-text-property 0 :query cand))
                         (number (get-text-property 0 :number cand))
                         (match-str (consult--build-args query))
@@ -11573,7 +11573,7 @@ ISSUE defaults to `consult-gh--topic'."
         (when (stringp text-projects)
           (save-match-data
             (while (string-match ".*\\(?1:\".*?\"\\).*" text-projects)
-              (when-let ((p (match-string 1 text-projects)))
+              (when-let* ((p (match-string 1 text-projects)))
                  (if (member (string-trim p "\"" "\"") valid-projects)
                      (push p projects))
                 (setq text-projects (string-replace p "" text-projects))))
@@ -12208,7 +12208,7 @@ and is used to preview or do other actions on the pr."
           (pcase action
             ('preview
              (if (and consult-gh-show-preview cand)
-                 (when-let ((repo (get-text-property 0 :repo cand))
+                 (when-let* ((repo (get-text-property 0 :repo cand))
                             (number (get-text-property 0 :number cand))
                             (query (get-text-property 0 :query cand))
                             (match-str (consult--build-args query))
@@ -13280,7 +13280,7 @@ PR defaults to `consult-gh--topic'."
         (when (stringp text-projects)
           (save-match-data
             (while (string-match ".*\\(?1:\".*?\"\\).*" text-projects)
-              (when-let ((p (match-string 1 text-projects)))
+              (when-let* ((p (match-string 1 text-projects)))
                  (if (member (string-trim p "\"" "\"") valid-projects)
                      (push p projects))
                 (setq text-projects (string-replace p "" text-projects))))
@@ -15031,7 +15031,7 @@ and is used to preview or do other actions on the code."
       (pcase action
         ('preview
          (if (and consult-gh-show-preview cand)
-             (when-let ((repo (get-text-property 0 :repo cand))
+             (when-let* ((repo (get-text-property 0 :repo cand))
                         (type (get-text-property 0 :type cand))
                         (number (get-text-property 0 :number cand))
                         (buffer (get-buffer-create consult-gh-preview-buffer-name)))
@@ -15291,7 +15291,7 @@ set `consult-gh-notificatios-action' to
 
 This is an internal action function that gets a notification candidate, CAND,
 from `consult-gh-notifications' and marks it as read."
-  (when-let ((thread (get-text-property 0 :thread cand)))
+  (when-let* ((thread (get-text-property 0 :thread cand)))
     (when (consult-gh--command-to-string "api" (format "notifications/threads/%s" thread) "--silent" "--method" "PATCH")
       (message "marked as read!"))))
 
@@ -15300,7 +15300,7 @@ from `consult-gh-notifications' and marks it as read."
 
 This is an internal action function that gets a notification candidate, CAND,
 from `consult-gh-notifications' and unsubscribes from the thread."
-  (when-let ((thread (get-text-property 0 :thread cand)))
+  (when-let* ((thread (get-text-property 0 :thread cand)))
     (when (consult-gh--command-to-string "api" "--method" "PUT" "-H" "Accept: application/vnd.github+json" "--paginate" "-F" "ignored=true"(format "/notifications/threads/%s/subscription" thread))
       (message "Unsubscribed!"))))
 
@@ -15309,7 +15309,7 @@ from `consult-gh-notifications' and unsubscribes from the thread."
 
 This is an internal action function that gets a notification candidate, CAND,
 from `consult-gh-notifications' and unsubscribes from the thread."
-  (when-let ((thread (get-text-property 0 :thread cand)))
+  (when-let* ((thread (get-text-property 0 :thread cand)))
     (when (consult-gh--command-to-string "api" "--method" "PUT" "-H" "Accept: application/vnd.github+json" "--paginate" "-F" "ignored=false" (format "/notifications/threads/%s/subscription" thread))
       (message "Subscribed!"))))
 
@@ -15365,7 +15365,7 @@ and is used to preview or do other actions on the issue."
       (pcase action
         ('preview
          (if (and consult-gh-show-preview cand)
-             (when-let ((repo (get-text-property 0 :repo cand))
+             (when-let* ((repo (get-text-property 0 :repo cand))
                         (query (get-text-property 0 :query cand))
                         (tagname (get-text-property 0 :tagname cand))
                         (match-str (consult--build-args query))
@@ -16377,7 +16377,7 @@ and is used to preview or do other actions on the workflow."
       (pcase action
         ('preview
          (if (and consult-gh-show-preview cand)
-             (when-let ((repo (get-text-property 0 :repo cand))
+             (when-let* ((repo (get-text-property 0 :repo cand))
                         (query (get-text-property 0 :query cand))
                         (name (get-text-property 0 :name cand))
                         (id (get-text-property 0 :id cand))
@@ -17058,7 +17058,7 @@ and is used to preview or do other actions on the run."
       (pcase action
         ('preview
          (if (and consult-gh-show-preview cand)
-             (when-let ((repo (get-text-property 0 :repo cand))
+             (when-let* ((repo (get-text-property 0 :repo cand))
                         (query (get-text-property 0 :query cand))
                         (name (get-text-property 0 :name cand))
                         (id (get-text-property 0 :id cand))
@@ -17492,7 +17492,7 @@ POS defaults to current point."
   "Go to the position of beginning of the file name at POS.
 
 POS defaults to current point."
-  (when-let ((p (consult-gh--dired-file-name-position pos)))
+  (when-let* ((p (consult-gh--dired-file-name-position pos)))
     (goto-char p)))
 
 (defun consult-gh--dired-hide (start end)
@@ -18049,9 +18049,9 @@ URL `https://github.com/minad/consult'."
   (let* ((prompt (or prompt "Enter User or Org Name:  "))
          (sel (consult-gh--async-repo-list prompt #'consult-gh--repo-list-builder initial min-input)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -18176,9 +18176,9 @@ URL `https://github.com/minad/consult'."
                     (consult-gh--async-search-repos prompt #'consult-gh--search-repos-builder initial min-input))
                 (consult-gh--async-search-repos prompt #'consult-gh--search-repos-builder initial min-input))))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -18217,10 +18217,10 @@ If PROMPT is non-nil, use it as the query prompt."
                                                    :preview-key consult-gh-preview-key
                                                    :sort t))))
 
-     (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+     (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
        (add-to-history 'consult-gh--repos-history (concat (consult-gh--get-split-style-character) reponame))
        (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--orgs-history (concat (consult-gh--get-split-style-character) username))
       (add-to-history 'consult-gh--known-orgs-list username))
 
@@ -18336,7 +18336,7 @@ If REPOS are not supplied, interactively asks user to pick them from
 
 When NOCONFIRM is non-nil, do not ask for confirmation"
   (interactive)
-  (when-let ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-user-repos nil t))))))
+  (when-let* ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-user-repos nil t))))))
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (consult-gh--repo-delete repo (or noconfirm (not consult-gh-confirm-before-delete-repo))))))
@@ -18353,7 +18353,7 @@ If REPOS are not supplied, interactively asks user to pick them from
 
 When NOCONFIRM is non-nil, do not ask for confirmation"
   (interactive)
-  (when-let ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-user-repos nil t))))))
+  (when-let* ((repo (or repo (substring-no-properties (get-text-property 0 :repo (consult-gh-user-repos nil t))))))
     (consult-gh-with-host
      (consult-gh--auth-account-host)
      (consult-gh--repo-rename repo new-name (or noconfirm (not consult-gh-confirm-before-rename-repo))))))
@@ -18587,9 +18587,9 @@ URL `https://github.com/minad/consult'"
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-issue-list prompt #'consult-gh--issue-list-builder initial min-input)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -18712,9 +18712,9 @@ URL `https://github.com/minad/consult'."
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-issues prompt #'consult-gh--search-issues-builder initial min-input)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -19417,9 +19417,9 @@ URL `https://github.com/minad/consult'."
          (prompt (or prompt "Enter Repo Name:  "))
          (sel (consult-gh--async-pr-list prompt #'consult-gh--pr-list-builder initial min-input)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -19544,9 +19544,9 @@ URL `https://github.com/minad/consult'."
          (consult-gh-args (if repo (append consult-gh-args `("--repo " ,(format "%s" repo))) consult-gh-args))
          (sel (consult-gh--async-search-prs prompt #'consult-gh--search-prs-builder initial min-input)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -20160,9 +20160,9 @@ URL `https://github.com/minad/consult'."
          (sel (consult-gh--async-search-code prompt #'consult-gh--search-code-builder initial min-input)))
     (setq consult-gh--open-files-list nil)
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -20284,9 +20284,9 @@ Description of Arguments:
                              sel)
 
         ;;add org and repo to known lists
-        (when-let ((reponame (get-text-property 0 :repo sel)))
+        (when-let* ((reponame (get-text-property 0 :repo sel)))
           (add-to-history 'consult-gh--known-repos-list reponame))
-        (when-let ((username (get-text-property 0 :user sel)))
+        (when-let* ((username (get-text-property 0 :user sel)))
           (add-to-history 'consult-gh--known-orgs-list username))
         sel)
        ((and (stringp sel)
@@ -20304,16 +20304,16 @@ Description of Arguments:
              (or (and allow-dirs (equal (get-text-property 0 :object-type sel) "tree"))
                  (equal (get-text-property 0 :object-type sel) "blob")))
         ;;add org and repo to known lists
-        (when-let ((reponame (get-text-property 0 :repo sel)))
+        (when-let* ((reponame (get-text-property 0 :repo sel)))
           (add-to-history 'consult-gh--known-repos-list reponame))
-        (when-let ((username (get-text-property 0 :user sel)))
+        (when-let* ((username (get-text-property 0 :user sel)))
           (add-to-history 'consult-gh--known-orgs-list username))
         sel)
        (t
          ;;add org and repo to known lists
-        (when-let ((reponame (get-text-property 0 :repo sel)))
+        (when-let* ((reponame (get-text-property 0 :repo sel)))
           (add-to-history 'consult-gh--known-repos-list reponame))
-        (when-let ((username (get-text-property 0 :user sel)))
+        (when-let* ((username (get-text-property 0 :user sel)))
           (add-to-history 'consult-gh--known-orgs-list username))
         sel)))))
 
@@ -20355,9 +20355,9 @@ Description of Arguments:
                 (consult-gh--files-read-file repo ref path initial))))
     (when sel
       ;;add org and repo to known lists
-      (when-let ((reponame (get-text-property 0 :repo sel)))
+      (when-let* ((reponame (get-text-property 0 :repo sel)))
         (add-to-history 'consult-gh--known-repos-list reponame))
-      (when-let ((username (get-text-property 0 :user sel)))
+      (when-let* ((username (get-text-property 0 :user sel)))
         (add-to-history 'consult-gh--known-orgs-list username))
       (if noaction
           sel
@@ -20818,7 +20818,7 @@ Description of Arguments:
           \(passed as INITITAL to `consult--read'\)"
   (consult-gh-with-host
    (consult-gh--auth-account-host)
-   (if-let ((candidates (consult-gh--notifications-items)))
+   (if-let* ((candidates (consult-gh--notifications-items)))
        (consult--read
         candidates
         :prompt prompt
@@ -20853,9 +20853,9 @@ If PROMPT is non-nil, use it as the query prompt."
     (when (bound-and-true-p consult-gh-embark-mode)
         (setq consult-gh--last-command #'consult-gh-notifications))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -21062,9 +21062,9 @@ URL `https://github.com/minad/consult'."
   (let* ((prompt (or prompt "Search Dashboard:  "))
          (sel (consult-gh--dashboard prompt initial)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0  :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0  :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -21199,9 +21199,9 @@ URL `https://github.com/minad/consult'"
   (let* ((prompt (or prompt "Enter Repo Name:  "))
          (sel (consult-gh--async-release-list prompt #'consult-gh--release-list-builder initial min-input)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -21294,7 +21294,7 @@ using the internal function `consult-gh--release-delete'.
 
 When NOCONFIRM is non-nil, do not ask for confirmation"
   (interactive)
-  (when-let ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))))
+  (when-let* ((repo (or repo (get-text-property 0 :repo (consult-gh-search-repos nil t))))
              (release (or release (get-text-property 0 :tagname (consult-gh-release-list repo t)))))
     (consult-gh-with-host
      (consult-gh--auth-account-host)
@@ -21642,9 +21642,9 @@ URL `https://github.com/minad/consult'"
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-workflow-list prompt #'consult-gh--workflow-list-builder initial min-input)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -22022,9 +22022,9 @@ URL `https://github.com/minad/consult'"
   (let* ((prompt (or prompt "Enter Repo Name:  "))
         (sel (consult-gh--async-run-list prompt (apply-partially #'consult-gh--run-list-builder workflow) initial min-input)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -22206,7 +22206,7 @@ then the user is asked to chose the TOPIC interactively."
                         (add-text-properties 0 1 (list :comment-info (append info (list :subject-type "file")) :target target) newtopic))
                (error "Canceled!")))))
         ((equal target "reply")
-         (if-let (info (get-text-property (point) :consult-gh))
+         (if-let* ((info (get-text-property (point) :consult-gh)))
              (add-text-properties 0 1 (list :comment-info info) newtopic)))))
      (cond
       (topic
@@ -22384,7 +22384,7 @@ URL `https://github.com/magit/magit/blob/731642756f504c8a56d3775960b7af0a93c618b
   (let ((message (or commit-message (consult-gh--commit-get-buffer-message))))
     (if message
         (progn
-          (when-let ((index (ring-member log-edit-comment-ring message)))
+          (when-let* ((index (ring-member log-edit-comment-ring message)))
             (ring-remove log-edit-comment-ring index))
           (ring-insert log-edit-comment-ring message)
              (message "Message saved"))
@@ -22527,9 +22527,9 @@ If PROMPT is non-nil, use it as the query prompt."
          (prompt (or prompt (format "Select a commit [%s]:  " (propertize ref 'face 'consult-gh-branch))))
          (sel (consult-gh--commit-list repo ref nil initial prompt)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
@@ -22646,9 +22646,9 @@ URL `https://github.com/minad/consult'."
          (prompt (or prompt "Search Commits:  "))
          (sel (consult-gh--async-search-commits repo prompt #'consult-gh--search-commits-builder initial min-input)))
     ;;add org and repo to known lists
-    (when-let ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
+    (when-let* ((reponame (and (stringp sel) (get-text-property 0 :repo sel))))
       (add-to-history 'consult-gh--known-repos-list reponame))
-    (when-let ((username (and (stringp sel) (get-text-property 0 :user sel))))
+    (when-let* ((username (and (stringp sel) (get-text-property 0 :user sel))))
       (add-to-history 'consult-gh--known-orgs-list username))
     (if noaction
         sel
