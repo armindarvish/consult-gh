@@ -6359,8 +6359,8 @@ Description of Arguments:
                              commit)
         (add-text-properties 0 1 (list :diff-buffer nil) commit)
         (save-excursion
-          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                     (goto-char (car-safe (car-safe regions)))))
+          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+            (goto-char (car-safe (car-safe regions))))
           (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
           (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
           (when (listp new-files)
@@ -6554,8 +6554,8 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
      (with-current-buffer buffer
        (consult-gh-commit-message-mode +1)
        (save-excursion
-         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                    (goto-char (car-safe (car-safe regions)))))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+           (goto-char (car-safe (car-safe regions))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
        (when (listp files)
@@ -6589,8 +6589,8 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
         (add-text-properties 0 1 (list :files new-files) commit)
         (add-text-properties 0 1 (list :diff-buffer nil) commit)
         (save-excursion
-          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                    (goto-char (car-safe (car-safe regions)))))
+          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+            (goto-char (car-safe (car-safe regions))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
        (when (listp new-files)
@@ -6612,8 +6612,8 @@ If COMMIT-MESSAGE is non-nil, it is inserted in the buffer as initial message."
           (add-text-properties 0 1 (list :files new-files) commit)
           (add-text-properties 0 1 (list :diff-buffer nil) commit)
        (save-excursion
-         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                    (goto-char (car-safe (car-safe regions)))))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+           (goto-char (car-safe (car-safe regions))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
        (when (listp new-files)
@@ -7024,8 +7024,8 @@ message."
      (with-current-buffer buffer
        (consult-gh-commit-message-mode +1)
        (save-excursion
-         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                    (goto-char (car-safe (car-safe regions)))))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+           (goto-char (car-safe (car-safe regions))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
        (when (listp files)
@@ -7056,8 +7056,8 @@ message."
         (add-text-properties 0 1 (list :files new-files)
                                commit)
 (save-excursion
-         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                    (goto-char (car-safe (car-safe regions)))))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+           (goto-char (car-safe (car-safe regions))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
        (when (listp new-files)
@@ -7082,8 +7082,8 @@ message."
                                commit)
           (add-text-properties 0 1 (list :diff-buffer nil) commit)
        (save-excursion
-         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                    (goto-char (car-safe (car-safe regions)))))
+         (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+           (goto-char (car-safe (car-safe regions))))
          (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
        (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
        (when (listp files)
@@ -7770,8 +7770,8 @@ Description of Arguments:
                                                           :test #'equal))))
         (add-text-properties 0 1 (list :files new-files) commit)
         (save-excursion
-          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                     (goto-char (car-safe (car-safe regions)))))
+          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+            (goto-char (car-safe (car-safe regions))))
           (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
           (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
           (when (listp new-files)
@@ -7795,8 +7795,8 @@ Description of Arguments:
         (add-text-properties 0 1 (list :files new-files)
                              commit)
         (save-excursion
-          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                     (goto-char (car-safe (car-safe regions)))))
+          (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+            (goto-char (car-safe (car-safe regions))))
           (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
           (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
           (when (listp new-files)
@@ -9211,8 +9211,8 @@ buffer generated by `consult-gh--files-view'."
               (add-text-properties 0 1 (list :files new-files) consult-gh--topic)
 
               (save-excursion
-                (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions))
-                           (goto-char (car-safe (car-safe regions)))))
+                (when-let* ((regions (consult-gh--get-region-with-prop ':consult-gh-commit-instructions)))
+                  (goto-char (car-safe (car-safe regions))))
                 (consult-gh--delete-region-with-prop ':consult-gh-commit-instructions)
                 (insert (propertize consult-gh-commit-message-instructions :consult-gh-commit-instructions t))
                 (when (listp new-files)
