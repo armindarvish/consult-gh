@@ -8559,7 +8559,10 @@ commits-list)))
                                   (let* ((x_date (date-to-time (gethash :date (gethash :author (gethash :commit x)))))
                                          (y_date (date-to-time (gethash :date (gethash :author (gethash :commit y))))))
                                     (if (time-less-p x_date y_date) nil t)))))
-  (setq commits (sort commits :key (lambda (k) (date-to-time (gethash :date (gethash :author (gethash :commit k))))))))
+  ;; On Emacs < 30 this branch is dead, but the byte-compiler still
+  ;; arity-checks the Emacs 30+ keyword `sort' against the old 2-arg
+  ;; signature; suppress that false positive.
+  (setq commits (with-suppressed-warnings ((callargs sort)) (sort commits :key (lambda (k) (date-to-time (gethash :date (gethash :author (gethash :commit k)))))))))
 commits)
 
 (defun consult-gh--commit-list-format (table repo ref)
@@ -12308,8 +12311,11 @@ a hash-table output from `consult-gh--pr-read-json'."
                                (let ((x_date (date-to-time (or (gethash :updated_at x) (gethash :created_at x) (gethash :submitted_at x) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t))))))
                                  (y_date (date-to-time (or (gethash :updated_at y) (gethash :created_at y) (gethash :submitted_at y) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))
                                  (if (time-less-p x_date y_date) t nil))))
-    (sort all-comments :key (lambda (k)
-                              (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t))))))))))
+    ;; On Emacs < 30 this branch is dead, but the byte-compiler still
+    ;; arity-checks the Emacs 30+ keyword `sort' against the old 2-arg
+    ;; signature; suppress that false positive.
+    (with-suppressed-warnings ((callargs sort)) (sort all-comments :key (lambda (k)
+                              (date-to-time (or (gethash :updated_at k) (gethash :created_at k) (gethash :submitted_at k) (format-time-string "%Y-%m-%dT%T%Z" (encode-time (decode-time (current-time) t)))))))))))
 
 (defun consult-gh--pr-get-commenters (table &optional comments)
   "Get list of relevant users on a pull request.
