@@ -3410,12 +3410,14 @@ users))
            (keymap-unset map (car k) t)))
 
 (defun consult-gh--get-split-style-character (&optional style)
-"Get the character for consult async split STYLE.
+  "Get the character for consult async split STYLE.
 
 STYLE defaults to `consult-async-split-style'."
-(let ((style (or style consult-async-split-style 'none)))
-  (or (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :initial))
-      (char-to-string (plist-get (alist-get style consult-async-split-styles-alist) :separator))
+  (let* ((style (or style consult-async-split-style 'none))
+         (spec (alist-get style consult-async-split-styles-alist))
+         (char (or (plist-get spec :initial) (plist-get spec :separator))))
+    (if (characterp char)
+        (char-to-string char)
       "")))
 
 (defun consult-gh--get-license-list ()
