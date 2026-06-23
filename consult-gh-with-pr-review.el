@@ -51,12 +51,15 @@ and pr review config do not match."
 (defvar consult-gh-with-pr-review--default-pr-action consult-gh-pr-action
   "Default action for viewing PRs without `pr-review' integration.")
 
-(defun consult-gh-with-pr-review--pr-view (repo number)
-  "Open pullrequest NUMBER in REPO  with `pr-review'."
+(defun consult-gh-with-pr-review--pr-view (repo number &optional host)
+  "Open pullrequest NUMBER in REPO in HOST with `pr-review'.
+
+HOST defaults to `consult-gh--auth-account-host'."
   (if consult-gh-with-pr-review-mode
-      (let* ((repo-owner (consult-gh--get-username repo))
+      (let* ((host (or host (consult-gh--auth-account-host)))
+             (repo-owner (consult-gh--get-username repo))
              (repo-name (consult-gh--get-package repo)))
-        (pr-review-open repo-owner repo-name number))
+        (pr-review-open host repo-owner repo-name number))
     (message "consult-gh-with-pr-review-mode is disabled! You can either enable the mode or change view actions \(e.g. `consult-gh-pr-action'\).")))
 
 (defun consult-gh-with-pr-review--pr-view-action (cand)
