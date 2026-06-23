@@ -242,7 +242,7 @@ The candidate can be a repo, issue, PR, file path, or a branch."
               (string-trim (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/tree/%s" ref))))
 
              ("release"
-              (when-let ((tagname (get-text-property 0 :tagname cand)))
+              (when-let* ((tagname (get-text-property 0 :tagname cand)))
                   (concat (string-trim (consult-gh--command-to-string "browse" "--repo" (string-trim repo) "--no-browser")) (format "/releases/%s" tagname))))
              ("workflow"
               (and (stringp path)
@@ -483,7 +483,7 @@ CAND can be a repo, issue, PR, file path, ..."
         ((or "file" "code")
          (when (not current-prefix-arg) (setq title (concat repo "/" ref "/" path))))
         ("commit"
-         (when-let ((sha (get-text-property 0 :sha cand))
+         (when-let* ((sha (get-text-property 0 :sha cand))
                     (sha-str (and (stringp sha)
                                   (substring sha 0 6))))
            (when (not current-prefix-arg) (setq title sha-str))))
@@ -553,19 +553,19 @@ CAND can be a repo, issue, PR, file path, ..."
 (defun consult-gh-embark-copy-user-name-as-kill (cand)
   "Copy the name of the user in CAND to `kill-ring'."
   (when (stringp cand)
-    (when-let ((name (consult-gh-embark-get-user-name cand)))
+    (when-let* ((name (consult-gh-embark-get-user-name cand)))
       (kill-new name))))
 
 (defun consult-gh-embark-copy-user-email-as-kill (cand)
   "Copy the email of the user in CAND to `kill-ring'."
   (when (stringp cand)
-    (when-let ((email (consult-gh-embark-get-user-email cand)))
+    (when-let* ((email (consult-gh-embark-get-user-email cand)))
       (kill-new email))))
 
 (defun consult-gh-embark-copy-user-link-as-kill (cand)
   "Copy the link of the user page in CAND to `kill-ring'."
   (when (stringp cand)
-    (when-let ((link (consult-gh-embark-get-user-link cand)))
+    (when-let* ((link (consult-gh-embark-get-user-link cand)))
       (kill-new link))))
 
 ;;;; Insert Actions
@@ -644,14 +644,14 @@ In `org-mode' or `markdown-mode',the link is formatted accordingly."
 (defun consult-gh-embark-insert-user-name (cand)
   "Insert the name of the user in CAND at point."
   (when (stringp cand)
-    (if-let ((user (consult-gh-embark-get-user-name cand)))
+    (if-let* ((user (consult-gh-embark-get-user-name cand)))
         (embark-insert (list user))
       (message "No user at point!"))))
 
 (defun consult-gh-embark-insert-user-email (cand)
   "Insert the email of the user in CAND at point."
   (when (stringp cand)
-    (if-let ((email (consult-gh-embark-get-user-email cand)))
+    (if-let* ((email (consult-gh-embark-get-user-email cand)))
         (embark-insert (list email))
       (message "No email found for user at point!"))))
 
