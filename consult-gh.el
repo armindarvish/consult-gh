@@ -3980,10 +3980,10 @@ Completes “@.*” for mentionng users in comments, posts,..."
                                 (list item consult-gh-user-icon ""))
                               list)))
          (exit-fun (lambda (str _status)
-                      (when-let* (cand (car (member str (cl-remove-duplicates
+                      (when-let* ((cand (car (member str (cl-remove-duplicates
                          (delq nil (append
                                     (get-text-property 0 :mentionable-users topic)
-                                    (get-text-property 0 :commenters topic)))))))
+                                    (get-text-property 0 :commenters topic))))))))
                       (and (stringp cand)
                            (add-text-properties (- (point) (length str)) (point)
                                           (text-properties-at 0 cand)))
@@ -22214,7 +22214,7 @@ then the user is asked to chose the TOPIC interactively."
                         (add-text-properties 0 1 (list :comment-info (append info (list :subject-type "file")) :target target) newtopic))
                (error "Canceled!")))))
         ((equal target "reply")
-         (if-let* (info (get-text-property (point) :consult-gh))
+         (if-let* ((info (get-text-property (point) :consult-gh)))
              (add-text-properties 0 1 (list :comment-info info) newtopic)))))
      (cond
       (topic
