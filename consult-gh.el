@@ -9919,6 +9919,14 @@ Description of Arguments:
          (confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo) (propertize visibility 'face 'warning))))
          (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
          (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or directory (and (stringp consult-gh-default-clone-directory) (file-name-as-directory consult-gh-default-clone-directory)) default-directory))))
+         (clonedir (when (and clone clonedir (stringp clonedir))
+                       (cond
+                        ((file-exists-p clonedir) clonedir)
+                        (t (if consult-gh-confirm-before-clone
+                (when (y-or-n-p (format "The directory %s does not exist!  Do you want to create it?" (propertize clonedir 'face 'consult-gh-warning)))
+                  (make-directory clonedir t))
+                (make-directory clonedir t))
+                           clonedir))))
          (default-directory (or clonedir default-directory))
          (targetdir (expand-file-name name default-directory))
          (args '("repo" "create"))
@@ -9979,6 +9987,14 @@ Description of Arguments:
       (let* ((confirm (y-or-n-p (format "This will create %s as a %s repository on GitHub.  Continue?" (propertize name 'face 'consult-gh-repo) (propertize visibility 'face 'warning))))
              (clone (if confirm (y-or-n-p "Clone the new repository locally?")))
              (clonedir (if clone (read-directory-name (format "Select Directory to clone %s in " (propertize name 'face 'font-lock-keyword-face)) (or (and (stringp consult-gh-default-clone-directory) (file-name-as-directory consult-gh-default-clone-directory)) default-directory))))
+             (clonedir (when (and clone clonedir (stringp clonedir))
+                       (cond
+                        ((file-exists-p clonedir) clonedir)
+                        (t (if consult-gh-confirm-before-clone
+                (when (y-or-n-p (format "The directory %s does not exist.  Do you want to create it?" (propertize clonedir 'face 'consult-gh-warning)))
+                  (make-directory clonedir t))
+                (make-directory clonedir t))
+                           clonedir))))
              (default-directory (or clonedir default-directory))
              (targetdir (expand-file-name name default-directory))
              (args '("repo" "create"))
@@ -23048,8 +23064,7 @@ Description of Arguments:
              (tempdir (or (get-text-property 0 :tempdir topic)
                           (expand-file-name
                            (concat repo "/" ref "/")
-                           (or consult-gh--current-tempdir (consult-gh--tempdir))
-                           )))
+                           (or consult-gh--current-tempdir (consult-gh--tempdir)))))
              (mode (or mode (get-text-property (point) :mode)))
              (path (or path (get-text-property (point) :path))))
         (unless (file-exists-p tempdir)
